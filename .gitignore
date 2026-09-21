@@ -1,0 +1,62 @@
+# Bill — shared ignore rules.
+# Stack the Manifesto defines: Python as the core, delivered as a single binary,
+# with the WebApp in TypeScript/Vue/Vite. Two groups are specific to this repo:
+# the local agent harness (development only) and the runtime state a Working
+# Folder creates.
+
+# --- Local agent harness (development only, not part of this repository) -----
+/.claude
+/hooks
+
+# --- Working Folder runtime state (created by the binary where it runs) ------
+/.bill
+
+# --- Python ------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.eggs/
+*.egg-info/
+.venv/
+venv/
+env/
+.python-version
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.tox/
+.coverage
+htmlcov/
+
+# --- TypeScript / Vue / Vite -------------------------------------------------
+node_modules/
+.vite/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- Build output (core binary and WebApp bundle) ----------------------------
+build/
+dist/
+dist-ssr/
+
+# --- Environment files -------------------------------------------------------
+.env
+.env.*
+!.env.example
+
+# --- Editors and OS ----------------------------------------------------------
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+
+# --- Data ----------------------------------------------------------
+/data
+/prose
