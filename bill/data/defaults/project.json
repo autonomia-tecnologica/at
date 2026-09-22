@@ -58,6 +58,7 @@
     },
     "since": {
       "label": "table.project.field.since",
+      "type": "day",
       "filterable": true,
       "searchable": true,
       "default": "today"

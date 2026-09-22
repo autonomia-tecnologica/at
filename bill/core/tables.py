@@ -14,7 +14,8 @@ nothing here changes.
 
 from __future__ import annotations
 
-from datetime import date, datetime
+import re
+from datetime import date, datetime, timezone
 from typing import Any
 
 from bill.data import schema, store
@@ -26,9 +27,13 @@ ACTIONS = ("list", "view", "create", "edit")
 # them when the row is born, because only then is "today" a day. They resolve to
 # ISO TEXT, never to a datetime object — the store is JSON, and a date a person
 # reads is a string on every host (§3, Portabilidade).
+#
+# `now` is a point in time, so it is written the way §4 writes one: UTC, with
+# milliseconds. The machine's zone is a property of whoever reads, never of what
+# is stored — a naive local instant is a value two machines disagree about.
 _WHEN = {
     "today": lambda: date.today().isoformat(),
-    "now": lambda: datetime.now().isoformat(timespec="seconds"),
+    "now": lambda: _utc(datetime.now(timezone.utc)),
 }
 
 
@@ -269,10 +274,77 @@ def _literal(value: Any) -> Any:
     return value
 
 
+# ------------------------------------------------------------- the types ---
+
+# §4 fixes the types and each one has its rule; there is no choice per field.
+# These two are the ones about time, and they are the ones a string cannot be
+# trusted with: a day is a calendar day and an instant is a point in time, and
+# the same words mean different things in each — so each shape is checked
+# before anything parses it.
+_DAY_SHAPE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+_INSTANT_SHAPE = re.compile(r"^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}")
+
+
+def _utc(value: datetime) -> str:
+    """A point in time written the one way §4 allows: UTC, with milliseconds."""
+    return value.astimezone(timezone.utc).isoformat(timespec="milliseconds").replace(
+        "+00:00", "Z"
+    )
+
+
+def _day(table: str, name: str, raw: Any) -> str:
+    """A calendar day, with no time and no zone, resolved by the writer (§4).
+
+    "Today" is your today: the day is read from the machine at the moment it is
+    written, and it is stored as the text a person reads back.
+    """
+    text = raw.strip() if isinstance(raw, str) else ""
+    if text == "today":
+        return _WHEN["today"]()
+    if not _DAY_SHAPE.match(text):
+        raise TableError(
+            "error.not_a_day", field=label(table, name), value=raw
+        )
+    try:
+        return date.fromisoformat(text).isoformat()
+    except ValueError:
+        # The shape is right and the day is not — `2026-02-30` is not a date.
+        raise TableError(
+            "error.not_a_day", field=label(table, name), value=raw
+        ) from None
+
+
+def _instant(table: str, name: str, raw: Any) -> str:
+    """A point in time: UTC, with milliseconds, whatever the machine's zone (§4).
+
+    A value that carries its offset is taken as it stands; one that does not is
+    read in the machine's zone, because that is what a person typing a clock
+    time means. What is refused is the guess: a bare day is a day, not midnight
+    somewhere, and it comes back as a refusal instead of becoming one.
+    """
+    text = raw.strip() if isinstance(raw, str) else ""
+    if text == "now":
+        return _WHEN["now"]()
+    if not _INSTANT_SHAPE.match(text):
+        raise TableError(
+            "error.not_an_instant", field=label(table, name), value=raw
+        )
+    try:
+        return _utc(datetime.fromisoformat(text))
+    except ValueError:
+        raise TableError(
+            "error.not_an_instant", field=label(table, name), value=raw
+        ) from None
+
+
 def _value(table: str, name: str, field: dict, raw: Any) -> Any:
+    kind = field.get("type")
+    if kind == "day":
+        return _day(table, name, raw)
+    if kind == "instant":
+        return _instant(table, name, raw)
     if not isinstance(raw, str):
         return raw
-    kind = field.get("type")
     if kind == "list":
         items = [item.strip() for item in raw.split(",") if item.strip()]
         return [_scalar(item) for item in items]
@@ -342,6 +414,16 @@ def _in_declared_order(table: str, row: dict) -> dict:
     return out
 
 
+def _stamp(kind: object) -> str:
+    """When the entry was written, in the type the `append` declares.
+
+    A table that declares nothing keeps the day this log was born with, which is
+    what its rows already carry; one that declares `instant` gets the point in
+    time §4 means by it. Neither is a naive local instant.
+    """
+    return _WHEN["now"]() if kind == "instant" else date.today().isoformat()
+
+
 def _log_status(table: str, row: dict, previous: dict | None) -> None:
     """A field that declares `tracks` gets the change appended, on every path.
 
@@ -366,6 +448,6 @@ def _log_status(table: str, row: dict, previous: dict | None) -> None:
         entry: Any = value
         if isinstance(append, dict):
             entry = {append.get("text", "text"): value,
-                     append.get("stamp", "at"): date.today().isoformat()}
+                     append.get("stamp", "at"): _stamp(append.get("type"))}
         log = row.get(name)
         row[name] = (list(log) if isinstance(log, list) else []) + [entry]

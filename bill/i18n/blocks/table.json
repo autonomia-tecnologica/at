@@ -16,6 +16,8 @@
     "error.unknown_field": "Campo desconhecido em {table}: {field}.",
     "error.required": "Falta o campo obrigatório: {field}.",
     "error.not_in_enum": "{value} não é um valor de {field}.",
+    "error.not_a_day": "{field} espera um dia (AAAA-MM-DD); {value} não é um.",
+    "error.not_an_instant": "{field} espera um instante ISO 8601, com fuso ou Z; {value} não é um.",
     "error.too_long": "{field} passa de {max} caracteres.",
     "error.set_needs_value": "Cada --set precisa de campo=valor.",
     "error.nothing_to_set": "Nada a mudar: use --set campo=valor."
@@ -37,6 +39,8 @@
     "error.unknown_field": "Unknown field in {table}: {field}.",
     "error.required": "Missing required field: {field}.",
     "error.not_in_enum": "{value} is not a value of {field}.",
+    "error.not_a_day": "{field} expects a day (YYYY-MM-DD); {value} is not one.",
+    "error.not_an_instant": "{field} expects an ISO 8601 instant, with an offset or Z; {value} is not one.",
     "error.too_long": "{field} goes past {max} characters.",
     "error.set_needs_value": "Every --set needs field=value.",
     "error.nothing_to_set": "Nothing to change: use --set field=value."
