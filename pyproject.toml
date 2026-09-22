@@ -23,12 +23,13 @@ version = { attr = "bill.__version__" }
 include = ["bill*"]
 exclude = ["bill.tests*"]
 
-# Two payloads are data, not code, and both are invisible to an import graph:
-# without them the built artifact ships no `blocks/*.json` (every surface answers
-# in raw keys) and no `defaults/*.json` (the first run seeds no system table).
-# The WebApp's `assets/`, `dist/` and `vendor/` are collected by `bill.spec`
-# instead, because they must stay out of a wheel: `dist/` is derived, and the
-# three together are what the single binary carries (§3).
+# Three payloads are data, not code, and all of them are invisible to an import
+# graph: without them the built artifact ships no `blocks/*.json` (every surface
+# answers in raw keys), no `defaults/*.json` (the first run seeds no system
+# table) and no `vocabulary/*.json` (the interpreter names nothing a person
+# says). The WebApp's `assets/`, `dist/` and `vendor/` are collected by
+# `bill.spec` instead, because they must stay out of a wheel: `dist/` is derived,
+# and the three together are what the single binary carries (§3).
 [tool.setuptools.package-data]
-"bill.i18n" = ["blocks/*.json"]
+"bill.i18n" = ["blocks/*.json", "vocabulary/*.json"]
 "bill.data" = ["defaults/*.json"]

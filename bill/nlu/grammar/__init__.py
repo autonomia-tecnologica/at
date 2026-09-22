@@ -14,16 +14,16 @@ already calls it (`i18n.SUPPORTED`) — which is why the dispatch below is a nam
 and not a list. The two are written with the same shape so a reader can read one
 against the other: `read_day`, `read_instant` and `read_number` are the whole
 contract, and `read()` is what picks them. What the languages have in common is
-not a rule of any language — the Gregorian calendar, the clock, the fold that
-forgives case and accents — so it lives here, and neither language writes a
-second calendar of its own.
+not a rule of any language — the Gregorian calendar, the clock, the number a
+numeral spells — so it lives here, and neither language writes a second calendar
+of its own. The fold that compares a phrase to the language's own words is not
+here: it is the product's one fold, and it lives with the rest of the mechanical
+tolerance, in `bill.nlu.normalizer`.
 """
 
 from __future__ import annotations
 
 import importlib
-import re
-import unicodedata
 from datetime import date, datetime, time, timedelta
 
 from bill import i18n
@@ -63,24 +63,9 @@ def read(language: str, kind: str):
 
 # ------------------------------------------------------------- the words ---
 
-def fold(text: str) -> str:
-    """A phrase written the way a language's own words are compared.
-
-    Case and accents are the writer's to skip: `amanha` off a phone keyboard and
-    `SÁBADO` typed in a hurry are the same two words as `amanhã` and `sábado`.
-    Hyphens and runs of space are one space, because `meia-noite` and `meia noite`
-    are one word to the person who wrote them. Plurals and typos are the
-    normalizer's business (slice 5) and are not forgiven here.
-    """
-    plain = unicodedata.normalize("NFD", text.casefold())
-    plain = "".join(char for char in plain if not unicodedata.combining(char))
-    return re.sub(r"[\s\-_]+", " ", plain).strip()
-
-
-def folded(words: dict) -> dict:
-    """A language's table of words, keyed the way `fold` writes them."""
-    return {fold(word): value for word, value in words.items()}
-
+# The fold that compares a phrase to the language's own words is the product's
+# one fold, and it lives in the normalizer beside the rest of the mechanical
+# tolerance — the languages import it from there and do not write a second one.
 
 def number_of(text: str, decimal: str) -> int | float | None:
     """The number a written numeral names, or nothing.

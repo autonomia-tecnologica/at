@@ -21,14 +21,8 @@ from __future__ import annotations
 import re
 from datetime import timedelta
 
-from bill.nlu.grammar import (
-    clock,
-    day_of_month,
-    fold,
-    folded,
-    next_weekday,
-    number_of,
-)
+from bill.nlu.grammar import clock, day_of_month, next_weekday, number_of
+from bill.nlu.normalizer import fold, folded
 from bill.nlu.reading import Question, Reading, Residue, Refused, Value
 
 # The week starts on Monday, as it does for Python and for the calendar both

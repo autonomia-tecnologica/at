@@ -35,6 +35,7 @@ ENTRY = "bill/__main__.py"
 # arithmetic one directory up.
 DATAS = [
     ("bill/i18n/blocks", "bill/i18n/blocks"),
+    ("bill/i18n/vocabulary", "bill/i18n/vocabulary"),
     ("bill/data/defaults", "bill/data/defaults"),
     ("bill/ui/webapp/assets", "bill/ui/webapp/assets"),
     ("bill/ui/webapp/dist", "bill/ui/webapp/dist"),

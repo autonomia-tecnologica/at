@@ -1,0 +1,18 @@
+{
+  "pt_BR": {
+    "locality": "BR",
+    "expressions": {
+      "tarefa": "task",
+      "projeto": "project",
+      "lembrete": "reminder"
+    }
+  },
+  "en_US": {
+    "locality": "US",
+    "expressions": {
+      "task": "task",
+      "project": "project",
+      "reminder": "reminder"
+    }
+  }
+}

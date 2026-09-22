@@ -1,0 +1,46 @@
+{
+  "pt_BR": {
+    "locality": "BR",
+    "expressions": {
+      "criar": "create",
+      "cria": "create",
+      "crie": "create",
+      "adicionar": "create",
+      "cadastrar": "create",
+      "listar": "list",
+      "lista": "list",
+      "listagem": "list",
+      "ver": "view",
+      "veja": "view",
+      "mostrar": "view",
+      "abrir": "view",
+      "detalhar": "view",
+      "editar": "edit",
+      "edita": "edit",
+      "mudar": "edit",
+      "muda": "edit",
+      "alterar": "edit",
+      "altera": "edit",
+      "atualizar": "edit"
+    }
+  },
+  "en_US": {
+    "locality": "US",
+    "expressions": {
+      "create": "create",
+      "add": "create",
+      "make": "create",
+      "new": "create",
+      "list": "list",
+      "view": "view",
+      "show": "view",
+      "see": "view",
+      "open": "view",
+      "edit": "edit",
+      "change": "edit",
+      "update": "edit",
+      "set": "edit",
+      "fix": "edit"
+    }
+  }
+}
