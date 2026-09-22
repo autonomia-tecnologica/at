@@ -46,18 +46,45 @@ const frame = computed(() => {
   return null;
 });
 
-// The page has ONE address: `?view=<key>`. An explicit link BEATS what the
-// browser remembered — and a key the server does not have is ignored, like a
-// saved one: no address opens an error page.
-function viewFromUrl(): string {
-  const key = new URLSearchParams(location.search).get("view") || "";
-  return store.tables.some(kind => kind.key === key) ? key : "";
+// The page has ONE address, and it is a PATH. It is the view's own key with `/`
+// where the key has `:` — `/task` is the table, `/task/3` is the record open in
+// it, `/project/2` and `/file/kb/note.md` are the pages that own those keys. An
+// explicit link BEATS what the browser remembered, and a name the page does not
+// know is ignored, like a saved one: no address opens an error page. The query
+// form (`?view=`) still answers, because a link somebody saved is not a link to
+// break.
+function askedFromUrl(): { view: string; id: number | null } | null {
+  const asked = new URLSearchParams(location.search).get("view");
+  if (asked) {
+    return store.tables.some(kind => kind.key === asked) ? { view: asked, id: null } : null;
+  }
+
+  const parts = pathParts();
+  if (!parts.length) return null;
+  const [head, ...rest] = parts;
+  const key = rest.length ? `${head}:${rest.join("/")}` : head;
+  if (viewFor(key) || isKind(key)) return { view: key, id: null };
+  // A table with no page of its own takes the second piece as the RECORD, which
+  // is what clicking the row does.
+  if (rest.length === 1 && isKind(head)) {
+    return { view: head, id: /^\d+$/.test(rest[0]) ? Number(rest[0]) : null };
+  }
+  return null;
+}
+
+function pathParts(): string[] {
+  try {
+    return decodeURIComponent(location.pathname).split("/").filter(Boolean);
+  } catch {
+    // A path the browser could not have written is a path with nothing to open.
+    return [];
+  }
 }
 
 function showSaved(): void {
-  const asked = viewFromUrl();
+  const asked = askedFromUrl();
   if (asked) {
-    open(asked, null);
+    open(asked.view, asked.id);
     return;
   }
   const saved = loadPrefs(SELECT_KEY);

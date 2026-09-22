@@ -215,6 +215,38 @@ class TheLook(ServerCase):
         self.assertIn(b"bill.theme", body)
 
 
+class TheAddress(ServerCase):
+    """A view has a path — `/task`, `/task/3` — and the page owns the vocabulary."""
+
+    def test_a_view_is_served_at_its_path(self):
+        # The page knows which views exist; the server would keep a second copy of
+        # that list to refuse anything here, and the second copy is the one that
+        # drifts. So the address answers with the page, and the page decides.
+        for path in ("/task", "/task/3", "/project/2", "/file/kb/note.md", "/settings"):
+            with self.subTest(path=path):
+                status, headers, body = self.get(path)
+                self.assertEqual(status, 200)
+                self.assertIn("text/html", headers["Content-Type"])
+                self.assertEqual(body, self.get("/")[2])
+
+    def test_the_path_carries_the_policy_like_the_root_does(self):
+        status, headers, _ = self.get("/task")
+        self.assertIn(status, (200, 500))
+        self.assertEqual(headers["Content-Security-Policy"], webapp.CSP)
+
+    def test_the_server_keeps_its_own_answers(self):
+        # What IS the server's own keeps its own answer: the API refuses a table
+        # nobody declared, and a font nobody pinned is not served.
+        self.assertEqual(self.status("/api/table/no-such-table"), 404)
+        self.assertEqual(self.status("/vendor/no-such-font"), 404)
+
+    def test_the_query_form_still_answers(self):
+        # The link somebody saved before the path existed is not a link to break.
+        status, _, body = self.get("/?view=task")
+        self.assertEqual(status, 200)
+        self.assertEqual(body, self.get("/")[2])
+
+
 class TheDoors(ServerCase):
     """A name that is a path is refused before the disk is touched."""
 

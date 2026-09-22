@@ -166,8 +166,24 @@ export function resumePath(frames: unknown): void {
   note();
 }
 
+// THE ADDRESS FOLLOWS THE PAGE. Every view the person can reach has one, and it
+// is the view's own key with `/` where the key has `:` — `/task`, and `/task/3`
+// when a record is open in it, `/project/2`, `/file/kb/note.md`. A link copied
+// from the browser opens what was being read. It is `replace` and not `push`,
+// because the step back the page already has is its own path (`nav.path`), and
+// two histories would disagree.
 function note(): void {
-  if (nav.current) remember(nav.current.view, nav.current.id, nav.path);
+  if (!nav.current) return;
+  const { view, id } = nav.current;
+  remember(view, id, nav.path);
+  const path = addressOf(view, id);
+  if (location.pathname !== path) history.replaceState(null, "", path);
+}
+
+function addressOf(view: string, id: number | null): string {
+  const pieces = view.split(":").join("/").split("/").map(encodeURIComponent);
+  if (id !== null) pieces.push(String(id));
+  return "/" + pieces.join("/");
 }
 
 // The signal that the data changed: the same page stays on screen, but its data

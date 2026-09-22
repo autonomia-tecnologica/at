@@ -453,7 +453,15 @@ class Handler(BaseHTTPRequestHandler):
             self._get_api(rest, query)
             return
 
-        self._not_found()
+        # WHAT THE SERVER DOES NOT SERVE IS THE PAGE. The address names a view —
+        # `/task`, `/task/3`, `/project/2`, `/file/kb/note.md`, `/settings` — and
+        # the page is who knows its own vocabulary: to answer 404 here, the server
+        # would have to keep a second copy of that list, which is the copy that
+        # drifts. A name the page does not know is ignored there, like a saved one,
+        # and the address is corrected to what was opened: no address lies about
+        # what it shows. The routes ABOVE are the server's own, and those keep
+        # their own answers, 404 included.
+        self._page(UI_DIR / "index.html")
 
     def do_POST(self) -> None:  # noqa: N802
         segments = [part for part in urlparse(self.path).path.split("/") if part]
