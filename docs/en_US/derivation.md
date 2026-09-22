@@ -106,7 +106,7 @@ python3 -m bill webapp run                   # local loop, port 12345; `--port N
 .venv/bin/python -m unittest discover -s bill/tests   # the suite (the venv carries the checker)
 ```
 
-The table actions today are `list`, `view`, `create` and `edit`. `cancel` and `delete` are not here yet: both need the `lifecycle` a table declares for closing with history, and deletion needs the reference rule — `audit` is a declared exception to it, for being a log and not a link.
+The table actions are `list`, `view`, `create`, `edit`, `cancel` and `delete`. `cancel` closes a row WITH history — the terminal status, where the reason lands and whether it is required all come from the `lifecycle` the table declares — while `delete` takes the row out, refusing while another row NAMES it and never giving the number back. What names a row is read off the declarations, never off a scan of the folder, and a table that declares no `lifecycle` has no closing and says so.
 
 Surfaces, and the state of each one today:
 

@@ -118,6 +118,25 @@ def _run(table: str, action: str, args: list[str]) -> int:
         row = tables.create(table, values)
         print(tr("table.created", id=tables.format_id(table, row["id"])))
         return OK
+    if action == "cancel":
+        if len(leftovers) != 1:
+            return _reject(action)
+        # The reason is the argument the CLOSING owns, and it is read outside the
+        # field coercion: a table does not have to declare a field for it. When
+        # one does declare a field of that name, the field wins — the engine sets
+        # it like any other, and the same text answers the closing.
+        reason = values.get("reason", "")
+        if not schema.field(table, "reason"):
+            values.pop("reason", None)
+        row = tables.cancel(table, leftovers[0], reason, values)
+        print(tr("table.cancelled", id=tables.format_id(table, row["id"])))
+        return OK
+    if action == "delete":
+        if len(leftovers) != 1 or values:
+            return _reject(action)
+        row = tables.delete(table, leftovers[0])
+        print(tr("table.deleted", id=tables.format_id(table, row["id"])))
+        return OK
     # edit
     if len(leftovers) != 1:
         return _reject(action)

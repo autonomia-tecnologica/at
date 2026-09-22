@@ -115,11 +115,18 @@ def allocate(table: str) -> int:
     number twice.
     """
     number = max(highest(table) + 1, counter(table) + 1)
-    _spend(table, number)
+    spend(table, number)
     return number
 
 
-def _spend(table: str, number: int) -> None:
+def spend(table: str, number: int) -> None:
+    """Record a number as spent WITHOUT handing it out.
+
+    `delete` is the caller, and it is the whole reason this is a door of its own:
+    the row is taken out, and the number may not come back — the next `allocate`
+    would otherwise start again from the highest row still standing and hand a
+    second row an id a person's notes and commits already carry.
+    """
     remembered = counters()
     if remembered.get(table, 0) >= number:
         return

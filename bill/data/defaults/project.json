@@ -63,5 +63,15 @@
       "searchable": true,
       "default": "today"
     }
+  },
+  "lifecycle": {
+    "cancel": {
+      "status": "cancelled",
+      "reason": {
+        "into": "desc",
+        "text": "table.closed.reason"
+      },
+      "reason_required": true
+    }
   }
 }

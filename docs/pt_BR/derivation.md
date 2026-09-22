@@ -106,7 +106,7 @@ python3 -m bill webapp run                   # laço local, porta 12345; `--port
 .venv/bin/python -m unittest discover -s bill/tests   # a suíte (o venv traz o corretor)
 ```
 
-As ações de tabela hoje são `list`, `view`, `create` e `edit`. `cancel` e `delete` não estão aqui ainda: as duas precisam do `lifecycle` que uma tabela declara para fechar com histórico, e a deleção precisa da regra da referência — o `audit` é exceção declarada a ela, por ser log e não link.
+As ações de tabela são `list`, `view`, `create`, `edit`, `cancel` e `delete`. O `cancel` fecha uma linha COM histórico — o status terminal, onde o motivo cai e se ele é obrigatório vêm todos do `lifecycle` que a tabela declara —, enquanto o `delete` tira a linha, recusando enquanto outra linha a nomeia e sem devolver o número. Quem nomeia uma linha é lido das declarações, nunca de uma varredura da pasta, e uma tabela que não declara `lifecycle` não tem fechamento e o diz.
 
 Superfícies, e o estado de cada uma hoje:
 
