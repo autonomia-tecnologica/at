@@ -16,7 +16,7 @@ from bill.core import files, paths
 
 # The shape version. It exists so a later release can migrate a folder instead
 # of guessing at it — the first run after an update is when structure changes
-# are applied (README.md §3).
+# are applied (README §3).
 SCHEMA = 1
 
 

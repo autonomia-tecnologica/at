@@ -138,7 +138,7 @@ def hosted(key: str) -> tuple[Path, str] | None:
 
     The manifest is the pin: it names the package, the version and the sha256 of
     every file, so what leaves here can be checked against what was installed
-    (`README.md` §3, Dependência externa).
+    (README §3, Dependência externa).
     """
     if not key or key.startswith(".") or "/" in key or "\\" in key:
         return None

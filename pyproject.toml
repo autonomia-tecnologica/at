@@ -8,7 +8,7 @@ description = "A deterministic task engine that bootstraps its own environment"
 dynamic = ["version"]
 requires-python = ">=3.14.7"
 # The skeleton is stdlib only. A dependency arrives pinned in version and
-# hashing (README.md §3, Dependência externa) — starting at zero is the
+# hashing (README §3, Dependência externa) — starting at zero is the
 # cheapest way to keep that promise.
 dependencies = []
 

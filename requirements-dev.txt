@@ -1,0 +1,10 @@
+# Development dependencies — pinned in version AND hashing, like every other
+# dependency (§3, Dependência externa). None of them is a runtime dependency: the
+# product itself is stdlib only.
+#
+#   .venv/bin/pip install --require-hashes -r requirements-dev.txt
+#
+# The suite fails, instead of skipping, when one of these is missing: a gate that
+# silently steps aside is not a gate.
+
+pyspellchecker==0.9.0 --hash=sha256:97eaed776e0854f69aafb723f6962b403099e50c9a1d9c05525c819f4b0f5d54
