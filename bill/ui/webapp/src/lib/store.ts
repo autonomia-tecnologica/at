@@ -25,6 +25,19 @@ export interface ThemeRow {
   desc: { light?: string; dark?: string } | null;
 }
 
+// A risk the product DECLARES, and the number it carries (§4). Today the list is
+// empty — the permission catalogue is item 11 — and the ruler draws what it is
+// handed rather than inventing one.
+export interface RiskMark {
+  key: string;
+  risk: number;
+}
+
+export interface Risk {
+  threshold: number;
+  marks: RiskMark[];
+}
+
 export interface FieldSpec {
   name: string;
   labels: Labels | null;
@@ -50,6 +63,8 @@ export const store = reactive({
   tables: [] as Kind[], // the tables the panel shows, in the server's order
   types: {} as Record<string, string>, // a DECLARED type → the table declaring it
   fields: [] as FieldSpec[], // the schema of the table ON SCREEN
+  interpreter: true, // the CORE's switch: off, there is no box, balloon or chat
+  risk: { threshold: 0.5, marks: [] } as Risk, // the ruler's numbers
 });
 
 export function applyState(state: Partial<typeof store>): void {
@@ -60,6 +75,10 @@ export function applyState(state: Partial<typeof store>): void {
   store.themes = state.themes || [];
   store.tables = (state.tables as Kind[]) || [];
   store.types = (state.types as Record<string, string>) || {};
+  // The switch is BORN ON and the server is the one that says so: an answer that
+  // does not carry it leaves the interpreter where it was.
+  if (typeof state.interpreter === "boolean") store.interpreter = state.interpreter;
+  if (state.risk) store.risk = state.risk as Risk;
 }
 
 // The display name of a thing in the active language.

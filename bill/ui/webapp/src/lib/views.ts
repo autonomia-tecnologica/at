@@ -16,6 +16,12 @@ const DEPTH = 20; // a path deeper than this is no longer a path
 // there too. It names no PROJECT — it is the node that is not one.
 export const ORPHANS_KEY = "orphans";
 
+// The interpreter's chat, which is a view of the page like the others — and one
+// the page does not OFFER when the interpreter is off (`store.interpreter`),
+// because turning it off takes the chat away and an address that still opened one
+// would be the page offering what the switch took.
+export const CHAT_KEY = "chat";
+
 export interface Frame {
   view: string;
   id: number | null;

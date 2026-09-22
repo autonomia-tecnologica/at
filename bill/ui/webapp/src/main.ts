@@ -11,11 +11,15 @@ import App from "./App.vue";
 import "./styles/app.css";
 import { registerView, registerType } from "./lib/views";
 import SettingsView from "./views/SettingsView.vue";
+import ChatView from "./views/ChatView.vue";
 import ProjectView from "./views/ProjectView.vue";
 import OrphansView from "./views/OrphansView.vue";
 import FileView from "./views/FileView.vue";
 
-// The pages that are a SINGLE key (no rest): Settings and the "no project".
+// The pages that are a SINGLE key (no rest): the chat, Settings and the "no
+// project". The chat has an address like every other view, which is what makes a
+// reload land back in the conversation.
+registerView("chat", ChatView);
 registerView("settings", SettingsView);
 registerView("orphans", OrphansView);
 // The ones that name a RECORD: the rest of the key is the id or the path.

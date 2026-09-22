@@ -14,7 +14,7 @@
 import { ref, computed, onMounted } from "vue";
 import { api } from "./lib/api";
 import { store, applyState, word } from "./lib/store";
-import { nav, ui, isKind, viewFor, open, markPage, poke, resumePath } from "./lib/views";
+import { nav, ui, isKind, viewFor, open, markPage, poke, resumePath, CHAT_KEY } from "./lib/views";
 import { applyTheme, watchSystem } from "./lib/theme";
 import { applyMotion } from "./lib/motion";
 import { writingState } from "./lib/writing";
@@ -22,18 +22,32 @@ import { applyNav, railedNow, toggleNav, watchNav } from "./lib/nav";
 import { watchNarrow } from "./lib/breakpoint";
 import { loadPrefs, SELECT_KEY } from "./lib/prefs";
 import { closePop } from "./lib/pop";
+import { balloonOn } from "./lib/balloon";
 import Sidebar from "./components/Sidebar.vue";
 import Popover from "./components/Popover.vue";
+import Balloon from "./components/Balloon.vue";
 import KindView from "./views/KindView.vue";
 
 const railed = ref(railedNow());
+
+// WHEN THE BALLOON FLIES. The first two are not the page's to decide: the CORE's
+// switch is on (`store.interpreter` — off, there is no function at all), and this
+// browser never turned the balloon off (`balloon.ts`).
+//
+// The third is the page's own composition, and it is not a rule about the
+// interpreter: the balloon exists for the sentence about what is ON THE SCREEN,
+// and the chat already carries the box — over the chat it would be the same box
+// twice, and a second box is a box nobody reads.
+const balloon = computed(
+  () => store.interpreter && balloonOn.value && nav.current?.view !== CHAT_KEY,
+);
 
 // The page the panel shows: whoever draws it is the module that registered itself
 // for it, and a table's own table is what is left over when nobody claims the
 // view. The shell knows no page by heart.
 const frame = computed(() => {
   const current = nav.current;
-  if (!current) return null;
+  if (!current || !offered(current.view)) return null;
   const claimed = viewFor(current.view);
   if (claimed) {
     const [prefix, component, prop] = claimed;
@@ -53,6 +67,14 @@ const frame = computed(() => {
 // know is ignored, like a saved one: no address opens an error page. The query
 // form (`?view=`) still answers, because a link somebody saved is not a link to
 // break.
+// A view the page does not OFFER is ignored like a name it does not know — and
+// the chat is one when the interpreter is off: the switch takes the chat away, so
+// an address that still opened one would be the page offering what is gone.
+function offered(view: string): boolean {
+  if (view === CHAT_KEY && !store.interpreter) return false;
+  return Boolean(viewFor(view) || isKind(view));
+}
+
 function askedFromUrl(): { view: string; id: number | null } | null {
   const asked = new URLSearchParams(location.search).get("view");
   if (asked) {
@@ -63,7 +85,7 @@ function askedFromUrl(): { view: string; id: number | null } | null {
   if (!parts.length) return null;
   const [head, ...rest] = parts;
   const key = rest.length ? `${head}:${rest.join("/")}` : head;
-  if (viewFor(key) || isKind(key)) return { view: key, id: null };
+  if (offered(key)) return { view: key, id: null };
   // A table with no page of its own takes the second piece as the RECORD, which
   // is what clicking the row does.
   if (rest.length === 1 && isKind(head)) {
@@ -89,7 +111,7 @@ function showSaved(): void {
   }
   const saved = loadPrefs(SELECT_KEY);
   const view = String(saved.view || "");
-  if (view && (viewFor(view) || isKind(view))) {
+  if (view && offered(view)) {
     markPage(view, saved.id);
     resumePath(saved.back); // the saved path comes back: the step back lands where it did
     return;
@@ -185,4 +207,8 @@ defineExpose({ refresh });
   </main>
   <div id="scrim" class="scrim" @click="toggle"></div>
   <Popover />
+  <!-- The balloon is a LAYER OF ITS OWN, and not the pop's: the pop keeps ONE
+       open panel, and a balloon that lived in that slot would close every time a
+       column's filter opened (`pop.ts`). -->
+  <Balloon v-if="balloon" />
 </template>

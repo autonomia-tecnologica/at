@@ -1423,6 +1423,94 @@
                              background-color var(--speed) var(--ease); }
   a.ref:hover, a.url:hover { border-bottom: var(--link-underline-hover);
                              background: var(--hi); }
+  /* THE INTERPRETER'S BOX (2026-09-22) — the two SHAPES a person reaches it
+     through (the chat and the balloon), and the one thing they share: both ask the
+     same sentence and show the same answer (`ask.ts`), which is why the drawing is
+     one rule, `.turn`, and what changes between them is only the cloth. A TURN is
+     the sentence that was asked, the proposal it became — in the ENGINE's own
+     words, never a second sentence of the page's — and the answer after it. */
+  .turn { display: flex; flex-direction: column; gap: var(--dt-gap); }
+  .turn .said, .turn .proposal, .turn .answer { margin: 0; }
+  .turn .said { color: var(--dim); }
+  /* AN ANSWER KEEPS ITS OWN LINES. The engine's answer to `lista as tarefas` is a
+     LISTING — rows on their own lines — and a `<p>` would fold the whole of it
+     into one paragraph. The columns are the engine's spacing and the page does not
+     re-cut them: what arrives is what is read. */
+  .turn .answer { white-space: pre-wrap; }
+  .turn .proposal .tag { color: var(--dim); margin-right: var(--dt-gap); }
+  /* What the interpreter could NOT read is not the same as what the engine
+     refused: a refusal carries no proposal above it, and a question was never an
+     order. The two are answers all the same, and they wear the quiet ink. */
+  .turn[data-kind="question"] .answer,
+  .turn[data-kind="refused"] .answer { color: var(--dim); }
+
+  /* THE CHAT is a VIEW: it fills the panel's body, the conversation scrolls
+     inside itself, and the box that asks stays at the foot — where the hands
+     are. */
+  .chat { display: flex; flex-direction: column; height: 100%;
+          gap: var(--set-gap); }
+  .chat-log { flex: 1; display: flex; flex-direction: column;
+              gap: var(--set-gap); overflow-y: auto; padding: var(--cell-pad); }
+  .chat-form, .balloon-form { display: flex; align-items: center;
+                              gap: var(--set-gap); }
+  .chat-form { padding: 0 var(--cell-pad) var(--cell-pad); }
+  .chat-say, .balloon-say {
+    flex: 1; min-width: 0; padding: var(--set-pad);
+    background: var(--panel); color: var(--ink);
+    border: var(--set-border); border-radius: var(--radius);
+    font: inherit; }
+  .chat-say:focus-visible, .balloon-say:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  /* THE BALLOON — the third SHAPE, and the third ANCHOR: `pop.ts`'s two hang on
+     the control that asked for it or open at the pointer, and this one hangs on
+     NOTHING and stays over whatever view is open. It is a LAYER OF ITS OWN and
+     not the pop's single slot: a balloon that lived there would close every time a
+     column's filter opened, which is the one thing a box that stays over the view
+     cannot do. It sits over the view and over a pop, and UNDER the veil — what
+     stops the page is what covers it.
+     What it carries is the EFFECT: the answer is read here and the view underneath
+     is redrawn in place, which is why it takes the sentence about what is on the
+     screen and keeps no conversation. */
+  .balloon { position: fixed; z-index: 20;
+             right: var(--cell-pad); bottom: var(--cell-pad);
+             width: min(var(--measure), calc(100vw - 2 * var(--cell-pad)));
+             /* IT STAYS ON THE WINDOW: an answer may be a listing, and a box that
+                grew upward past the top edge would put the box out of reach. */
+             max-height: calc(100vh - 2 * var(--cell-pad)); overflow: auto;
+             display: flex; flex-direction: column; gap: var(--set-gap);
+             padding: var(--pop-pad); background: var(--pop-bg);
+             border: var(--pop-border); border-radius: var(--radius);
+             box-shadow: var(--shadow-pop);
+             backdrop-filter: var(--pop-blur, var(--panel-blur));
+             animation: balloon-in var(--speed) var(--ease); }
+
+  /* THE RULER of the demand filter (§4) — the scale a risk lives on, the line of
+     the threshold, and one mark per DECLARED risk. It draws and decides nothing:
+     below the line a demand runs, AT or above it it waits, and that is the
+     engine's rule and not the drawing's. The two regions ARE the rule, which is
+     why they are drawn from the threshold: the boundary between them is the line.
+     THE MARK IS DRAWN TO THE RIGHT OF ITS OWN VALUE and never centred on it, so a
+     demand exactly ON the line falls on the WAITING side — the side the engine
+     will put it on. Centring it would draw the one demand that matters on the
+     wrong side of the line it is read against. */
+  .ruler { display: flex; flex-direction: column; gap: var(--dt-gap);
+           padding: var(--dl-pad); }
+  .ruler-track { position: relative; display: flex; overflow: hidden;
+                 height: var(--ruler-h, 10px);
+                 border: var(--set-border); border-radius: var(--radius); }
+  .ruler-part { display: block; height: 100%; }
+  .ruler-part.runs { background: var(--panel); }
+  .ruler-part.waits { flex: 1; background: var(--hi); }
+  .ruler-line { position: absolute; top: 0; bottom: 0; width: 2px;
+                margin-left: -1px; background: var(--accent); }
+  .ruler-mark { position: absolute; top: 0; bottom: 0; width: 2px;
+                background: var(--ink); }
+  .ruler-legend { display: flex; color: var(--dim); }
+  .ruler-legend .runs, .ruler-legend .waits { display: block; text-align: center; }
+  .ruler-legend .waits { flex: 1; }
+  .ruler-note { margin: 0; color: var(--dim); }
+  .ruler-none { margin: 0; color: var(--empty-color); }
 
 /* ===== 3. THE SCROLLBARS ==============================================
    The THREE containers that scroll: the sidebar list (`#kinds` —
@@ -1605,6 +1693,14 @@
 @keyframes dialog-in {
   from { opacity: 0; transform: translate(-50%, -50%) scale(.95); }
   to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+/* THE BALLOON ENTERS FROM ITS OWN EDGE: it lives in a corner, and a box in a
+   corner that rose from BELOW would come from off the window. It slides in from
+   the side it is anchored to, by the theme's own shift — a dry theme enters dry,
+   like everything else here. */
+@keyframes balloon-in {
+  from { opacity: 0; transform: translateX(var(--enter-shift)); }
+  to   { opacity: 1; transform: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

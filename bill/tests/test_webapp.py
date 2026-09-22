@@ -17,11 +17,12 @@ import unittest
 import urllib.error
 import urllib.request
 from contextlib import redirect_stdout
+from datetime import date
 from pathlib import Path
 from unittest import mock
 
 from bill import i18n
-from bill.core import boot, projects, tables
+from bill.core import boot, projects, settings, tables
 from bill.ui.webapp import app as webapp
 
 
@@ -107,6 +108,28 @@ class ServerCase(unittest.TestCase):
 
 
 class TheState(ServerCase):
+    def test_it_says_whether_the_interpreter_is_on(self):
+        # The page draws the box, the balloon and the chat off this one answer:
+        # turning the interpreter off has to reach the screen, and the screen owns
+        # no rule that could guess it.
+        _, _, body = self.get("/api/state")
+        self.assertIs(json.loads(body)["interpreter"], True)
+
+    def test_the_switch_of_the_core_is_what_the_page_reads(self):
+        # With it off there is no box, no balloon and no chat — and the page learns
+        # it from here, because the page owns no rule that could guess it.
+        settings.save({**settings.load(), "interpreter": False})
+        _, _, body = self.get("/api/state")
+        self.assertIs(json.loads(body)["interpreter"], False)
+
+    def test_it_carries_the_rulers_numbers(self):
+        _, _, body = self.get("/api/state")
+        risk = json.loads(body)["risk"]
+        self.assertEqual(risk["threshold"], 0.5)  # §4's default, for a folder that never chose
+        # No risk is declared anywhere yet — the permission catalogue is item 11 —
+        # and the ruler draws what it is handed, so what it is handed is nothing.
+        self.assertEqual(risk["marks"], [])
+
     def test_it_names_the_declared_tables_with_their_counts(self):
         _, _, body = self.get("/api/state")
         state = json.loads(body)
@@ -348,7 +371,11 @@ class TheStateContract(ServerCase):
         # twice, the second time as `name` against `label`: the sidebar listed a
         # count with no word beside it.
         state = webapp.state_payload()
-        for interface, entries in (("Kind", state["tables"]), ("ThemeRow", state["themes"])):
+        for interface, entries in (
+            ("Kind", state["tables"]),
+            ("ThemeRow", state["themes"]),
+            ("Risk", [state["risk"]]),
+        ):
             self.assertTrue(entries, interface)
             declared = interface_fields(interface)
             for entry in entries:
@@ -470,6 +497,79 @@ class TheProseDoors(ServerCase):
         _, answer = self.post("/api/file", {"path": "nota.md", "text": "", "base": rev})
         self.assertTrue(answer["error"])
         self.assertFalse(answer["error"].startswith(("prose.", "webapp.")))
+
+
+class TheAskDoor(ServerCase):
+    """`POST /api/ask` — the box's door, and the words it reads back.
+
+    The box has TWO SHAPES (the chat and the balloon), and they ask the same thing
+    and read the same thing: this route is that one thing, and both walk it.
+    """
+
+    def test_the_proposal_comes_before_the_answer(self):
+        status, answer = self.post("/api/ask", {"text": "cria uma tarefa pra hoje"})
+        self.assertEqual(status, 200)
+        self.assertEqual(answer["kind"], "answer")
+        # The proposal in the ENGINE's words — the action's, the table's — and the
+        # answer after it in the engine's own sentence. The page writes neither.
+        self.assertIn(i18n.tr("table.action.create"), answer["proposal"])
+        self.assertIn(tables.table_name("task"), answer["proposal"])
+        self.assertEqual(answer["text"], i18n.tr("table.created", id="TASK-2"))
+
+    def test_the_sentence_of_the_item_reaches_the_row_it_names(self):
+        # "editar a tarefa 1 status concluída": the row named the way a person names
+        # one becomes a WRITE, and the LISTING UNDERNEATH is what changes — which is
+        # the effect the balloon exists for.
+        status, answer = self.post("/api/ask", {"text": "editar a tarefa 1 status concluída"})
+        self.assertEqual(status, 200)
+        self.assertEqual(answer["kind"], "answer")
+        self.assertEqual(answer["text"], i18n.tr("table.edited", id="TASK-1"))
+        self.assertEqual(tables.find("task", 1)["status"], "done")
+
+    def test_a_sentence_outside_the_catalogue_is_refused_by_name(self):
+        status, answer = self.post("/api/ask", {"text": "banana"})
+        self.assertEqual(status, 200)
+        self.assertEqual(answer["kind"], "refused")
+        self.assertIsNone(answer["proposal"])  # nothing was proposed, nothing written
+        self.assertIn("banana", answer["text"])
+
+    def test_an_ambiguous_sentence_comes_back_as_a_question(self):
+        status, answer = self.post("/api/ask", {"text": "cria um projeto pra sexta"})
+        self.assertEqual(status, 200)
+        self.assertEqual(answer["kind"], "question")
+        self.assertEqual(answer["text"], i18n.tr("nlu.ask.which_field", text="sexta"))
+        self.assertEqual(tables.rows("project"), [])  # a question writes nothing
+
+    def test_the_engine_is_the_one_that_validates_and_it_says_so(self):
+        # The proposal is made and the DECLARATION refuses it: what a person reads
+        # after the proposal is the engine's refusal, not a second sentence.
+        status, answer = self.post("/api/ask", {"text": "cria um lembrete pra hoje"})
+        self.assertEqual(status, 200)
+        self.assertEqual(answer["kind"], "answer")
+        self.assertTrue(answer["proposal"])
+        self.assertEqual(
+            answer["text"],
+            i18n.tr("table.error.required", field=tables.label("reminder", "text")),
+        )
+
+    def test_it_refuses_an_empty_sentence(self):
+        self.assertEqual(self.post("/api/ask", {})[0], 400)
+        self.assertEqual(self.post("/api/ask", {"text": "   "})[0], 400)
+
+    def test_it_is_a_write_like_the_others_and_obeys_the_same_guards(self):
+        self.assertEqual(
+            self.post("/api/ask", {"text": "lista as tarefas"},
+                      headers={"Origin": "http://evil.example"})[0],
+            403,
+        )
+
+    def test_the_interpreter_off_answers_in_its_own_words(self):
+        settings.save({**settings.load(), "interpreter": False})
+        status, answer = self.post("/api/ask", {"text": "cria uma tarefa pra hoje"})
+        self.assertEqual(status, 200)
+        self.assertEqual(answer["kind"], "refused")
+        self.assertEqual(answer["text"], i18n.tr("nlu.error.interpreter_off"))
+        self.assertEqual(len(tables.rows("task")), 1)  # and nothing was written
 
 
 class TheReadOnlySwitch(ServerCase):

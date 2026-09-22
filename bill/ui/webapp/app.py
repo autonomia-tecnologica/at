@@ -25,10 +25,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from bill import i18n
-from bill.core import files, projects, tables
+from bill import i18n, nlu
+from bill.core import files, projects, risk, tables
 from bill.data import schema, store
 from bill.prose import listing as prose
+from bill.ui import ask as door
 
 HOST = "127.0.0.1"
 DEFAULT_PORT = 12345
@@ -186,6 +187,10 @@ PAGE_WORDS = (
     "saved", "save_failed", "language_name", "language_flag",
     "ft_text", "ft_markdown", "ft_python", "ft_json", "ft_yaml", "ft_shell",
     "ft_dockerfile", "ft_binary", "ft_other",
+    # The interpreter's box, the switch that hides the balloon, and the ruler of
+    # the demand filter (§4).
+    "chat", "ask", "ask_hint", "proposal", "interpreter", "balloon",
+    "risk", "risk_runs", "risk_waits", "risk_threshold", "risk_none",
 )
 
 
@@ -195,6 +200,15 @@ def state_payload() -> dict:
         "lang": i18n.active_code(),
         "origin": i18n.active_origin(),
         "labels": {key: i18n.labels(f"webapp.{key}") for key in PAGE_WORDS},
+        # WHETHER THE INTERPRETER IS ON is the CORE's switch (`nlu.enabled`), and
+        # the page reads it to know what to draw: off, there is no box, no balloon
+        # and no chat — the whole function is gone, and nothing else is.
+        "interpreter": nlu.enabled(),
+        # THE RULER'S NUMBERS. The threshold is the one the demand filter will
+        # honour (§4); the marks are the risks the product DECLARES, and today
+        # there are none — the permission catalogue is item 11. The page draws
+        # what it is handed and invents no risk.
+        "risk": {"threshold": risk.threshold(), "marks": risk.declared()},
         "theme": row.get("id") if row else None,
         "themes": [
             {"id": theme.get("id"), "label": theme_label(theme),
@@ -468,6 +482,9 @@ class Handler(BaseHTTPRequestHandler):
         if segments == ["api", "file"]:
             self._post_file()
             return
+        if segments == ["api", "ask"]:
+            self._post_ask()
+            return
         if len(segments) == 3 and segments[0] == "api" and segments[1] == "table":
             self._post_table(segments[2])
             return
@@ -578,6 +595,28 @@ class Handler(BaseHTTPRequestHandler):
             return
         status, answer = prose.write(rel, text, base)
         self._json(_worded(answer), status)
+
+    def _post_ask(self) -> None:
+        """One sentence through the interpreter's door: the proposal, and then.
+
+        The door is `bill.ui.ask`, which the `cli` reads too — the page walks the
+        same road (`nlu.propose` for the reading, the table engine for the
+        writing) and gains no rule of its own. What travels back is what a person
+        reads: the proposal in the engine's words, the answer after it, the
+        question when the sentence was ambiguous, or the reason when it was not
+        read at all. A refusal is an ANSWER here and not a failure of the request:
+        it is a sentence the conversation keeps, and the page prints it as it
+        stands.
+        """
+        payload = self._body()
+        if payload is None:
+            return
+        sentence = payload.get("text")
+        if not isinstance(sentence, str) or not sentence.strip():
+            self._json({"error": "bad request"}, 400)
+            return
+        result = door.ask(sentence)
+        self._json({"kind": result.kind, "proposal": result.proposal, "text": result.text})
 
     def _post_table(self, table: str) -> None:
         if schema.of(table) is None:

@@ -20,6 +20,7 @@ bill/                          o produto: o motor, as declarações e a UI
 ├── nlu/                       a interpretação: o vocabulário, o casador e a proposta de ação
 ├── posture/                   a postura: as funções graduadas, as notas e o elo mais fraco
 ├── ui/
+│   ├── ask.py                 a porta do interpretador: uma frase, uma proposta, e ela roda
 │   ├── cli/                   a linha de comando — a superfície que alcança tudo
 │   ├── wizard/                o Painel de Controle, em Tkinter
 │   └── webapp/                o WebApp: o servidor, a aparência que ele serve e a app Vue
@@ -114,7 +115,7 @@ Superfícies, e o estado de cada uma hoje:
 |---|---|---|
 | `cli` | `bill <palavra>` | `help`, `version`, `webapp`, `ask` e as tabelas |
 | Wizard | `bill`, sem palavra | o Painel de Controle abre, em hello world |
-| WebApp | `bill webapp run` | lê e edita as tabelas |
+| WebApp | `bill webapp run` | lê e edita as tabelas, e alcança o interpretador pelo chat e pelo balão |
 
 Códigos de saída: `0` sucesso · `1` recusado ou falhou · `2` erro de uso.
 

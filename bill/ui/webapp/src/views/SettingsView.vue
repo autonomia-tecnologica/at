@@ -1,10 +1,11 @@
 <script setup lang="ts">
-// SettingsView — the Settings page: what CONFIGURES the page, and the two things
-// changed here — the THEME and the MOTION EFFECTS.
+// SettingsView — the Settings page: what CONFIGURES the page, and the three things
+// changed here — the THEME, the MOTION EFFECTS and the BALLOON.
 //
-// It writes no store at all: what is configured is the page (the look, in
-// localStorage), never the data. The rest is reading: the language the whole
-// interface is drawn in, and where it came from.
+// It writes no store at all: what is configured is the page (the look and the
+// box, in localStorage), never the data. The rest is reading: the language the
+// whole interface is drawn in and where it came from, and the RULER of the demand
+// filter, which draws what the product declares about risk.
 //
 // The page is made of GROUPS THAT FOLD — the SAME fold as the panel's folder, and
 // what changes is the cloth: here the PAGE's (`--group-*`), there the PANEL's.
@@ -13,14 +14,20 @@ import { ref, computed, watchEffect } from "vue";
 import { store, word } from "../lib/store";
 import { DARK_STATES, chooseDark, chooseTheme, darkState, themeState } from "../lib/theme";
 import { motionOn, setMotion } from "../lib/motion";
+import { balloonOn, setBalloon } from "../lib/balloon";
 import { setTitle } from "../lib/views";
 import { byName } from "../lib/order";
 import Foldable from "../components/Foldable.vue";
+import RiskRuler from "../components/RiskRuler.vue";
 import type { DarkState } from "../lib/theme";
 import type { ThemeRow } from "../lib/store";
 
 const motion = ref(motionOn());
 const side = ref(darkState());
+// THE BALLOON'S STATE IS SHARED with the balloon itself (`balloon.ts`), so this is
+// the same ref and not a copy of it: a copy would show the switch in one position
+// and the box in the other.
+const balloon = balloonOn;
 
 // The theme's description is PER SIDE: the same theme describes itself differently
 // in light and dark, and what is read is the side being worn — `themeState.dark`
@@ -44,6 +51,17 @@ function pick(row: ThemeRow): void {
 
 function toggleMotion(): void {
   motion.value = setMotion(!motion.value);
+}
+
+// THE BALLOON'S ON/OFF. The section that holds it is named from the GLOSSARY —
+// what is on the screen is the INTERPRETER (the layer's `nlu` is the code and
+// whoever works inside it is the interpreter; `agent` is another thing, and two
+// names that would touch each other do not coexist) — and the ROW says what the
+// switch hides, because a switch that does not say what it turns off is a switch
+// nobody trusts. What it hides is the balloon and nothing else: the chat stays,
+// and the interpreter stays.
+function toggleBalloon(): void {
+  balloon.value = setBalloon(!balloon.value);
 }
 
 function pickSide(state: DarkState): void {
@@ -109,6 +127,33 @@ watchEffect(() => setTitle(word("settings")));
             </div>
           </dd>
         </dl>
+      </Foldable>
+    </div>
+
+    <!-- THE INTERPRETER — the section of the box, named after the glossary's word.
+         It is born ON, and it is a PREFERENCE of this browser and not a datum: the
+         folder is not asked, and the core's own switch is another one. -->
+    <div class="group">
+      <Foldable id="settings:interpreter" :label="word('interpreter')"
+                head-class="group-head" box-class="group-body">
+        <dl>
+          <dt>{{ word("balloon") }}</dt>
+          <dd>
+            <button type="button" class="switch" role="switch"
+                    :aria-label="word('balloon')" :class="{ on: balloon }"
+                    :aria-checked="balloon" @click="toggleBalloon"></button>
+          </dd>
+        </dl>
+      </Foldable>
+    </div>
+
+    <!-- THE RULER — the demand filter's scale, drawn from what the product
+         declares (§4). It is a read and not a choice: nothing here is configured,
+         and the page invents no risk. -->
+    <div class="group">
+      <Foldable id="settings:risk" :label="word('risk')"
+                head-class="group-head" box-class="group-body">
+        <RiskRuler />
       </Foldable>
     </div>
   </div>

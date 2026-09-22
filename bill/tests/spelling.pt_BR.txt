@@ -43,6 +43,7 @@ caddyfile
 canônica
 canônico
 chain
+chat
 checkout
 cli
 code

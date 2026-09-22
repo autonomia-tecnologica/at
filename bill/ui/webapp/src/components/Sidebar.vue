@@ -17,7 +17,7 @@
 
 import { computed } from "vue";
 import { store, word } from "../lib/store";
-import { isCurrent, open, countOf } from "../lib/views";
+import { CHAT_KEY, isCurrent, open, countOf } from "../lib/views";
 import { byName } from "../lib/order";
 import Foldable from "./Foldable.vue";
 import ProjectsTree from "./ProjectsTree.vue";
@@ -38,6 +38,10 @@ function openKind(key: string): void {
 
 function openSettings(): void {
   open(SETTINGS_KEY, null);
+}
+
+function openChat(): void {
+  open(CHAT_KEY, null);
 }
 </script>
 
@@ -68,6 +72,14 @@ function openSettings(): void {
        `base.css`), so a long tree passes under it instead of pushing it away. -->
   <div class="side-foot">
     <hr class="sep">
+    <!-- THE CHAT IS THE INTERPRETER'S, and it is here whether the balloon flies or
+         not: the switch of the balloon hides the balloon. What takes the chat away
+         is the CORE's switch (`store.interpreter`) — with the interpreter off
+         there is no box, no balloon and no chat, because the function is gone. -->
+    <button v-if="store.interpreter" type="button" class="file" :data-view="CHAT_KEY"
+            :class="{ on: isCurrent(CHAT_KEY) }" @click="openChat">
+      <span>{{ word("chat") }}</span>
+    </button>
     <button type="button" class="file" :data-view="SETTINGS_KEY"
             :class="{ on: isCurrent(SETTINGS_KEY) }" @click="openSettings">
       <span>{{ word("settings") }}</span>
