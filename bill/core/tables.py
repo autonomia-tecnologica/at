@@ -33,7 +33,7 @@ ACTIONS = ("list", "view", "create", "edit")
 # is stored — a naive local instant is a value two machines disagree about.
 _WHEN = {
     "today": lambda: date.today().isoformat(),
-    "now": lambda: _utc(datetime.now(timezone.utc)),
+    "now": lambda: utc(datetime.now(timezone.utc)),
 }
 
 
@@ -364,8 +364,13 @@ _DAY_SHAPE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _INSTANT_SHAPE = re.compile(r"^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}")
 
 
-def _utc(value: datetime) -> str:
-    """A point in time written the one way §4 allows: UTC, with milliseconds."""
+def utc(value: datetime) -> str:
+    """A point in time written the one way §4 allows: UTC, with milliseconds.
+
+    It is public because §4's types are the core's, and whoever must WRITE one —
+    the engine here, and the interpreter reading a sentence into an instant —
+    writes it through this and not through a second spelling of its own.
+    """
     return value.astimezone(timezone.utc).isoformat(timespec="milliseconds").replace(
         "+00:00", "Z"
     )
@@ -409,7 +414,7 @@ def _instant(table: str, name: str, raw: Any) -> str:
             "error.not_an_instant", field=label(table, name), value=raw
         )
     try:
-        return _utc(datetime.fromisoformat(text))
+        return utc(datetime.fromisoformat(text))
     except ValueError:
         raise TableError(
             "error.not_an_instant", field=label(table, name), value=raw

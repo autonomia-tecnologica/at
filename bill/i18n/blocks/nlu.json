@@ -1,0 +1,12 @@
+{
+  "pt_BR": {
+    "error.no_such_day": "Não existe o dia {value}.",
+    "error.no_such_clock": "Não existe a hora {value}.",
+    "ask.which_hour": "Meia de qual hora? Diga a hora junto, como em `duas e meia`."
+  },
+  "en_US": {
+    "error.no_such_day": "There is no day {value}.",
+    "error.no_such_clock": "There is no hour {value}.",
+    "ask.which_hour": "Half of which hour? Name the hour with it, as in `half past two`."
+  }
+}
