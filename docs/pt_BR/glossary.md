@@ -1,4 +1,4 @@
-# Glossário
+# Glossário [normativo]
 
 Cada nome tem um só significado, e nomes que se encostariam não convivem. Sempre que eu inventar um termo, ele é definido aqui antes de ser usado.
 

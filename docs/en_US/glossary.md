@@ -1,4 +1,4 @@
-# Glossary
+# Glossary [normative]
 
 Each name has one meaning, and names that would touch each other do not coexist. Whenever I invent a term, it is defined here before being used.
 

@@ -14,7 +14,7 @@ Bill é um motor de tarefas determinístico. Ele roda **dentro de uma pasta**, e
 
 - A cadeia de custódia é `documento fundador → documentos derivados → código`: o código é uma extensão do que está escrito, e o que é derivado não decide nada sozinho. Se decidirmos algo arquitetural, em sessão, que não veio do documento fundador, você vai me avisar e propor a escrita, pelo mesmo aval. E isso nunca pode ser ignorado, nem por mim. É essa cadeia que vai manter esse "arreio" preso. Veja que definições muito estreitas sobre nome de pastas de cada módulo não cabem para o documento fundador — elas moram na árvore ([derivation §1](derivation.md)), que é derivação. Ter que detalhar cada item individual me dá a sensação que é melhor eu desenvolver do zero.
 
-- Não existem regras duplicadas: uma regra mora em um lugar só. O que vincula fica no documento fundador; o derivado cita em vez de repetir. Se a mesma coisa aparecer nos dois, um dos dois está errado — e onde ela fica é decisão minha.
+- Não existem regras duplicadas: uma regra mora em um lugar só. O que vincula é o que carrega `[normativo]`, onde ele estiver; o derivado cita em vez de repetir. O marcador em um título de nível 1 vincula o arquivo inteiro, e em um título de seção vincula a seção e o que está abaixo dela. Se a mesma coisa aparecer nos dois, um dos dois está errado — e onde ela fica é decisão minha.
 
 - Por fim, o documento fundador vai ser modificado com o tempo. Então entenda que a lógica de lê-lo e derivar o resto é constante.
 
@@ -68,206 +68,24 @@ A ideia do Bill é que rode em uma máquina. Uma Turing-compatível. Pode ser se
 
 O Bill tem dois caminhos de uso, e os dois são suportados: o **hospedado**, em que ele é o binário e a pasta, e o **container**, em que ele monta um ambiente de serviços. A escolha é da pessoa, e ela pode mudar de ideia depois; o que cada caminho garante, e o que não garante, está no [§6](#6-os-dois-caminhos-de-uso-normativo).
 
-## 3. Regras [normativo]
-
-### Segurança
-
-- Toda decisão de segurança da aplicação mora neste arquivo, e esta seção é o registro delas. Nenhuma decisão de segurança é tomada sem discussão, e nenhuma é decidida fora daqui: as outras seções descrevem operação e detalham o que está registrado abaixo, mas não decidem segurança por conta própria. Se não está registrado aqui, não existe.
-
-- O isolamento é do caminho container. No caminho hospedado o Bill é um processo na máquina, sem container nenhum em volta, e isso é declarado — não há promessa de conter o raio de explosão de um comprometimento. O que o caminho hospedado oferece em troca é escutar só o laço local por padrão, e exigir autenticação e TLS para sair dele.
-
-- Decisões vigentes. A linha é a decisão; o detalhe vive onde o link aponta:
-  - Sem autenticação, o Bill só escuta `127.0.0.1`; exposto exige autenticação — [Acesso e exposição](#acesso-e-exposição).
-  - Exposto exige TLS, e TLS só existe com o Caddy: `bill webapp` sem a bandeira é HTTP em laço local — [Acesso e exposição](#acesso-e-exposição).
-  - O Bill tem autenticador próprio, com quatro formas de entrar, todas terminando num ator: Forms local, Basic, credencial de máquina e a identidade afirmada pelo portão — [Interfaces](#5-interfaces-normativo), [Tabelas](#tabelas).
-  - A credencial do ator mora hasheada na própria linha dele, com `libsodium`; Basic e Forms são a **mesma** credencial, e o que os separa é o transporte — [Tabelas](#tabelas).
-  - Nenhum segredo mora no `settings.json`: ele guarda permissão e ajuste, nunca credencial — [Configurações gerais](#configurações-gerais).
-  - Toda função da API do core é protegida por RBAC; a permissão é `objeto:ação`, o papel é um conjunto de permissões, e credencial de máquina tem papel declarado — [Tabelas](#tabelas).
-  - O primeiro admin nasce na primeira subida, com terminal na frente; sem ator nenhum o Bill não expõe — [Interfaces](#5-interfaces-normativo).
-  - Papel e permissão são tela do WebApp, e só admin mexe neles — [Interfaces](#5-interfaces-normativo).
-  - **Instalar serviço é do Wizard e só dele** — [Interfaces](#5-interfaces-normativo).
-  - Segredo de máquina se guarda hasheado, com papel; segredo que o Bill **usa**, como a credencial de um serviço, se guarda criptografado na tabela `secret` — [Gestão de segredos](#gestão-de-segredos).
-  - O Bill autentica nos serviços em vez de se aproveitar de estar na mesma máquina: credencial de administração existe onde ela é necessária, e ela conta na postura — [A postura de segurança](#a-postura-de-segurança).
-  - Serviço que fala com o Bill recebe escopo delimitado — mínimo privilégio: o comprometimento de um serviço alcança a função dele e nada mais — [Caminho container](#7-caminho-container-os-passos-normativo).
-  - Identidade que chega pelo portão só vale com o segredo do portão: o Bill sorteia um segredo por instalação, escreve no Caddyfile que ele mesmo gera, e recusa identidade sem ele — [Instalar provedor de identidade como container](#b-instalar-provedor-de-identidade-como-container-obrigatório).
-  - O Forms fica ligado até o Authelia estar provado funcionando na frente do Bill; a virada é um conjunto que comita ou volta atrás — [A virada entre os caminhos](#a-virada-entre-os-caminhos).
-  - Portão caído fecha o Bill: ele avisa que o portal de autenticação está indisponível, e a volta ao modo Forms é pelo Wizard ou pela `cli`, os dois locais — [A virada entre os caminhos](#a-virada-entre-os-caminhos).
-  - Toda ação deixa uma linha na tabela `audit`, e a recusa é uma delas — [A auditoria](#a-auditoria).
-  - O que se prova se guarda hasheado; o que o Bill usa se guarda criptografado — [Tabelas](#tabelas).
-  - O estado persistente de todo serviço mora na Pasta de Trabalho; serviço cujo estado não couber lá não entra — [Caminho container](#7-caminho-container-os-passos-normativo).
-  - **Nenhuma extensão executa código hoje.** A primeira classe é dado puro, e código é a última opção — [Extensões](#8-extensões-e-plugins-normativo).
-  - O tema do portal de autenticação não é o do Bill: ele fica o mais neutro possível, e o `FAQ.md` explica o que está por baixo — [Interfaces](#5-interfaces-normativo).
-  - Autenticador, WebApp, corretor, notificador e VPN rodam em containers isolados no caminho container — [Caminho container](#7-caminho-container-os-passos-normativo).
-  - A execução é sem privilégio, com elevação só por pedido explícito — [Permissão de acesso](#permissão-de-acesso).
-  - Pacotes e imagens são fixados em versão e hashing — [Dependência externa](#dependência-externa).
-
-### Acesso e exposição
-
-- Sem nenhuma forma de autenticação configurada, o Bill escuta apenas `127.0.0.1`. Não há exceção, e não há modo "só nesta rede interna": ou há autenticação, ou o Bill não sai do laço local.
-
-- Expor exige autenticação **e** TLS. Como o TLS é do Caddy, e o Caddy é embarcado (§3, Código e delivery), a exposição no caminho hospedado acontece por `bill webapp --include-caddy`: sem a bandeira, o comando serve o WebApp em HTTP, e só em laço local. No caminho container quem fica na borda é o Caddy em container, pelo isolamento.
-
-- O Bill não entrega HSTS, por motivo óbvio: ele serve com certificado próprio, e HSTS transformaria o aviso do navegador em erro sem saída. É o preço de não depender de um domínio público, e de não poder garantir TLS confiável.
-
-### O modelo de ameaças
-
-- O Bill se protege do que ele pode ver, e diz em voz alta o que ele não pode. A primeira barreira é o autenticador do caminho: o Authelia no caminho container, a credencial de Forms no hospedado.
-
-- A segunda barreira é **implícita e não é do Bill**: a proteção do próprio celular. Permitir que uma notificação aprove uma ação é confiar que o `ntfy` foi bem configurado **e** que essa configuração está protegida por um aparelho bloqueado. O Bill **não audita o celular** — se tem root, se é emulado, se tem bloqueio de tela —, porque isso é trabalho de banco e o Bill não é um banco.
-
-- Guardar a credencial do autenticador num cofre de senhas ou no cofre do navegador é escolha da pessoa, e é perigoso. Está escrito aqui em vez de escondido.
-
-- O mesmo vale para fora: backup da pasta que não existe, máquina sem senha, rede aberta. O Bill mede o que ele controla e **declara o que não mede**, em vez de dar uma nota que ele não pode sustentar — [A postura de segurança](#a-postura-de-segurança).
-
-### A auditoria
-
-- Toda ação que entra pelo core vira **uma linha** na tabela `audit`: o que foi alterado (`objeto:ação`), onde (a tabela), quando (o instante), quem (o ator), por qual via, e o desfecho. O "porquê" só existe na recusa, onde ele é o motivo, guardado como chave de `i18n`; fora dela, a linha não finge ter intenção. Custo não entra.
-
-- **Tentativa e recusa são linhas**, com o desfecho dizendo o que aconteceu — é a visão de auditoria de ataques. **Leitura não é linha**: ler não é fazer, e auditar leitura faria o rastro crescer mais rápido do que o uso.
-
-- O audit é **log, não referência**: os ids que ele cita são dado bruto, sem `ref`, e por isso ele nunca impede um `delete` (§4, Tabelas). Ele não guarda valor nenhum, e **nada se deleta dele** — a deletabilidade é declarada no esquema, e o `audit` declara que não aceita.
-
-- Só o papel de admin carrega `audit:read`, e nenhum ator de máquina a tem: um `agente` que pudesse ler as próprias recusas aprenderia onde está a parede e ajustaria a próxima tentativa.
-
-### A postura de segurança
-
-- O ambiente tem uma **nota de segurança**, de `F` a `S`, e ela existe para uma coisa: fazer a pessoa ver o preço do que ela monta e melhorar o ambiente dela. Ela não é um cadeado e não impede nada.
-
-- **A nota é por função, e a do ambiente é o elo mais fraco.** Cada função graduada — o destino da Frase de Acesso, a exposição, o segundo fator de quem entra, o escopo das credenciais de serviço, o que o próprio Bill carrega, os plugins, o limiar de risco — carrega a sua nota, e para o ambiente ser `S` todas precisam estar em `S`. Um ambiente com uma função ruim não pode se dizer bom, e a tela sempre nomeia **quais funções estão impedindo de subir**.
-
-- **A nota mede o que está configurado e o que você declarou, nunca a verdade.** Ninguém verifica se você leu o que um plugin faz. Isso não é defeito: é o único formato possível, e é por isso que a nota se apresenta como "isto é o que o seu ambiente declara", não como "você está seguro".
-
-- **Todo impasse de segurança se resolve oferecendo as opções e deixando a pessoa aceitar a segurança dela.** A nota informa o preço; quem decide é quem vai viver com ele. Autonomia é também saber a segurança que se quer para si.
-
-- O que o Bill **não** mede, ele diz: se não há backup da pasta, se a máquina não tem senha, se o celular não tem bloqueio — o Bill não sabe, e prefere dizer isso a inventar uma letra.
-
-### Internacionalização
-
-- Com exceção da porta da raiz, todo documento deste repositório mora na **pasta do seu idioma**, no formato POSIX (`pt_BR`, `en_US`), alinhado ao módulo de `i18n` — não é BCP 47. A porta da raiz é um `README.md` fora das pastas, e não tem texto além do título, dos links para as versões em cada língua, e de uma nota curta em `en_US` dirigida a agentes LLM: que leiam no idioma que serve melhor ao modelo, que na dúvida leiam em inglês, e que a trilha inglesa usa os termos e conceitos do mercado de propósito, para um nome significar a mesma coisa aqui e lá fora.
-
-- Os documentos moram em `docs/`, **uma pasta por idioma**, e cada documento tem o par na pasta do outro idioma, com o mesmo nome. **O nome não repete o idioma que a pasta já diz**, e os nomes são minúsculos — só o `README` fica em maiúsculas, por ser o nome que o mundo já conhece.
-
-- **Os dois idiomas mudam sempre juntos**, e o aval de um commit cobre o par. O `pt_BR` é a língua fonte; onde os dois divergirem, vale o `pt_BR`.
-
-- Um **documento de trabalho** mora na pasta do seu idioma e **sem par**: o `docs/en_US/backlog.md` é para o agente, muda todo dia, e traduzir o que muda todo dia é trabalho que ninguém lê.
-
-- Um **gate na suíte** afirma o que essa regra promete: a pasta de cada documento, a existência do par, a mesma estrutura de títulos nos dois, e a ortografia — os dois idiomas passam pelo corretor do repositório, e o que ele ignorar fica numa lista versionada, uma por idioma. Gramática fica com a leitura humana.
-
-- Todo código, incluindo comentários, chaves de objetos, variáveis, métodos e nomes de arquivos serão em Inglês Estadunidense (`en_US`). No geral, os arquivos de código não têm objetivo de serem lidos por usuários finais, apenas auditados por desenvolvedores. Então é mais vantajoso manter a base em inglês para o processamento da LLM. Essa regra vale para o que é versionado no repositório; não vale para os arquivos que o Bill gera na Pasta de Trabalho.
-
-- A interface toda segue `i18n`. Nenhuma string é salva diretamente no código, seja backend ou frontend — `cli`, WebApp e Wizard. A fonte da verdade é o módulo de `i18n`, que organiza os textos em grandes blocos, evitando um `pt_BR.json` gigante que a LLM precisa ler o tempo todo. Os blocos são empacotados no binário; o que fica na Pasta de Trabalho é só o idioma ativo, em `app/i18n/active`.
-
-- Por padrão a LLM deve gerar textos a fim de popular o `i18n` em `pt_BR` originalmente e `en_US` como tradução. Uma chave ausente no idioma ativo cai na fonte e depois nela mesma, então a lacuna fica visível em vez de silenciosa. A chave é um **id estável**, nunca a frase em inglês: renomear um texto não pode renomear uma chave. E a suíte afirma que as duas línguas carregam exatamente as mesmas chaves, para que uma tradução atrasada seja um teste falhando em vez de uma surpresa.
-
-- Na `cli`, mensagens e ajuda saem sempre pelo `i18n`. O comando `bill lang pt_BR --include-subcommands` estende a tradução aos nomes dos subcomandos, o que não é comum, e por isso fica como opcional. A resolução do idioma é `$BILL_LANG` → `app/i18n/active` → locale do sistema → `en_US`, e toda superfície reporta de onde ele veio.
-
-### Código e delivery
-
-- Bill é escrito em `Python 3.14`. Todo seu estilo de código é baseado em `PEP 8`. A ideia é que ele seja entregue em um binário único: Windows, Linux e Mac. Seu versionamento é SemVer, e o binário carrega esse número — no Windows ele sai como `bill.exe`, nos outros como `bill`.
-
-- O binário carrega o **Caddy** dentro de si. O Caddy é um binário estático único, e no caminho hospedado é ele quem termina TLS e publica o Bill; no caminho container ele roda como container, pelo isolamento. Não há variante de release: um artefato só, e o custo em disco é aceito em troca dessa simplicidade. Como o Caddy vai dentro do binário, a versão dele é a do binário — não há pin separado para ele.
-
-- A atualização é substituir o binário. Como ele carrega o manifesto das imagens fixadas, ao subir depois da troca ele re-verifica as imagens dos serviços e re-pina o que estiver defasado — o pin anda só para frente e nunca para trás. Uma instância à frente do pin do binário **avisa e segue**: não é rebaixada. Manter tudo atualizado, e sem falha de segurança, é gestão minha, não do binário.
-
-- Toda atualização que mude estrutura traz a sua **migration**, e ela roda na primeira subida depois da troca do binário. A pasta sabe até onde já migrou, e esse carimbo mora em `app/` — junto do resto do que o Bill escreve —, nunca dentro da declaração publicada. A declaração continua sendo dado puro, que você edita; o que os dois autores assinam fica separado.
-
-- A migration **nunca sobrescreve o que já existe**: ela adiciona o que falta e reporta o que pulou. Numa colisão, quem manda é a sua edição, e o Bill avisa em vez de escolher por você — a mesma escolha do pin das imagens. E uma migration publicada **não se edita**: pastas já a rodaram, e correção vira a migration seguinte.
-
-- Os comentários no código explicam apenas o que o código não fala por si: por que aquele trecho é necessário e, quando não for óbvio, o que ele faz. Para histórico, usamos `git`. Não é necessário anotar datas de decisões. Veja, o código deve falar por si só (como o [xadrez fala por si só](https://pt.wikipedia.org/wiki/Controv%C3%A9rsia_Magnus_Carlsen%E2%80%93Hans_Niemann)). Se precisarmos de quilos de comentários, talvez ele não esteja tão bem escrito assim.
-
-- O binário mora na pasta e essa pasta é do binário. Ela é a Pasta de Trabalho. Se você abrir o binário dentro da pasta de `Downloads`, a pasta de `Downloads` é dele. No primeiro carregamento você será avisado de que: "o Bill foi aberto na pasta <pasta>. Como não existe um arquivo `app/settings.json` aqui, entende-se que é uma nova Pasta de Trabalho. Confirma que o Bill utilize essa pasta? Recomenda-se a utilização de uma pasta vazia, em qualquer local do seu computador. Cancele e mova o arquivo para outra pasta, se não concordar.". Ou algo do gênero.
-
-- O backup da Pasta de Trabalho é a promessa do Bill: **a pasta copiada basta para tudo voltar a funcionar**, sem troca de binário no meio. Por isso nada se regenera sozinho — nem o que foi extraído, nem o que foi baixado —, e a única exceção é o que é específico de plataforma: a pasta que muda de sistema operacional re-extrai o que não serve mais. Tudo o que o Bill escreve mora em `app/`, numa pasta visível justamente para que ninguém a confunda com lixo: ajustes, idioma ativo, contadores, carimbo de migração, o estado dos plugins, o que foi extraído para rodar, cache e o estado dos serviços.
-
-- O Bill **não tem watchdog e não se propõe a ter**. Ele está ciente de que tudo pode ser modificado por fora, e se a pessoa sabe modificar, que modifique: o que ele faz é medir o que encontra e dizer o que isso custa, nunca policiar a pasta.
-
-- Sem terminal para perguntar não há primeira execução: o Bill encerra com código `1` em vez de assumir uma pasta. E recusar não cria nada — o Bill diz onde mover o binário e sai sem erro, porque recusar não é erro.
-
-### Permissão de acesso
-
-- O Bill, por padrão, é arquitetado para ser executado sem permissões de administração (i.e. não usa `root` ou `Administrador`). Contudo, montar o ambiente do §7 inevitavelmente exige elevação em algum momento. Nesses casos a elevação de privilégio acontecerá por um pedido explícito, com a razão à mostra.
-
-- A lista fechada do que exige elevação não se escreve antes da função: ela nasce com a implementação que a pede. Cada item que entrar nela é uma decisão de segurança e passa por esta seção.
-
-### Portabilidade
-
-- O dado é sempre POSIX. `LF` ou `/`. Conversões para Windows apenas para exibição (como na mensagem de boas-vindas da Pasta de Trabalho, acima) ou para as `syscalls`.
-
-### Dependência externa
-
-- Dependência a pacotes e imagens são fixadas em versão e hashing — seja de pacotes, seja de imagens externas.
-
-- O Caddy é a exceção declarada, e não por descuido: ele vai embarcado no binário, então quem o pina é o próprio binário, com o SemVer do Bill.
-
-## 4. Arquitetura [normativo]
-
-### Separação de camadas
-
-- O Bill é estruturado em camadas. O `core` trata todas as regras da aplicação. Não é um bloco monolítico: é quebrado em módulos e arquivos conforme o assunto. Mas tudo passa por ele. Nenhuma camada fora do `core` resolve um caminho por conta própria.
-
-- A `ui` é uma forma de camada, mas tem mais. O Bill já nasce com três superfícies: `cli`, WebApp e Wizard. Todas só são formas diferentes de interagir com o `core`. Nem tudo feito pelo `cli` está disponível no WebApp. Mas tudo no `WebApp + Wizard` está disponível no cli.
-
-- Outra camada muito importante é `data`. Essa camada fica responsável por acessar as tabelas. Dados estruturados salvos em `.jsonl` dentro da pasta `./data`. A pasta `./data` é criada automaticamente na primeira execução, com as tabelas de sistema vigentes.
-
-- O Bill também suporta gerenciar arquivos diversos. É a camada `prose`. Qualquer arquivo que não for estruturado fica a cargo dessa camada. A pasta `./prose`, também criada na primeira execução, vem com um arquivo de boas-vindas gerado pelo `i18n` no idioma ativo escolhido na primeira execução (`Bem-vindo.md` em `pt_BR`, `Welcome.md` em `en_US`), para facilitar os próximos passos.
-
-- Os serviços externos são tratados pela camada `services`. Aqui é para que a camada seja o máximo agnóstica a ferramenta possível: o **serviço** tem nome canônico e a **ferramenta** que o cumpre é trocável. É nesta camada que mora a parte de serviços do produto — cada serviço configurado mora aqui, com o seu estado na pasta.
-
-- Os segredos são gerenciados pela camada `encryption`.
-
-- A interpretação de linguagem natural é a camada `nlu`: ela transforma uma frase em uma **proposta** de ação, e nada mais. Ela não escreve, não decide e não tem teto próprio — quem valida e escreve é o `core`.
-
-- A postura de segurança é a camada `posture`: ela mede o que está configurado, soma as notas por função pelo elo mais fraco e responde à tela e à API. Ela mede; não impede.
-
-### Tabelas
-
-- O Bill possui um motor próprio de gestão de dados estruturados. Aqui é usado o termo Tabela, ou `table` internamente. A identidade da tabela é um id, e o id é singular (`task`, `project`, `reminder`, `secret`, `actor`, `role`, `audit`): é ele que nomeia a tabela em todo lugar, inclusive no comando (`bill task list`) e no esquema. O arquivo de linhas é que vai no plural. Logo `data/tasks.jsonl` é a tabela em si e `data/schema/task.json` o esquema dela.
-
-- As tabelas `task`, `project`, `reminder`, `secret`, `actor`, `role` e `audit` são padrão do sistema. Servem para entregar uma funcionalidade inerente. Tabelas de sistema não são deletáveis, e **a deletabilidade de uma linha é declarada no esquema da tabela**: o `audit` declara que nenhuma linha sua se apaga.
-
-- Tabelas de usuário permitem CRUD completa da própria tabela.
-
-- O schema de tabela tem muitas funcionalidades, como campos padrão na exibição e ordem padrão na exibição de tabelas. Os rótulos de exibição que ele carrega são chaves de `i18n`, nunca o texto final. O contador de ids não mora no esquema: ele conta o que aconteceu nesta pasta, e o esquema é publicado — então ele vive em `app/counters.json`, e é escrito antes da linha, porque um id entregue está gasto mesmo se a escrita seguinte falhou.
-
-- O esquema declara **tipos de campo**, e cada tipo tem regra fixa, sem escolha por campo:
-  - **hasheado** — guarda o resultado de uma derivação segura, feita com `libsodium`; o valor não volta na leitura, só se confere.
-  - **instante** — um ponto no tempo: ISO, sempre UTC, sempre com milissegundos (`2026-09-22T13:04:07.123Z`). A localidade é detectada na exibição, nunca guardada.
-  - **dia** — um dia do calendário, sem hora e sem fuso, resolvido pela localidade de quem escreve. "Hoje" é o seu hoje.
-  - Os tipos comuns — texto, número, data, referência, enumeração — como sempre foram.
-
-- **O que se prova se guarda hasheado; o que o Bill usa se guarda criptografado.** A `secret` é da segunda espécie, o `actor` é da primeira.
-
-- **Quem age é um ator**, e todo ator é uma linha da tabela `actor`, com o campo `tipo` valendo `pessoa`, `motor` ou `agente`. A linha carrega a identidade, o papel e a credencial no campo hasheado. O motor age no que é do motor; o `agente` é quem usa o Bill sem ser pessoa, e é ele que tem teto próprio — quem digita uma frase é a pessoa, e a via é `nlu`.
-
-- O catálogo de permissões é declarado no código, e não é dado solto: a permissão tem a forma `objeto:ação`, os objetos e as ações são uma lista fechada, e os rótulos de exibição saem do `i18n` como todo o resto. Os objetos vão além das tabelas: as configurações, os serviços, os plugins e o vocabulário do interpretador também são objetos, com permissões próprias. Um papel é uma linha da tabela `role` com um conjunto de permissões, e a tabela `actor` aponta para o papel. Papel que nomeia permissão inexistente não derruba o Bill: ele avisa, e o aviso é o que se lê.
-
-### Gestão de segredos
-
-- Para executar certas ações, como acessar APIs de serviços externos, o Bill precisa ter acesso a segredos. Todo segredo que o Bill **guarda** é escrito na tabela `secret` — segredo que só se confere, como a credencial de um ator, mora hasheado na própria linha (§4, Tabelas). Lá estão metadados e o segredo em si, salvo de forma criptografada.
-
-- A criptografia do Bill parte de uma **Frase de Acesso**, que é o que a pessoa sabe e digita: no mínimo 16 caracteres, e é uma frase. "Mariazinha comeu todo o pudim", em minúsculas e sem espaços, é mais seguro que `Mariazinha@123`. Dela se deriva a **Chave do Bill**, e dela as **chaves derivadas**, uma por serviço ou finalidade. A Chave do Bill recupera qualquer chave derivada perdida.
-
-- É recomendado guardar a Frase de Acesso fora da máquina, em um local seguro. Imprimir e armazenar em documentos pessoais de difícil acesso, por exemplo.
-
-- Em criptografia, não existe mágica. Ou você digita a Frase de Acesso toda vez que o Bill precisa de um segredo, ou digita uma vez e ela vale enquanto o Bill estiver de pé, ou o Bill guarda o que precisa para destravar sozinho. **A escolha é graduada, e a nota de segurança diz o preço de cada uma:** digitar quando o Bill sobe é `S`; guardar destravado na pasta do usuário do sistema (`~/.bill/` no Unix, `%APPDATA%` no Windows) é `A`; guardar dentro da Pasta de Trabalho é `B` — e a última é permitida, porque aí o backup da pasta leva tudo.
-
-- O Bill roda sozinho quando precisa: job agendado não pede senha a cada execução. O que ele não faz é escolher por você onde a chave mora.
-
-- A verificação de uma credencial de entrada **não** depende da Frase de Acesso, e isso é de propósito: senão o Bill só sobe quando alguém digita a frase. Por isso o que se confere é hasheado, e é por isso que a credencial não mora na `secret`.
-
-### Configurações gerais
-
-- As configurações do bill moram dentro de `app/settings.json`, dentro da pasta de trabalho. Aí moram propriedades em formato chave-valor. `i18n` não mora aqui: os blocos de tradução são empacotados no binário e o idioma ativo mora em `app/i18n/active`.
-
-- **As configurações são alcançáveis pela API do core** (`setting:read` e `setting:edit` são permissões), porque é por ali que passa tudo o que age — inclusive a leitura do **limiar de risco** que valia no instante em que uma demanda correu, que é o que a linha da auditoria registra.
-
-- Nenhum segredo mora no `settings.json`. Ele guarda permissão e ajuste — como a permissão de um ator entrar por Basic, ou o limiar de risco —, nunca a credencial em si.
-
-- O Wizard Tkinter exibe as possibilidades de instalação do ambiente. No modo avançado habilitado, o Wizard apresenta a renderização do arquivo de configurações, permitindo modificar quaisquer uma. Segue a escolha de designer de algumas ferramentas, como VS Code, que possuem a base das configurações em JSON, mas permitem a alteração na UI.
-
-- Cada serviço pode ter dados persistidos. Nesse caso, eles moram em `app/services/<serviço>`, como `app/services/vpn` ou `app/services/spelling-checker`. O nome do serviço é canônico e não muda com a ferramenta que o cumpre: `spelling-checker` é o serviço, LanguageTool é quem o cumpre hoje (§7d), e o que um dia o substituir não renomeia pastas nem chaves. O que é rótulo de exibição é chave de `i18n`.
-
-- Essa pasta não é conveniência, é condição de entrada: um serviço só entra no §7 se o estado persistente dele couber aí dentro. Serviço que guarda a vida dele em algum volume que ninguém copia deixa o backup da pasta mentir.
+## Índice
+
+O `§N` é o id estável do artigo, e ele não muda de dígito quando o artigo muda de arquivo. A tabela diz o que cada artigo é e onde ele mora.
+
+| § | o que é | onde mora |
+|---|---|---|
+| §0 | o protocolo do agente: como ler e como alterar este repositório | aqui |
+| §1 | a origem: de onde o Bill veio e por que esse nome | aqui |
+| §2 | os propósitos e os limites: o que ele é e o que ele recusa ser | aqui |
+| §3 | as regras: segurança, código e delivery, dependência externa | [`rules.md`](rules.md) |
+| §4 | a arquitetura: as camadas, as tabelas e os segredos | [`architecture.md`](architecture.md) |
+| §5 | as interfaces: `cli`, WebApp e Wizard | aqui |
+| §6 | os dois caminhos de uso | aqui |
+| §7 | o caminho container: os passos | aqui |
+| §8 | as extensões e os plugins | aqui |
+| §9 | o ambiente de teste end-to-end | aqui |
+| §10 | a derivação: a árvore, a Pasta de Trabalho e a operação | [`derivation.md`](derivation.md) |
+| §11 | o glossário: o que um nome significa | [`glossary.md`](glossary.md) |
 
 ## 5. Interfaces [normativo]
 
@@ -454,15 +272,7 @@ O painel tem as entradas:
 
 - O teste **não é o critério de pronto de cada função** — uma função fica pronta pelo que o `docs/en_US/backlog.md` diz que ela é. Ele é o portão da primeira publicação no GitHub, e dali em diante.
 
-## 10. A derivação
-
-A árvore, a Pasta de Trabalho e a operação são derivação: mudam quando uma pasta muda, e por isso não vinculam. Vivem em [derivation](derivation.md), nos dois idiomas. A cadeia é `documento fundador → documentos derivados → código` (§0).
-
-## 11. Glossário
-
-O glossário diz o que um nome significa. Ele vive em [glossário](glossary.md), nos dois idiomas.
-
-## 12. O que ainda não está aqui
+## O que ainda não está aqui
 
 `docs/en_US/backlog.md` guarda o que vem a seguir, com o que conta como pronto para cada item.
 
