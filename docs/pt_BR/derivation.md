@@ -42,6 +42,11 @@ docs/                          os documentos
 │   ├── README.md              o documento fundador, que vincula
 │   ├── rules.md               as regras que vinculam (§3)
 │   ├── architecture.md        a arquitetura que vincula (§4)
+│   ├── interfaces.md          as interfaces: `cli`, WebApp e Wizard (§5)
+│   ├── paths.md               os dois caminhos de uso (§6)
+│   ├── container.md           o caminho container: os passos (§7)
+│   ├── extensions.md          as extensões e os plugins (§8)
+│   ├── end-to-end.md          o ambiente de teste end-to-end (§9)
 │   ├── derivation.md          a derivação: a árvore, a Pasta de Trabalho e a operação
 │   ├── functionalities.md     o que a nota mede: as funcionalidades, níveis e notas
 │   └── glossary.md            o que um nome significa, termo a termo
@@ -49,6 +54,11 @@ docs/                          os documentos
     ├── README.md              a tradução do documento fundador, que anda junto
     ├── rules.md               a tradução dela, que anda junto
     ├── architecture.md        a tradução dela, que anda junto
+    ├── interfaces.md          a tradução dela, que anda junto
+    ├── paths.md               a tradução dela, que anda junto
+    ├── container.md           a tradução dela, que anda junto
+    ├── extensions.md          a tradução dela, que anda junto
+    ├── end-to-end.md          a tradução dela, que anda junto
     ├── derivation.md          a tradução dela, que anda junto
     ├── functionalities.md     a tradução dela, que anda junto
     ├── glossary.md            a tradução dela, que anda junto

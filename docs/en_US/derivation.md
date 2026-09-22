@@ -42,6 +42,11 @@ docs/                          the documents
 │   ├── README.md              the founding document, which binds
 │   ├── rules.md               the rules that bind (§3)
 │   ├── architecture.md        the architecture that binds (§4)
+│   ├── interfaces.md          the interfaces: `cli`, WebApp and Wizard (§5)
+│   ├── paths.md               the two paths of use (§6)
+│   ├── container.md           the container path: the steps (§7)
+│   ├── extensions.md          the extensions and the plugins (§8)
+│   ├── end-to-end.md          the end-to-end test environment (§9)
 │   ├── derivation.md          the derivation: the tree, the Working Folder and the operation
 │   ├── functionalities.md     what the grade measures: the functionalities, levels and grades
 │   └── glossary.md            what a name means, term by term
@@ -49,6 +54,11 @@ docs/                          the documents
     ├── README.md              the founding document's translation, which moves along with it
     ├── rules.md               its translation, which moves along with it
     ├── architecture.md        its translation, which moves along with it
+    ├── interfaces.md          its translation, which moves along with it
+    ├── paths.md               its translation, which moves along with it
+    ├── container.md           its translation, which moves along with it
+    ├── extensions.md          its translation, which moves along with it
+    ├── end-to-end.md          its translation, which moves along with it
     ├── derivation.md          its translation, which moves along with it
     ├── functionalities.md     its translation, which moves along with it
     ├── glossary.md            its translation, which moves along with it
