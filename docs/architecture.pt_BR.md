@@ -44,6 +44,8 @@ docs/                          os documentos
 ├── architecture.en_US.md      a tradução dela, que anda junto
 ├── functionalities.pt_BR.md   o que a nota mede: as funcionalidades, níveis e notas
 ├── functionalities.en_US.md   a tradução dela, que anda junto
+├── glossary.pt_BR.md          o que um nome significa, termo a termo
+├── glossary.en_US.md          a tradução dela, que anda junto
 └── backlog.en_US.md           o documento de trabalho: o que vem a seguir, e o que conta como pronto
 bill.spec                      o que viaja dentro do binário, escrito à mão
 pyproject.toml                 a embalagem e o metadata

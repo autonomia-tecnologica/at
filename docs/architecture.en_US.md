@@ -44,6 +44,8 @@ docs/                          the documents
 ├── architecture.en_US.md      its translation, which moves along with it
 ├── functionalities.pt_BR.md   what the grade measures: the functionalities, levels and grades
 ├── functionalities.en_US.md   its translation, which moves along with it
+├── glossary.pt_BR.md          what a name means, term by term
+├── glossary.en_US.md          its translation, which moves along with it
 └── backlog.en_US.md           the working document: what comes next, and what counts as done
 bill.spec                      what travels inside the binary, written by hand
 pyproject.toml                 the packaging and the metadata

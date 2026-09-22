@@ -1,6 +1,6 @@
 # Funcionalidades
 
-Uma funcionalidade é o que o glossário define (`README` §11): uma capacidade que a pessoa reconhece, com níveis e dependências. A regra que a governa é a do `README` §3 (A postura de segurança). Este documento não repete nenhuma das duas — carrega o que é de cada funcionalidade: os níveis, o que cada nível custa, e o que ela arrasta.
+Uma funcionalidade é o que o [glossário](glossary.pt_BR.md) define: uma capacidade que a pessoa reconhece, com níveis e dependências. A regra que a governa é a do `README` §3 (A postura de segurança). Este documento não repete nenhuma das duas — carrega o que é de cada funcionalidade: os níveis, o que cada nível custa, e o que ela arrasta.
 
 ## O que existe hoje
 
