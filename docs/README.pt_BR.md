@@ -14,6 +14,8 @@ Bill é um motor de tarefas determinístico. Ele roda **dentro de uma pasta**, e
 
 - A cadeia de custódia é `documento fundador → documentos derivados → código`: o código é uma extensão do que está escrito, e o que é derivado não decide nada sozinho. Se decidirmos algo arquitetural, em sessão, que não veio do documento fundador, você vai me avisar e propor a escrita, pelo mesmo aval. E isso nunca pode ser ignorado, nem por mim. É essa cadeia que vai manter esse "arreio" preso. Veja que definições muito estreitas sobre nome de pastas de cada módulo não cabem para o documento fundador — elas moram na árvore ([arquitetura §1](architecture.pt_BR.md)), que é derivação. Ter que detalhar cada item individual me dá a sensação que é melhor eu desenvolver do zero.
 
+- Não existem regras duplicadas: uma regra mora em um lugar só. O que vincula fica no documento fundador; o derivado cita em vez de repetir. Se a mesma coisa aparecer nos dois, um dos dois está errado — e onde ela fica é decisão minha.
+
 - Por fim, o documento fundador vai ser modificado com o tempo. Então entenda que a lógica de lê-lo e derivar o resto é constante.
 
 - O resto dos arquivos, fique a vontade. Incluindo o `FAQ.md`. É responsabilidade sua. Deve ser escrito como uma sequência de perguntas comuns. Eu aprovo a pergunta e a resposta que você sugerir, só me informe quando entender que vale preencher. E o `FAQ.md` tem que estar ordenado em ordem de uso da ferramenta. Perguntas mais iniciantes no começo como "o que esse arquivo faz na minha máquina" para perguntas mais avançadas como "como eu modifico o Bill ao meu bel-prazer". É no FAQ que mora a explicação do que está por baixo: qual tela é sua e qual é de terceiros.
