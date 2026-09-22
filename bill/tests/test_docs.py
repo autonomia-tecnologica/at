@@ -29,6 +29,12 @@ except ImportError:  # pragma: no cover — the failure is the point, and it is 
 
 ROOT = Path(__file__).resolve().parents[2]
 
+# The ignore lists are the suite's own data, and they live beside this module:
+# the package and the binary already keep `bill.tests` out (pyproject and
+# `bill.spec`), so the lists travel with the gate that reads them and with
+# nothing else.
+HERE = Path(__file__).resolve().parent
+
 # Nothing here is a document: the runtime folders of a Working Folder, the
 # importable package, the build output and the vendored dependencies.
 SKIP = {"node_modules", ".venv", ".git", "build", "dist", "app", "data", "prose", "hooks", ".claude"}
@@ -95,12 +101,12 @@ def word_list(path: Path) -> Path:
     """The ignore list of that document's language: `spelling.<language>.txt`."""
     for suffix, _ in LANGUAGES.items():
         if path.name.endswith(suffix):
-            return ROOT / f"spelling{suffix.replace('.md', '.txt')}"
+            return HERE / f"spelling{suffix.replace('.md', '.txt')}"
     raise AssertionError(f"{path} carries no language")
 
 
 def accepted(path: Path) -> set[str]:
-    """The words the checker must ignore, from the versioned list beside the repo."""
+    """The words the checker must ignore, from the versioned list beside this module."""
     words: set[str] = set()
     where = word_list(path)
     if not where.is_file():

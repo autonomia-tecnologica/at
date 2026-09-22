@@ -34,6 +34,8 @@ bill/                       the product: the engine, the declarations and the UI
 │   │                       is the namespace (`blocks/boot.json` holds `first_run.confirm`)
 │   └── vocabulary/         the interpreter's vocabulary, per language, packed like the blocks
 └── tests/                  the suite — stdlib `unittest`, because a test runner is not a dependency
+    ├── spelling.pt_BR.txt  what the checker must ignore in Portuguese
+    └── spelling.en_US.txt  the same, in English
 
 docs/                       the documents
 ├── README.pt_BR.md         the source: the founding document, which binds
@@ -45,8 +47,6 @@ bill.spec                   what travels inside the binary, written by hand
 pyproject.toml              the packaging and the metadata
 requirements-dev.txt        the development dependencies, pinned in version and hash
 README.md                   the door: the title and the links to the documents in each language
-spelling.pt_BR.txt          what the repository's checker must ignore in Portuguese
-spelling.en_US.txt          the same, in English
 ```
 
 `bill.spec` is the one place that says what travels inside the binary, and it is by hand on purpose: three of the payloads — `bill/i18n`, `bill/data/defaults`, and the WebApp's `assets`, `dist` and `vendor` — are invisible to an import graph, and `bill/ui/webapp/` also holds `node_modules/` and `src/`, which are the derivation and must not travel. A payload left out fails silently in the WebApp (404s and a 500) and loudly everywhere else, because `tr()` raises on the first message of every command.

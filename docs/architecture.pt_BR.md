@@ -34,6 +34,8 @@ bill/                       o produto: o motor, as declarações e a UI
 │   │                       arquivo é o namespace (`blocks/boot.json` guarda `first_run.confirm`)
 │   └── vocabulary/         o vocabulário do interpretador, por idioma, empacotado como os blocos
 └── tests/                  a suíte — `unittest` da stdlib, porque um runner não é dependência
+    ├── spelling.pt_BR.txt  o que o corretor deve ignorar em português
+    └── spelling.en_US.txt  o mesmo, em inglês
 
 docs/                       os documentos
 ├── README.pt_BR.md         a fonte: o documento fundador, que vincula
@@ -45,8 +47,6 @@ bill.spec                   o que viaja dentro do binário, escrito à mão
 pyproject.toml              a embalagem e o metadata
 requirements-dev.txt        as dependências de desenvolvimento, pinadas em versão e hash
 README.md                   a porta: o título e os links para os documentos em cada língua
-spelling.pt_BR.txt          o que o corretor do repositório deve ignorar em português
-spelling.en_US.txt          o mesmo, em inglês
 ```
 
 `bill.spec` é o único lugar que diz o que viaja dentro do binário, e é à mão de propósito: três dos conteúdos — `bill/i18n`, `bill/data/defaults` e os `assets`, `dist` e `vendor` do WebApp — são invisíveis a um grafo de importação, e `bill/ui/webapp/` também guarda `node_modules/` e `src/`, que são a derivação e não podem viajar. Um conteúdo deixado de fora falha em silêncio no WebApp (404 e um 500) e em voz alta em todo o resto, porque `tr()` levanta na primeira mensagem de cada comando.
