@@ -77,6 +77,17 @@ const value = (rec: RecordRow, name: string): RecordField =>
 const cell = (rec: RecordRow, name: string): string =>
   name === "id" ? String(rec.id ?? "") : value(rec, name).value || "";
 
+// A DATE SORTS BY WHAT IS STORED, never by what is shown: the locale writes
+// `22/09/2026`, and that text sorts by the day of the month. The stored value is
+// ISO, which sorts the way time does — so the display is free to be a display.
+const sortCell = (rec: RecordRow, name: string): string => {
+  const field = value(rec, name);
+  if (field.type === "day" || field.type === "instant") {
+    return field.raw == null ? "" : String(field.raw);
+  }
+  return cell(rec, name);
+};
+
 const by = (a: string, b: string): number =>
   String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: "base" });
 
@@ -179,8 +190,8 @@ const ordered = computed(() => {
   const { name, dir } = sort.value;
   return visible.value
     .slice()
-    .sort((a, b) => dir * cell(a, name).localeCompare(cell(b, name), undefined,
-                                                        { numeric: true, sensitivity: "base" }));
+    .sort((a, b) => dir * sortCell(a, name).localeCompare(sortCell(b, name), undefined,
+                                                           { numeric: true, sensitivity: "base" }));
 });
 
 watchEffect(() => {

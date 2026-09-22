@@ -124,12 +124,79 @@ def enum_label(table: str, field: str, value: object) -> str:
     return tr(key) if isinstance(key, str) else str(value)
 
 
+# -------------------------------------------------------------- display ---
+
+def _as_day(value: Any) -> str:
+    """A day written the way the reader's locale writes one: `22/09/2026`.
+
+    A value that does not parse is shown as it is stored, never hidden: a row
+    written before the type existed still has to be readable.
+    """
+    try:
+        moment = date.fromisoformat(str(value))
+    except ValueError:
+        return str(value)
+    return tr(
+        "format.day",
+        day=f"{moment.day:02d}",
+        month=f"{moment.month:02d}",
+        year=moment.year,
+    )
+
+
+def _as_instant(value: Any) -> str:
+    """An instant in the reader's clock: the stored UTC turned into their zone.
+
+    The zone is the machine's, because Bill runs where the person is — §4's
+    "locality is detected on display": the store keeps the point in time in UTC
+    and only the reading moves it. Minutes are the display's precision; the
+    milliseconds stay where they were written.
+    """
+    text = str(value)
+    # What is not a point in time is not shown as one: a day an older row wrote
+    # in this field is shown as it is stored, and the display invents no clock.
+    if not _INSTANT_SHAPE.match(text):
+        return text
+    try:
+        moment = datetime.fromisoformat(text)
+    except ValueError:
+        return text
+    here = moment.astimezone()
+    return tr(
+        "format.instant",
+        day=f"{here.day:02d}",
+        month=f"{here.month:02d}",
+        year=here.year,
+        hour=f"{here.hour:02d}",
+        minute=f"{here.minute:02d}",
+    )
+
+
+# The two types about time, and how the locale writes each one. The shapes are
+# i18n data, like every other text a person reads — a locale that writes a date
+# differently changes a block, never this file.
+_LOCALE = {"day": _as_day, "instant": _as_instant}
+
+
+def _locale_writer(declared: dict):
+    """The locale's way of writing a value of the declared type, or `None`."""
+    kind = declared.get("type")
+    return _LOCALE.get(kind) if isinstance(kind, str) else None
+
+
 def text_of(table: str, field: str, value: Any) -> str:
     """A value as a person reads it in a line: the closed vocabulary's word, the
-    title a reference resolves to, a list joined, and an empty value as `—`."""
+    title a reference resolves to, a list joined, and an empty value as `—`.
+
+    A field of one of the two types about time is written the way the READER's
+    locale writes it — the day in their order, the instant in their clock.
+    """
     declared = schema.field(table, field)
     if value is None:
         return tr("table.word.none")
+    written = _locale_writer(declared)
+    if written is not None:
+        return written(value)
     if enum_values(table, field):
         return enum_label(table, field, value)
     # A reference is answered BEFORE the list, because a field that may point at
@@ -141,7 +208,7 @@ def text_of(table: str, field: str, value: Any) -> str:
     if isinstance(value, list):
         if not value:
             return tr("table.word.none")
-        return ", ".join(_item(item) for item in value)
+        return ", ".join(_item(item, declared) for item in value)
     if isinstance(value, bool):
         return "yes" if value else "no"
     return str(value)
@@ -169,12 +236,24 @@ def _title_of_reference(target: str, number: object) -> str:
     return title(target, found) if found else format_id(target, number)
 
 
-def _item(value: Any) -> str:
+def _item(value: Any, declared: dict) -> str:
     """One entry of a list field. A logged change is an object, and a reader
-    wants the change, not Python's spelling of a dict."""
-    if isinstance(value, dict):
-        return ", ".join(f"{key}={item}" for key, item in value.items())
-    return str(value)
+    wants the change, not Python's spelling of a dict.
+
+    The stamp of a `tracks`/`append` entry is the one date that hides inside a
+    value instead of being a field, and the declaration is what types it — so it
+    is written in the reader's locale like any other date.
+    """
+    if not isinstance(value, dict):
+        return str(value)
+    append = declared.get("append")
+    append = append if isinstance(append, dict) else {}
+    written = _locale_writer(append)
+    stamp = append.get("stamp")
+    return ", ".join(
+        f"{key}={written(item) if written and key == stamp else item}"
+        for key, item in value.items()
+    )
 
 
 # ------------------------------------------------------------------ rows ---

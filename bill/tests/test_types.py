@@ -261,6 +261,52 @@ class TheStamp(TypeCase):
             self.assertRegex(value, INSTANT)
 
 
+class TheDisplay(TypeCase):
+    """What a person reads: the reader's shape, in the reader's clock (§4)."""
+
+    def test_a_day_reads_in_the_locale_order(self):
+        row = tables.create("moment", {"text": "café", "since": "2026-10-03"})
+        self.assertEqual(tables.text_of("moment", "since", row["since"]), "03/10/2026")
+
+    def test_the_other_language_reads_the_same_day_its_own_way(self):
+        row = tables.create("moment", {"text": "coffee", "since": "2026-10-03"})
+        with mock.patch.dict(os.environ, {"BILL_LANG": "en_US"}):
+            i18n.reset()
+            self.assertEqual(
+                tables.text_of("moment", "since", row["since"]), "10/03/2026"
+            )
+
+    def test_an_instant_reads_in_the_readers_clock(self):
+        written = "2026-09-22T20:40:52.295Z"
+        with self.zone("BRT3"):
+            self.assertEqual(
+                tables.text_of("moment", "when", written), "22/09/2026 17:40"
+            )
+        with self.zone("UTC"):
+            self.assertEqual(
+                tables.text_of("moment", "when", written), "22/09/2026 20:40"
+            )
+
+    def test_the_log_stamp_reads_like_a_field_does(self):
+        row = tables.create("task", {"text": "café"})
+        edited = tables.edit("task", row["id"], {"status": "done"})
+        with self.zone("BRT3"):
+            read = tables.text_of("task", "modifications", edited["modifications"])
+        self.assertEqual(len(edited["modifications"]), 2)
+        self.assertRegex(read, r"status=done, at=\d{2}/\d{2}/\d{4} \d{2}:\d{2}$")
+        self.assertNotIn("Z", read)
+
+    def test_a_row_written_before_the_types_is_still_readable(self):
+        # A folder that predates the declaration keeps its rows, and a value the
+        # display cannot parse is shown as it is stored instead of hidden.
+        self.assertEqual(tables.text_of("task", "since", "today"), "today")
+        self.assertEqual(tables.text_of("task", "deadline", ""), "")
+        old = [{"status": "todo", "at": "2026-09-21"}]
+        self.assertEqual(
+            tables.text_of("task", "modifications", old), "status=todo, at=2026-09-21"
+        )
+
+
 class TheDoor(TypeCase):
     def test_the_cli_the_person_types_in_refuses_the_bad_day(self):
         code, text = self.words(

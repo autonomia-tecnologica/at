@@ -1,0 +1,10 @@
+{
+  "pt_BR": {
+    "day": "{day}/{month}/{year}",
+    "instant": "{day}/{month}/{year} {hour}:{minute}"
+  },
+  "en_US": {
+    "day": "{month}/{day}/{year}",
+    "instant": "{month}/{day}/{year} {hour}:{minute}"
+  }
+}
