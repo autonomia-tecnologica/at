@@ -24,6 +24,8 @@ Bill is a deterministic task engine. It runs **inside a folder**, and that folde
 
 - **The discussion comes before the BACKLOG, and the implementation always comes out of the BACKLOG.** A decision only enters the list once it is settled, and nothing is implemented that is not in it. In a long discussion, the implications come **one at a time**, and whatever closes is written down and committed on the spot — what is decided cannot live only in the conversation, which dies. **The simple answer to a question is the approval**: if I proposed something and you answered, I do not ask you again whether it is approved.
 
+- When I tell you I am going to clear the session, generate **at once** the recommended start of the next one, in italics, ready for me to copy and modify as I decide. It says which item, where it is, what counts as done and what the session needs to know before writing the first line.
+
 - Never dump a large file or output into the context: filter it, cut it or delegate it to a subagent and bring back only the conclusion; do not re-read what is already in the conversation, do not repeat what has already been said and do not spend a turn for nothing — every turn resends everything. And where information is missing to decide, ask before acting, with the cost of each option on display: what is not authorized does not happen.
 
 ## 1. Origin [context]
@@ -139,7 +141,7 @@ Bill has two paths of use, and both are supported: the **hosted** one, where it 
 
 ### Internationalization
 
-- Except for the root door, every document in this repository carries the **language in its own name**, in the POSIX format (`pt_BR`, `en_US`), aligned with the `i18n` module — it is not BCP 47. The root door is a `README.md` without a language, which has no text beyond the title and the links to the versions in each language.
+- Except for the root door, every document in this repository carries the **language in its own name**, in the POSIX format (`pt_BR`, `en_US`), aligned with the `i18n` module — it is not BCP 47. The root door is a `README.md` without a language, and it has no text beyond the title, the links to the versions in each language, and a short note in `en_US` addressed to LLM agents: that they read in the language that suits their model best, that when in doubt they read in English, and that the English track uses the market's terms and concepts on purpose, so that a name means the same thing here and out there.
 
 - The documents live in `docs/`, one file per language, and each one links its siblings in the other languages. **No English document exists without the language suffix**, and the names are lowercase — only the `README` stays uppercase, for being the name the world already knows.
 

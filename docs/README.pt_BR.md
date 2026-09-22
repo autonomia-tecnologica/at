@@ -24,6 +24,8 @@ Bill é um motor de tarefas determinístico. Ele roda **dentro de uma pasta**, e
 
 - **A discussão vem antes do BACKLOG, e a implementação sempre sai do BACKLOG.** Uma decisão só entra na lista depois de apaziguada, e nada se implementa que não esteja nela. Numa discussão longa, as implicações vêm **uma a uma**, e o que fecha é gravado e commitado na hora — o que está decidido não pode viver só na conversa, que morre. **A resposta simples a uma pergunta é a aprovação**: se eu propus uma coisa e você respondeu, não te pergunto de novo se está aprovado.
 
+- Quando eu te disser que vou limpar a sessão, gere **de uma vez** o começo recomendado da sessão seguinte, em itálico, pronto para eu copiar e modificar como eu decidir. Ele diz qual item, onde ele está, o que conta como pronto e o que a sessão precisa saber antes de escrever a primeira linha.
+
 - Nunca despeje arquivo ou saída grande no contexto: filtre, corte ou delegue a um subagente e traga só a conclusão; não releia o que já está na conversa, não repita o que já foi dito e não gaste turno à toa — cada turno reenvia tudo. E onde faltar informação para decidir, pergunte antes de agir, com o custo de cada opção à mostra: o que não estiver autorizado, não acontece.
 
 ## 1. Origem [contexto]
@@ -139,7 +141,7 @@ O Bill tem dois caminhos de uso, e os dois são suportados: o **hospedado**, em 
 
 ### Internacionalização
 
-- Com exceção da porta da raiz, todo documento deste repositório carrega o **idioma no próprio nome**, no formato POSIX (`pt_BR`, `en_US`), alinhado ao módulo de `i18n` — não é BCP 47. A porta da raiz é um `README.md` sem idioma, que não tem texto além do título e dos links para as versões em cada língua.
+- Com exceção da porta da raiz, todo documento deste repositório carrega o **idioma no próprio nome**, no formato POSIX (`pt_BR`, `en_US`), alinhado ao módulo de `i18n` — não é BCP 47. A porta da raiz é um `README.md` sem idioma, e não tem texto além do título, dos links para as versões em cada língua, e de uma nota curta em `en_US` dirigida a agentes LLM: que leiam no idioma que serve melhor ao modelo, que na dúvida leiam em inglês, e que a trilha inglesa usa os termos e conceitos do mercado de propósito, para um nome significar a mesma coisa aqui e lá fora.
 
 - Os documentos moram em `docs/`, um arquivo por idioma, e cada um linka os irmãos nas outras línguas. **Nenhum documento em inglês existe sem o sufixo de idioma**, e os nomes são minúsculos — só o `README` fica em maiúsculas, por ser o nome que o mundo já conhece.
 
