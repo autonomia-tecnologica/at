@@ -131,9 +131,10 @@ Two settings in `vite.config.ts` are not taste: the modulepreload polyfill and t
 ### The single binary
 
 ```sh
-# build-time only, never a runtime dependency; both pinned (§3) because the
-# hooks ship separately from the freezer and float on their own
-.venv/bin/pip install 'pyinstaller==6.22.3' 'pyinstaller-hooks-contrib==2026.7'
+# build-time only, never a runtime dependency; both live in the development
+# requirements, with version and hash (§3), because the hooks ship separately
+# from the freezer and float on their own
+.venv/bin/pip install --require-hashes -r requirements-dev.txt
 .venv/bin/pyinstaller --clean --noconfirm bill.spec   # writes dist/bill
 ```
 
