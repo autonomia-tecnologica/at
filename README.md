@@ -191,32 +191,71 @@ version and hashing (§3), and starting from zero is how that promise is kept
 cheap. The one exception is deliberate: the WebApp's hosted typefaces live in
 `bill/ui/webapp/vendor/` with the hash the manifest pins.
 
+### The single binary
+
+```sh
+# build-time only, never a runtime dependency; both pinned (§3) because the
+# hooks ship separately from the freezer and float on their own
+.venv/bin/pip install 'pyinstaller==6.22.3' 'pyinstaller-hooks-contrib==2026.7'
+.venv/bin/pyinstaller --clean --noconfirm bill.spec   # writes dist/bill
+```
+
+`bill.spec` is the one place that says what travels inside the binary, and it is
+by hand on purpose: three of the payloads (`bill/i18n/blocks`,
+`bill/data/defaults`, and the WebApp's `assets`, `dist` and `vendor`) are
+invisible to an import graph, and `bill/ui/webapp/` also holds `node_modules/` and
+`src/`, which are the derivation and must not travel. A payload left out fails
+silently in the WebApp — 404s and a 500 — and loudly everywhere else, because
+`tr()` raises on the first message of every command.
+
+**It builds on Linux only.** PyInstaller is not a cross-compiler and cannot be:
+it freezes by executing code from the *target* interpreter at build time. So
+Windows and macOS binaries need their own builds on their own runners (§8), and
+`bill.spec` is written to be the file all three of them share.
+
+The binary is one file because that is what the Manifesto promises (§3), and the
+price is that the whole payload — Tcl/Tk included — is re-extracted on every
+launch, so cold start is slower than a directory build would be.
+
+The Working Folder does not depend on that choice: `paths.working_folder()`
+resolves from `sys.executable`, which is the launched binary under `--onedir`
+too, so the folder the binary sits in is the folder it works in either way. Run
+it from anywhere and it still works on its own folder. Note that `bill` with no
+word opens the Tkinter Wizard, so a headless check wants `bill <word>`.
+
 ## Decisions taken in session
 
-These did not come from the Manifesto — they were taken while building. Each says
-where it lives. The ones marked `MANIFESTO.md` **are not written there yet**; that
-file is the human's (§0), so they are pending his pen.
+These did not come from the Manifesto — they were taken while building, and this
+table is where they are kept. The right-hand column says **where each one is
+settled**: a Manifesto section once it is written there, this README when the
+decision sits below the Manifesto's altitude (§0 — module folder names, paths and
+API shapes do not belong in that file).
 
-| Decision | Where it belongs |
+This file is not a request for a signature. Where a decision is Manifesto-level
+and is **not** yet written there, the agent says so in session, because the
+Manifesto is the human's and nothing reaches it any other way (§0). `†` marks
+those: the decision holds here today, and the pen is the human's.
+
+| Decision | Where it is settled |
 |---|---|
-| The layer folders are `bill/{core,data,prose,services,encryption,ui,i18n}` | this README — module folder names sit below the Manifesto's altitude (§0) |
-| The Wizard stays **Tkinter** | **`MANIFESTO.md` §4, §5** |
-| The first run **requires an interactive answer**; with no terminal Bill refuses | **`MANIFESTO.md` §3** |
-| The active language resolves as `$BILL_LANG` → `.bill/i18n/active` → locale → `en_US` | **`MANIFESTO.md` §4** |
-| A block carries **both languages**; a key is a stable id | **`MANIFESTO.md` §3** |
-| `bill` with no word opens the Wizard; `bill help` prints the words | **`MANIFESTO.md` §7** |
-| The **id counter** lives in `.bill/counters.json`, never in the published schema | **`MANIFESTO.md` §4** |
-| The **theme registry** travels with the UI (`ui/webapp/assets/themes.jsonl`), not in `data/` — §4 does not list `themes` among the system tables | **`MANIFESTO.md` §4** |
-| The **schema is declaration and ships with the product**, written into the folder on the first run | **`MANIFESTO.md` §4** |
-| A **display label is an i18n key** in the schema, never the text | **`MANIFESTO.md` §4** |
+| The layer folders are `bill/{core,data,prose,services,encryption,ui,i18n}` | this README — folder names sit below the Manifesto's altitude (§0) |
+| The Wizard stays **Tkinter** | `MANIFESTO.md` §5 |
+| The first run **requires an interactive answer**; with no terminal Bill refuses | `MANIFESTO.md` §3 |
+| The active language resolves as `$BILL_LANG` → `.bill/i18n/active` → locale → `en_US` | `MANIFESTO.md` §3 |
+| `bill` with no word opens the Wizard; `bill help` prints the words | `MANIFESTO.md` §7 |
+| The **id counter** lives in `.bill/counters.json`, never in the published schema | `MANIFESTO.md` §4 |
+| The schema is a **declaration that ships with the product**, written into the folder on the first run | `MANIFESTO.md` §4 |
+| A **display label is an i18n key** in the schema, never the text | `MANIFESTO.md` §4 |
+| **A block carries both languages; a key is a stable id** — renaming a text must not rename a key | this README † |
+| The **theme registry** travels with the UI (`ui/webapp/assets/themes.jsonl`), not in `data/` — §4 does not list `themes` among the system tables | this README |
 | The table actions today are **list, view, create, edit** | this README — `cancel`/`delete` need `lifecycle`, a decision of its own |
 | The WebApp **runs on loopback with no authentication of its own**; the container (§6c) and the `basic` for Authelia (§7) are pending | this README, with the debt named |
 | The page's **own words** come from the catalog through `/api/state` | this README |
-| The **id a person reads is the machine word, uppercased** (`TASK-7`) — it does not follow the UI language, because an id a person keeps in a note must not change under translation | this README |
-| The Working Folder resolves as the binary's folder / `cwd`, with `BILL_ROOT` for tests | this README |
-| A task names its project, and **that is the only direction** — the project keeps no `tasks` list. Two lists that must agree are two lists that drift | this README — a change from the PoC, which read both |
+| The **id a person reads is the machine word, uppercased** (`TASK-7`), and it does not follow the UI language | this README † — an exception to §3's i18n rule, so the Manifesto should carry it |
+| The Working Folder resolves as the binary's folder / `cwd`, with `BILL_ROOT` for tests | this README — §3 owns the binary's folder; `BILL_ROOT` is the test door |
+| A task names its project, and **that is the only direction** — the project keeps no `tasks` list. Two lists that must agree are two lists that drift | this README † — a change from the PoC, which read both |
 | The **files tree is rooted at `prose/`**, not at the Working Folder: `data/` is the table engine's and `.bill/` is the instance's | this README |
-| A file is written **with the revision it was read at**; a stale write answers `409` and carries the revision the disk holds | this README |
+| A file is written **with the revision it was read at**; a stale write answers `409` and carries the revision the disk holds | this README † |
 | The **checker (LanguageTool) is not in**: the write field saves, and it does not check | this README — §6d makes it optional |
 | There is **no live channel**: the trees re-read when the page is poked, not when another tab writes | this README |
 

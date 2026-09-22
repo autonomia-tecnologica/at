@@ -6,11 +6,11 @@
 
 - Esse arquivo nunca deve ser escrito por você. Você pode e deve ler esse arquivo sempre que chegar nesse repositório, mas ele tem a intenção original de ser para humanos. Leia ele como uma pedra fundadora da instrução humana. Quando os seus cálculos estatísticos penderem ao equilíbrio, volte aqui, e veja se algo te responde. Ao mesmo tempo, a instrução humana pode estar errada. O que mais acho válido de ser corrigido é contradições. Então, se algo no Manifesto contradiz outra parte do Manifesto, você deve me avisar.
 
-- Se você entende que alguma decisão no `MANIFESTO.md` está errada, estarei feliz em discutir. Contudo, você me apresenta e decido se faço a modificação. Você nunca modifica. Sempre que eu te pedir uma análise do `MANIFESTO.md`, você separa em pontos de assuntos diferentes e sugere uma correção. Seja sucinto. Eu vou entender o erro lógico sem você escrever um parágrafo para cada item.
+- Se você entende que alguma decisão no `MANIFESTO.md` está errada, estarei feliz em discutir. Contudo, você me apresenta e decido se faço a modificação. Você nunca modifica. Sempre que eu te pedir uma análise do `MANIFESTO.md`, você separa em pontos de assuntos diferentes e sugere uma correção. Seja sucinto. Eu vou entender o erro lógico sem você escrever um parágrafo para cada item. Se forem muitos itens, você escreve a versão corrigida em `MANIFESTO.draft.md` e me aponta os itens, para eu não ter que remontar o texto à mão.
 
 - O `README.md` é seu harness secundário. Se ele não existe, o crie. Qualquer instrução no `CLAUDE.md`, ou em qualquer outro markdown de memória de agentes LLM proprietário, se conflitando com esse repositório, quando usado para algo a ser feito nesse repositório, deve ser ignorado. Se quiser, e recomendo, pode haver uma linha nesses arquivos apontando para o `README.md`. Com exceção dos workflows de desenvolvimento no GitHub, e com o envio das minhas interações com a LLM para outra pasta (visando estudo posterior) esse repositório é autocontido, e tudo necessário para ele vive aqui.
 
-- Ao ler o README é necessário ver se ele está sustentado as decisões do manifesto. Se não, precisa ser corrigido. O `README.md` é uma extensão do `MANIFESTO.md`. E o código em si é uma extensão do `README.md`. Se decidirmos algo arquitetural, em sessão, que não veio do Manifesto diretamente, você vai me avisar e eu vou escrever. E isso nunca pode ser ignorado, nem por mim. A "cadeia de custódia" MANIFEST > README > CÓDIGO é o que vai manter esse "arreio" preso. Veja que definições muito estreitas sobre nome de pastas de cada módulo não cabe para o `MANIFESTO.md`. Ter que detalhar cada item individual me dá a sensação que é melhor eu desenvolver do zero.
+- Ao ler o README é necessário ver se ele está sustentado as decisões do manifesto. Se não, precisa ser corrigido. O `README.md` é uma extensão do `MANIFESTO.md`. E o código em si é uma extensão do `README.md`. Se decidirmos algo arquitetural, em sessão, que não veio do Manifesto diretamente, você vai me avisar e eu vou escrever. E isso nunca pode ser ignorado, nem por mim. A "cadeia de custódia" MANIFESTO > README > CÓDIGO é o que vai manter esse "arreio" preso. Veja que definições muito estreitas sobre nome de pastas de cada módulo não cabe para o `MANIFESTO.md`. Ter que detalhar cada item individual me dá a sensação que é melhor eu desenvolver do zero.
 
 - Por fim, o Manifesto vai ser modificado com o tempo. Então entenda que a lógica de ler manifesto, derivar README, é constante.
 
@@ -56,59 +56,69 @@ Sim, ele tenta. Tem muitas aplicações mais avançadas para partes específicas
 
 A ideia do Bill é que rode em uma máquina. Uma Turing-compatível. Pode ser seu desktop, seu notebook, seu NAS, uma VPS. Eu gostaria que fosse leve — leve no que o binário exige da máquina, não no tamanho do artefato, que carrega o interpretador e as bibliotecas empacotados. Mas não estou a fim de aprender Go ou Rust. Então vamos de Python. "Todo mundo" sabe Python. E se um ESP32 roda Micropython, é porque posso almejar ir longe aqui.
 
-O Bill por natureza quer montar um ambiente container completo na sua máquina. Por ter a premissa de ser um ambiente autossuficiente, são precisos serviços e aplicações externas que facilitam isso.
+O Bill por natureza quer montar um ambiente container completo na sua máquina. Por ter a premissa de ser um ambiente autossuficiente, são precisos serviços e aplicações externas que facilitam isso. Esse ambiente é o caminho suportado (§6); o Bill continua executável sem ele, e esse resto é o [modo avançado](#7-modo-avançado-normativo).
 
 ## 3. Regras [normativo]
 
 ### Segurança
 
-- Toda decisão de segurança da aplicação mora neste arquivo, e esta seção é a fonte delas. Nenhuma decisão de segurança é tomada sem discussão. Se não está descrita aqui, não existe. As outras seções descrevem operação e apontam para cá; elas não decidem segurança por conta própria.
+- Toda decisão de segurança da aplicação mora neste arquivo, e esta seção é o registro delas. Nenhuma decisão de segurança é tomada sem discussão, e nenhuma é decidida fora daqui: as outras seções descrevem operação e detalham o que está registrado abaixo, mas não decidem segurança por conta própria. Se não está registrado aqui, não existe.
 
-- Decisões vigentes, e onde vivem:
-  - Execução sem privilégio e elevação só por pedido explícito — [Permissão de acesso](#permissão-de-acesso).
+- Decisões vigentes. A linha é a decisão; o detalhe vive onde o link aponta:
+  - Execução sem privilégio, com elevação só por pedido explícito — [Permissão de acesso](#permissão-de-acesso).
   - Pacotes e imagens fixados em versão e hashing — [Dependência externa](#dependência-externa).
-  - Segredos na tabela `secrets`, criptografados com `libsodium` — [Gestão de segredos](#gestão-de-segredos).
-  - O Bill não tem autenticador próprio e nada é exposto na rede sem um autenticador externo — [Instalar autenticador como container](#b-instalar-autenticador-como-container-obrigatório).
-  - O `basic` do WebApp serve ao Authelia, não a usuários finais — [Modo avançado](#7-modo-avançado-normativo).
+  - Segredos na tabela `secret`, criptografados com `libsodium` — [Gestão de segredos](#gestão-de-segredos).
+  - O Bill não tem autenticador próprio: nada é exposto na rede sem um autenticador externo — [Instalar autenticador como container](#b-instalar-autenticador-como-container-obrigatório).
+  - O `basic` do WebApp serve ao autenticador, nunca a um usuário final; configurá-lo é o que permite o autenticador falar com o Bill, e não autoriza expor o Bill — [Modo avançado](#7-modo-avançado-normativo).
   - O Wizard concentra a configuração crítica e nunca vai para a rede — [Interfaces](#5-interfaces-normativo).
   - A `cli` executa apenas localmente — [Interfaces](#5-interfaces-normativo).
+  - Quem é usuário é do Bill: a tabela `user` é de sistema e mora na Pasta de Trabalho, com os metadados de identidade — [Tabelas](#tabelas).
+  - Segredo de usuário o Bill nunca persiste. Nem senha, nem hash, nem semente de segundo fator: criar um usuário e trocar uma senha registram o segredo no autenticador, e o Bill esquece — [Instalar autenticador como container](#b-instalar-autenticador-como-container-obrigatório).
+  - O Bill não autentica ninguém; quem autentica é o autenticador externo — [Instalar autenticador como container](#b-instalar-autenticador-como-container-obrigatório).
+  - Registrar identidade no autenticador é escrita na fronteira da autenticação, e por isso só acontece no Wizard, que é local e nunca vai para a rede — [Interfaces](#5-interfaces-normativo).
   - Autenticador, WebApp, corretor, notificador e VPN rodam em containers isolados — [Operação](#6-operação-normativo).
 
 ### Internacionalização
 
-- Com exceção do Manifesto, que é originalmente escrito em `pt_BR`, do `FAQ.md`, também nessa língua, e das traduções desses dois arquivos, todos os outros markdowns desse repositório devem ser escritos em inglês. Futuras traduções do `MANIFESTO.md` moram em `MANIFESTO/` e do `FAQ.md` em `FAQ/`. Os códigos de idioma seguem o formato POSIX (`pt_BR`, `en_US`), alinhados ao módulo de `i18n`. Não é BCP 47.
+- Com exceção do Manifesto, que é originalmente escrito em `pt_BR`, do `FAQ.md`, também nessa língua, e das traduções desses dois arquivos, todos os outros markdowns desse repositório devem ser escritos em inglês. Futuras traduções do `MANIFESTO.md` moram em `MANIFESTO/` e do `FAQ.md` em `FAQ/` — e esses dois diretórios são a exceção à regra do inglês, não o contrário. Os códigos de idioma seguem o formato POSIX (`pt_BR`, `en_US`), alinhados ao módulo de `i18n`. Não é BCP 47.
 
 - Todo código, incluindo comentários, chaves de objetos, variáveis, métodos e nomes de arquivos serão em Inglês Estadunidense (`en_US`). No geral, os arquivos de código não têm objetivo de serem lidos por usuários finais, apenas auditados por desenvolvedores. Então é mais vantajoso manter a base em inglês para o processamento da LLM. Essa regra vale para o que é versionado no repositório; não vale para os arquivos que o Bill gera na Pasta de Trabalho.
 
-- A interface toda segue `i18n`. Nenhuma string é salva diretamente no código, seja backend ou frontend. A fonte da verdade é o módulo de `i18n`, que organiza os textos em grandes blocos, evitando um `pt_BR.json` gigante que a LLM precisa ler o tempo todo. Os blocos são empacotados no binário; o que fica na Pasta de Trabalho é só o idioma ativo, em `.bill/i18n/active`.
+- A interface toda segue `i18n`. Nenhuma string é salva diretamente no código, seja backend ou frontend — `cli`, WebApp e Wizard. A fonte da verdade é o módulo de `i18n`, que organiza os textos em grandes blocos, evitando um `pt_BR.json` gigante que a LLM precisa ler o tempo todo. Os blocos são empacotados no binário; o que fica na Pasta de Trabalho é só o idioma ativo, em `.bill/i18n/active`.
 
 - Por padrão a LLM deve gerar textos a fim de popular o `i18n` em `pt_BR` originalmente e `en_US` como tradução. Essa separação se faz com objetivo de que, na maior parte do tempo, estarei dando foco nos textos em `pt_BR` e não tanto para `en_US`.
 
-- Na `cli`, mensagens e ajuda saem sempre pelo `i18n`. O comando `bill lang pt_BR --include-subcommands` estende a tradução aos nomes dos subcomandos, o que não é comum, e por isso fica como opcional.
-
-- Toda interface respeita o `i18n`. `cli`, WebApp e Wizard.
+- Na `cli`, mensagens e ajuda saem sempre pelo `i18n`. O comando `bill lang pt_BR --include-subcommands` estende a tradução aos nomes dos subcomandos, o que não é comum, e por isso fica como opcional. A resolução do idioma é `$BILL_LANG` → `.bill/i18n/active` → locale do sistema → `en_US`, e toda superfície reporta de onde ele veio.
 
 ### Código e delivery
 
-- Bill é escrito em `Python 3.14.7`. Todo seu estilo de código é baseado em `PEP 8`. A ideia é que ele seja entregue em um binário único: Windows, Linux e Mac. Seu versionamento é SemVer, mas o binário sempre é entregue como `bill.exe`, por exemplo.
+- Bill é escrito em `Python 3.14`. Todo seu estilo de código é baseado em `PEP 8`. A ideia é que ele seja entregue em um binário único: Windows, Linux e Mac. Seu versionamento é SemVer, e o artefato carrega esse número — no Windows ele sai como `bill.exe`, nos outros como `bill`.
 
-- A atualização é substituir o binário. Como ele carrega o manifesto das imagens fixadas, ao subir depois da troca ele re-verifica as imagens dos serviços e re-pina o que estiver defasado. Se a estrutura precisar mudar, ele o faz na primeira subida depois da atualização.
+- A atualização é substituir o binário. Como ele carrega o manifesto das imagens fixadas, ao subir depois da troca ele re-verifica as imagens dos serviços e re-pina o que estiver defasado — o pin anda só para frente e nunca para trás. Uma instância à frente do pin do binário **avisa e segue**: não é rebaixada. Manter tudo atualizado, e sem falha de segurança, é gestão minha, não do binário.
+
+- Toda atualização que mude estrutura traz a sua **migration**, e ela roda na primeira subida depois da troca do binário. A pasta sabe até onde já migrou, e esse carimbo mora em `.bill/` — onde o produto escreve e você não —, nunca dentro da declaração publicada. A declaração continua sendo dado puro, que você edita; o que os dois autores assinam fica separado.
+
+- A migration **nunca sobrescreve o que já existe**: ela adiciona o que falta e reporta o que pulou. Numa colisão, quem manda é a sua edição, e o Bill avisa em vez de escolher por você — a mesma escolha do pin das imagens. E uma migration publicada **não se edita**: pastas já a rodaram, e correção vira a migration seguinte.
 
 - Os comentários no código explicam apenas o que o código não fala por si: por que aquele trecho é necessário e, quando não for óbvio, o que ele faz. Para histórico, usamos `git`. Não é necessário anotar datas de decisões. Veja, o código deve falar por si só (como o [xadrez fala por si só](https://pt.wikipedia.org/wiki/Controv%C3%A9rsia_Magnus_Carlsen%E2%80%93Hans_Niemann)). Se precisarmos de quilos de comentários, talvez ele não esteja tão bem escrito assim.
 
 - O binário mora na pasta e essa pasta é do binário. Ela é a Pasta de Trabalho. Se você abrir o binário dentro da pasta de `Downloads`, a pasta de `Downloads` é dele. No primeiro carregamento você será avisado de que: "o Bill foi aberto na pasta <pasta>. Como não existe um arquivo `.bill/settings.json` aqui, entende-se que é uma nova Pasta de Trabalho. Confirma que o Bill utilize essa pasta? Recomenda-se a utilização de uma pasta vazia, em qualquer local do seu computador. Cancele e mova o arquivo para outra pasta, se não concordar.". Ou algo do gênero.
 
+- Sem terminal para perguntar não há primeira execução: o Bill encerra com código `1` em vez de assumir uma pasta. E recusar não cria nada — o Bill diz onde mover o binário e sai sem erro, porque recusar não é erro.
+
 ### Permissão de acesso
 
-- O Bill, por padrão, é arquitetado para ser executado sem permissões de administração (i.e. não usa `root` ou `Administrador`). Contudo, em alguns momentos, para configurar Podman e VPN, inevitavelmente será necessário. Nesses casos a elevação de privilégio acontecerá por um pedido explícito.
+- O Bill, por padrão, é arquitetado para ser executado sem permissões de administração (i.e. não usa `root` ou `Administrador`). Contudo, montar o ambiente do §6 inevitavelmente exige elevação em algum momento. Nesses casos a elevação de privilégio acontecerá por um pedido explícito, com a razão à mostra.
+
+- A lista fechada do que exige elevação não se escreve antes da função: ela nasce com a implementação que a pede. Cada item que entrar nela é uma decisão de segurança e passa por esta seção.
 
 ### Portabilidade
 
-- O dado é sempre POSIX. `LF` ou `/`. Conversões para Windows apenas para exibição (como na mensagem da seção anterior) ou para as `syscalls`.
+- O dado é sempre POSIX. `LF` ou `/`. Conversões para Windows apenas para exibição (como na mensagem de boas-vindas da Pasta de Trabalho, acima) ou para as `syscalls`.
 
 ### Dependência externa
 
-- Dependência a pacotes e imagens são fixadas em versão e hashing, seja no uso de imagens externas.
+- Dependência a pacotes e imagens são fixadas em versão e hashing — seja de pacotes, seja de imagens externas.
 
 ## 4. Arquitetura [normativo]
 
@@ -116,7 +126,7 @@ O Bill por natureza quer montar um ambiente container completo na sua máquina. 
 
 - O Bill é estruturado em camadas. O `core` trata todas as regras da aplicação. Não é um bloco monolítico: é quebrado em módulos e arquivos conforme o assunto. Mas tudo passa por ele.
 
-- A `ui` é uma forma de camada, mas tem mais. O Bill já nasce com duas: `cli` e WebApp. Ambas só são formas diferentes de interagir com o `core`. Nem tudo feito pelo `cli` está disponível no WebApp. Mas tudo no `WebApp + Wizard` está disponível no cli.
+- A `ui` é uma forma de camada, mas tem mais. O Bill já nasce com três: `cli`, WebApp e Wizard. Todas só são formas diferentes de interagir com o `core`. Nem tudo feito pelo `cli` está disponível no WebApp. Mas tudo no `WebApp + Wizard` está disponível no cli.
 
 - Outra camada muito importante é `data`. Essa camada fica responsável por acessar as tabelas. Dados estruturados salvos em `.jsonl` dentro da pasta `./data`. A pasta `./data` é criada automaticamente na primeira execução, com as tabelas de sistema vigentes.
 
@@ -128,17 +138,17 @@ O Bill por natureza quer montar um ambiente container completo na sua máquina. 
 
 ### Tabelas
 
-- O Bill possui um motor próprio de gestão de dados estruturados. Aqui é usado o termo Tabela, ou `table` internamente. É usado `.jsonl` para armazenar e `.json` para schema. Logo `data/tasks.jsonl` é a tabela em si e `data/schema/tasks.json` o esquema dela.
+- O Bill possui um motor próprio de gestão de dados estruturados. Aqui é usado o termo Tabela, ou `table` internamente. A identidade da tabela é um id, e o id é singular (`task`, `project`, `reminder`, `secret`, `user`): é ele que nomeia a tabela em todo lugar, inclusive no comando (`bill task list`) e no esquema. O arquivo de linhas é que vai no plural. Logo `data/tasks.jsonl` é a tabela em si e `data/schema/task.json` o esquema dela.
 
-- As tabelas `tasks`, `projects`, `reminders` e `secrets` são padrão do sistema. Servem para entregar uma funcionalidade inerente. Tabelas de sistema não são deletáveis, mas suas linhas são.
+- As tabelas `task`, `project`, `reminder`, `secret` e `user` são padrão do sistema. Servem para entregar uma funcionalidade inerente. Tabelas de sistema não são deletáveis, mas suas linhas são.
 
 - Tabelas de usuário permitem CRUD completa da própria tabela. 
 
-- O schema de tabela tem muitas funcionalidades, como campos padrão na exibição, ordem padrão na exibição de tabelas, IDs autoincrementais. Os rótulos de exibição que ele carrega são chaves de `i18n`, nunca o texto final.
+- O schema de tabela tem muitas funcionalidades, como campos padrão na exibição e ordem padrão na exibição de tabelas. Os rótulos de exibição que ele carrega são chaves de `i18n`, nunca o texto final. O contador de ids não mora no esquema: ele conta o que aconteceu nesta pasta, e o esquema é publicado — então ele vive em `.bill/counters.json`, e é escrito antes da linha, porque um id entregue está gasto mesmo se a escrita seguinte falhou.
 
 ### Gestão de segredos
 
-- Para executar certas ações, como acessar APIs de serviços externos, o Bill precisa ter acesso a segredos. Todos os segredos são escritos na tabela `secrets`. Lá estão metadados e o segredo em si, salvo de forma criptografada. Qualquer dado sensível a ser salvo em alguma tabela pode ser salvo de forma criptografada.
+- Para executar certas ações, como acessar APIs de serviços externos, o Bill precisa ter acesso a segredos. Todo segredo que o Bill **guarda** é escrito na tabela `secret` — segredo de usuário ele não guarda (§3, Segurança). Lá estão metadados e o segredo em si, salvo de forma criptografada. Qualquer dado sensível a ser salvo em alguma tabela pode ser salvo de forma criptografada.
 
 - A criptografia do bill é a partir de uma chave principal gerada a partir de uma frase de acesso. Essa frase de acesso precisa ter no mínimo 16 caracteres, mas é uma frase. Mariazinha comeu todo o pudim, escrito em letras minúsculas sem espaços é mais seguro que Mariazinha@123. Bill usa `libsodium` para essa gestão.
 
@@ -152,17 +162,17 @@ O Bill por natureza quer montar um ambiente container completo na sua máquina. 
 
 - O Wizard Tkinter exibe as possibilidades de instalação do ambiente. No modo avançado habilitado, o Wizard apresenta a renderização do arquivo de configurações, permitindo modificar quaisquer uma. Segue a escolha de designer de algumas ferramentas, como VS Code, que possuem a base das configurações em JSON, mas permitem a alteração na UI.
 
-- Cada serviço pode ter dados persistidos. Nesse caso, eles moram em `.bill/<serviço>`, como `.bill/vpn` ou `.bill/spelling-checker`.
+- Cada serviço pode ter dados persistidos. Nesse caso, eles moram em `.bill/<serviço>`, como `.bill/vpn` ou `.bill/spelling-checker`. O nome do serviço é canônico e não muda com a ferramenta que o cumpre: `spelling-checker` é o serviço, LanguageTool é quem o cumpre hoje (§6d), e o que um dia o substituir não renomeia pastas nem chaves. O que é rótulo de exibição é chave de `i18n`.
 
 ## 5. Interfaces [normativo]
 
 ### Linha de comando (`cli`), aplicação web (WebApp) e interface Tkinter (Wizard)
 
-- O arquivo binário do Bill é único. Ao abrir, seja em linha de comando, seja direto pela interface gráfica, temos o "Painel de Controle". É uma interface em Tkinter, o Wizard. Aqui são configuradas as "entranhas" do ambiente do Bill, sendo sua primeira camada a aplicação web.
+- Ao abrir o Bill, seja em linha de comando, seja direto pela interface gráfica, temos o "Painel de Controle". É uma interface em Tkinter, o Wizard. Aqui são configuradas as "entranhas" do ambiente do Bill, sendo sua primeira camada a aplicação web.
 
 - A linha de comando funciona para tudo do Bill. Qualquer funcionalidade que ele exponha, seja na API REST (utilizada pelo frontend do WebApp), seja no WebApp em si, é acessível pela linha de comando.
 
-- O Wizard é uma tela que permite realizar configurações mais críticas do Bill que eu não queria deixar disponível na rede. Instalar serviços e gerenciar chaves principais são algumas dessas funcionalidades separadas.
+- O Wizard é uma tela que permite realizar configurações mais críticas do Bill que eu não queria deixar disponível na rede. Instalar serviços, gerenciar chaves principais e provisionar usuário (§6b) são algumas dessas funcionalidades.
 
 - O `cli` executa apenas localmente, em exceção quando está comunicando com APIs externas para devida configuração.
 
@@ -172,7 +182,7 @@ O Bill por natureza quer montar um ambiente container completo na sua máquina. 
 
 - O Design System é de desenvolvimento da LLM. Crescimento gradual de componentes.
 
-- Suporte a temas é a uma parte estrutural do Bill. Vários temas me ajudam a testar a força do Design System em cima de diferentes visões. Ao mesmo tempo que me fazem ficar feliz de usar o sistema. PRs de tema são bem-vindas, mas estão totalmente sujeitas ao meu julgamento pessoal e ficarei feliz em compartilhar meu péssimo gosto, se não quiser aceitar uma PR. Mas não se acanhe!
+- O suporte a temas é parte estrutural do Bill. Vários temas me ajudam a testar a força do Design System em cima de diferentes visões. Ao mesmo tempo que me fazem ficar feliz de usar o sistema. PRs de tema são bem-vindas, mas estão totalmente sujeitas ao meu julgamento pessoal e ficarei feliz em compartilhar meu péssimo gosto, se não quiser aceitar uma PR. Mas não se acanhe!
 
 #### Templates
 
@@ -194,11 +204,15 @@ O Bill por natureza quer montar um ambiente container completo na sua máquina. 
 
 - É uma função complexa com muita possibilidade de erro e de falha de segurança. As decisões de segurança que a cercam estão em [Segurança](#segurança).
 
-- Podman é considerado para containers. `dnsmasq` e `caddy` são os primeiros serviços. O primeiro para customizar as urls de acesso e o segundo para publicar o Bill.
+- Podman é o escolhido para containers. `dnsmasq` e `caddy` são os primeiros serviços. O primeiro para customizar as urls de acesso e o segundo para publicar o Bill.
 
 #### b. Instalar autenticador como container (obrigatório)
 
-- O Bill não tem um autenticador próprio. Ele executa sem senha alguma. Para proteger o Bill é preciso utilizar um autenticador externo. Aqui a recomendação é Authelia. Ele ficará responsável pela autenticação de todos os serviços existentes aqui. Como parte do ambiente seguro, o autenticador é necessário para rodar o Bill na rede. A `cli` e o Wizard são locais e não passam por ele.
+- O Bill não tem um autenticador próprio. Ele executa sem senha alguma. Para proteger o Bill é preciso utilizar um autenticador externo. Aqui a recomendação é Authelia. Ele ficará responsável pela autenticação de todos os serviços existentes aqui.
+
+- A divisão é: **quem** é usuário é do Bill, e **como** se prova que é ele é do Authelia. A tabela `user` (§4) guarda a identidade e nada mais. Criar um usuário ou trocar uma senha escreve no Authelia e não guarda o segredo do lado do Bill (§3, Segurança). Essa escrita é o único ponto em que o Bill encosta na fronteira da autenticação, e por isso ela mora no Wizard, que é local.
+
+- Como parte do ambiente seguro, o autenticador é necessário para rodar o Bill na rede. A `cli` e o Wizard são locais e não passam por ele.
 
 #### c. Instalar WebApp como container (obrigatório)
 
@@ -206,7 +220,7 @@ O Bill por natureza quer montar um ambiente container completo na sua máquina. 
 
 #### d. Instalar corretor ortográfico e gramatical como container (opcional)
 
-- O padrão do Bill para correção de textos é LanguageTool. Ela serve para sublinhar os erros na tela de edição. Bem útil.
+- O padrão do Bill para correção de textos é LanguageTool, hoje a ferramenta que cumpre o serviço `spelling-checker` (§4). Ela serve para sublinhar os erros na tela de edição. Bem útil.
 
 #### e. Instalar VPN (opcional)
 
@@ -228,10 +242,14 @@ O Bill por natureza quer montar um ambiente container completo na sua máquina. 
 
 ## 7. Modo avançado [normativo]
 
-- O comando `bill webapp` abre a aplicação web. Você pode configurar como serviço manualmente caso não for usar o modo padrão. O Bill WebApp possui autenticação `basic`. É preciso definir no arquivo de configurações manualmente, ou nas edições avançadas do Wizard. Essa função é utilizada para o Authelia comunicar com Bill WebApp de forma segura, mas não foi pensada para ser usada por usuários finais.
+- O comando `bill webapp` abre a aplicação web. Você pode configurar como serviço manualmente caso não for usar o modo padrão. O Bill WebApp possui autenticação `basic`. É preciso definir no arquivo de configurações manualmente, ou nas edições avançadas do Wizard. Essa função é utilizada para o Authelia comunicar com Bill WebApp de forma segura, mas não foi pensada para ser usada por usuários finais — e configurá-la não autoriza expor o Bill: a exposição na rede continua exigindo o autenticador (§6b).
 
 - Chamar o binário direto do terminal carrega a interface Tkinter. Qualquer outro parâmetro passado faz o programa agir como uma `cli`. `bill ajuda`, ou `bill help`, mostra como usar a cli completamente. Você pode modificar nas configurações para o comando `bill` não abrir o Tkinter e sim o `bill help`.
 
 ## 8. Ambiente de teste end-to-end [normativo]
 
 - O teste principal é verificar se, com o Podman instalado, executar as ações do Bill funciona perfeitamente. Esse teste acontecerá em VMs Mac, Linux e Windows.
+
+- Ele é **automatizado de ponta a ponta**: nenhuma parte depende de olho ou de mão numa tela. O script sobe a VM, abre o binário e verifica o que voltou — Podman ausente é recusado com a instrução de instalação; Podman presente sobe o ambiente com as imagens no pin; uma instância à frente do pin avisa e segue; o Bill recusa subir na rede sem o autenticador e sobe com ele; o WebApp responde atrás do autenticador; e a Pasta de Trabalho criada na primeira execução é só o que o §3 descreve.
+
+- O teste **não é o critério de pronto de cada função** — uma função fica pronta pelo que o `BACKLOG.md` diz que ela é. Ele é o portão da primeira publicação no GitHub, e dali em diante.
