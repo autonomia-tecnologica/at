@@ -1,6 +1,6 @@
 # Functionalities
 
-A functionality is what the [glossary](glossary.md) defines: a capability the person recognizes, with levels and dependencies. The rule that governs it is the one in `README` §3 (The security posture). This document repeats neither — it carries what belongs to each functionality: the levels, what each level costs, and what it drags.
+A functionality is what the [glossary](glossary.md) defines: a capability the person recognizes, with levels and dependencies. The rule that governs it is the one in §3 (The security posture). This document repeats neither — it carries what belongs to each functionality: the levels, what each level costs, and what it drags.
 
 ## What exists today
 
@@ -8,7 +8,7 @@ The floor is `S`. Every functionality is born there, and what brings it down is 
 
 ## Push notifications
 
-The first functionality with more than one way of being used. The service is `notifier`, and today whoever fulfils it is `ntfy` (`README` §7f).
+The first functionality with more than one way of being used. The service is `notifier`, and today whoever fulfils it is `ntfy` (§7f).
 
 **The levels, and what each one costs:**
 

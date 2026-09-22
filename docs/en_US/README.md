@@ -60,7 +60,7 @@ But beyond that, Bill is a minimalist working environment — minimum to be **fu
 
 ### Does Bill reinvent the wheel?
 
-Yes, it does. There are many more advanced applications for specific parts of Bill. If you understand that your Project cannot be managed here, and that you need far more functions, I understand you, and unfortunately Bill is not for you. But for me it is more than enough. At first I had defined that tasks were not deleted. They had to be cancelled, to keep history. I find that valid, and the function exists. But if I want to delete, I can. More details on [tables](#tables) below. There are tools like Obsidian and AnyType for files and structured data. Those tools are fantastic and I do not want to replace them.
+Yes, it does. There are many more advanced applications for specific parts of Bill. If you understand that your Project cannot be managed here, and that you need far more functions, I understand you, and unfortunately Bill is not for you. But for me it is more than enough. At first I had defined that tasks were not deleted. They had to be cancelled, to keep history. I find that valid, and the function exists. But if I want to delete, I can. More details on [tables](architecture.md#tables) below. There are tools like Obsidian and AnyType for files and structured data. Those tools are fantastic and I do not want to replace them.
 
 ### Where to run Bill
 
@@ -206,7 +206,7 @@ The panel has the entries:
 
 - This is the main switch of the environment. The person needs Podman installed. Bill checks whether it exists and, if it does not, offers the two ways out: install Podman, or continue on the hosted path. It does not install Podman on its own. From there on, Bill orchestrates the environment and the services, which come up as containers from pinned images.
 
-- It is a complex function with a lot of room for error and for a security failure. The security decisions around it are in [Security](#security).
+- It is a complex function with a lot of room for error and for a security failure. The security decisions around it are in [Security](rules.md#security).
 
 - Podman is the choice for containers. `dnsmasq` and Caddy are the first services. The first to customize the access urls and the second to publish Bill, now in a container, for the isolation.
 
@@ -279,5 +279,5 @@ The panel has the entries:
 Three debts were born from the decisions of this session, and all three are named so they do not become a surprise:
 
 - **The code.** Nothing that was decided here is built: the actor, the audit, the demand filter, the posture, the interpreter, the plugins. Every one of them has an item in `docs/en_US/backlog.md`.
-- **The checker's list.** It was born large — 217 words in Portuguese and 131 in English — and the reason is written in its header: the checker's dictionary comes from subtitle frequencies and gets the formal register wrong, where "seção", "deleção" and "registrar" do not appear. If that list grows on its own, the gate became decoration, and the diff is where one notices.
+- **The checker's list.** It was born large — 220 words in Portuguese and 141 in English — and the reason is written in its header: the checker's dictionary comes from subtitle frequencies and gets the formal register wrong, where "seção", "deleção" and "registrar" do not appear. If that list grows on its own, the gate became decoration, and the diff is where one notices.
 - **The `FAQ.md`.** It does not exist yet, and it now has work waiting: saying what is underneath — which screen is Bill's and which is a third party's — and that writing well is the best remedy against a misunderstanding of the interpreter.

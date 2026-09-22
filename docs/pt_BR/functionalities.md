@@ -1,6 +1,6 @@
 # Funcionalidades
 
-Uma funcionalidade é o que o [glossário](glossary.md) define: uma capacidade que a pessoa reconhece, com níveis e dependências. A regra que a governa é a do `README` §3 (A postura de segurança). Este documento não repete nenhuma das duas — carrega o que é de cada funcionalidade: os níveis, o que cada nível custa, e o que ela arrasta.
+Uma funcionalidade é o que o [glossário](glossary.md) define: uma capacidade que a pessoa reconhece, com níveis e dependências. A regra que a governa é a do §3 (A postura de segurança). Este documento não repete nenhuma das duas — carrega o que é de cada funcionalidade: os níveis, o que cada nível custa, e o que ela arrasta.
 
 ## O que existe hoje
 
@@ -8,7 +8,7 @@ O piso é `S`. Toda funcionalidade nasce nele, e o que o derruba é sempre uma e
 
 ## Notificações push
 
-A primeira funcionalidade com mais de um jeito de ser usada. O serviço é o `notifier`, e hoje quem o cumpre é o `ntfy` (`README` §7f).
+A primeira funcionalidade com mais de um jeito de ser usada. O serviço é o `notifier`, e hoje quem o cumpre é o `ntfy` (§7f).
 
 **Os níveis, e o que cada um custa:**
 

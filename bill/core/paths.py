@@ -1,6 +1,6 @@
 """The Working Folder, and the paths that live inside it.
 
-The rule is the README's (§3, Código e delivery): the folder the binary was
+The rule comes from §3 (Código e delivery): the folder the binary was
 opened in is the binary's folder, and that folder is the Working Folder.
 
 `BILL_ROOT` overrides the resolution so a test — or a developer running

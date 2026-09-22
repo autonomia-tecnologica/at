@@ -9,25 +9,25 @@
 - Decisions in force. The line is the decision; the detail lives where the link points:
   - Without authentication, Bill listens only on `127.0.0.1`; exposed demands authentication — [Access and exposure](#access-and-exposure).
   - Exposed demands TLS, and TLS only exists with Caddy: `bill webapp` without the flag is HTTP on the local loop — [Access and exposure](#access-and-exposure).
-  - Bill has an authenticator of its own, with four ways in, all of them ending at an actor: local Forms, Basic, machine credential and the identity the gate asserts — [Interfaces](#5-interfaces-normative), [Tables](#tables).
-  - The actor's credential lives hashed in its own row, with `libsodium`; Basic and Forms are the **same** credential, and what separates them is the transport — [Tables](#tables).
-  - No secret lives in `settings.json`: it holds permission and adjustment, never a credential — [General settings](#general-settings).
-  - Every function of the core API is protected by RBAC; the permission is `object:action`, a role is a set of permissions, and a machine credential has a declared role — [Tables](#tables).
-  - The first admin is born on the first start, with a terminal in front; with no actor at all Bill does not expose — [Interfaces](#5-interfaces-normative).
-  - Role and permission are a WebApp screen, and only an admin touches them — [Interfaces](#5-interfaces-normative).
-  - **Installing a service is the Wizard's and only the Wizard's** — [Interfaces](#5-interfaces-normative).
-  - A machine secret is stored hashed, with a role; a secret Bill **uses**, such as a service credential, is stored encrypted in the `secret` table — [Secret management](#secret-management).
+  - Bill has an authenticator of its own, with four ways in, all of them ending at an actor: local Forms, Basic, machine credential and the identity the gate asserts — [Interfaces](README.md#5-interfaces-normative), [Tables](architecture.md#tables).
+  - The actor's credential lives hashed in its own row, with `libsodium`; Basic and Forms are the **same** credential, and what separates them is the transport — [Tables](architecture.md#tables).
+  - No secret lives in `settings.json`: it holds permission and adjustment, never a credential — [General settings](architecture.md#general-settings).
+  - Every function of the core API is protected by RBAC; the permission is `object:action`, a role is a set of permissions, and a machine credential has a declared role — [Tables](architecture.md#tables).
+  - The first admin is born on the first start, with a terminal in front; with no actor at all Bill does not expose — [Interfaces](README.md#5-interfaces-normative).
+  - Role and permission are a WebApp screen, and only an admin touches them — [Interfaces](README.md#5-interfaces-normative).
+  - **Installing a service is the Wizard's and only the Wizard's** — [Interfaces](README.md#5-interfaces-normative).
+  - A machine secret is stored hashed, with a role; a secret Bill **uses**, such as a service credential, is stored encrypted in the `secret` table — [Secret management](architecture.md#secret-management).
   - Bill authenticates to the services instead of taking advantage of being on the same machine: an administrative credential exists where it is necessary, and it counts in the posture — [The security posture](#the-security-posture).
-  - A service that talks to Bill gets a delimited scope — least privilege: the compromise of a service reaches its function and nothing else — [Container path](#7-container-path-the-steps-normative).
-  - Identity arriving through the gate is only valid with the gate secret: Bill draws a secret per installation, writes it into the Caddyfile it generates itself, and refuses identity without it — [Install the identity provider as a container](#b-install-the-identity-provider-as-a-container-required).
-  - Forms stays on until Authelia is proven to work in front of Bill; the switch is a set that commits or rolls back — [The switch between paths](#the-switch-between-paths).
-  - A fallen gate closes Bill: it says the authentication portal is unavailable, and the way back to Forms mode is the Wizard or the `cli`, both local — [The switch between paths](#the-switch-between-paths).
+  - A service that talks to Bill gets a delimited scope — least privilege: the compromise of a service reaches its function and nothing else — [Container path](README.md#7-container-path-the-steps-normative).
+  - Identity arriving through the gate is only valid with the gate secret: Bill draws a secret per installation, writes it into the Caddyfile it generates itself, and refuses identity without it — [Install the identity provider as a container](README.md#b-install-the-identity-provider-as-a-container-required).
+  - Forms stays on until Authelia is proven to work in front of Bill; the switch is a set that commits or rolls back — [The switch between paths](README.md#the-switch-between-paths).
+  - A fallen gate closes Bill: it says the authentication portal is unavailable, and the way back to Forms mode is the Wizard or the `cli`, both local — [The switch between paths](README.md#the-switch-between-paths).
   - Every action leaves one line in the `audit` table, and a refusal is one of them — [The audit](#the-audit).
-  - What is proved is stored hashed; what Bill uses is stored encrypted — [Tables](#tables).
-  - The persistent state of every service lives in the Working Folder; a service whose state does not fit there does not come in — [Container path](#7-container-path-the-steps-normative).
-  - **No extension executes code today.** The first class is pure data, and code is the last option — [Extensions](#8-extensions-and-plugins-normative).
-  - The theme of the authentication portal is not Bill's: it stays as neutral as possible, and the `FAQ.md` explains what is underneath — [Interfaces](#5-interfaces-normative).
-  - Authenticator, WebApp, checker, notifier and VPN run in isolated containers on the container path — [Container path](#7-container-path-the-steps-normative).
+  - What is proved is stored hashed; what Bill uses is stored encrypted — [Tables](architecture.md#tables).
+  - The persistent state of every service lives in the Working Folder; a service whose state does not fit there does not come in — [Container path](README.md#7-container-path-the-steps-normative).
+  - **No extension executes code today.** The first class is pure data, and code is the last option — [Extensions](README.md#8-extensions-and-plugins-normative).
+  - The theme of the authentication portal is not Bill's: it stays as neutral as possible, and the `FAQ.md` explains what is underneath — [Interfaces](README.md#5-interfaces-normative).
+  - Authenticator, WebApp, checker, notifier and VPN run in isolated containers on the container path — [Container path](README.md#7-container-path-the-steps-normative).
   - Execution is without privilege, with elevation only on explicit request — [Privilege](#privilege).
   - Packages and images are pinned in version and hashing — [External dependency](#external-dependency).
 

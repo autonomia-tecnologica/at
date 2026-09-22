@@ -1,10 +1,10 @@
 # Derivation
 
-The derived half of the founding document: the tree, the Working Folder and the operation. Each section here is `derivation §N`, and the `README §N` references point at the [founding document](README.md), which binds.
+The derived half of the founding document: the tree, the Working Folder and the operation. Each section here is `derivation §N`, and the `§N` references point at the article with that id, wherever it lives.
 
 ## 1. The repository tree
 
-Each node with its job, and none resolves a path of its own beyond `core` (`README` §4).
+Each node with its job, and none resolves a path of its own beyond `core` (§4).
 
 ```
 bill/                          the product: the engine, the declarations and the UI
@@ -40,11 +40,15 @@ bill/                          the product: the engine, the declarations and the
 docs/                          the documents
 ├── pt_BR/                     the source: the documents written in Portuguese
 │   ├── README.md              the founding document, which binds
+│   ├── rules.md               the rules that bind (§3)
+│   ├── architecture.md        the architecture that binds (§4)
 │   ├── derivation.md          the derivation: the tree, the Working Folder and the operation
 │   ├── functionalities.md     what the grade measures: the functionalities, levels and grades
 │   └── glossary.md            what a name means, term by term
 └── en_US/                     the translation: the same documents, in English
     ├── README.md              the founding document's translation, which moves along with it
+    ├── rules.md               its translation, which moves along with it
+    ├── architecture.md        its translation, which moves along with it
     ├── derivation.md          its translation, which moves along with it
     ├── functionalities.md     its translation, which moves along with it
     ├── glossary.md            its translation, which moves along with it
@@ -55,7 +59,7 @@ docs/                          the documents
 
 ## 2. The Working Folder
 
-The folder the binary was opened in is the binary's folder, and that folder is the Working Folder (`README` §3). On the first run Bill describes the folder and asks before writing anything; `app/settings.json` is what makes a folder configured.
+The folder the binary was opened in is the binary's folder, and that folder is the Working Folder (§3). On the first run Bill describes the folder and asks before writing anything; `app/settings.json` is what makes a folder configured.
 
 A folder is born with:
 
@@ -64,7 +68,7 @@ app/settings.json         the instance's key-value configuration
 app/i18n/active           the chosen language — the catalogs travel in the product
 app/counters.json         the last id handed out per table
 app/plugins/              the extensions, and the review state of each one
-app/services/<service>/   the persistent state of each service (`README` §4)
+app/services/<service>/   the persistent state of each service (§4)
 data/schema/*.json        the system tables, written in from the product
 data/*.jsonl              the rows (they arrive with the first write)
 prose/                    everything that is not structured data, with a welcome note
@@ -104,9 +108,9 @@ Surfaces, and the state of each one today:
 
 Exit codes: `0` success · `1` refused or failed · `2` usage error.
 
-Python 3.14.7 with no runtime dependency at all. A dependency arrives pinned in version and hashing (`README` §3), and starting from zero is how that promise is kept cheap. There are two deliberate exceptions, both on the development side: the WebApp's hosted typefaces, in `bill/ui/webapp/vendor/`, with the hash the manifest pins; and the documents' checker, which runs in the suite and is therefore a tool, not an installation — it cannot demand from another dev or from the runner anything that does not come pinned inside `.venv`.
+Python 3.14.7 with no runtime dependency at all. A dependency arrives pinned in version and hashing (§3), and starting from zero is how that promise is kept cheap. There are two deliberate exceptions, both on the development side: the WebApp's hosted typefaces, in `bill/ui/webapp/vendor/`, with the hash the manifest pins; and the documents' checker, which runs in the suite and is therefore a tool, not an installation — it cannot demand from another dev or from the runner anything that does not come pinned inside `.venv`.
 
-The suite runs the document gate (`README` §3, Internationalization), and its checker is installed once:
+The suite runs the document gate (§3, Internationalization), and its checker is installed once:
 
 ```sh
 .venv/bin/pip install --require-hashes -r requirements-dev.txt
@@ -114,7 +118,7 @@ The suite runs the document gate (`README` §3, Internationalization), and its c
 
 ### The page
 
-The page is a **Vue 3 + TypeScript** app, built by Vite (`README` §5). The build is derivation, never edited:
+The page is a **Vue 3 + TypeScript** app, built by Vite (§5). The build is derivation, never edited:
 
 ```sh
 cd bill/ui/webapp
@@ -127,14 +131,14 @@ Two settings in `vite.config.ts` are not taste: the modulepreload polyfill and t
 ### The single binary
 
 ```sh
-# build-time only, never a runtime dependency; both pinned (`README` §3) because the
+# build-time only, never a runtime dependency; both pinned (§3) because the
 # hooks ship separately from the freezer and float on their own
 .venv/bin/pip install 'pyinstaller==6.22.3' 'pyinstaller-hooks-contrib==2026.7'
 .venv/bin/pyinstaller --clean --noconfirm bill.spec   # writes dist/bill
 ```
 
-**It builds on Linux only.** PyInstaller is not a cross-compiler and cannot be: it freezes by executing code from the *target* interpreter at build time. So Windows and macOS binaries need their own builds on their own runners (`README` §9), and `bill.spec` is written to be the file all three of them share.
+**It builds on Linux only.** PyInstaller is not a cross-compiler and cannot be: it freezes by executing code from the *target* interpreter at build time. So Windows and macOS binaries need their own builds on their own runners (§9), and `bill.spec` is written to be the file all three of them share.
 
-The binary is one file because that is what the founding document promises (`README` §3), and the price is that the whole payload — Tcl/Tk included — is re-extracted on every launch, so cold start is slower than a directory build would be.
+The binary is one file because that is what the founding document promises (§3), and the price is that the whole payload — Tcl/Tk included — is re-extracted on every launch, so cold start is slower than a directory build would be.
 
 The Working Folder does not depend on that choice: `paths.working_folder()` resolves from `sys.executable`, which is the launched binary under `--onedir` too, so the folder the binary sits in is the folder it works in either way. Run it from anywhere and it still works on its own folder. Note that `bill` with no word opens the Tkinter Wizard, so a headless check wants `bill <word>`.

@@ -1,10 +1,10 @@
 # Derivação
 
-A metade derivada do documento fundador: a árvore, a Pasta de Trabalho e a operação. Cada seção aqui é `derivation §N`, e as referências `README §N` apontam para o [documento fundador](README.md), que vincula.
+A metade derivada do documento fundador: a árvore, a Pasta de Trabalho e a operação. Cada seção aqui é `derivation §N`, e as referências `§N` apontam para o artigo com esse id, onde ele estiver.
 
 ## 1. A árvore do repositório
 
-Cada nó com o seu trabalho, e nenhum resolve um caminho por conta própria além do `core` (`README` §4).
+Cada nó com o seu trabalho, e nenhum resolve um caminho por conta própria além do `core` (§4).
 
 ```
 bill/                          o produto: o motor, as declarações e a UI
@@ -40,11 +40,15 @@ bill/                          o produto: o motor, as declarações e a UI
 docs/                          os documentos
 ├── pt_BR/                     a fonte: os documentos escritos em português
 │   ├── README.md              o documento fundador, que vincula
+│   ├── rules.md               as regras que vinculam (§3)
+│   ├── architecture.md        a arquitetura que vincula (§4)
 │   ├── derivation.md          a derivação: a árvore, a Pasta de Trabalho e a operação
 │   ├── functionalities.md     o que a nota mede: as funcionalidades, níveis e notas
 │   └── glossary.md            o que um nome significa, termo a termo
 └── en_US/                     a tradução: os mesmos documentos, em inglês
     ├── README.md              a tradução do documento fundador, que anda junto
+    ├── rules.md               a tradução dela, que anda junto
+    ├── architecture.md        a tradução dela, que anda junto
     ├── derivation.md          a tradução dela, que anda junto
     ├── functionalities.md     a tradução dela, que anda junto
     ├── glossary.md            a tradução dela, que anda junto
@@ -55,7 +59,7 @@ docs/                          os documentos
 
 ## 2. A Pasta de Trabalho
 
-A pasta em que o binário foi aberto é a pasta do binário, e essa pasta é a Pasta de Trabalho (`README` §3). Na primeira execução o Bill descreve a pasta e pergunta antes de escrever qualquer coisa; `app/settings.json` é o que faz uma pasta ser uma pasta configurada.
+A pasta em que o binário foi aberto é a pasta do binário, e essa pasta é a Pasta de Trabalho (§3). Na primeira execução o Bill descreve a pasta e pergunta antes de escrever qualquer coisa; `app/settings.json` é o que faz uma pasta ser uma pasta configurada.
 
 Uma pasta nasce com:
 
@@ -64,7 +68,7 @@ app/settings.json         os ajustes da instância, em chave-valor
 app/i18n/active           o idioma escolhido — os catálogos viajam no produto
 app/counters.json         o último id entregue, por tabela
 app/plugins/              as extensões, e o estado de review de cada uma
-app/services/<serviço>/   o estado persistente de cada serviço (`README` §4)
+app/services/<serviço>/   o estado persistente de cada serviço (§4)
 data/schema/*.json        as tabelas de sistema, escritas pelo produto
 data/*.jsonl              as linhas (chegam com a primeira escrita)
 prose/                    tudo o que não é dado estruturado, com a nota de boas-vindas
@@ -104,9 +108,9 @@ Superfícies, e o estado de cada uma hoje:
 
 Códigos de saída: `0` sucesso · `1` recusado ou falhou · `2` erro de uso.
 
-Python 3.14.7 sem nenhuma dependência de runtime. Uma dependência chega pinada em versão e hashing (`README` §3), e começar do zero é o que mantém essa promessa barata. Há duas exceções deliberadas, as duas do lado do desenvolvimento: as fontes hospedadas do WebApp, em `bill/ui/webapp/vendor/`, com o hash que o manifesto pina; e o corretor dos documentos, que roda na suíte e por isso é ferramenta, não instalação — ele não pode exigir do outro dev nem do runner nada que não venha pinado dentro do `.venv`.
+Python 3.14.7 sem nenhuma dependência de runtime. Uma dependência chega pinada em versão e hashing (§3), e começar do zero é o que mantém essa promessa barata. Há duas exceções deliberadas, as duas do lado do desenvolvimento: as fontes hospedadas do WebApp, em `bill/ui/webapp/vendor/`, com o hash que o manifesto pina; e o corretor dos documentos, que roda na suíte e por isso é ferramenta, não instalação — ele não pode exigir do outro dev nem do runner nada que não venha pinado dentro do `.venv`.
 
-A suíte roda o gate dos documentos (`README` §3, Internacionalização), e o corretor dele se instala uma vez:
+A suíte roda o gate dos documentos (§3, Internacionalização), e o corretor dele se instala uma vez:
 
 ```sh
 .venv/bin/pip install --require-hashes -r requirements-dev.txt
@@ -114,7 +118,7 @@ A suíte roda o gate dos documentos (`README` §3, Internacionalização), e o c
 
 ### A página
 
-A página é uma app **Vue 3 + TypeScript**, construída pelo Vite (`README` §5). A construção é derivação, nunca editada:
+A página é uma app **Vue 3 + TypeScript**, construída pelo Vite (§5). A construção é derivação, nunca editada:
 
 ```sh
 cd bill/ui/webapp
@@ -127,14 +131,14 @@ Dois ajustes no `vite.config.ts` não são gosto: o polyfill de modulepreload e 
 ### O binário único
 
 ```sh
-# só em tempo de construção, nunca dependência de runtime; os dois pinados (`README` §3),
+# só em tempo de construção, nunca dependência de runtime; os dois pinados (§3),
 # porque os hooks viajam separados do freezer e flutuam sozinhos
 .venv/bin/pip install 'pyinstaller==6.22.3' 'pyinstaller-hooks-contrib==2026.7'
 .venv/bin/pyinstaller --clean --noconfirm bill.spec   # escreve dist/bill
 ```
 
-**Ele constrói só no Linux.** O PyInstaller não é um compilador cruzado e não pode ser: ele congela executando código do interpretador *alvo* em tempo de construção. Então binários de Windows e macOS precisam das suas próprias construções, nos seus próprios runners (`README` §9), e o `bill.spec` é escrito para ser o arquivo que os três compartilham.
+**Ele constrói só no Linux.** O PyInstaller não é um compilador cruzado e não pode ser: ele congela executando código do interpretador *alvo* em tempo de construção. Então binários de Windows e macOS precisam das suas próprias construções, nos seus próprios runners (§9), e o `bill.spec` é escrito para ser o arquivo que os três compartilham.
 
-O binário é um arquivo só porque é o que o documento fundador promete (`README` §3), e o preço é que todo o conteúdo — Tcl/Tk incluído — é re-extraído a cada execução, então o arranque a frio é mais lento do que seria numa construção em diretório.
+O binário é um arquivo só porque é o que o documento fundador promete (§3), e o preço é que todo o conteúdo — Tcl/Tk incluído — é re-extraído a cada execução, então o arranque a frio é mais lento do que seria numa construção em diretório.
 
 A Pasta de Trabalho não depende dessa escolha: `paths.working_folder()` resolve a partir de `sys.executable`, que é o binário lançado também sob `--onedir`, então a pasta em que o binário está é a pasta em que ele trabalha dos dois jeitos. Rode de qualquer lugar e ele continua trabalhando na pasta dele. Repare que `bill` sem palavra abre o Wizard do Tkinter, então uma verificação sem tela quer `bill <palavra>`.

@@ -2,7 +2,7 @@
 
 Four actions: `list`, `view`, `create`, `edit`. They are the same four the CLI
 dispatches and the WebApp calls, because there is one engine and the surfaces are
-only ways of reaching it (README §4). `cancel` and `delete` are not here
+only ways of reaching it (§4). `cancel` and `delete` are not here
 yet: both need the `lifecycle` a table declares for closing with history, and
 that is a decision of its own.
 
@@ -25,7 +25,7 @@ ACTIONS = ("list", "view", "create", "edit")
 # The words a declared default may use instead of a literal: the engine resolves
 # them when the row is born, because only then is "today" a day. They resolve to
 # ISO TEXT, never to a datetime object — the store is JSON, and a date a person
-# reads is a string on every host (README §3, Portabilidade).
+# reads is a string on every host (§3, Portabilidade).
 _WHEN = {
     "today": lambda: date.today().isoformat(),
     "now": lambda: datetime.now().isoformat(timespec="seconds"),

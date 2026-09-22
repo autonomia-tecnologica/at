@@ -9,25 +9,25 @@
 - Decisões vigentes. A linha é a decisão; o detalhe vive onde o link aponta:
   - Sem autenticação, o Bill só escuta `127.0.0.1`; exposto exige autenticação — [Acesso e exposição](#acesso-e-exposição).
   - Exposto exige TLS, e TLS só existe com o Caddy: `bill webapp` sem a bandeira é HTTP em laço local — [Acesso e exposição](#acesso-e-exposição).
-  - O Bill tem autenticador próprio, com quatro formas de entrar, todas terminando num ator: Forms local, Basic, credencial de máquina e a identidade afirmada pelo portão — [Interfaces](#5-interfaces-normativo), [Tabelas](#tabelas).
-  - A credencial do ator mora hasheada na própria linha dele, com `libsodium`; Basic e Forms são a **mesma** credencial, e o que os separa é o transporte — [Tabelas](#tabelas).
-  - Nenhum segredo mora no `settings.json`: ele guarda permissão e ajuste, nunca credencial — [Configurações gerais](#configurações-gerais).
-  - Toda função da API do core é protegida por RBAC; a permissão é `objeto:ação`, o papel é um conjunto de permissões, e credencial de máquina tem papel declarado — [Tabelas](#tabelas).
-  - O primeiro admin nasce na primeira subida, com terminal na frente; sem ator nenhum o Bill não expõe — [Interfaces](#5-interfaces-normativo).
-  - Papel e permissão são tela do WebApp, e só admin mexe neles — [Interfaces](#5-interfaces-normativo).
-  - **Instalar serviço é do Wizard e só dele** — [Interfaces](#5-interfaces-normativo).
-  - Segredo de máquina se guarda hasheado, com papel; segredo que o Bill **usa**, como a credencial de um serviço, se guarda criptografado na tabela `secret` — [Gestão de segredos](#gestão-de-segredos).
+  - O Bill tem autenticador próprio, com quatro formas de entrar, todas terminando num ator: Forms local, Basic, credencial de máquina e a identidade afirmada pelo portão — [Interfaces](README.md#5-interfaces-normativo), [Tabelas](architecture.md#tabelas).
+  - A credencial do ator mora hasheada na própria linha dele, com `libsodium`; Basic e Forms são a **mesma** credencial, e o que os separa é o transporte — [Tabelas](architecture.md#tabelas).
+  - Nenhum segredo mora no `settings.json`: ele guarda permissão e ajuste, nunca credencial — [Configurações gerais](architecture.md#configurações-gerais).
+  - Toda função da API do core é protegida por RBAC; a permissão é `objeto:ação`, o papel é um conjunto de permissões, e credencial de máquina tem papel declarado — [Tabelas](architecture.md#tabelas).
+  - O primeiro admin nasce na primeira subida, com terminal na frente; sem ator nenhum o Bill não expõe — [Interfaces](README.md#5-interfaces-normativo).
+  - Papel e permissão são tela do WebApp, e só admin mexe neles — [Interfaces](README.md#5-interfaces-normativo).
+  - **Instalar serviço é do Wizard e só dele** — [Interfaces](README.md#5-interfaces-normativo).
+  - Segredo de máquina se guarda hasheado, com papel; segredo que o Bill **usa**, como a credencial de um serviço, se guarda criptografado na tabela `secret` — [Gestão de segredos](architecture.md#gestão-de-segredos).
   - O Bill autentica nos serviços em vez de se aproveitar de estar na mesma máquina: credencial de administração existe onde ela é necessária, e ela conta na postura — [A postura de segurança](#a-postura-de-segurança).
-  - Serviço que fala com o Bill recebe escopo delimitado — mínimo privilégio: o comprometimento de um serviço alcança a função dele e nada mais — [Caminho container](#7-caminho-container-os-passos-normativo).
-  - Identidade que chega pelo portão só vale com o segredo do portão: o Bill sorteia um segredo por instalação, escreve no Caddyfile que ele mesmo gera, e recusa identidade sem ele — [Instalar provedor de identidade como container](#b-instalar-provedor-de-identidade-como-container-obrigatório).
-  - O Forms fica ligado até o Authelia estar provado funcionando na frente do Bill; a virada é um conjunto que comita ou volta atrás — [A virada entre os caminhos](#a-virada-entre-os-caminhos).
-  - Portão caído fecha o Bill: ele avisa que o portal de autenticação está indisponível, e a volta ao modo Forms é pelo Wizard ou pela `cli`, os dois locais — [A virada entre os caminhos](#a-virada-entre-os-caminhos).
+  - Serviço que fala com o Bill recebe escopo delimitado — mínimo privilégio: o comprometimento de um serviço alcança a função dele e nada mais — [Caminho container](README.md#7-caminho-container-os-passos-normativo).
+  - Identidade que chega pelo portão só vale com o segredo do portão: o Bill sorteia um segredo por instalação, escreve no Caddyfile que ele mesmo gera, e recusa identidade sem ele — [Instalar provedor de identidade como container](README.md#b-instalar-provedor-de-identidade-como-container-obrigatório).
+  - O Forms fica ligado até o Authelia estar provado funcionando na frente do Bill; a virada é um conjunto que comita ou volta atrás — [A virada entre os caminhos](README.md#a-virada-entre-os-caminhos).
+  - Portão caído fecha o Bill: ele avisa que o portal de autenticação está indisponível, e a volta ao modo Forms é pelo Wizard ou pela `cli`, os dois locais — [A virada entre os caminhos](README.md#a-virada-entre-os-caminhos).
   - Toda ação deixa uma linha na tabela `audit`, e a recusa é uma delas — [A auditoria](#a-auditoria).
-  - O que se prova se guarda hasheado; o que o Bill usa se guarda criptografado — [Tabelas](#tabelas).
-  - O estado persistente de todo serviço mora na Pasta de Trabalho; serviço cujo estado não couber lá não entra — [Caminho container](#7-caminho-container-os-passos-normativo).
-  - **Nenhuma extensão executa código hoje.** A primeira classe é dado puro, e código é a última opção — [Extensões](#8-extensões-e-plugins-normativo).
-  - O tema do portal de autenticação não é o do Bill: ele fica o mais neutro possível, e o `FAQ.md` explica o que está por baixo — [Interfaces](#5-interfaces-normativo).
-  - Autenticador, WebApp, corretor, notificador e VPN rodam em containers isolados no caminho container — [Caminho container](#7-caminho-container-os-passos-normativo).
+  - O que se prova se guarda hasheado; o que o Bill usa se guarda criptografado — [Tabelas](architecture.md#tabelas).
+  - O estado persistente de todo serviço mora na Pasta de Trabalho; serviço cujo estado não couber lá não entra — [Caminho container](README.md#7-caminho-container-os-passos-normativo).
+  - **Nenhuma extensão executa código hoje.** A primeira classe é dado puro, e código é a última opção — [Extensões](README.md#8-extensões-e-plugins-normativo).
+  - O tema do portal de autenticação não é o do Bill: ele fica o mais neutro possível, e o `FAQ.md` explica o que está por baixo — [Interfaces](README.md#5-interfaces-normativo).
+  - Autenticador, WebApp, corretor, notificador e VPN rodam em containers isolados no caminho container — [Caminho container](README.md#7-caminho-container-os-passos-normativo).
   - A execução é sem privilégio, com elevação só por pedido explícito — [Permissão de acesso](#permissão-de-acesso).
   - Pacotes e imagens são fixados em versão e hashing — [Dependência externa](#dependência-externa).
 
