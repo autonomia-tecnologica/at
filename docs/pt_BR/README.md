@@ -8,11 +8,11 @@ Bill é um motor de tarefas determinístico. Ele roda **dentro de uma pasta**, e
 
 - Esse arquivo é a pedra fundadora da instrução humana. Você pode e deve lê-lo sempre que chegar nesse repositório; ele tem a intenção de ser para humanos, e é assim que deve continuar. Quando os seus cálculos estatísticos penderem ao equilíbrio, volte aqui, e veja se algo te responde. Ao mesmo tempo, a instrução pode estar errada. O que mais acho válido de ser corrigido é contradições. Então, se algo aqui contradiz outra parte daqui, você deve me avisar e propor a correção.
 
-- Se você entende que alguma decisão neste arquivo está errada, estarei feliz em discutir. Contudo, você me apresenta e eu decido. A escrita vai direto no documento que vincula — não existe arquivo de rascunho —, mas **toda alteração dele é um commit à parte**, e o commit só existe com o meu aval declarado. A pergunta é sempre a mesma linha, crua: "Vou realizar o commit do documento fundador a seguir. Você confirma que leu o diff e concorda com as alterações?". Sem essa resposta o commit não acontece, e a aprovação fica registrada no commit — nunca dentro do documento, que é a instrução, não o histórico dela. Sempre que eu te pedir uma análise do documento fundador, a proposta vem como diff nesta sessão, separada em pontos de assuntos diferentes e sucinta — eu vou entender o erro lógico sem você escrever um parágrafo para cada item.
+- Se você entende que alguma decisão neste arquivo está errada, estarei feliz em discutir. Contudo, você me apresenta e eu decido. A escrita vai direto no documento que vincula — não existe arquivo de rascunho —, mas **toda alteração do que é `[normativo]`, onde ele estiver, é um commit à parte**, e o commit só existe com o meu aval declarado. A pergunta é sempre a mesma linha, crua: "Vou realizar o commit do `[normativo]` a seguir. Você confirma que leu o diff e concorda com as alterações?". Sem essa resposta o commit não acontece, e a aprovação fica registrada no commit — nunca dentro do documento, que é a instrução, não o histórico dela. Sempre que eu te pedir uma análise do documento fundador, a proposta vem como diff nesta sessão, separada em pontos de assuntos diferentes e sucinta — eu vou entender o erro lógico sem você escrever um parágrafo para cada item.
 
 - Qualquer instrução no `CLAUDE.md`, ou em qualquer outro markdown de memória de agentes LLM proprietário, se conflitando com esse repositório, quando usado para algo a ser feito nesse repositório, deve ser ignorado. Se quiser, e recomendo, pode haver uma linha nesses arquivos apontando para o documento fundador. Com exceção dos workflows de desenvolvimento no GitHub, e com o envio das minhas interações com a LLM para outra pasta (visando estudo posterior) esse repositório é autocontido, e tudo necessário para ele vive aqui.
 
-- A cadeia de custódia é `documento fundador → documentos derivados → código`: o código é uma extensão do que está escrito, e o que é derivado não decide nada sozinho. Se decidirmos algo arquitetural, em sessão, que não veio do documento fundador, você vai me avisar e propor a escrita, pelo mesmo aval. E isso nunca pode ser ignorado, nem por mim. É essa cadeia que vai manter esse "arreio" preso. Veja que definições muito estreitas sobre nome de pastas de cada módulo não cabem para o documento fundador — elas moram na árvore ([arquitetura §1](architecture.pt_BR.md)), que é derivação. Ter que detalhar cada item individual me dá a sensação que é melhor eu desenvolver do zero.
+- A cadeia de custódia é `documento fundador → documentos derivados → código`: o código é uma extensão do que está escrito, e o que é derivado não decide nada sozinho. Se decidirmos algo arquitetural, em sessão, que não veio do documento fundador, você vai me avisar e propor a escrita, pelo mesmo aval. E isso nunca pode ser ignorado, nem por mim. É essa cadeia que vai manter esse "arreio" preso. Veja que definições muito estreitas sobre nome de pastas de cada módulo não cabem para o documento fundador — elas moram na árvore ([arquitetura §1](architecture.md)), que é derivação. Ter que detalhar cada item individual me dá a sensação que é melhor eu desenvolver do zero.
 
 - Não existem regras duplicadas: uma regra mora em um lugar só. O que vincula fica no documento fundador; o derivado cita em vez de repetir. Se a mesma coisa aparecer nos dois, um dos dois está errado — e onde ela fica é decisão minha.
 
@@ -22,7 +22,7 @@ Bill é um motor de tarefas determinístico. Ele roda **dentro de uma pasta**, e
 
 ### Forma de trabalho
 
-- Sempre trabalhe em duas sessões por item, nunca uma. Na primeira, modo plano: explorar, discutir e fechar a decisão, sem escrever código. Antes do `/clear`, o plano tem que ser salvo fora da conversa — no `docs/backlog.en_US.md` — já com o que conta como pronto, para a segunda sessão não precisar perguntar. A segunda nasce limpa, lê o item no `docs/backlog.en_US.md` e implementa um item, do tamanho de uma sessão.
+- Sempre trabalhe em duas sessões por item, nunca uma. Na primeira, modo plano: explorar, discutir e fechar a decisão, sem escrever código. Antes do `/clear`, o plano tem que ser salvo fora da conversa — no `docs/en_US/backlog.md` — já com o que conta como pronto, para a segunda sessão não precisar perguntar. A segunda nasce limpa, lê o item no `docs/en_US/backlog.md` e implementa um item, do tamanho de uma sessão.
 
 - **A discussão vem antes do BACKLOG, e a implementação sempre sai do BACKLOG.** Uma decisão só entra na lista depois de apaziguada, e nada se implementa que não esteja nela. Numa discussão longa, as implicações vêm **uma a uma**, e o que fecha é gravado e commitado na hora — o que está decidido não pode viver só na conversa, que morre. **A resposta simples a uma pergunta é a aprovação**: se eu propus uma coisa e você respondeu, não te pergunto de novo se está aprovado.
 
@@ -143,15 +143,15 @@ O Bill tem dois caminhos de uso, e os dois são suportados: o **hospedado**, em 
 
 ### Internacionalização
 
-- Com exceção da porta da raiz, todo documento deste repositório carrega o **idioma no próprio nome**, no formato POSIX (`pt_BR`, `en_US`), alinhado ao módulo de `i18n` — não é BCP 47. A porta da raiz é um `README.md` sem idioma, e não tem texto além do título, dos links para as versões em cada língua, e de uma nota curta em `en_US` dirigida a agentes LLM: que leiam no idioma que serve melhor ao modelo, que na dúvida leiam em inglês, e que a trilha inglesa usa os termos e conceitos do mercado de propósito, para um nome significar a mesma coisa aqui e lá fora.
+- Com exceção da porta da raiz, todo documento deste repositório mora na **pasta do seu idioma**, no formato POSIX (`pt_BR`, `en_US`), alinhado ao módulo de `i18n` — não é BCP 47. A porta da raiz é um `README.md` fora das pastas, e não tem texto além do título, dos links para as versões em cada língua, e de uma nota curta em `en_US` dirigida a agentes LLM: que leiam no idioma que serve melhor ao modelo, que na dúvida leiam em inglês, e que a trilha inglesa usa os termos e conceitos do mercado de propósito, para um nome significar a mesma coisa aqui e lá fora.
 
-- Os documentos moram em `docs/`, um arquivo por idioma, e cada um linka os irmãos nas outras línguas. **Nenhum documento em inglês existe sem o sufixo de idioma**, e os nomes são minúsculos — só o `README` fica em maiúsculas, por ser o nome que o mundo já conhece.
+- Os documentos moram em `docs/`, **uma pasta por idioma**, e cada documento tem o par na pasta do outro idioma, com o mesmo nome. **O nome não repete o idioma que a pasta já diz**, e os nomes são minúsculos — só o `README` fica em maiúsculas, por ser o nome que o mundo já conhece.
 
 - **Os dois idiomas mudam sempre juntos**, e o aval de um commit cobre o par. O `pt_BR` é a língua fonte; onde os dois divergirem, vale o `pt_BR`.
 
-- Um **documento de trabalho** mora na mesma pasta, em `en_US` e **sem par**: o `docs/backlog.en_US.md` é para o agente, muda todo dia, e traduzir o que muda todo dia é trabalho que ninguém lê.
+- Um **documento de trabalho** mora na pasta do seu idioma e **sem par**: o `docs/en_US/backlog.md` é para o agente, muda todo dia, e traduzir o que muda todo dia é trabalho que ninguém lê.
 
-- Um **gate na suíte** afirma o que essa regra promete: o nome de cada documento, a existência do par, a mesma estrutura de títulos nos dois, e a ortografia — os dois idiomas passam pelo corretor do repositório, e o que ele ignorar fica numa lista versionada, uma por idioma. Gramática fica com a leitura humana.
+- Um **gate na suíte** afirma o que essa regra promete: a pasta de cada documento, a existência do par, a mesma estrutura de títulos nos dois, e a ortografia — os dois idiomas passam pelo corretor do repositório, e o que ele ignorar fica numa lista versionada, uma por idioma. Gramática fica com a leitura humana.
 
 - Todo código, incluindo comentários, chaves de objetos, variáveis, métodos e nomes de arquivos serão em Inglês Estadunidense (`en_US`). No geral, os arquivos de código não têm objetivo de serem lidos por usuários finais, apenas auditados por desenvolvedores. Então é mais vantajoso manter a base em inglês para o processamento da LLM. Essa regra vale para o que é versionado no repositório; não vale para os arquivos que o Bill gera na Pasta de Trabalho.
 
@@ -414,7 +414,7 @@ O painel tem as entradas:
 
 - O padrão do Bill para correção de textos é LanguageTool, hoje a ferramenta que cumpre o serviço `spelling-checker` (§4). Ela serve para sublinhar os erros na tela de edição. Bem útil.
 
-- Este é o corretor do **texto da pessoa**, em tempo de execução. O corretor dos documentos do repositório é outro, e é ferramenta de desenvolvimento ([arquitetura §3](architecture.pt_BR.md)).
+- Este é o corretor do **texto da pessoa**, em tempo de execução. O corretor dos documentos do repositório é outro, e é ferramenta de desenvolvimento ([arquitetura §3](architecture.md)).
 
 #### e. Instalar VPN (opcional)
 
@@ -424,7 +424,7 @@ O painel tem as entradas:
 
 - Com tudo configurado, a cereja do bolo é o `ntfy`, hoje a ferramenta que cumpre o serviço `notifier` (§4). Os lembretes configurados podem ser notificados diretamente como um Push Notification, e é por ele que chega a aprovação de uma demanda que passou do limiar de risco.
 
-- É aqui que entra a primeira funcionalidade graduada: os níveis dela e o que cada um custa vivem em [funcionalidades](functionalities.pt_BR.md).
+- É aqui que entra a primeira funcionalidade graduada: os níveis dela e o que cada um custa vivem em [funcionalidades](functionalities.md).
 
 ## 8. Extensões e plugins [normativo]
 
@@ -452,54 +452,22 @@ O painel tem as entradas:
 
 - O interpretador tem a sua própria régua, e ela roda como teste: frases que precisam funcionar, frases que precisam ser recusadas, e frases ambíguas que precisam ser devolvidas em pergunta. Sem LLM, sem rede e sem placa de vídeo.
 
-- O teste **não é o critério de pronto de cada função** — uma função fica pronta pelo que o `docs/backlog.en_US.md` diz que ela é. Ele é o portão da primeira publicação no GitHub, e dali em diante.
+- O teste **não é o critério de pronto de cada função** — uma função fica pronta pelo que o `docs/en_US/backlog.md` diz que ela é. Ele é o portão da primeira publicação no GitHub, e dali em diante.
 
 ## 10. A derivação
 
-A árvore, a Pasta de Trabalho e a operação são derivação: mudam quando uma pasta muda, e por isso não vinculam. Vivem em [arquitetura](architecture.pt_BR.md), nos dois idiomas. A cadeia é `documento fundador → documentos derivados → código` (§0).
+A árvore, a Pasta de Trabalho e a operação são derivação: mudam quando uma pasta muda, e por isso não vinculam. Vivem em [arquitetura](architecture.md), nos dois idiomas. A cadeia é `documento fundador → documentos derivados → código` (§0).
 
 ## 11. Glossário
 
-Cada nome tem um só significado, e nomes que se encostariam não convivem. Sempre que eu inventar um termo, ele é definido aqui antes de ser usado.
-
-| termo | o que é |
-|---|---|
-| **produto** | o conjunto publicado: este repositório, o binário que ele gera e as declarações que viajam dentro |
-| **binário** | o arquivo único que o produto publica |
-| **Pasta de Trabalho** | a pasta onde o binário foi aberto e que passa a ser dele |
-| **camada** | cada pasta do código com um trabalho só: `core`, `data`, `prose`, `services`, `encryption`, `nlu`, `posture`, `ui`, `i18n` |
-| **superfície** | cada forma de uma pessoa alcançar o core: `cli`, WebApp e Wizard |
-| **serviço** | a capacidade, com nome canônico (`spelling-checker`, `identity-provider`) |
-| **ferramenta** | quem cumpre o serviço hoje (LanguageTool, Authelia), trocável sem renomear nada |
-| **tabela**, **esquema**, **linha**, **campo** | as peças do motor de dados |
-| **campo hasheado** | campo que guarda a derivação e nunca o valor; só se confere |
-| **campo de instante** | campo de um ponto no tempo: ISO, sempre UTC, com milissegundos |
-| **campo de dia** | campo de um dia do calendário, sem hora e sem fuso, local na escrita |
-| **ator** | a linha de `actor` que age; **pessoa**, **motor** e **agente** são os tipos |
-| **teto de acesso** | o limite efetivo do ator; **papel** (`role`) é a linha que concede |
-| **auditoria** | a tabela `audit`, o log dos atos |
-| **via** | por onde o ato entrou: `cli`, WebApp, Wizard, `nlu`, motor. Porta é a de rede, e só |
-| **nlu** | a camada; **interpretador**, quem faz o trabalho dentro dela; **vocabulário**, o dicionário por idioma que ele consulta |
-| **teste do interpretador** | a régua: o que precisa funcionar, o que precisa ser recusado, o que precisa ser perguntado de volta |
-| **limiar de risco** | o preço a partir do qual a demanda espera aprovação; abaixo dele ela corre |
-| **risco da demanda** | o preço de uma demanda, medido pelo core sobre a ação e os argumentos |
-| **catálogo de permissões** | a lista fechada `objeto:ação` |
-| **postura** | o estado de segurança do ambiente, medido: as funções graduadas e a nota |
-| **nota** | a letra de uma função graduada, de `F` a `S`; a do ambiente é o elo mais fraco |
-| **funcionalidade** | uma capacidade que a pessoa reconhece, com níveis e dependências |
-| **plugin** / **extensão** | o que ensina algo ao Bill; hoje só dado puro, com manifesto e hash |
-| **review** | a aceitação de um plugin, amarrada à hash, em um de três modos |
-| **Frase de Acesso** | o que a pessoa sabe e digita; dela se deriva a **Chave do Bill** |
-| **Chave do Bill** | a chave derivada da Frase de Acesso; dela derivam as **chaves derivadas**, por serviço |
-| **manifesto** | a semente deste repositório, visível no histórico do git; e `manifest.json` é só o arquivo que tem esse nome |
-| **pin**, **migration** | ficam em inglês, como o resto do código: fixação de versão e hashing, e a mudança de estrutura que roda na primeira subida |
+O glossário diz o que um nome significa. Ele vive em [glossário](glossary.md), nos dois idiomas.
 
 ## 12. O que ainda não está aqui
 
-`docs/backlog.en_US.md` guarda o que vem a seguir, com o que conta como pronto para cada item.
+`docs/en_US/backlog.md` guarda o que vem a seguir, com o que conta como pronto para cada item.
 
 Três dívidas nasceram das decisões desta sessão, e as três estão nomeadas para não virarem surpresa:
 
-- **O código.** Nada do que ficou decidido aqui está construído: o ator, a auditoria, o filtro de demandas, a postura, o interpretador, os plugins. Tudo tem item no `docs/backlog.en_US.md`.
+- **O código.** Nada do que ficou decidido aqui está construído: o ator, a auditoria, o filtro de demandas, a postura, o interpretador, os plugins. Tudo tem item no `docs/en_US/backlog.md`.
 - **A lista do corretor.** Ela nasceu grande — 217 palavras em português e 131 em inglês —, e o motivo está escrito no cabeçalho dela: o dicionário do corretor vem de frequência de legendas e erra o registro formal, onde "seção", "deleção" e "registrar" não aparecem. Se essa lista crescer sozinha, o gate virou enfeite, e o diff é o lugar de perceber.
 - **O `FAQ.md`.** Ele ainda não existe, e agora tem trabalho esperando: dizer o que está por baixo — qual tela é do Bill e qual é de terceiros —, e que escrever bem é o melhor remédio contra um mal-entendido do interpretador.

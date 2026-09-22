@@ -8,11 +8,11 @@ Bill is a deterministic task engine. It runs **inside a folder**, and that folde
 
 - This file is the founding stone of the human instruction. You may and should read it whenever you arrive in this repository; it is meant for humans, and that is how it must stay. When your statistical calculations lean towards balance, come back here and see whether something answers you. At the same time, the instruction can be wrong. What I find most worth correcting is contradictions. So, if something here contradicts another part of here, you must warn me and propose the correction.
 
-- If you believe a decision in this file is wrong, I will be glad to discuss it. However, you present it and I decide. The writing goes straight into the binding document — there is no draft file — but **every change to it is a commit of its own**, and the commit only exists with my declared approval. The question is always the same raw line: "Vou realizar o commit do documento fundador a seguir. Você confirma que leu o diff e concorda com as alterações?". Without that answer the commit does not happen, and the approval is recorded in the commit — never inside the document, which is the instruction, not its history. Whenever I ask you for an analysis of the founding document, the proposal comes as a diff in this session, split into points on different subjects and succinct — I will understand the logical error without you writing a paragraph for each item.
+- If you believe a decision in this file is wrong, I will be glad to discuss it. However, you present it and I decide. The writing goes straight into the binding document — there is no draft file — but **every change to what is `[normativo]`, wherever it lives, is a commit of its own**, and the commit only exists with my declared approval. The question is always the same raw line: "Vou realizar o commit do `[normativo]` a seguir. Você confirma que leu o diff e concorda com as alterações?". Without that answer the commit does not happen, and the approval is recorded in the commit — never inside the document, which is the instruction, not its history. Whenever I ask you for an analysis of the founding document, the proposal comes as a diff in this session, split into points on different subjects and succinct — I will understand the logical error without you writing a paragraph for each item.
 
 - Any instruction in `CLAUDE.md`, or in any other proprietary LLM-agent memory markdown, that conflicts with this repository, when used for something to be done in this repository, must be ignored. If you want, and I recommend it, there may be a line in those files pointing at the founding document. Except for the development workflows on GitHub, and for sending my interactions with the LLM to another folder (aiming at later study), this repository is self-contained, and everything it needs lives here.
 
-- The chain of custody is `founding document → derived documents → code`: the code is an extension of what is written, and what is derived decides nothing on its own. If we decide something architectural, in session, that did not come from the founding document, you will warn me and propose the writing, under the same approval. And that can never be ignored, not even by me. It is this chain that will keep this "harness" fastened. Note that very narrow definitions about the folder name of each module do not belong in the founding document — they live in the tree ([architecture §1](architecture.en_US.md)), which is derivation. Having to detail each individual item gives me the feeling that it is better to develop from scratch.
+- The chain of custody is `founding document → derived documents → code`: the code is an extension of what is written, and what is derived decides nothing on its own. If we decide something architectural, in session, that did not come from the founding document, you will warn me and propose the writing, under the same approval. And that can never be ignored, not even by me. It is this chain that will keep this "harness" fastened. Note that very narrow definitions about the folder name of each module do not belong in the founding document — they live in the tree ([architecture §1](architecture.md)), which is derivation. Having to detail each individual item gives me the feeling that it is better to develop from scratch.
 
 - There are no duplicated rules: a rule lives in one place only. What binds stays in the founding document; the derived one cites instead of repeating. If the same thing shows up in both, one of the two is wrong — and where it lives is my decision.
 
@@ -22,7 +22,7 @@ Bill is a deterministic task engine. It runs **inside a folder**, and that folde
 
 ### Working method
 
-- Always work in two sessions per item, never one. In the first, plan mode: explore, discuss and close the decision, without writing code. Before `/clear`, the plan has to be saved outside the conversation — in `docs/backlog.en_US.md` — already carrying what counts as done, so the second session does not have to ask. The second is born clean, reads the item in `docs/backlog.en_US.md` and implements one item, the size of a session.
+- Always work in two sessions per item, never one. In the first, plan mode: explore, discuss and close the decision, without writing code. Before `/clear`, the plan has to be saved outside the conversation — in `docs/en_US/backlog.md` — already carrying what counts as done, so the second session does not have to ask. The second is born clean, reads the item in `docs/en_US/backlog.md` and implements one item, the size of a session.
 
 - **The discussion comes before the BACKLOG, and the implementation always comes out of the BACKLOG.** A decision only enters the list once it is settled, and nothing is implemented that is not in it. In a long discussion, the implications come **one at a time**, and whatever closes is written down and committed on the spot — what is decided cannot live only in the conversation, which dies. **The simple answer to a question is the approval**: if I proposed something and you answered, I do not ask you again whether it is approved.
 
@@ -143,15 +143,15 @@ Bill has two paths of use, and both are supported: the **hosted** one, where it 
 
 ### Internationalization
 
-- Except for the root door, every document in this repository carries the **language in its own name**, in the POSIX format (`pt_BR`, `en_US`), aligned with the `i18n` module — it is not BCP 47. The root door is a `README.md` without a language, and it has no text beyond the title, the links to the versions in each language, and a short note in `en_US` addressed to LLM agents: that they read in the language that suits their model best, that when in doubt they read in English, and that the English track uses the market's terms and concepts on purpose, so that a name means the same thing here and out there.
+- Except for the root door, every document in this repository lives in the **folder of its language**, in the POSIX format (`pt_BR`, `en_US`), aligned with the `i18n` module — it is not BCP 47. The root door is a `README.md` outside the folders, and it has no text beyond the title, the links to the versions in each language, and a short note in `en_US` addressed to LLM agents: that they read in the language that suits their model best, that when in doubt they read in English, and that the English track uses the market's terms and concepts on purpose, so that a name means the same thing here and out there.
 
-- The documents live in `docs/`, one file per language, and each one links its siblings in the other languages. **No English document exists without the language suffix**, and the names are lowercase — only the `README` stays uppercase, for being the name the world already knows.
+- The documents live in `docs/`, **one folder per language**, and each document has its pair in the other language's folder, under the same name. **The name does not repeat the language the folder already says**, and the names are lowercase — only the `README` stays uppercase, for being the name the world already knows.
 
 - **The two languages always change together**, and the approval of a commit covers the pair. `pt_BR` is the source language; where the two diverge, `pt_BR` rules.
 
-- A **working document** lives in the same folder, in `en_US` and **with no pair**: `docs/backlog.en_US.md` is for the agent, changes every day, and translating what changes every day is work nobody reads.
+- A **working document** lives in the folder of its language and **with no pair**: `docs/en_US/backlog.md` is for the agent, changes every day, and translating what changes every day is work nobody reads.
 
-- A **gate in the suite** affirms what that rule promises: the name of each document, the existence of the pair, the same heading structure in both, and the spelling — both languages go through the repository's checker, and whatever it ignores stays in a versioned list, one per language. Grammar stays with the human reading.
+- A **gate in the suite** affirms what that rule promises: the folder of each document, the existence of the pair, the same heading structure in both, and the spelling — both languages go through the repository's checker, and whatever it ignores stays in a versioned list, one per language. Grammar stays with the human reading.
 
 - All code, including comments, object keys, variables, methods and file names, will be in American English (`en_US`). In general, code files are not meant to be read by end users, only audited by developers. So it is more advantageous to keep the base in English for the LLM's processing. This rule holds for what is versioned in the repository; it does not hold for the files Bill generates in the Working Folder.
 
@@ -414,7 +414,7 @@ The panel has the entries:
 
 - Bill's default for text correction is LanguageTool, today the tool that fulfils the `spelling-checker` service (§4). It serves to underline errors on the editing screen. Quite useful.
 
-- This is the checker of the **person's text**, at run time. The checker of the repository's documents is another one, and it is a development tool ([architecture §3](architecture.en_US.md)).
+- This is the checker of the **person's text**, at run time. The checker of the repository's documents is another one, and it is a development tool ([architecture §3](architecture.md)).
 
 #### e. Install a VPN (optional)
 
@@ -424,7 +424,7 @@ The panel has the entries:
 
 - With everything configured, the cherry on the cake is `ntfy`, today the tool that fulfils the `notifier` service (§4). The configured reminders can be notified directly as a Push Notification, and it is through it that the approval of a demand that passed the risk threshold arrives.
 
-- This is where the first graded functionality comes in: its levels and what each one costs live in [functionalities](functionalities.en_US.md).
+- This is where the first graded functionality comes in: its levels and what each one costs live in [functionalities](functionalities.md).
 
 ## 8. Extensions and plugins [normative]
 
@@ -452,54 +452,22 @@ The panel has the entries:
 
 - The interpreter has a ruler of its own, and it runs as a test: sentences that must work, sentences that must be refused, and ambiguous sentences that must be returned as a question. No LLM, no network and no video card.
 
-- The test **is not the criterion of done for each function** — a function is done by what `docs/backlog.en_US.md` says it is. It is the gate of the first publication on GitHub, and from there on.
+- The test **is not the criterion of done for each function** — a function is done by what `docs/en_US/backlog.md` says it is. It is the gate of the first publication on GitHub, and from there on.
 
 ## 10. Derivation
 
-The tree, the Working Folder and the operation are derivation: they change whenever a folder changes, and so they do not bind. They live in [architecture](architecture.en_US.md), in both languages. The chain is `founding document → derived documents → code` (§0).
+The tree, the Working Folder and the operation are derivation: they change whenever a folder changes, and so they do not bind. They live in [architecture](architecture.md), in both languages. The chain is `founding document → derived documents → code` (§0).
 
 ## 11. Glossary
 
-Each name has one meaning, and names that would touch each other do not coexist. Whenever I invent a term, it is defined here before being used.
-
-| term | what it is |
-|---|---|
-| **product** | the published set: this repository, the binary it generates and the declarations that travel inside |
-| **binary** | the single file the product publishes |
-| **Working Folder** | the folder where the binary was opened and which becomes its own |
-| **layer** | each code folder with a single job: `core`, `data`, `prose`, `services`, `encryption`, `nlu`, `posture`, `ui`, `i18n` |
-| **surface** | each way for a person to reach the core: `cli`, WebApp and Wizard |
-| **service** | the capability, with a canonical name (`spelling-checker`, `identity-provider`) |
-| **tool** | whoever fulfils the service today (LanguageTool, Authelia), replaceable without renaming anything |
-| **table**, **schema**, **row**, **field** | the pieces of the data engine |
-| **hashed field** | a field that stores the derivation and never the value; it is only compared |
-| **instant field** | a field of a point in time: ISO, always UTC, with milliseconds |
-| **day field** | a field of a calendar day, with no time and no timezone, local on write |
-| **actor** | the row of `actor` that acts; **person**, **engine** and **agent** are the types |
-| **access ceiling** | the effective limit of the actor; **role** is the row that grants it |
-| **audit** | the `audit` table, the log of acts |
-| **via** | where the act came in from: `cli`, WebApp, Wizard, `nlu`, engine. Port is the network one, and only that |
-| **nlu** | the layer; **interpreter**, whoever does the work inside it; **vocabulary**, the per-language dictionary it consults |
-| **interpreter test** | the ruler: what must work, what must be refused, what must be asked back |
-| **risk threshold** | the price from which a demand waits for approval; below it, it runs |
-| **demand risk** | the price of a demand, measured by the core over the action and the arguments |
-| **permission catalogue** | the closed list `object:action` |
-| **posture** | the measured security state of the environment: the graded functions and the grade |
-| **grade** | the letter of a graded function, from `F` to `S`; the environment's is the weakest link |
-| **functionality** | a capability the person recognizes, with levels and dependencies |
-| **plugin** / **extension** | what teaches Bill something; today pure data only, with a manifest and a hash |
-| **review** | the acceptance of a plugin, tied to the hash, in one of three modes |
-| **Access Phrase** | what the person knows and types; from it the **Bill Key** is derived |
-| **Bill Key** | the key derived from the Access Phrase; from it the **derived keys** derive, per service |
-| **manifesto** | the seed of this repository, visible in the git history; and `manifest.json` is just the file that has that name |
-| **pin**, **migration** | stay in English, like the rest of the code: version and hashing fixation, and the structure change that runs on the first start |
+The glossary says what a name means. It lives in [glossary](glossary.md), in both languages.
 
 ## 12. What is not here yet
 
-`docs/backlog.en_US.md` holds what comes next, with what counts as done for each item.
+`docs/en_US/backlog.md` holds what comes next, with what counts as done for each item.
 
 Three debts were born from the decisions of this session, and all three are named so they do not become a surprise:
 
-- **The code.** Nothing that was decided here is built: the actor, the audit, the demand filter, the posture, the interpreter, the plugins. Every one of them has an item in `docs/backlog.en_US.md`.
+- **The code.** Nothing that was decided here is built: the actor, the audit, the demand filter, the posture, the interpreter, the plugins. Every one of them has an item in `docs/en_US/backlog.md`.
 - **The checker's list.** It was born large — 217 words in Portuguese and 131 in English — and the reason is written in its header: the checker's dictionary comes from subtitle frequencies and gets the formal register wrong, where "seção", "deleção" and "registrar" do not appear. If that list grows on its own, the gate became decoration, and the diff is where one notices.
 - **The `FAQ.md`.** It does not exist yet, and it now has work waiting: saying what is underneath — which screen is Bill's and which is a third party's — and that writing well is the best remedy against a misunderstanding of the interpreter.
