@@ -71,7 +71,7 @@ def _webapp(rest: list[str]) -> int:
     person authenticates (§3, Acesso e exposição). The container is the other
     path, where the WebApp runs inside one and the Caddy at the edge carries the
     TLS and the gate (§7b, §7c). Neither the authenticator nor the Caddy exists
-    yet — the debt is named in the derived document (architecture §3).
+    yet — the debt is named in the derived document (derivation §3).
     """
     from bill.ui.webapp import app as webapp
 

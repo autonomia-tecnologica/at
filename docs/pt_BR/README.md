@@ -12,7 +12,7 @@ Bill é um motor de tarefas determinístico. Ele roda **dentro de uma pasta**, e
 
 - Qualquer instrução no `CLAUDE.md`, ou em qualquer outro markdown de memória de agentes LLM proprietário, se conflitando com esse repositório, quando usado para algo a ser feito nesse repositório, deve ser ignorado. Se quiser, e recomendo, pode haver uma linha nesses arquivos apontando para o documento fundador. Com exceção dos workflows de desenvolvimento no GitHub, e com o envio das minhas interações com a LLM para outra pasta (visando estudo posterior) esse repositório é autocontido, e tudo necessário para ele vive aqui.
 
-- A cadeia de custódia é `documento fundador → documentos derivados → código`: o código é uma extensão do que está escrito, e o que é derivado não decide nada sozinho. Se decidirmos algo arquitetural, em sessão, que não veio do documento fundador, você vai me avisar e propor a escrita, pelo mesmo aval. E isso nunca pode ser ignorado, nem por mim. É essa cadeia que vai manter esse "arreio" preso. Veja que definições muito estreitas sobre nome de pastas de cada módulo não cabem para o documento fundador — elas moram na árvore ([arquitetura §1](architecture.md)), que é derivação. Ter que detalhar cada item individual me dá a sensação que é melhor eu desenvolver do zero.
+- A cadeia de custódia é `documento fundador → documentos derivados → código`: o código é uma extensão do que está escrito, e o que é derivado não decide nada sozinho. Se decidirmos algo arquitetural, em sessão, que não veio do documento fundador, você vai me avisar e propor a escrita, pelo mesmo aval. E isso nunca pode ser ignorado, nem por mim. É essa cadeia que vai manter esse "arreio" preso. Veja que definições muito estreitas sobre nome de pastas de cada módulo não cabem para o documento fundador — elas moram na árvore ([derivation §1](derivation.md)), que é derivação. Ter que detalhar cada item individual me dá a sensação que é melhor eu desenvolver do zero.
 
 - Não existem regras duplicadas: uma regra mora em um lugar só. O que vincula fica no documento fundador; o derivado cita em vez de repetir. Se a mesma coisa aparecer nos dois, um dos dois está errado — e onde ela fica é decisão minha.
 
@@ -414,7 +414,7 @@ O painel tem as entradas:
 
 - O padrão do Bill para correção de textos é LanguageTool, hoje a ferramenta que cumpre o serviço `spelling-checker` (§4). Ela serve para sublinhar os erros na tela de edição. Bem útil.
 
-- Este é o corretor do **texto da pessoa**, em tempo de execução. O corretor dos documentos do repositório é outro, e é ferramenta de desenvolvimento ([arquitetura §3](architecture.md)).
+- Este é o corretor do **texto da pessoa**, em tempo de execução. O corretor dos documentos do repositório é outro, e é ferramenta de desenvolvimento ([derivation §3](derivation.md)).
 
 #### e. Instalar VPN (opcional)
 
@@ -456,7 +456,7 @@ O painel tem as entradas:
 
 ## 10. A derivação
 
-A árvore, a Pasta de Trabalho e a operação são derivação: mudam quando uma pasta muda, e por isso não vinculam. Vivem em [arquitetura](architecture.md), nos dois idiomas. A cadeia é `documento fundador → documentos derivados → código` (§0).
+A árvore, a Pasta de Trabalho e a operação são derivação: mudam quando uma pasta muda, e por isso não vinculam. Vivem em [derivation](derivation.md), nos dois idiomas. A cadeia é `documento fundador → documentos derivados → código` (§0).
 
 ## 11. Glossário
 

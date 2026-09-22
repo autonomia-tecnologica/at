@@ -1,6 +1,6 @@
-# Arquitetura
+# Derivação
 
-A metade derivada do documento fundador: a árvore, a Pasta de Trabalho e a operação. Cada seção aqui é `arquitetura §N`, e as referências `README §N` apontam para o [documento fundador](README.md), que vincula.
+A metade derivada do documento fundador: a árvore, a Pasta de Trabalho e a operação. Cada seção aqui é `derivation §N`, e as referências `README §N` apontam para o [documento fundador](README.md), que vincula.
 
 ## 1. A árvore do repositório
 
@@ -40,12 +40,12 @@ bill/                          o produto: o motor, as declarações e a UI
 docs/                          os documentos
 ├── pt_BR/                     a fonte: os documentos escritos em português
 │   ├── README.md              o documento fundador, que vincula
-│   ├── architecture.md        a derivação: a árvore, a Pasta de Trabalho e a operação
+│   ├── derivation.md          a derivação: a árvore, a Pasta de Trabalho e a operação
 │   ├── functionalities.md     o que a nota mede: as funcionalidades, níveis e notas
 │   └── glossary.md            o que um nome significa, termo a termo
 └── en_US/                     a tradução: os mesmos documentos, em inglês
     ├── README.md              a tradução do documento fundador, que anda junto
-    ├── architecture.md        a tradução dela, que anda junto
+    ├── derivation.md          a tradução dela, que anda junto
     ├── functionalities.md     a tradução dela, que anda junto
     ├── glossary.md            a tradução dela, que anda junto
     └── backlog.md             o documento de trabalho, só em inglês: o que vem a seguir, e o que conta como pronto

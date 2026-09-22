@@ -1,6 +1,6 @@
-# Architecture
+# Derivation
 
-The derived half of the founding document: the tree, the Working Folder and the operation. Each section here is `architecture §N`, and the `README §N` references point at the [founding document](README.md), which binds.
+The derived half of the founding document: the tree, the Working Folder and the operation. Each section here is `derivation §N`, and the `README §N` references point at the [founding document](README.md), which binds.
 
 ## 1. The repository tree
 
@@ -40,12 +40,12 @@ bill/                          the product: the engine, the declarations and the
 docs/                          the documents
 ├── pt_BR/                     the source: the documents written in Portuguese
 │   ├── README.md              the founding document, which binds
-│   ├── architecture.md        the derivation: the tree, the Working Folder and the operation
+│   ├── derivation.md          the derivation: the tree, the Working Folder and the operation
 │   ├── functionalities.md     what the grade measures: the functionalities, levels and grades
 │   └── glossary.md            what a name means, term by term
 └── en_US/                     the translation: the same documents, in English
     ├── README.md              the founding document's translation, which moves along with it
-    ├── architecture.md        its translation, which moves along with it
+    ├── derivation.md          its translation, which moves along with it
     ├── functionalities.md     its translation, which moves along with it
     ├── glossary.md            its translation, which moves along with it
     └── backlog.md             the working document, English only: what comes next, and what counts as done

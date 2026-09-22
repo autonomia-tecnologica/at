@@ -68,6 +68,7 @@ deletar
 deletáveis
 deleção
 delivery
+derivation
 desenvolvedores
 desktop
 desligável

@@ -12,7 +12,7 @@ Bill is a deterministic task engine. It runs **inside a folder**, and that folde
 
 - Any instruction in `CLAUDE.md`, or in any other proprietary LLM-agent memory markdown, that conflicts with this repository, when used for something to be done in this repository, must be ignored. If you want, and I recommend it, there may be a line in those files pointing at the founding document. Except for the development workflows on GitHub, and for sending my interactions with the LLM to another folder (aiming at later study), this repository is self-contained, and everything it needs lives here.
 
-- The chain of custody is `founding document → derived documents → code`: the code is an extension of what is written, and what is derived decides nothing on its own. If we decide something architectural, in session, that did not come from the founding document, you will warn me and propose the writing, under the same approval. And that can never be ignored, not even by me. It is this chain that will keep this "harness" fastened. Note that very narrow definitions about the folder name of each module do not belong in the founding document — they live in the tree ([architecture §1](architecture.md)), which is derivation. Having to detail each individual item gives me the feeling that it is better to develop from scratch.
+- The chain of custody is `founding document → derived documents → code`: the code is an extension of what is written, and what is derived decides nothing on its own. If we decide something architectural, in session, that did not come from the founding document, you will warn me and propose the writing, under the same approval. And that can never be ignored, not even by me. It is this chain that will keep this "harness" fastened. Note that very narrow definitions about the folder name of each module do not belong in the founding document — they live in the tree ([derivation §1](derivation.md)), which is derivation. Having to detail each individual item gives me the feeling that it is better to develop from scratch.
 
 - There are no duplicated rules: a rule lives in one place only. What binds stays in the founding document; the derived one cites instead of repeating. If the same thing shows up in both, one of the two is wrong — and where it lives is my decision.
 
@@ -414,7 +414,7 @@ The panel has the entries:
 
 - Bill's default for text correction is LanguageTool, today the tool that fulfils the `spelling-checker` service (§4). It serves to underline errors on the editing screen. Quite useful.
 
-- This is the checker of the **person's text**, at run time. The checker of the repository's documents is another one, and it is a development tool ([architecture §3](architecture.md)).
+- This is the checker of the **person's text**, at run time. The checker of the repository's documents is another one, and it is a development tool ([derivation §3](derivation.md)).
 
 #### e. Install a VPN (optional)
 
@@ -456,7 +456,7 @@ The panel has the entries:
 
 ## 10. Derivation
 
-The tree, the Working Folder and the operation are derivation: they change whenever a folder changes, and so they do not bind. They live in [architecture](architecture.md), in both languages. The chain is `founding document → derived documents → code` (§0).
+The tree, the Working Folder and the operation are derivation: they change whenever a folder changes, and so they do not bind. They live in [derivation](derivation.md), in both languages. The chain is `founding document → derived documents → code` (§0).
 
 ## 11. Glossary
 
