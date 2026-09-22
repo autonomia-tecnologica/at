@@ -1,5 +1,5 @@
 # Bill — shared ignore rules.
-# Stack the Manifesto defines: Python as the core, delivered as a single binary,
+# The stack the README defines: Python as the core, delivered as a single binary,
 # with the WebApp in TypeScript/Vue/Vite. Two groups are specific to this repo:
 # the local agent harness (development only) and the runtime state a Working
 # Folder creates.
@@ -9,7 +9,7 @@
 /hooks
 
 # --- Working Folder runtime state (created by the binary where it runs) ------
-/.bill
+/app
 
 # --- Python ------------------------------------------------------------------
 __pycache__/

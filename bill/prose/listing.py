@@ -7,7 +7,7 @@ rules for one question drift, and the drift shows up as a file the page can read
 and cannot save.
 
 **The tree is rooted at `prose/`**, not at the Working Folder: `data/` is the
-table engine's and `.bill/` is the instance's configuration, and neither is
+table engine's and `app/` is the instance's configuration, and neither is
 "files a person keeps". What the PoC walked was its whole sandbox, which had no
 such split to make.
 """

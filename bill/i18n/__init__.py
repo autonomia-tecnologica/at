@@ -2,7 +2,7 @@
 
 Texts live in **blocks** under `blocks/`: one file per subject, both languages
 side by side. A single `pt_BR.json` grows into a file that has to be read whole
-to find one string, and reading it whole is the cost the Manifesto forbids. The
+to find one string, and reading it whole is the cost the README forbids. The
 block's filename is the namespace of its keys — `blocks/boot.json` holds
 `first_run.confirm`, read as `boot.first_run.confirm` — so a key names its
 subject twice only if the subject deserves it.
@@ -11,7 +11,7 @@ Keys are **stable ids**, never the English sentence: renaming a text must not
 rename a key. (The PoC derived keys from the sentence, so editing a message
 silently broke every reference to it.)
 
-Resolution order: `$BILL_LANG` → `.bill/i18n/active` → the OS locale → `en_US`.
+Resolution order: `$BILL_LANG` → `app/i18n/active` → the OS locale → `en_US`.
 Only the choice is the folder's; the catalogs travel inside the binary.
 """
 

@@ -1,13 +1,13 @@
 {
   "pt_BR": {
-    "first_run.notice": "O Bill foi aberto na pasta {folder}.\n\nComo não existe um arquivo .bill/settings.json aqui, entende-se que é uma nova Pasta de Trabalho.\n\nConfirma que o Bill utilize essa pasta? Recomenda-se a utilização de uma pasta vazia, em qualquer local do seu computador. Cancele e mova o arquivo para outra pasta, se não concordar.",
+    "first_run.notice": "O Bill foi aberto na pasta {folder}.\n\nComo não existe um arquivo app/settings.json aqui, entende-se que é uma nova Pasta de Trabalho.\n\nConfirma que o Bill utilize essa pasta? Recomenda-se a utilização de uma pasta vazia, em qualquer local do seu computador. Cancele e mova o arquivo para outra pasta, se não concordar.",
     "first_run.confirm": "Confirma? [s/N] ",
     "first_run.no_tty": "Não há um terminal onde perguntar, então nada foi criado. Rode o Bill interativamente para confirmar a Pasta de Trabalho.",
     "first_run.cancelled": "Nada foi criado. Mova o Bill para outra pasta, se não era esta.",
     "first_run.created": "Pasta de Trabalho criada em {folder}."
   },
   "en_US": {
-    "first_run.notice": "Bill was opened in the folder {folder}.\n\nThere is no .bill/settings.json here, so this is taken to be a new Working Folder.\n\nDo you confirm that Bill should use this folder? An empty folder, anywhere on your computer, is recommended. Cancel and move the file elsewhere if you disagree.",
+    "first_run.notice": "Bill was opened in the folder {folder}.\n\nThere is no app/settings.json here, so this is taken to be a new Working Folder.\n\nDo you confirm that Bill should use this folder? An empty folder, anywhere on your computer, is recommended. Cancel and move the file elsewhere if you disagree.",
     "first_run.confirm": "Confirm? [y/N] ",
     "first_run.no_tty": "There is no terminal to ask in, so nothing was created. Run Bill interactively to confirm the Working Folder.",
     "first_run.cancelled": "Nothing was created. Move Bill to another folder if this was not the one.",

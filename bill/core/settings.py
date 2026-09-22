@@ -1,7 +1,7 @@
-""".bill/settings.json — the instance's key-value configuration (§4).
+"""app/settings.json — the instance's key-value configuration (§4).
 
 Deliberately not the home of the active language: that lives in
-`.bill/i18n/active`, because the catalogs are packed into the binary and only
+`app/i18n/active`, because the catalogs are packed into the binary and only
 the choice is the folder's. This file carries what is neither translation nor
 table.
 """
@@ -16,7 +16,7 @@ from bill.core import files, paths
 
 # The shape version. It exists so a later release can migrate a folder instead
 # of guessing at it — the first run after an update is when structure changes
-# are applied (MANIFESTO.md §3).
+# are applied (README.md §3).
 SCHEMA = 1
 
 

@@ -18,7 +18,7 @@ never `npm run build` yields a binary that answers 500 on the front page.
 `--onefile` is a distribution choice, not a correctness one: `sys.executable` is
 the launched binary under `--onedir` too, so `paths.working_folder()` resolves the
 Working Folder to the binary's own folder either way (§3). One file is what the
-Manifesto promises, and its price is that the whole payload — Tcl/Tk included —
+README promises (§3), and its price is that the whole payload — Tcl/Tk included —
 is re-extracted on every launch.
 """
 

@@ -8,7 +8,7 @@
 // and asterisks are not what it is showing), and the record draws the raw text.
 //
 // It is a named debt, and it is written here because the alternative — a
-// dependency invented on this side — is the thing the Manifesto refuses.
+// dependency invented on this side — is the thing the README refuses.
 
 import { ref } from "vue";
 import type { Ref } from "vue";

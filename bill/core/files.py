@@ -50,7 +50,7 @@ def atomic_write_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(path.name + ".tmp")
     # `newline="\n"` because text mode turns every LF into CRLF on Windows, and
-    # the data is POSIX on every host (MANIFESTO.md §3, Portabilidade).
+    # the data is POSIX on every host (README.md §3, Portabilidade).
     temporary.write_text(text, encoding="utf-8", newline="\n")
     os.replace(temporary, path)
 

@@ -1,6 +1,6 @@
 """The Working Folder, and the paths that live inside it.
 
-The rule is the Manifesto's (§3, Código e delivery): the folder the binary was
+The rule is the README's (§3, Código e delivery): the folder the binary was
 opened in is the binary's folder, and that folder is the Working Folder.
 
 `BILL_ROOT` overrides the resolution so a test — or a developer running
@@ -32,23 +32,23 @@ def working_folder() -> Path:
     return Path.cwd().resolve()
 
 
-def bill_dir() -> Path:
-    """`.bill/` — the instance's configuration and per-service state (§4)."""
-    return working_folder() / ".bill"
+def app_dir() -> Path:
+    """`app/` — the instance's configuration and per-service state (§4)."""
+    return working_folder() / "app"
 
 
 def settings_file() -> Path:
-    """`.bill/settings.json` — the presence of this file is what makes a folder
+    """`app/settings.json` — the presence of this file is what makes a folder
     a Working Folder, so `boot` asks whenever it is missing."""
-    return bill_dir() / "settings.json"
+    return app_dir() / "settings.json"
 
 
 def i18n_dir() -> Path:
-    return bill_dir() / "i18n"
+    return app_dir() / "i18n"
 
 
 def active_language_file() -> Path:
-    """`.bill/i18n/active` — the only translation artifact the folder keeps
+    """`app/i18n/active` — the only translation artifact the folder keeps
     (§4): the catalogs themselves are packed into the binary."""
     return i18n_dir() / "active"
 

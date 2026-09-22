@@ -50,15 +50,15 @@ class FirstRun(unittest.TestCase):
 
     def test_confirming_creates_what_a_folder_is_born_with(self):
         self.assertTrue(self.confirm())
-        self.assertTrue((self.root / ".bill" / "settings.json").is_file())
-        self.assertTrue((self.root / ".bill" / "i18n" / "active").is_file())
+        self.assertTrue((self.root / "app" / "settings.json").is_file())
+        self.assertTrue((self.root / "app" / "i18n" / "active").is_file())
         self.assertTrue((self.root / "data").is_dir())
         self.assertTrue((self.root / "prose").is_dir())
         self.assertEqual(settings.load()["schema"], settings.SCHEMA)
 
     def test_the_chosen_language_is_recorded_in_the_folder(self):
         self.confirm()
-        recorded = (self.root / ".bill" / "i18n" / "active").read_text(encoding="utf-8")
+        recorded = (self.root / "app" / "i18n" / "active").read_text(encoding="utf-8")
         self.assertEqual(recorded.strip(), "pt_BR")
 
     def test_the_folder_decides_once_the_environment_is_silent(self):
@@ -79,7 +79,7 @@ class FirstRun(unittest.TestCase):
 
     def test_declining_writes_nothing(self):
         self.assertFalse(self.confirm("n"))
-        self.assertFalse((self.root / ".bill").exists())
+        self.assertFalse((self.root / "app").exists())
         self.assertFalse((self.root / "prose").exists())
 
     def test_without_a_terminal_it_refuses_rather_than_assume(self):
@@ -87,7 +87,7 @@ class FirstRun(unittest.TestCase):
             with redirect_stdout(io.StringIO()):
                 ready = boot.ensure_working_folder()
         self.assertFalse(ready)
-        self.assertFalse((self.root / ".bill").exists())
+        self.assertFalse((self.root / "app").exists())
 
     def test_a_configured_folder_is_never_asked_about_again(self):
         self.confirm()

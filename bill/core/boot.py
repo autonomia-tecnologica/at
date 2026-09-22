@@ -64,7 +64,7 @@ def create_working_folder() -> None:
     `exist_ok` everywhere: running Bill from a checkout means `data/` and
     `prose/` may already be there, and finding them is not a conflict.
     """
-    paths.bill_dir().mkdir(parents=True, exist_ok=True)
+    paths.app_dir().mkdir(parents=True, exist_ok=True)
     for directory in (paths.data_dir(), paths.prose_dir()):
         directory.mkdir(parents=True, exist_ok=True)
 

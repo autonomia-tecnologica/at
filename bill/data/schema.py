@@ -5,7 +5,7 @@ One file per table. It says what the table is (`id`), where its rows live
 takes in the panel (`order`), and the fields it declares.
 
 **It carries no text a person reads.** A label here is a key of `i18n`, never
-the words themselves (MANIFESTO.md §4) — so a translation changes nothing in the
+the words themselves (README.md §4) — so a translation changes nothing in the
 declaration, and the declaration changes nothing in a translation.
 
 The schema is DECLARATION, and it ships with the product; the rows are the

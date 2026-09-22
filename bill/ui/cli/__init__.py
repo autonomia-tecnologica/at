@@ -67,9 +67,11 @@ def main(argv: Sequence[str] | None = None) -> int:
 def _webapp(rest: list[str]) -> int:
     """`bill webapp` opens the app — running it is the only thing it does today.
 
-    The Manifesto makes the WebApp a container (§6c). Until that item lands it
-    runs here, on loopback, with no authentication of its own: the guard is the
-    ingress's (§7).
+    This is the hosted path: loopback, in HTTP, and nothing leaves it until a
+    person authenticates (§3, Acesso e exposição). The container is the other
+    path, where the WebApp runs inside one and the Caddy at the edge carries the
+    TLS and the gate (§7b, §7c). Neither the authenticator nor the Caddy exists
+    yet — the debt is named in the README (§12).
     """
     from bill.ui.webapp import app as webapp
 

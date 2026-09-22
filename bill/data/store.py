@@ -6,7 +6,7 @@ knows what a field means: the schema says that, and the engine applies it.
 **The id counter lives in the Working Folder, not in the schema.** It counts what
 happened in *this* folder, and the schema ships with the product — putting the
 two in one file would publish one instance's numbering to every other. It goes in
-`.bill/counters.json`, and it is written BEFORE the row: a number that was handed
+`app/counters.json`, and it is written BEFORE the row: a number that was handed
 out is spent even if the write that followed failed, because an id that comes
 back is an id two rows can answer to.
 """
@@ -23,7 +23,7 @@ COUNTERS = "counters.json"
 
 
 def counter_file() -> Path:
-    return paths.bill_dir() / COUNTERS
+    return paths.app_dir() / COUNTERS
 
 
 def path(table: str) -> Path | None:

@@ -6,7 +6,7 @@ else.
 
 `about` is an **i18n key**, never the text: the word is the machine's, the
 sentence is the person's. The table words are not written here at all — they come
-from `data/schema/`, which is what makes a table a table (MANIFESTO.md §4). Add a
+from `data/schema/`, which is what makes a table a table (README.md §4). Add a
 declaration and the word appears, with its actions, in the help and in the
 dispatch at once.
 """

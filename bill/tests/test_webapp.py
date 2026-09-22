@@ -412,7 +412,7 @@ class TheProseDoors(ServerCase):
 
     def test_a_path_that_escapes_is_refused(self):
         self.assertEqual(self.status("/api/file?path=../pyproject.toml"), 404)
-        self.assertEqual(self.status("/api/file?path=.bill/settings.json"), 404)
+        self.assertEqual(self.status("/api/file?path=app/settings.json"), 404)
 
     def test_a_write_with_a_stale_revision_is_refused_with_the_new_one(self):
         _, _, body = self.get("/api/file?path=nota.md")
