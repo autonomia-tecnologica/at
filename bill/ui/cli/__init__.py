@@ -13,7 +13,7 @@ from __future__ import annotations
 import sys
 from collections.abc import Sequence
 
-from bill import __version__
+from bill import __version__, nlu
 from bill.core import boot, files, tables
 from bill.data import schema
 from bill.i18n import tr
@@ -56,6 +56,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     if word == "webapp":
         return _webapp(rest)
 
+    # The interpreter's word is read off the tree, so a switch that turns it off
+    # takes it out of the dispatch and out of the help in the same breath.
+    if word in tree.ask_words():
+        return _ask(rest)
+
     if schema.of(word) is not None:
         return _table(word, rest)
 
@@ -88,6 +93,83 @@ def _webapp(rest: list[str]) -> int:
     return webapp.run(port)
 
 
+# ---------------------------------------------------------- the interpreter ---
+
+def _ask(rest: list[str]) -> int:
+    """`bill ask "..."` — one sentence becomes one proposal, and runs.
+
+    The sentence is ONE argument: it is a phrase, and a phrase the shell split in
+    two is two phrases. `pedir` is the same door, and `ask pedir` is that door
+    written out — the spelling the derived document carries.
+
+    What a person reads, in order, is the proposal and then the answer: the
+    proposal so the reading can be checked, and the answer in the ENGINE's own
+    words, because the engine is the one that validated and wrote. This surface
+    invents no second sentence for either.
+    """
+    args = rest[1:] if rest[:1] == ["pedir"] else rest
+    if len(args) != 1:
+        return _reject("ask")
+    try:
+        proposed = nlu.propose(args[0])
+    except nlu.Refused as refused:
+        # The refusal already speaks the active language — the reason's key is
+        # i18n's — so it is printed as it stands.
+        print(refused)
+        return REFUSED
+    if isinstance(proposed, nlu.Question):
+        # The question carries the phrase it is about, so the surface asks in
+        # the active language without knowing which one the phrase was written
+        # in — and nothing is proposed, so nothing is written.
+        print(tr(proposed.key, text=proposed.text))
+        return REFUSED
+    print(_proposed(proposed))
+    try:
+        return _execute(proposed)
+    except tables.TableError as error:
+        print(error)
+        return REFUSED
+    except files.ReadOnly as error:
+        print(tr("cli.error.read_only", where=error.where))
+        return REFUSED
+
+
+def _proposed(proposal: nlu.Proposal) -> str:
+    """The proposal, written with the engine's own words.
+
+    The action and the table are named the way the engine names them and every
+    value is written the way the listing would write it — the day in the
+    reader's own locale, a closed value in their own language — because a
+    proposal is something a person checks before trusting it.
+    """
+    fields = ", ".join(
+        f"{tables.label(proposal.table, name)} = "
+        f"{tables.text_of(proposal.table, name, value)}"
+        for name, value in proposal.values.items()
+    )
+    return tr(
+        "nlu.proposal",
+        action=tr(f"table.action.{proposal.action}"),
+        table=tables.table_name(proposal.table),
+        fields=fields or tr("table.word.none"),
+    )
+
+
+def _execute(proposal: nlu.Proposal) -> int:
+    """Run the proposal through the table engine, and answer with its words.
+
+    It takes the same road `bill <table> <action>` takes — `_run` — because
+    there is one engine and a second path into it would be a second engine. What
+    changes is only where the values came from: the interpreter read them out of
+    a sentence instead of off `--set`, and re-spelling them as `--set` arguments
+    would be a second reading of the same thing.
+    """
+    # The row a person named, spelled as `_run` already reads one: `list` and
+    # `view` take it among the arguments, and the rest as the leftover.
+    args = [] if proposal.row is None else [str(proposal.row)]
+    return _run(proposal.table, proposal.action, args, (proposal.values, args))
+
+
 # --------------------------------------------------------------- tables ---
 
 def _table(table: str, rest: list[str]) -> int:
@@ -106,12 +188,23 @@ def _table(table: str, rest: list[str]) -> int:
         return REFUSED
 
 
-def _run(table: str, action: str, args: list[str]) -> int:
+def _run(
+    table: str,
+    action: str,
+    args: list[str],
+    given: tuple[dict, list[str]] | None = None,
+) -> int:
+    """One table action, from the words of the `cli` or from a proposal.
+
+    `given` is the `(values, leftovers)` a proposal already carries — the
+    interpreter read them out of the sentence, and only the road by which the
+    values arrived differs.
+    """
     if action == "list":
         return _list(table, args)
     if action == "view":
         return _view(table, args)
-    values, leftovers = _sets(args)
+    values, leftovers = given if given is not None else _sets(args)
     if action == "create":
         if leftovers:
             return _reject(action)

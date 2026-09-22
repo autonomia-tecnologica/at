@@ -101,7 +101,7 @@ python3 -m bill task create --set text="write the README" --set priority=high
 python3 -m bill task list                    # the table's default slice; `--all` shows everything
 python3 -m bill task view 3                  # or TASK-3, or tarefa-3
 python3 -m bill task edit 3 --set status=done
-python3 -m bill pedir "cria uma tarefa pra sexta"   # the proposal, for you to check
+python3 -m bill pedir "cria uma tarefa pra sexta"   # the proposal, and the answer
 python3 -m bill webapp run                   # local loop, port 12345; `--port N` changes it
 .venv/bin/python -m unittest discover -s bill/tests   # the suite (the venv carries the checker)
 ```
@@ -112,7 +112,7 @@ Surfaces, and the state of each one today:
 
 | surface | how to reach it | state |
 |---|---|---|
-| `cli` | `bill <word>` | `help`, `version`, `webapp` and the tables |
+| `cli` | `bill <word>` | `help`, `version`, `webapp`, `ask` and the tables |
 | Wizard | `bill`, with no word | the Control Panel opens, at hello world |
 | WebApp | `bill webapp run` | reads and edits the tables |
 

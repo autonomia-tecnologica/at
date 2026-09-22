@@ -146,6 +146,41 @@ class TheFirstList(unittest.TestCase):
                     )
 
 
+class TheParticles(unittest.TestCase):
+    """The block that names nothing: the words that only connect.
+
+    It is a block of the same directory and not a shape of the same kind, and
+    the difference is the whole reason these tests exist: a particle carries no
+    meaning, so there is no canonical for it to name — and the gates above, which
+    read `expressions` and ask every canonical to be a name the product declares,
+    walk past it untouched.
+    """
+
+    def test_both_languages_carry_particles(self):
+        for language in i18n.SUPPORTED:
+            with self.subTest(language=language):
+                self.assertTrue(vocabulary.particles(language))
+
+    def test_the_particles_are_written_under_a_key_of_their_own(self):
+        blocks = {
+            block.name: json.loads(block.read_text(encoding="utf-8"))
+            for block in vocabulary.files()
+        }
+        for language in i18n.SUPPORTED:
+            with self.subTest(language=language):
+                self.assertIn("particles", blocks["particle.json"][language])
+                self.assertNotIn("expressions", blocks["particle.json"][language])
+
+    def test_a_particle_is_never_also_an_expression(self):
+        # A word cannot carry a meaning and carry none at once: the segmentation
+        # would spend it as one of the two, in silence.
+        for language in i18n.SUPPORTED:
+            spoken = {normalizer.fold(word) for word in vocabulary.of(language)}
+            for particle in vocabulary.particles(language):
+                with self.subTest(language=language, particle=particle):
+                    self.assertNotIn(normalizer.fold(particle), spoken)
+
+
 class TheTolerance(unittest.TestCase):
     """The mechanical tolerance: the same word, however it was written."""
 

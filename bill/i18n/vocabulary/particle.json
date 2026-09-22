@@ -1,0 +1,55 @@
+{
+  "pt_BR": {
+    "locality": "BR",
+    "particles": [
+      "a",
+      "as",
+      "o",
+      "os",
+      "um",
+      "uma",
+      "uns",
+      "umas",
+      "de",
+      "do",
+      "da",
+      "dos",
+      "das",
+      "em",
+      "no",
+      "na",
+      "nos",
+      "nas",
+      "pra",
+      "pro",
+      "para",
+      "por",
+      "com",
+      "sem",
+      "que",
+      "meu",
+      "minha",
+      "favor"
+    ]
+  },
+  "en_US": {
+    "locality": "US",
+    "particles": [
+      "a",
+      "an",
+      "the",
+      "to",
+      "for",
+      "of",
+      "in",
+      "on",
+      "with",
+      "without",
+      "that",
+      "my",
+      "me",
+      "it",
+      "please"
+    ]
+  }
+}

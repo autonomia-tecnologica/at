@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from bill import __version__
+from bill import __version__, nlu
 from bill.core import tables
 from bill.data import schema
 from bill.i18n import tr
@@ -38,6 +38,30 @@ WORDS: tuple[Node, ...] = (
     Node("version", "cli.version.about"),
 )
 
+# The interpreter's word, and the other spelling that answers to it: `ask` is
+# the machine's, `pedir` is the one the derived document writes, and they are
+# one door — the same way `webapp` answers to `run`.
+ASK = Node("ask", "cli.ask.about", (Node("pedir", "cli.ask.pedir.about"),))
+
+
+def words() -> tuple[Node, ...]:
+    """The words that are not a table.
+
+    The interpreter's is here while its switch is on, and gone the moment it is
+    off: help and dispatch both read this one list, so the word leaves both at
+    once — which is what the item means by turning it off taking the word out of
+    the tree, and taking nothing else.
+    """
+    return ((ASK,) if nlu.enabled() else ()) + WORDS
+
+
+def ask_words() -> tuple[str, ...]:
+    """Every word that reaches the interpreter — and nothing at all when it is
+    off, so a spelling can never dispatch without the help offering it."""
+    if not nlu.enabled():
+        return ()
+    return (ASK.name, *(child.name for child in ASK.children))
+
 
 def table_nodes() -> tuple[Node, ...]:
     """One root per declared table, each carrying the actions it answers.
@@ -56,7 +80,7 @@ def table_nodes() -> tuple[Node, ...]:
 
 
 def roots() -> tuple[Node, ...]:
-    return WORDS + table_nodes()
+    return words() + table_nodes()
 
 
 def find(name: str) -> Node | None:
@@ -75,7 +99,7 @@ def as_text() -> str:
     ]
     if declared:
         lines += _section(declared, width, "cli.help.tables")
-    lines += _section(WORDS, width, "cli.help.words")
+    lines += _section(words(), width, "cli.help.words")
     lines += ["", tr("cli.help.no_args")]
     return "\n".join(lines)
 

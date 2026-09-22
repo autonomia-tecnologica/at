@@ -17,6 +17,11 @@ What this module does is read the files and merge them. What a word MEANS is the
 canonical it names and nothing more: a table's machine word, a field's, an
 action's, or a value of a closed vocabulary — every one of them a name that exists
 somewhere else in the product, which is what the suite checks by name.
+
+The one exception is the **particle** block: a connecting word means nothing, so
+it names nothing, and it is written under a key of its own (`particles`) rather
+than under `expressions` — which is exactly why the suite's gates, which read
+`expressions` and nothing else, walk past it.
 """
 
 from __future__ import annotations
@@ -57,6 +62,28 @@ def of(language: str) -> dict[str, str]:
         for expression, canonical in expressions.items():
             pairs[str(expression)] = str(canonical)
     return pairs
+
+
+def particles(language: str) -> tuple[str, ...]:
+    """The expressions that name no canonical: the words that only connect.
+
+    A particle is written under a key of its own — `particles`, and not
+    `expressions` — and the shape is the reason: a particle carries no meaning,
+    so there is no machine word for it to name. The suite's gates read
+    `expressions` and ask every canonical to be a name the product declares, and
+    a particle written there with an empty canonical would be a canonical no
+    table, field, closed value or action of the product has.
+
+    What a particle is FOR is the matcher's: `uma` and `pra` are spent by the
+    segmentation and leave nothing behind, because a title is not made of them.
+    """
+    code = language if language in i18n.SUPPORTED else i18n.SOURCE
+    found: list[str] = []
+    for block in files():
+        listed = _section(block, code).get("particles")
+        if isinstance(listed, list):
+            found.extend(str(expression) for expression in listed)
+    return tuple(found)
 
 
 def locality(language: str) -> str:

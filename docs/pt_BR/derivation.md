@@ -101,7 +101,7 @@ python3 -m bill task create --set text="escrever o README" --set priority=high
 python3 -m bill task list                    # o corte padrão da tabela; `--all` mostra tudo
 python3 -m bill task view 3                  # ou TASK-3, ou tarefa-3
 python3 -m bill task edit 3 --set status=done
-python3 -m bill pedir "cria uma tarefa pra sexta"   # a proposta, para você conferir
+python3 -m bill pedir "cria uma tarefa pra sexta"   # a proposta, e a resposta
 python3 -m bill webapp run                   # laço local, porta 12345; `--port N` muda
 .venv/bin/python -m unittest discover -s bill/tests   # a suíte (o venv traz o corretor)
 ```
@@ -112,7 +112,7 @@ Superfícies, e o estado de cada uma hoje:
 
 | superfície | como se chega | estado |
 |---|---|---|
-| `cli` | `bill <palavra>` | `help`, `version`, `webapp` e as tabelas |
+| `cli` | `bill <palavra>` | `help`, `version`, `webapp`, `ask` e as tabelas |
 | Wizard | `bill`, sem palavra | o Painel de Controle abre, em hello world |
 | WebApp | `bill webapp run` | lê e edita as tabelas |
 
