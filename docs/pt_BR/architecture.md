@@ -1,6 +1,6 @@
 # Arquitetura
 
-A metade derivada do documento fundador: a árvore, a Pasta de Trabalho e a operação. Cada seção aqui é `arquitetura §N`, e as referências `README §N` apontam para o [documento fundador](README.pt_BR.md), que vincula.
+A metade derivada do documento fundador: a árvore, a Pasta de Trabalho e a operação. Cada seção aqui é `arquitetura §N`, e as referências `README §N` apontam para o [documento fundador](README.md), que vincula.
 
 ## 1. A árvore do repositório
 
@@ -38,19 +38,17 @@ bill/                          o produto: o motor, as declarações e a UI
     └── spelling.en_US.txt     o mesmo, em inglês
 
 docs/                          os documentos
-├── README.pt_BR.md            a fonte: o documento fundador, que vincula
-├── README.en_US.md            a tradução, que anda junto
-├── architecture.pt_BR.md      a derivação: a árvore, a Pasta de Trabalho e a operação
-├── architecture.en_US.md      a tradução dela, que anda junto
-├── functionalities.pt_BR.md   o que a nota mede: as funcionalidades, níveis e notas
-├── functionalities.en_US.md   a tradução dela, que anda junto
-├── glossary.pt_BR.md          o que um nome significa, termo a termo
-├── glossary.en_US.md          a tradução dela, que anda junto
-└── backlog.en_US.md           o documento de trabalho: o que vem a seguir, e o que conta como pronto
-bill.spec                      o que viaja dentro do binário, escrito à mão
-pyproject.toml                 a embalagem e o metadata
-requirements-dev.txt           as dependências de desenvolvimento, pinadas em versão e hash
-README.md                      a porta: o título e os links para os documentos em cada língua
+├── pt_BR/                     a fonte: os documentos escritos em português
+│   ├── README.md              o documento fundador, que vincula
+│   ├── architecture.md        a derivação: a árvore, a Pasta de Trabalho e a operação
+│   ├── functionalities.md     o que a nota mede: as funcionalidades, níveis e notas
+│   └── glossary.md            o que um nome significa, termo a termo
+└── en_US/                     a tradução: os mesmos documentos, em inglês
+    ├── README.md              a tradução do documento fundador, que anda junto
+    ├── architecture.md        a tradução dela, que anda junto
+    ├── functionalities.md     a tradução dela, que anda junto
+    ├── glossary.md            a tradução dela, que anda junto
+    └── backlog.md             o documento de trabalho, só em inglês: o que vem a seguir, e o que conta como pronto
 ```
 
 `bill.spec` é o único lugar que diz o que viaja dentro do binário, e é à mão de propósito: três dos conteúdos — `bill/i18n`, `bill/data/defaults` e os `assets`, `dist` e `vendor` do WebApp — são invisíveis a um grafo de importação, e `bill/ui/webapp/` também guarda `node_modules/` e `src/`, que são a derivação e não podem viajar. Um conteúdo deixado de fora falha em silêncio no WebApp (404 e um 500) e em voz alta em todo o resto, porque `tr()` levanta na primeira mensagem de cada comando.

@@ -1,6 +1,6 @@
 # Functionalities
 
-A functionality is what the [glossary](glossary.en_US.md) defines: a capability the person recognizes, with levels and dependencies. The rule that governs it is the one in `README` §3 (The security posture). This document repeats neither — it carries what belongs to each functionality: the levels, what each level costs, and what it drags.
+A functionality is what the [glossary](glossary.md) defines: a capability the person recognizes, with levels and dependencies. The rule that governs it is the one in `README` §3 (The security posture). This document repeats neither — it carries what belongs to each functionality: the levels, what each level costs, and what it drags.
 
 ## What exists today
 

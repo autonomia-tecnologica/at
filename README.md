@@ -1,7 +1,7 @@
 # Bill
 
-- [Português (Brasil)](docs/README.pt_BR.md)
-- [English (United States)](docs/README.en_US.md)
+- [Português (Brasil)](docs/pt_BR/README.md)
+- [English (United States)](docs/en_US/README.md)
 
 ## For LLM agents
 

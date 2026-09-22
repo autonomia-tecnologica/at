@@ -4,8 +4,10 @@ The documents exist in two languages, and the rule says the two change together
 (§3, Internacionalização). Nothing else notices when they do not, so this test
 does. It checks four things, in the order a mistake happens:
 
-1. the NAME — every markdown carries its language, and only the root door does not;
-2. the PAIR — a document has its sibling in the other language;
+1. the NAME — every markdown lives under the folder of its language, and the name
+   does not repeat it; only the root door sits outside a language folder;
+2. the PAIR — a document has its sibling, the same name in the other language's
+   folder;
 3. the STRUCTURE — the pair carries the same headings, in the same order, because
    the mistake that actually happens is a forgotten SECTION, not a sentence;
 4. the SPELLING — both languages go through the checker, and what it ignores lives
@@ -39,14 +41,21 @@ HERE = Path(__file__).resolve().parent
 # importable package, the build output and the vendored dependencies.
 SKIP = {"node_modules", ".venv", ".git", "build", "dist", "app", "data", "prose", "hooks", ".claude"}
 
-# The door at the root is the only markdown without a language in the name.
+# The door at the root is the only markdown outside a language folder.
 DOOR = ROOT / "README.md"
 
 # Documents of the WORK, not for the reader: they have a language and no pair.
 WORKING = {"backlog"}
 
-LANGUAGES = {".pt_BR.md": "pt", ".en_US.md": "en"}
-SUFFIXES = tuple(LANGUAGES)
+# The language of a document is the FOLDER it lives in (§3, Internacionalização),
+# and the folder brings both the checker code and the name of its ignore list.
+LANGUAGES = {
+    "pt_BR": ("pt", "spelling.pt_BR.txt"),
+    "en_US": ("en", "spelling.en_US.txt"),
+}
+
+# A name ending in one of these inside a language folder would say the language twice.
+SUFFIXES = tuple(f".{folder}.md" for folder in LANGUAGES)
 
 # Markdown that is not prose: fenced blocks (the trees, the shell), inline code,
 # links and URLs. What is left is what a person reads, and that is what is checked.
@@ -67,10 +76,20 @@ def documents() -> list[Path]:
 
 
 def language_of(path: Path) -> str | None:
-    for suffix, language in LANGUAGES.items():
-        if path.name.endswith(suffix):
-            return language
+    """The language folder of that document, wherever in the path it is."""
+    for part in path.parts:
+        if part in LANGUAGES:
+            return part
     return None
+
+
+def sibling(path: Path) -> Path:
+    """The same document in the other language: the same name, the other folder."""
+    language = language_of(path)
+    other = next(folder for folder in LANGUAGES if folder != language)
+    parts = list(path.parts)
+    parts[parts.index(language)] = other
+    return Path(*parts)
 
 
 def prose(path: Path) -> str:
@@ -99,10 +118,9 @@ def headings(path: Path) -> list[int]:
 
 def word_list(path: Path) -> Path:
     """The ignore list of that document's language: `spelling.<language>.txt`."""
-    for suffix, _ in LANGUAGES.items():
-        if path.name.endswith(suffix):
-            return HERE / f"spelling{suffix.replace('.md', '.txt')}"
-    raise AssertionError(f"{path} carries no language")
+    language = language_of(path)
+    assert language is not None, f"{path} lives outside a language folder"
+    return HERE / LANGUAGES[language][1]
 
 
 def accepted(path: Path) -> set[str]:
@@ -119,15 +137,28 @@ def accepted(path: Path) -> set[str]:
 
 
 class TheNames(unittest.TestCase):
-    def test_every_markdown_carries_its_language(self):
+    def test_every_markdown_lives_in_a_language_folder(self):
         for path in documents():
             if path == DOOR:
                 continue
             with self.subTest(document=path.relative_to(ROOT)):
                 self.assertIsNotNone(
                     language_of(path),
-                    f"{path.relative_to(ROOT)} has no language in its name; only the root "
-                    f"README.md is allowed to omit it (§3, Internacionalização)",
+                    f"{path.relative_to(ROOT)} lives outside a language folder; every "
+                    f"document sits under `pt_BR/` or `en_US/` (§3, Internacionalização), "
+                    f"and only the root README.md is allowed out",
+                )
+
+    def test_a_document_does_not_repeat_its_language_in_the_name(self):
+        for path in documents():
+            if language_of(path) is None:
+                continue
+            with self.subTest(document=path.relative_to(ROOT)):
+                self.assertFalse(
+                    path.name.endswith(SUFFIXES),
+                    f"{path.relative_to(ROOT)} carries the language in the name as well "
+                    f"as in the folder; the folder already says it (§3, "
+                    f"Internacionalização)",
                 )
 
     def test_the_door_is_the_only_one_without_a_language(self):
@@ -137,33 +168,22 @@ class TheNames(unittest.TestCase):
 class ThePairs(unittest.TestCase):
     def test_a_document_has_its_sibling(self):
         for path in documents():
-            if path == DOOR or language_of(path) is None:
-                continue
-            stem = path.name.rsplit(".", 2)[0]
-            if stem in WORKING:
+            if path == DOOR or language_of(path) is None or path.stem in WORKING:
                 continue
             with self.subTest(document=path.relative_to(ROOT)):
-                siblings = [path.with_name(stem + suffix) for suffix in SUFFIXES]
+                other = sibling(path)
                 self.assertTrue(
-                    any(sibling.is_file() for sibling in siblings if sibling != path),
-                    f"{path.relative_to(ROOT)} has no sibling in the other language; "
+                    other.is_file(),
+                    f"{path.relative_to(ROOT)} has no sibling at {other.relative_to(ROOT)}; "
                     f"a document changes in both or it does not change (§3)",
                 )
 
     def test_the_pair_has_the_same_structure(self):
         for path in documents():
-            if path == DOOR or language_of(path) is None:
+            if path == DOOR or language_of(path) is None or path.stem in WORKING:
                 continue
-            stem = path.name.rsplit(".", 2)[0]
-            if stem in WORKING:
-                continue
-            other = next(
-                (path.with_name(stem + suffix) for suffix in SUFFIXES
-                 if path.with_name(stem + suffix) != path
-                 and path.with_name(stem + suffix).is_file()),
-                None,
-            )
-            if other is None:
+            other = sibling(path)
+            if not other.is_file():
                 continue
             with self.subTest(document=path.relative_to(ROOT)):
                 self.assertEqual(
@@ -182,8 +202,8 @@ class TheSpelling(unittest.TestCase):
                 "  .venv/bin/pip install --require-hashes -r requirements-dev.txt"
             )
         self.checkers = {
-            "pt": SpellChecker(language="pt"),
-            "en": SpellChecker(language="en"),
+            folder: SpellChecker(language=code)
+            for folder, (code, _) in LANGUAGES.items()
         }
 
     def test_the_documents_are_spelled(self):
@@ -194,7 +214,7 @@ class TheSpelling(unittest.TestCase):
             # The working document is a notebook: it quotes decisions in the language
             # they were decided in, and checking it would turn the list into half a
             # Portuguese dictionary for no gain (§3, Internacionalização).
-            if path.name.rsplit(".", 2)[0] in WORKING:
+            if path.stem in WORKING:
                 continue
             with self.subTest(document=path.relative_to(ROOT)):
                 words = {word.lower() for word in _WORD.findall(prose(path))}

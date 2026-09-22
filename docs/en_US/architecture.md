@@ -1,6 +1,6 @@
 # Architecture
 
-The derived half of the founding document: the tree, the Working Folder and the operation. Each section here is `architecture §N`, and the `README §N` references point at the [founding document](README.en_US.md), which binds.
+The derived half of the founding document: the tree, the Working Folder and the operation. Each section here is `architecture §N`, and the `README §N` references point at the [founding document](README.md), which binds.
 
 ## 1. The repository tree
 
@@ -38,19 +38,17 @@ bill/                          the product: the engine, the declarations and the
     └── spelling.en_US.txt     the same, in English
 
 docs/                          the documents
-├── README.pt_BR.md            the source: the founding document, which binds
-├── README.en_US.md            the translation, which moves along with it
-├── architecture.pt_BR.md      the derivation: the tree, the Working Folder and the operation
-├── architecture.en_US.md      its translation, which moves along with it
-├── functionalities.pt_BR.md   what the grade measures: the functionalities, levels and grades
-├── functionalities.en_US.md   its translation, which moves along with it
-├── glossary.pt_BR.md          what a name means, term by term
-├── glossary.en_US.md          its translation, which moves along with it
-└── backlog.en_US.md           the working document: what comes next, and what counts as done
-bill.spec                      what travels inside the binary, written by hand
-pyproject.toml                 the packaging and the metadata
-requirements-dev.txt           the development dependencies, pinned in version and hash
-README.md                      the door: the title and the links to the documents in each language
+├── pt_BR/                     the source: the documents written in Portuguese
+│   ├── README.md              the founding document, which binds
+│   ├── architecture.md        the derivation: the tree, the Working Folder and the operation
+│   ├── functionalities.md     what the grade measures: the functionalities, levels and grades
+│   └── glossary.md            what a name means, term by term
+└── en_US/                     the translation: the same documents, in English
+    ├── README.md              the founding document's translation, which moves along with it
+    ├── architecture.md        its translation, which moves along with it
+    ├── functionalities.md     its translation, which moves along with it
+    ├── glossary.md            its translation, which moves along with it
+    └── backlog.md             the working document, English only: what comes next, and what counts as done
 ```
 
 `bill.spec` is the one place that says what travels inside the binary, and it is by hand on purpose: three of the payloads — `bill/i18n`, `bill/data/defaults`, and the WebApp's `assets`, `dist` and `vendor` — are invisible to an import graph, and `bill/ui/webapp/` also holds `node_modules/` and `src/`, which are the derivation and must not travel. A payload left out fails silently in the WebApp (404s and a 500) and loudly everywhere else, because `tr()` raises on the first message of every command.
