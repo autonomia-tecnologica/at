@@ -129,3 +129,5 @@
 
 - O Caddy é a exceção declarada, e não por descuido: ele vai embarcado no binário, então quem o pina é o próprio binário, com o SemVer do Bill.
 
+- **Nada experimental entra**, nem como ferramenta de desenvolvimento: só componente estável. Versão alpha, beta, release candidate e preview ficam de fora, e o que o fornecedor marca como experimental fica de fora junto — a promessa de que o Bill não muda sob os seus pés não pode depender de uma superfície que o dono dela avisa que vai mudar.
+

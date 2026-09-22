@@ -129,3 +129,5 @@
 
 - Caddy is the declared exception, and not by carelessness: it travels embedded in the binary, so whoever pins it is the binary itself, with Bill's SemVer.
 
+- **Nothing experimental comes in**, not even as a development tool: stable components only. Alpha, beta, release candidate and preview stay out, and whatever the vendor marks as experimental stays out with them — the promise that Bill does not change under your feet cannot rest on a surface whose owner says it will change.
+
