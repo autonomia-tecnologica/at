@@ -1,0 +1,108 @@
+{
+  "id": "task",
+  "order": 1,
+  "name": {
+    "one": "table.task.name.one",
+    "many": "table.task.name.many"
+  },
+  "store": "data/tasks.jsonl",
+  "type": "task",
+  "primary": "text",
+  "columns": [
+    "status",
+    "priority",
+    "text"
+  ],
+  "desc": "the movement: one short text, the whole of the prose in desc, and the status log in modifications",
+  "fields": {
+    "id": {
+      "label": "table.task.field.id",
+      "filterable": true,
+      "searchable": true
+    },
+    "status": {
+      "label": "table.task.field.status",
+      "filterable": true,
+      "searchable": true,
+      "editable": true,
+      "enum": {
+        "todo": "table.task.field.status.todo",
+        "doing": "table.task.field.status.doing",
+        "done": "table.task.field.status.done",
+        "cancelled": "table.task.field.status.cancelled"
+      },
+      "show": [
+        "todo",
+        "doing"
+      ],
+      "default": "todo"
+    },
+    "priority": {
+      "label": "table.task.field.priority",
+      "filterable": true,
+      "searchable": true,
+      "enum": {
+        "low": "table.task.field.priority.low",
+        "medium": "table.task.field.priority.medium",
+        "high": "table.task.field.priority.high",
+        "critical": "table.task.field.priority.critical"
+      },
+      "default": "medium"
+    },
+    "project": {
+      "label": "table.task.field.project",
+      "filterable": true,
+      "searchable": true,
+      "ref": [
+        "project"
+      ],
+      "default": null,
+      "hide": [
+        "project",
+        "orphans"
+      ]
+    },
+    "since": {
+      "label": "table.task.field.since",
+      "filterable": true,
+      "searchable": true,
+      "default": "today"
+    },
+    "deadline": {
+      "label": "table.task.field.deadline",
+      "filterable": true,
+      "searchable": true,
+      "default": null
+    },
+    "text": {
+      "label": "table.task.field.text",
+      "type": "markdown",
+      "max_length": 100,
+      "searchable": true
+    },
+    "desc": {
+      "label": "table.task.field.desc",
+      "type": "markdown",
+      "searchable": true,
+      "hide": [
+        "project",
+        "orphans"
+      ]
+    },
+    "modifications": {
+      "label": "table.task.field.modifications",
+      "type": "list",
+      "searchable": false,
+      "hide": [
+        "project",
+        "orphans"
+      ],
+      "tracks": "status",
+      "append": {
+        "text": "status",
+        "stamp": "at"
+      },
+      "default": []
+    }
+  }
+}

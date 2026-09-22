@@ -1,0 +1,373 @@
+/* hotel dark — the same 2004 room with the lights off. The light side is this
+   file's pair (`hotel.css`): same decisions, same geometry, same token names — what
+   changes is the HOUR. The isometric floor still crosses the page, the objects are
+   still PLACED in the room (thick outline, square corner, 2px bevel on top and a
+   hard 4px shadow below), and the motion still moves in frames. Nothing blurs,
+   nothing is translucent, nothing rounds.
+
+   A THEME ONLY CHANGES VARIABLES (rule, 2026-09-13): this file is part 1 of the
+   look — the TOKENS, named by ROLE. The RULES live in `bill/webapp/base.css` and
+   are served ALWAYS, after the theme. No selector is declared here.
+
+   THE THREE DECISIONS OF THE LIGHT SIDE, AND WHAT BECOMES NIGHT:
+
+   1. THE FLOOR IS THE GROUND OF THE WINDOW. The same: `--main-bg` is transparent
+      and the `body` is what paints, so the grid runs under the panel, the table and
+      the cards without restarting at any seam. The beige becomes the indigo of the
+      room with the lights off, and the seam becomes the pale stitch of moonlight —
+      the same 64×32 rhombus, now visible through the inverted contrast.
+
+   2. THE BEVEL IS THE BACKGROUND, NOT A BORDER. The same: `--panel`, `--sidebar-bg`,
+      `--pop-bg`, `--table-head-bg` and `--group-bg` are HARD-STOP gradients — 2px
+      light on top, 2px dark at the bottom, the body in the middle. The relief is the
+      same; what changes is the light that lights it.
+
+   3. THE MOTION MOVES IN FRAMES. The same: `--ease: steps(4, end)` makes hover,
+      selection, the switch and the page entrance advance in 4 frames.
+
+   THE OUTLINE IS STILL THE MOST CHARACTERISTIC THING OF THE THEME, and it is the
+   point where the night CANNOT be a plain inversion: in the light side the outline
+   is dark plum over a cream object; here the object is dark, and a dark outline over
+   dark closes nothing. What plays the outline's part is the LIGHT ink (`--ink`), and
+   it is what draws the 2px of the buttons (`--set-border`) and of the file screen
+   (`--surface-border`) — the object does not change its shape, it changes its light. */
+
+:root {
+  /* ===== the floor ==================================================== */
+  /* The indigo tile with the pale seam, plus the same fine weave on top (the
+     "dither", now of moonlight: the light ink at 4%). The weave is a FILE of ours
+     (`icons/hotel-tile-dark.svg`), served by the same door as the icons and the
+     drawings — and not an embedded SVG, because the page runs under `default-src
+     'self'` and the policy REFUSES `data:` (`app.py`): embedded, the tile did not
+     paint. */
+  --bg:
+    url("icons/hotel-tile-dark.svg"),
+    repeating-linear-gradient(26.565deg,
+      rgba(160, 140, 230, .22) 0 1px, transparent 1px 28.6px),
+    repeating-linear-gradient(-26.565deg,
+      rgba(160, 140, 230, .22) 0 1px, transparent 1px 28.6px),
+    #1b142c;
+
+  /* ===== the raw palette ==============================================
+     The SAME four saturated colours of the light side — hotel blue, coin gold, the
+     green of "on", the red of "careful" — and no half-tone. What changes is the
+     outline's ink: the dark plum of there does not draw over the dark, so here it
+     becomes the LIGHT ink (the lilac bone), and it is what outlines everything. Pure
+     black stays out: in a thin outline it turns into a hole. */
+  --ink: #efe8ff;                    /* the outline AND the main text */
+  --dim: #a99ecc;                    /* the support: label, header, count */
+  --accent: #6aa9ff;                 /* the hotel blue, lit up to be read */
+  --gold: #ffc24d;                   /* the coin: marks and highlights, never text */
+  --gold-ink: #ffc861;               /* the same gold when it has to BE read */
+  --danger: #ff6b5a;
+  --line: rgba(236, 228, 255, .22);  /* the inner hairline */
+  --hi: rgba(106, 169, 255, .16);    /* the highlight: hover of the row and the item */
+  --color-link: var(--accent);
+  --color-selected: var(--accent);
+
+  /* ===== the surface: the object placed in the room ===================
+     A hard stop, not a gradient: 2px of light on top, 2px of shade at the bottom,
+     the body in the middle. In the light side the body is cream and the shade is
+     beige; here the body is the room's indigo and the "shade" is the void beneath it. */
+  --panel:
+    linear-gradient(to bottom,
+      #3a2f56 0 2px,
+      #2a2140 2px calc(100% - 2px),
+      #191231 calc(100% - 2px));
+  /* THE OUTLINE: 2px, light, closed — the same thickness as the light side, with the
+     ink that there is dark and here is the only one that can be seen. */
+  --surface-border: 2px solid var(--ink);
+
+  /* ===== typography ===================================================
+     THE SAME split as the light side: the pixel font stays in the CHROME — title,
+     folder, group header —, and the BODY stays in the clean sans, because a data
+     table in an 8px bitmap is unreadable in the third column. The font has to be
+     loaded and a theme cannot load it: see note 1 of `hotel.css`. */
+  --font-pixel: "Silkscreen", "Pixelify Sans", "Press Start 2P", "Monocraft",
+                ui-monospace, "Courier New", monospace;
+  --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", Roboto,
+             "Helvetica Neue", Arial, sans-serif;
+  --font-size: 14px;
+  --line-height: 1.6;
+  --weight-normal: 400;
+  --weight-medium: 700;              /* pixel has no semibold: it either is, or is not */
+  --weight-bold: 700;
+  --caps-spacing: .08em;             /* the bitmap is already wide; .14em shatters it */
+  --caps-transform: uppercase;
+
+  /* ===== the left panel =============================================== */
+  --sidebar-width: 288px;
+  --sidebar-rail: 56px;              /* a multiple of 8, like everything else */
+  --sidebar-bg:
+    linear-gradient(to bottom,
+      #3a2f56 0 2px,
+      #2f2647 2px calc(100% - 2px),
+      #1d1631 calc(100% - 2px));
+  --sidebar-border: 2px solid var(--ink);
+  --sidebar-indent: 16px;
+  --sidebar-gap: 8px;
+  --foot-space: 64px;
+
+  --sidebar-title-color: var(--ink);
+  --sidebar-title-strong: var(--accent);
+  --sidebar-title-size: 16px;
+  --sidebar-title-family: var(--font-pixel);
+  --sidebar-title-weight: var(--weight-bold);
+  --sidebar-title-style: normal;
+  --sidebar-title-pad-x: 16px;
+  --sidebar-title-border: 2px solid var(--ink);
+  /* THE DRAWN NAME (2026-09-20) — the same word in pixel, with the lights off: the
+     face stays cream (it is what carries the word over the dark panel) and the
+     outline drops to nearly black, which is what cuts the drawing out here. The file
+     is `icons/bill-hotel-dark.svg`; the box and the word's ink say the same as in the
+     light side. */
+  --brand-mark: url("icons/bill-hotel-dark.svg");
+  --brand-mark-w: 3.7em;
+  --brand-mark-h: 1.5em;
+  --brand-word-ink: transparent;
+  --nav-toggle-size: 20px;
+  --locale-size: 11px;
+  /* THE RAW IDENTIFIER, the same as the light side: the interface shows the
+     machine's label without apologising. */
+  --locale-raw: inline;
+  --locale-name: none;
+  --locale-flag: none;
+
+  --sidebar-folder-color: var(--ink);
+  --sidebar-folder-size: 11px;
+  --sidebar-folder-family: var(--font-pixel);
+  --sidebar-folder-weight: var(--weight-bold);
+  --sidebar-folder-style: normal;
+  --sidebar-folder-pad: 16px 12px 8px;
+  --sidebar-folder-hover: var(--accent);
+
+  --sidebar-item-color: var(--ink);
+  --sidebar-item-family: var(--font-ui);
+  --sidebar-item-weight: var(--weight-normal);
+  --sidebar-item-style: normal;
+  --sidebar-item-pad: 8px 16px;
+  --sidebar-item-bg-hover: var(--hi);
+  /* THE MARK IS STILL A BLOCK: 4px on the left edge of the chosen row — gold in the
+     light side, here the light left over from the window. */
+  --sidebar-item-mark: 4px solid transparent;
+  --sidebar-item-bg-on:
+    linear-gradient(to bottom,
+      rgba(255, 255, 255, .10) 0 1px,
+      rgba(106, 169, 255, .30) 1px);
+  --sidebar-count-color: var(--dim);
+  --sidebar-sep-border: 2px solid var(--line);
+  --sidebar-sep-margin: 12px 16px;
+
+  --caret-size: 12px;
+  --caret-color: var(--ink);
+  --caret-open: var(--accent);
+  --caret-hover: var(--gold-ink);
+
+  /* ===== the icons: real pixel art ====================================
+     The door is the same as the light side: `--icon-full-*` (the drawing PAINTED
+     WHOLE), and not the mask — a Habbo icon does not dim along with the text, it is
+     an object and an object has colour. `--icon-size: 16px` with a `viewBox` of 16 is
+     what guarantees 1 pixel of the drawing = 1 pixel of the screen. The four
+     character glyphs are left EMPTY on purpose; the outline of the drawings is the
+     light ink, for the same reason as the outline of the boxes. */
+  --icon-show: inline;
+  --icon-size: 16px;
+  --icon-code: "";
+  --icon-text: "";
+  --icon-data: "";
+  --icon-other: "";
+  --icon-full-code: url("icons/hotel-code-dark.svg");
+  --icon-full-text: url("icons/hotel-text-dark.svg");
+  --icon-full-data: url("icons/hotel-data-dark.svg");
+  --icon-full-other: url("icons/hotel-other-dark.svg");
+
+  /* ===== the main area ================================================ */
+  /* TRANSPARENT for the same reason as the light side: the `body` is what paints the
+     room, and on an isometric floor a seam at the panel's edge is immediately
+     visible. */
+  --main-bg: transparent;
+  --main-border: 2px solid var(--ink);
+  --header-color: var(--dim);
+  --header-strong: var(--ink);
+  --header-pad-x: 16px;
+  --body-pad: 0;                     /* the table header sticks to the edge */
+  --bottom-gap: 12px;
+  --page-pad-y: 16px;
+  --page-pad-x: 16px;
+
+  --back-color: var(--accent);
+  --back-pad: 8px 16px;
+  --empty-color: var(--dim);
+  --empty-pad: 24px;
+  --subs-border: 2px solid var(--ink);
+  --sub-pad: 8px 16px;
+  --sub-gap: 8px;
+  --sub-color: var(--ink);
+  --sub-strong: var(--accent);
+  --sub-dim: var(--dim);
+  --sub-bg-hover: var(--hi);
+
+  /* ===== the table ==================================================== */
+  --table-head-color: var(--ink);
+  --table-head-weight: var(--weight-bold);
+  --table-head-hover: var(--accent);
+  /* It STICKS and passes over the rows: opaque, obligatorily — and with the bevel on
+     top, because the header band is the upper edge of the object "table". */
+  --table-head-bg:
+    linear-gradient(to bottom,
+      #3a2f56 0 2px,
+      #332949 2px calc(100% - 2px),
+      #221a3a calc(100% - 2px));
+  --table-line: 1px solid rgba(236, 228, 255, .14);
+  --table-row-hover: rgba(106, 169, 255, .20);
+  --table-radius: 0;
+  --table-row-radius: 0;
+  --table-border: 2px solid var(--ink);
+  --cell-pad: 12px;
+  --cell-pad-y: 8px;
+  --measure: 68ch;
+  --id-color: var(--accent);
+  --drag-opacity: .4;
+  --drop-mark: var(--gold);          /* the block of gold where the column will land */
+  --drop-mark-width: 4px;
+  --pill-color: var(--dim);
+  --pill-hover: var(--accent);
+
+  /* ===== links and detail lists ======================================= */
+  /* The link of 2004 is underlined ALWAYS, and this theme will not pretend
+     otherwise. */
+  --link-underline: 2px solid rgba(106, 169, 255, .50);
+  --link-underline-hover: 2px solid var(--color-link);
+  --dl-pad: 16px;
+  --dt-color: var(--dim);
+  --dt-gap: 8px;
+  --dd-indent: 0;
+
+  /* ===== the popover, the dialog and the veil ========================= */
+  --pop-bg:
+    linear-gradient(to bottom,
+      #3a2f56 0 2px,
+      #2a2140 2px calc(100% - 2px),
+      #191231 calc(100% - 2px));
+  --pop-border: 2px solid var(--ink);
+  --pop-blur: none;                  /* nothing blurs in this theme */
+  --veil-blur: none;
+  --pop-pad: 4px;
+  --pop-min-w: 168px;
+  --pop-max-h: 336px;
+  --pop-item-pad: 8px 12px;
+  --pop-item-bg-hover: rgba(106, 169, 255, .24);
+  --funnel: 12px;
+  --funnel-color: var(--ink);
+  --funnel-hover: var(--accent);
+  --funnel-on: var(--gold-ink);
+
+  --pick-gap: 8px;
+  /* THE VALUE PICKER IS NOT A GHOST, for the same reason as the light side: in a
+     room full of objects with outlines, what has no outline does not look
+     clickable. */
+  --pick-pad: 2px 8px;
+  --pick-border: 2px solid var(--line);
+  --pick-caret: 8px;
+  --pick-caret-color: var(--ink);
+  --pick-caret-hover: var(--accent);
+
+  /* ===== settings ===================================================== */
+  --set-gap: 8px;
+  --set-pad: 8px 12px;
+  --set-border: 2px solid var(--ink);
+  --set-mark: 8px solid var(--gold);   /* the theme in use: a block of gold */
+
+  /* THE SWITCH is square, green when on and lit when lit — the traffic light of a
+     game interface, not the discreet blue of an app. */
+  --switch-w: 48px;
+  --switch-h: 24px;
+  --switch-knob: 16px;
+  --switch-inset: 4px;
+  --switch-radius: 0;
+  --switch-border: 2px solid var(--ink);
+  --switch-track: #4a3f66;           /* off: the room's switch, down */
+  --switch-track-on: #3ea54a;
+  --switch-knob-color: #efe8ff;
+  --switch-knob-on: #efe8ff;
+
+  /* THE RADIO is the piece that CANNOT be pixel: the base pins `border-radius: 50%`
+     and draws the dot with a radial gradient. See note 2 of `hotel.css`. */
+  --radio-size: 16px;
+  --radio-border: 2px solid var(--line);
+  --radio-checked: 2px solid var(--accent);
+  --radio-mark: var(--accent);
+  --radio-gap: 8px;
+
+  --group-gap: 16px;
+  --group-bg:
+    linear-gradient(to bottom,
+      #3a2f56 0 2px,
+      #302648 2px calc(100% - 2px),
+      #1e1735 calc(100% - 2px));
+  --group-border: 2px solid var(--ink);
+  --group-radius: 0;
+  --group-head-pad: 12px 16px;
+  --group-head-color: var(--ink);
+  --group-head-size: 11px;
+  --group-head-family: var(--font-pixel);
+  --group-head-weight: var(--weight-bold);
+  --group-head-hover: var(--accent);
+
+  /* ===== the scrollbars ===============================================
+     Thick, square and OPAQUE — the scrollbar of 2004 is a piece, not a hint. The
+     thumb keeps two weights (the base charges for that), and here the difference is
+     one of COLOUR and not of alpha: a half-tone is another theme's vocabulary. The
+     thickness one aims at is the box minus the inset on both sides (16 − 2·2 = 12px). */
+  --scrollbar-size: 16px;
+  --scrollbar-width: auto;
+  --scrollbar-inset: 2px;
+  --scrollbar-radius: 0;
+  --scrollbar-track: rgba(236, 228, 255, .10);
+  --scrollbar-thumb-rest: #6a5f8c;
+  --scrollbar-thumb: var(--accent);
+  --scrollbar-corner: transparent;
+
+  /* ===== shape, light and motion ====================================== */
+  --radius: 0;                       /* no rounded corner, anywhere */
+  --item-radius: 0;
+  /* THE SHADOW IS STILL A BLOCK: 4px offset, no blur at all, plus the 2px outline and
+     the inner bevel. At night it is deeper, because the object has to lift off a dark
+     floor. */
+  --shadow-pop:
+    inset 0 2px 0 rgba(255, 255, 255, .16),
+    inset 0 -2px 0 rgba(0, 0, 0, .45),
+    4px 4px 0 rgba(0, 0, 0, .55);
+  --panel-blur: none;                /* NOTHING blurs */
+  /* The same pair as the light side (decisions 3 and 4 of `hotel.css`), with the
+     inks swapped for the night: the light enters from the top-left and is fainter,
+     the shade is black and heavier, and the icons bite their pixels here too. */
+  --control-elev:
+    inset 1px 0 0 rgba(255, 255, 255, .10),
+    inset -1px 0 0 rgba(0, 0, 0, .40),
+    inset 0 2px 0 rgba(255, 255, 255, .16),
+    inset 0 -2px 0 rgba(0, 0, 0, .45);
+  --shadow-card: inset 1px 1px 0 rgba(255, 255, 255, .12);
+  --icon-rendering: pixelated;
+  /* THE SHINE of the two title strips is a hard 2px band, not a gradient: it is the
+     top light of the piece, and a pixel shine has an edge. */
+  --sheen:
+    linear-gradient(to bottom,
+      rgba(255, 255, 255, .18) 0 2px,
+      transparent 2px);
+  /* IN FRAMES: 4 steps. See decision 3, in the header. */
+  --speed: .16s;
+  --ease: steps(4, end);
+  --enter-shift: 8px;
+}
+
+/* ===== WHAT THE NIGHT ASKED FOR AND THE BASE DOES NOT ALLOW ==========
+   The four structural notes are `hotel.css`'s — the light/dark pair is one theme and
+   what the base lacks, it lacks for both. Three of them are ANSWERED (2026-09-21):
+   the base now brings the fonts itself, and `--control-elev`/`--shadow-card` and
+   `--icon-rendering` are the bevel and the pixel the night asked for. What is still
+   open is the radio's round shape fixed in the base, and the reason it was left
+   open is written there. The only consequence OF THIS HALF is in the outline
+   decision, in the header: what draws the edge here is the light ink, and that is
+   why the 2px of the button and of the file screen are worth the same as in the
+   light side. */

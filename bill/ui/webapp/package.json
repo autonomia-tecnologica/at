@@ -1,0 +1,21 @@
+{
+  "name": "bill-webapp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The bill's UI — a Vue 3 app in TypeScript, built by Vite and served at the root by bill/ui/webapp/app.py.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "vue": "^3.5.43"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.9",
+    "typescript": "^5.9.2",
+    "vite": "^8.3.0",
+    "vue-tsc": "^3.0.0"
+  }
+}

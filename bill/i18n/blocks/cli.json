@@ -1,0 +1,34 @@
+{
+  "pt_BR": {
+    "help.title": "Bill {version}",
+    "help.usage": "bill <palavra>",
+    "help.tables": "Tabelas",
+    "help.words": "Palavras",
+    "help.no_args": "Sem palavra, o Bill abre o Painel de Controle.",
+    "webapp.about": "A aplicação web",
+    "webapp.run.about": "Sobe a página, só em loopback",
+    "help.about": "Mostra esta ajuda.",
+    "version.about": "Mostra a versão do Bill.",
+    "version.line": "Bill {version}",
+    "error.unknown_word": "Palavra desconhecida: {word}.",
+    "error.usage": "Use `bill help` para ver as palavras.",
+    "error.rejected_arguments": "A palavra {word} não recebe argumento nesta versão.",
+    "error.read_only": "Modo somente leitura: nada foi escrito em {where}."
+  },
+  "en_US": {
+    "help.title": "Bill {version}",
+    "help.usage": "bill <word>",
+    "help.tables": "Tables",
+    "help.words": "Words",
+    "help.no_args": "With no word, Bill opens the Control Panel.",
+    "webapp.about": "The web application",
+    "webapp.run.about": "Serves the page, on loopback only",
+    "help.about": "Shows this help.",
+    "version.about": "Shows Bill's version.",
+    "version.line": "Bill {version}",
+    "error.unknown_word": "Unknown word: {word}.",
+    "error.usage": "Use `bill help` to see the words.",
+    "error.rejected_arguments": "The word {word} takes no argument in this version.",
+    "error.read_only": "Read-only mode: nothing was written to {where}."
+  }
+}

@@ -1,0 +1,12 @@
+/* The one rule this app needs and `base.css` does not have.
+
+   The bill's `body` is `display: flex` and expects `nav` and `main` as DIRECT
+   children (base.css, section 2). Vue mounts into an element of its own
+   (`#app`), which would come in between and break that layout. `display:
+   contents` takes its box out of the way: its children take part in the body's
+   flex as if it did not exist.
+
+   No visual value lives here — neither this file nor any other of this app
+   declares a colour, a space or a type. That belongs to the theme and to
+   `base.css`. */
+#app { display: contents; }

@@ -1,0 +1,301 @@
+/* studio — a professional suite, in the light of the office.
+
+   The theme that answers "the application is not homemade". It is modelled on the
+   interfaces that people who work all day actually live in — Photoshop, Affinity,
+   Office — and what those have in common is not a colour: it is a DISCIPLINE.
+   Grey does the work and colour is a signal; the boxes are small-cornered and
+   precise; the chrome is thin, crisp and never dissolves; the type is quiet, small
+   and dense, because the content is what is on the screen to be read.
+
+   WHAT IT OPENS THAT NO OTHER THEME DOES: it is the first to CLAIM the vocabulary
+   of material the base gained on 2026-09-21 (`--control-elev`, `--shadow-card`)
+   and the first to use the divider's escape hatch on purpose (`--divider-*: none`
+   is the documented way back to the plain hairline). It also brings its own icon
+   set (`icons/studio-*.svg`) and its own wordmark as OUTLINES of Inter — a drawing
+   has to be a path, because an SVG served as a background-image cannot see a
+   web font.
+
+   IT IS THE DEFAULT THEME (`app.DEFAULT_THEME`), and it wears the dark side by
+   itself (`"side": "dark"` in `data/themes.jsonl`) — which is the default of every
+   suite it is modelled on. This file is the LIGHT side, the one for a bright room.
+
+   THE GREY IS A LADDER, and that is the whole trick of looking professional: the
+   window sits at one step, the panels at another, the cards at a third, and the
+   eye reads the depth without a single line being drawn. Every step here is the
+   same neutral hue, four values apart. */
+
+:root {
+  /* ===== the raw palette ============================================== */
+  --bg: #ededed;                 /* the window ground: the outermost grey */
+  --panel: #ffffff;              /* a panel, a card, a popover — the top step */
+  --line: #d2d2d2;               /* EVERY inner line: one crisp hairline */
+  --ink: #1f1f1f;                /* the text */
+  --dim: #5c5c5c;                /* the support: labels, headers, counts */
+  --accent: #2f6fd0;             /* the signal: id, link, selection, focus */
+  --danger: #c0392b;             /* what destroys */
+  --hi: #e8f0fc;                 /* the wash under the pointer: the accent, spent */
+
+  /* ===== colour by role =============================================== */
+  --color-link: var(--accent);   /* the link is the accent word */
+  /* THE SELECTED LABEL IS A DEEPER BLUE THAN THE ACCENT, and it has to be: the
+     active row paints its WORDS in this colour on top of its own wash
+     (`--sidebar-item-bg-on`), and the accent on the accent's wash measured 4.25:1 —
+     under the 4.5 AA asks. The accent keeps the hue it has for the link, the id and
+     the focus ring, which are read against a plain surface; the one place where the
+     blue lands on blue takes a tone two steps down (5.66:1). The same correction,
+     for the same reason, is in `studio-dark`. */
+  --color-selected: #245cb0;
+
+  /* ===== typography ===================================================
+     INTER, named by this theme and brought by the BASE (section 1b declares the
+     `@font-face` and serves it from `/vendor/`) — a theme cannot carry a font, and
+     before 2026-09-21 this stack fell all the way to Noto Sans on a machine that
+     had none of its names, which is half of why every theme looked homemade.
+
+     THE SIZE IS THE POINT: 13px, and the line-height is 1.45 — a suite is DENSE.
+     A professional application shows a lot and asks the eye to travel; air is a
+     consumer magazine's, and this theme is not one. */
+  --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
+             Arial, sans-serif;
+  --font-size: 13px;
+  --line-height: 1.45;
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-bold: 600;            /* Inter's 600: a bold that does not shout */
+  /* THE SECTION LABEL: upper-case, spaced — the one place a suite raises its voice */
+  --caps-spacing: .06em;
+  --caps-transform: uppercase;
+
+  /* ===== sidebar ======================================================
+     A WORKING PANEL, not a rail of destinations: a little wider than the other
+     themes (248px), because a suite's panel carries the file tree and the names in
+     it are long. The item's breathing room is TIGHT — 6px of vertical padding and
+     a 3px corner — so that the list reads as a list of rows and not as a column of
+     buttons, which is what a document app's panel is. */
+  --sidebar-width: 248px;
+  --sidebar-rail: 44px;
+  --sidebar-bg: #f4f4f4;         /* the panel is the next step up from the window */
+  --sidebar-border: 1px solid var(--line);
+  --sidebar-pad: 10px;           /* the helper the rows below are written against */
+  --sidebar-indent: 14px;
+  --sidebar-gap: 6px;
+
+  /* the name at the top of the panel: the mark is DRAWN (below); the written one
+     stays as the accessible name and is buried by ink, never by `display: none`. */
+  --sidebar-title-color: var(--dim);
+  --sidebar-title-strong: var(--ink);
+  --sidebar-title-size: 13px;
+  --sidebar-title-family: var(--font-ui);
+  --sidebar-title-weight: var(--weight-bold);
+  --sidebar-title-style: normal;
+  --sidebar-title-pad-x: 12px;
+  --sidebar-title-border: 1px solid var(--line);
+  --brand-mark: url("icons/bill-studio.svg");
+  --brand-mark-w: 3.14em;        /* the mark's own viewBox is 54.34 x 26 */
+  --brand-mark-h: 1.5em;
+  --brand-word-ink: transparent;
+  /* the language is the CODE, in the support body, and no flag: a tool says pt_BR */
+  --locale-raw: inline;
+  --locale-name: none;
+  --locale-flag: none;
+  --locale-size: 11px;
+  --nav-toggle-size: 18px;
+
+  /* THE FOLDER is a section header, and that is a suite's idiom: small, upper-case,
+     spaced, in the support ink — it names a group, it is not a place to click. */
+  --sidebar-folder-color: var(--dim);
+  --sidebar-folder-size: 11px;
+  --sidebar-folder-family: var(--font-ui);
+  --sidebar-folder-weight: var(--weight-bold);
+  --sidebar-folder-style: normal;
+  --sidebar-folder-pad: 10px var(--sidebar-pad) 4px;
+  --sidebar-folder-hover: var(--ink);
+  /* THE ROW: a card with a small corner, and the SELECTED one is a filled band of
+     the accent's wash plus a 2px accent bar on the left — the two marks a suite
+     uses together, because the colour alone does not survive a colour-blind eye. */
+  --sidebar-item-color: var(--ink);
+  --sidebar-item-family: var(--font-ui);
+  --sidebar-item-weight: var(--weight-normal);
+  --sidebar-item-style: normal;
+  --sidebar-item-pad: 6px var(--sidebar-pad);
+  --sidebar-item-bg-hover: #e9e9e9;
+  --sidebar-item-bg-on: var(--hi);
+  --sidebar-item-mark: 2px solid transparent;
+  --sidebar-count-color: var(--dim);
+  --sidebar-sep-border: 1px solid var(--line);
+  --sidebar-sep-margin: 8px var(--sidebar-pad);
+
+  /* the fold's triangle: small, and it takes the row's ink rather than a colour */
+  --caret-size: 9px;
+  --caret-color: var(--dim);
+  --caret-open: var(--accent);
+  --caret-hover: var(--ink);
+
+  /* THE ICONS ARE THIS THEME'S OWN DRAWING (`icons/studio-*.svg`), used as a MASK
+     and inked with `currentColor`: one shape per bucket, and the icon takes the
+     colour of the row it sits in — it dims, highlights and turns selected exactly
+     like the name beside it, which is the reason the mask door exists at all. */
+  --icon-show: inline;
+  --icon-size: 14px;
+  --icon-ink: currentColor;
+  --icon-pic-code: url("icons/studio-code.svg");
+  --icon-pic-text: url("icons/studio-text.svg");
+  --icon-pic-data: url("icons/studio-data.svg");
+  --icon-pic-other: url("icons/studio-other.svg");
+
+  /* ===== main window ================================================== */
+  --main-bg: #f7f7f7;
+  --main-border: 1px solid var(--line);
+  --header-color: var(--dim);
+  --header-strong: var(--ink);
+  --header-pad-x: 16px;
+  --body-pad: 0;
+  --bottom-gap: 0;
+  --page-pad-x: 16px;
+  --page-pad-y: 14px;
+
+  /* ===== table ========================================================
+     THE DENSEST SCREEN IS THE ONE THAT MATTERS. A suite's grid shows many rows and
+     keeps them legible: 13px of type on a 1.45 line, 6px of vertical padding per
+     cell, and the row line only under the DATA — the head carries its own, firmer
+     one, so the two read as one edge instead of a lattice of boxes. */
+  --table-head-color: var(--dim);
+  --table-head-weight: var(--weight-bold);
+  --table-head-hover: var(--ink);
+  --table-head-bg: #ececec;
+  --table-line: 1px solid var(--line);
+  --table-row-hover: var(--hi);
+  --table-row-radius: 3px;
+  --cell-pad: 10px;
+  --cell-pad-y: 6px;
+  --measure: 72ch;
+  --id-color: var(--dim);        /* the id is furniture, not data: it recedes */
+  --drag-opacity: .4;
+  --drop-mark: var(--accent);
+  --drop-mark-width: 2px;
+  --pill-color: var(--dim);
+  --pill-hover: var(--accent);
+
+  /* ===== links and detail lists ======================================= */
+  --link-underline: 1px solid transparent;   /* a 2026 link underlines on hover */
+  --link-underline-hover: 1px solid var(--accent);
+  --dl-pad: 0;
+  --dt-color: var(--dim);
+  --dt-gap: 4px;
+  --dd-indent: 0;                /* a property list, not indented prose */
+  --back-color: var(--dim);
+  --back-pad: 4px 8px;
+  --empty-color: var(--dim);
+  --empty-pad: 24px;
+  --subs-border: 1px solid var(--line);
+  --sub-pad: 6px var(--sidebar-pad);
+  --sub-gap: 8px;
+  --sub-color: var(--ink);
+  --sub-strong: var(--accent);
+  --sub-dim: var(--dim);
+  --sub-bg-hover: var(--hi);
+
+  /* ===== popover ====================================================== */
+  --pop-bg: var(--panel);
+  --pop-border: 1px solid var(--line);
+  --pop-pad: 6px;
+  --pop-min-w: 180px;
+  --pop-max-h: 320px;
+  --pop-item-pad: 6px 8px;
+  --pop-item-bg-hover: var(--hi);
+  --funnel: 11px;
+  --funnel-color: var(--dim);
+  --funnel-hover: var(--ink);
+  --funnel-on: var(--accent);
+  --pick-gap: 5px;
+  --pick-caret: 8px;
+  --pick-caret-color: var(--dim);
+  --pick-caret-hover: var(--accent);
+
+  /* ===== settings ===================================================== */
+  --set-gap: 8px;
+  --set-pad: 8px 10px;
+  --set-border: 1px solid var(--line);
+  --set-mark: 2px solid var(--accent);
+  --switch-w: 30px;
+  --switch-h: 16px;
+  --switch-knob: 12px;
+  --switch-inset: 2px;
+  --switch-radius: 8px;
+  --switch-border: 1px solid var(--line);
+  --switch-track: #dcdcdc;
+  --switch-track-on: var(--accent);
+  --switch-knob-color: #ffffff;
+  --switch-knob-on: #ffffff;
+  --radio-size: 13px;
+  --radio-border: 1px solid var(--line);
+  --radio-checked: 1px solid var(--accent);
+  --radio-mark: var(--accent);
+  --radio-gap: 6px;
+  --group-gap: 8px;
+  --group-bg: var(--panel);
+  --group-border: 1px solid var(--line);
+  --group-radius: 4px;
+  --group-head-pad: 8px 10px;
+  --group-head-color: var(--dim);
+  --group-head-hover: var(--ink);
+  --group-head-size: 11px;
+  --group-head-family: var(--font-ui);
+  --group-head-weight: var(--weight-bold);
+
+  /* ===== scrollbars ===================================================
+     THIN AND INSET, and they never take the eye: a 12px gutter with the thumb
+     clipped to its middle (3px of transparent border on each side) is what every
+     professional application ships, and the whole point is that the CONTENT keeps
+     its width whether or not the bar is showing. */
+  --scrollbar-size: 12px;
+  --scrollbar-width: thin;
+  --scrollbar-inset: 3px;
+  --scrollbar-radius: 4px;
+  --scrollbar-track: transparent;
+  --scrollbar-thumb-rest: #c4c4c4;
+  --scrollbar-thumb: #9a9a9a;
+  --scrollbar-corner: transparent;
+
+  /* ===== shape, material and motion ===================================
+     THE CORNER IS SMALL. 4px on a card and 3px on a row is the corner of software
+     that has to line up — a 16px corner belongs to a phone app, and it is the
+     fastest way to make a tool look like a toy.
+     THE RELIEF IS TWO DECLARATIONS, and they are the vocabulary the base opened on
+     2026-09-21 that no theme had claimed yet: `--control-elev` puts a 1px top light
+     and a 1px drop on everything that can be pressed — a bezel, a light and a
+     volume, which a `border` cannot give without moving the label — and
+     `--shadow-card` lifts the panels that float over the content.
+     THE MOTION IS ALMOST NOT THERE: 100ms and a curve that leaves at once. A
+     professional application answers; it does not perform, and it does not make the
+     view arrive from anywhere (`--enter-shift: 0`). */
+  --radius: 4px;
+  --item-radius: 3px;
+  --control-elev: inset 0 1px 0 rgba(255, 255, 255, .9),
+                  0 1px 1px rgba(31, 31, 31, .06);
+  --shadow-card: 0 1px 2px rgba(31, 31, 31, .06),
+                 0 6px 20px rgba(31, 31, 31, .07);
+  --shadow-pop: 0 8px 24px rgba(31, 31, 31, .16),
+                0 0 0 1px rgba(31, 31, 31, .05);
+  --panel-blur: none;            /* the surfaces of a suite are OPAQUE */
+  --sheen: none;
+
+  /* THE CHASSIS LINES ARE CRISP — no dissolve, and that is a decision, not an
+     omission. `none` is the escape hatch the base documents: the divider goes back
+     to the plain `border-bottom` of the strip, which is one solid hairline with two
+     ends, exactly as a suite draws it. The dissolve is the idiom of the 2020s web
+     app; this theme is the one that says no to it. */
+  --divider-side: none;
+  --divider-title: none;
+  --divider-head: none;
+
+  /* THE ONE BAND THAT IS DISTINCT is the top bar: `--sheen-head` paints a wash over
+     the whole strip, which is what makes it read as a title bar instead of as the
+     first row of the content. It is the light the bar catches, and here it is
+     doing the job of a token this design system does not have. */
+  --sheen-head: linear-gradient(to bottom, rgba(255, 255, 255, .92) 0,
+                                rgba(255, 255, 255, .62) 100%);
+  --speed: .1s;
+  --ease: cubic-bezier(.2, 0, 0, 1);
+  --enter-shift: 0px;
+}

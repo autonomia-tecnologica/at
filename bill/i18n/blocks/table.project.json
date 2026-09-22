@@ -1,0 +1,32 @@
+{
+  "pt_BR": {
+    "name.one": "Projeto",
+    "name.many": "Projetos",
+    "field.id": "Identificação",
+    "field.name": "Nome",
+    "field.parent": "Projeto pai",
+    "field.status": "Status",
+    "field.status.idea": "Ideia",
+    "field.status.active": "Ativo",
+    "field.status.paused": "Pausado",
+    "field.status.done": "Feito",
+    "field.status.cancelled": "Cancelado",
+    "field.desc": "Descrição",
+    "field.since": "Desde"
+  },
+  "en_US": {
+    "name.one": "Project",
+    "name.many": "Projects",
+    "field.id": "ID",
+    "field.name": "Name",
+    "field.parent": "Parent",
+    "field.status": "Status",
+    "field.status.idea": "Idea",
+    "field.status.active": "Active",
+    "field.status.paused": "Paused",
+    "field.status.done": "Done",
+    "field.status.cancelled": "Cancelled",
+    "field.desc": "Description",
+    "field.since": "Since"
+  }
+}

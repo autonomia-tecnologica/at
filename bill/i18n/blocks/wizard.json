@@ -1,0 +1,14 @@
+{
+  "pt_BR": {
+    "window.title": "Bill — Painel de Controle",
+    "hello": "Olá, mundo.",
+    "close": "Fechar",
+    "unavailable": "Não foi possível abrir o Painel de Controle: {error}"
+  },
+  "en_US": {
+    "window.title": "Bill — Control Panel",
+    "hello": "Hello, world.",
+    "close": "Close",
+    "unavailable": "The Control Panel could not be opened: {error}"
+  }
+}

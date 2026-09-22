@@ -1,0 +1,89 @@
+{
+  "id": "reminder",
+  "order": 6,
+  "name": {
+    "one": "table.reminder.name.one",
+    "many": "table.reminder.name.many"
+  },
+  "store": "data/reminders.jsonl",
+  "type": "reminder",
+  "primary": "text",
+  "columns": [
+    "freq",
+    "at",
+    "status",
+    "text"
+  ],
+  "desc": "a recurring touch by CALENDAR (frequency + anchor + time). It is not work: it is not finished nor closed, it pauses and comes back",
+  "fields": {
+    "id": {
+      "label": "table.reminder.field.id",
+      "filterable": true,
+      "searchable": true
+    },
+    "text": {
+      "label": "table.reminder.field.text",
+      "searchable": true,
+      "required": true
+    },
+    "note": {
+      "label": "table.reminder.field.note",
+      "type": "markdown",
+      "searchable": true
+    },
+    "freq": {
+      "label": "table.reminder.field.freq",
+      "filterable": true,
+      "searchable": true,
+      "required": true,
+      "default": "daily",
+      "enum": {
+        "daily": "table.reminder.field.freq.daily",
+        "weekly": "table.reminder.field.freq.weekly",
+        "monthly": "table.reminder.field.freq.monthly",
+        "yearly": "table.reminder.field.freq.yearly",
+        "once": "table.reminder.field.freq.once"
+      }
+    },
+    "on_weekday": {
+      "label": "table.reminder.field.on_weekday",
+      "type": "list"
+    },
+    "on_day": {
+      "label": "table.reminder.field.on_day",
+      "filterable": true
+    },
+    "on_month": {
+      "label": "table.reminder.field.on_month",
+      "filterable": true
+    },
+    "on_date": {
+      "label": "table.reminder.field.on_date",
+      "filterable": true
+    },
+    "at": {
+      "label": "table.reminder.field.at",
+      "type": "list",
+      "required": true
+    },
+    "warn_days": {
+      "label": "table.reminder.field.warn_days",
+      "type": "list"
+    },
+    "status": {
+      "label": "table.reminder.field.status",
+      "filterable": true,
+      "searchable": true,
+      "default": "active",
+      "enum": {
+        "active": "table.reminder.field.status.active",
+        "paused": "table.reminder.field.status.paused"
+      }
+    },
+    "since": {
+      "label": "table.reminder.field.since",
+      "filterable": true,
+      "default": "today"
+    }
+  }
+}

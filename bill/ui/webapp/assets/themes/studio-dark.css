@@ -1,0 +1,240 @@
+/* studio, at night — the side the theme WEARS BY ITSELF.
+
+   Every suite this theme is modelled on opens dark, and it is the hour the work is
+   actually done in: a bright grid of text in a dark room is the interface people
+   choose, and `data/themes.jsonl` says `"side": "dark"` for this theme, so this is
+   the file a person sees the first time the bill is opened.
+
+   THE LADDER OF GREYS IS THE SAME AND REVERSED: the window is the deepest step, the
+   panel is one above it, the card one above that, and the lines are a step above the
+   surface they separate rather than below it — which is the whole difference between
+   a dark interface that reads and a dark interface that looks switched off.
+   THE ACCENT IS LIGHTER, and it has to be: `#2f6fd0` on `#2b2b2b` measures 3.0:1,
+   under the 4.5 the text needs, while `#4c9aff` measures 6.9. The hue is the same
+   blue — what the hour changes is how much light it takes to be seen.
+   The material, the density, the small corners, the crisp dividers and the 100ms of
+   motion are the day side's and are not repeated here: this file is the same theme
+   with the light off, so only what the LIGHT decides is written again. */
+
+:root {
+  /* ===== the raw palette ============================================== */
+  --bg: #1c1c1c;                 /* the window ground: the deepest step */
+  --panel: #2b2b2b;              /* a panel, a card, a popover */
+  --line: #3a3a3a;               /* EVERY inner line: one crisp hairline */
+  --ink: #e9e9e9;                /* the text */
+  --dim: #9c9c9c;                /* the support: labels, headers, counts */
+  --accent: #4c9aff;             /* the signal, brought up until it reads */
+  --danger: #ff6b5e;             /* what destroys */
+  --hi: #313131;                 /* the wash under the pointer */
+
+  /* ===== colour by role =============================================== */
+  --color-link: var(--accent);
+  /* the deeper step is here too, and here it goes UP instead of down: on the dark
+     wash the accent measured 4.25:1, and what fixes it is more light, not less
+     (5.52:1 on the surface). See `studio.css`. */
+  --color-selected: #5aa4ff;
+
+  /* ===== typography =================================================== */
+  --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
+             Arial, sans-serif;
+  --font-size: 13px;
+  --line-height: 1.45;
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-bold: 600;
+  --caps-spacing: .06em;
+  --caps-transform: uppercase;
+
+  /* ===== sidebar ====================================================== */
+  --sidebar-width: 248px;
+  --sidebar-rail: 44px;
+  --sidebar-bg: #242424;         /* one step above the window */
+  --sidebar-border: 1px solid var(--line);
+  --sidebar-pad: 10px;
+  --sidebar-indent: 14px;
+  --sidebar-gap: 6px;
+  --sidebar-title-color: var(--dim);
+  --sidebar-title-strong: var(--ink);
+  --sidebar-title-size: 13px;
+  --sidebar-title-family: var(--font-ui);
+  --sidebar-title-weight: var(--weight-bold);
+  --sidebar-title-style: normal;
+  --sidebar-title-pad-x: 12px;
+  --sidebar-title-border: 1px solid var(--line);
+  --brand-mark: url("icons/bill-studio-dark.svg");
+  --brand-mark-w: 3.14em;
+  --brand-mark-h: 1.5em;
+  --brand-word-ink: transparent;
+  --locale-raw: inline;
+  --locale-name: none;
+  --locale-flag: none;
+  --locale-size: 11px;
+  --nav-toggle-size: 18px;
+  --sidebar-folder-color: var(--dim);
+  --sidebar-folder-size: 11px;
+  --sidebar-folder-family: var(--font-ui);
+  --sidebar-folder-weight: var(--weight-bold);
+  --sidebar-folder-style: normal;
+  --sidebar-folder-pad: 10px var(--sidebar-pad) 4px;
+  --sidebar-folder-hover: var(--ink);
+  --sidebar-item-color: var(--ink);
+  --sidebar-item-family: var(--font-ui);
+  --sidebar-item-weight: var(--weight-normal);
+  --sidebar-item-style: normal;
+  --sidebar-item-pad: 6px var(--sidebar-pad);
+  --sidebar-item-bg-hover: #2f2f2f;
+  --sidebar-item-bg-on: rgba(76, 154, 255, .16);
+  --sidebar-item-mark: 2px solid transparent;
+  --sidebar-count-color: var(--dim);
+  --sidebar-sep-border: 1px solid var(--line);
+  --sidebar-sep-margin: 8px var(--sidebar-pad);
+  --caret-size: 9px;
+  --caret-color: var(--dim);
+  --caret-open: var(--accent);
+  --caret-hover: var(--ink);
+
+  /* the SAME four drawings as the day side: an icon used as a mask takes its ink
+     from the row (`currentColor`), so one file serves both hours. */
+  --icon-show: inline;
+  --icon-size: 14px;
+  --icon-ink: currentColor;
+  --icon-pic-code: url("icons/studio-code.svg");
+  --icon-pic-text: url("icons/studio-text.svg");
+  --icon-pic-data: url("icons/studio-data.svg");
+  --icon-pic-other: url("icons/studio-other.svg");
+
+  /* ===== main window ================================================== */
+  --main-bg: #212121;
+  --main-border: 1px solid var(--line);
+  --header-color: var(--dim);
+  --header-strong: var(--ink);
+  --header-pad-x: 16px;
+  --body-pad: 0;
+  --bottom-gap: 0;
+  --page-pad-x: 16px;
+  --page-pad-y: 14px;
+
+  /* ===== table ========================================================
+     THE HEAD BAND IS LIGHTER THAN THE TABLE, not darker: on a dark ground the eye
+     reads "above" as "more light", and a head darker than its own rows reads as a
+     hole. The status colour of a column name is the support ink, the same as on
+     the day side, and the row line is the hairline. */
+  --table-head-color: var(--dim);
+  --table-head-weight: var(--weight-bold);
+  --table-head-hover: var(--ink);
+  --table-head-bg: #2f2f2f;
+  --table-line: 1px solid var(--line);
+  --table-row-hover: var(--hi);
+  --table-row-radius: 3px;
+  --cell-pad: 10px;
+  --cell-pad-y: 6px;
+  --measure: 72ch;
+  --id-color: var(--dim);
+  --drag-opacity: .4;
+  --drop-mark: var(--accent);
+  --drop-mark-width: 2px;
+  --pill-color: var(--dim);
+  --pill-hover: var(--accent);
+
+  /* ===== links and detail lists ======================================= */
+  --link-underline: 1px solid transparent;
+  --link-underline-hover: 1px solid var(--accent);
+  --dl-pad: 0;
+  --dt-color: var(--dim);
+  --dt-gap: 4px;
+  --dd-indent: 0;
+  --back-color: var(--dim);
+  --back-pad: 4px 8px;
+  --empty-color: var(--dim);
+  --empty-pad: 24px;
+  --subs-border: 1px solid var(--line);
+  --sub-pad: 6px var(--sidebar-pad);
+  --sub-gap: 8px;
+  --sub-color: var(--ink);
+  --sub-strong: var(--accent);
+  --sub-dim: var(--dim);
+  --sub-bg-hover: var(--hi);
+
+  /* ===== popover ====================================================== */
+  --pop-bg: #303030;             /* the popover is ABOVE the panel, not level with it */
+  --pop-border: 1px solid var(--line);
+  --pop-pad: 6px;
+  --pop-min-w: 180px;
+  --pop-max-h: 320px;
+  --pop-item-pad: 6px 8px;
+  --pop-item-bg-hover: var(--hi);
+  --funnel: 11px;
+  --funnel-color: var(--dim);
+  --funnel-hover: var(--ink);
+  --funnel-on: var(--accent);
+  --pick-gap: 5px;
+  --pick-caret: 8px;
+  --pick-caret-color: var(--dim);
+  --pick-caret-hover: var(--accent);
+
+  /* ===== settings ===================================================== */
+  --set-gap: 8px;
+  --set-pad: 8px 10px;
+  --set-border: 1px solid var(--line);
+  --set-mark: 2px solid var(--accent);
+  --switch-w: 30px;
+  --switch-h: 16px;
+  --switch-knob: 12px;
+  --switch-inset: 2px;
+  --switch-radius: 8px;
+  --switch-border: 1px solid var(--line);
+  --switch-track: #3a3a3a;
+  --switch-track-on: var(--accent);
+  --switch-knob-color: #d8d8d8;
+  --switch-knob-on: #ffffff;
+  --radio-size: 13px;
+  --radio-border: 1px solid var(--line);
+  --radio-checked: 1px solid var(--accent);
+  --radio-mark: var(--accent);
+  --radio-gap: 6px;
+  --group-gap: 8px;
+  --group-bg: var(--panel);
+  --group-border: 1px solid var(--line);
+  --group-radius: 4px;
+  --group-head-pad: 8px 10px;
+  --group-head-color: var(--dim);
+  --group-head-hover: var(--ink);
+  --group-head-size: 11px;
+  --group-head-family: var(--font-ui);
+  --group-head-weight: var(--weight-bold);
+
+  /* ===== scrollbars =================================================== */
+  --scrollbar-size: 12px;
+  --scrollbar-width: thin;
+  --scrollbar-inset: 3px;
+  --scrollbar-radius: 4px;
+  --scrollbar-track: transparent;
+  --scrollbar-thumb-rest: #4a4a4a;
+  --scrollbar-thumb: #6a6a6a;
+  --scrollbar-corner: transparent;
+
+  /* ===== shape, material and motion ===================================
+     The relief flips: the top light is a tenth as strong (a bright 1px on a dark
+     surface is a scratch) and the drop is black and heavier, because a dark card
+     and its ground are otherwise one surface. The popover's is the deepest of the
+     three — it floats highest, and on a dark screen that has to be said in shadow. */
+  --radius: 4px;
+  --item-radius: 3px;
+  --control-elev: inset 0 1px 0 rgba(255, 255, 255, .07),
+                  0 1px 1px rgba(0, 0, 0, .45);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, .35),
+                 0 8px 24px rgba(0, 0, 0, .35);
+  --shadow-pop: 0 10px 30px rgba(0, 0, 0, .6),
+                0 0 0 1px rgba(255, 255, 255, .04);
+  --panel-blur: none;
+  --sheen: none;
+  --divider-side: none;
+  --divider-title: none;
+  --divider-head: none;
+  /* the top bar, at night: a band a step ABOVE the window, not a white wash. */
+  --sheen-head: linear-gradient(to bottom, rgba(255, 255, 255, .05) 0,
+                                rgba(255, 255, 255, .015) 100%);
+  --speed: .1s;
+  --ease: cubic-bezier(.2, 0, 0, 1);
+  --enter-shift: 0px;
+}

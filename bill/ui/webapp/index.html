@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<!-- `shell` is the PAGE SHAPE: this page has a menu, and the shell's rules — the
+     rail the content reserves, the drawer, the veil — belong to it. A page
+     without a menu simply does not declare the shape, and none of it reaches it
+     (base.css, section 5). -->
+<html class="shell">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bill</title>
+<!-- THE BILL'S LOOK, and it comes from the SERVER, on the same origin: the
+     THEME, then the choice (before the first paint), then the BASE.
+
+     Injected by `vite.config.ts` on purpose, and not written here: Vite treats
+     `<link rel="stylesheet">` as something to BUNDLE, and when it does not find
+     the file on disk it REMOVES it — which is what happened to the base
+     stylesheet in the first build, in silence. -->
+<!--bill:look-->
+</head>
+<body>
+<div id="app"></div>
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>

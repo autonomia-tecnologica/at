@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bill"
+description = "A deterministic task engine that bootstraps its own environment"
+dynamic = ["version"]
+requires-python = ">=3.14.7"
+# The skeleton is stdlib only. A dependency arrives pinned in version and
+# hashing (MANIFESTO.md §3, Dependência externa) — starting at zero is the
+# cheapest way to keep that promise.
+dependencies = []
+
+[project.scripts]
+bill = "bill.ui.cli:main"
+
+# The version has one home: `bill.__version__`.
+[tool.setuptools.dynamic]
+version = { attr = "bill.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["bill*"]
+exclude = ["bill.tests*"]
+
+# The language catalogs are data, not code: without this the built artifact
+# ships no `blocks/*.json` and every surface answers in raw keys.
+[tool.setuptools.package-data]
+"bill.i18n" = ["blocks/*.json"]
