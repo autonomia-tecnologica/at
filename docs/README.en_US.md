@@ -422,7 +422,7 @@ The panel has the entries:
 
 - With everything configured, the cherry on the cake is `ntfy`, today the tool that fulfils the `notifier` service (§4). The configured reminders can be notified directly as a Push Notification, and it is through it that the approval of a demand that passed the risk threshold arrives.
 
-- This is where the first graded functionality completes itself: enabling the service does not change the grade; a read-only token does not change the grade; a read-and-write token without a second factor **lowers** the grade, and the way back is enabling the token service (TOTP).
+- This is where the first graded functionality comes in: its levels and what each one costs live in [functionalities](functionalities.en_US.md).
 
 ## 8. Extensions and plugins [normative]
 

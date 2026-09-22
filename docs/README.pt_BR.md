@@ -422,7 +422,7 @@ O painel tem as entradas:
 
 - Com tudo configurado, a cereja do bolo é o `ntfy`, hoje a ferramenta que cumpre o serviço `notifier` (§4). Os lembretes configurados podem ser notificados diretamente como um Push Notification, e é por ele que chega a aprovação de uma demanda que passou do limiar de risco.
 
-- É aqui que a primeira funcionalidade graduada se completa: habilitar o serviço não muda a nota; um token só de leitura não muda a nota; um token de leitura e escrita sem segundo fator **abaixa** a nota, e o caminho de volta é habilitar o serviço de token (TOTP).
+- É aqui que entra a primeira funcionalidade graduada: os níveis dela e o que cada um custa vivem em [funcionalidades](functionalities.pt_BR.md).
 
 ## 8. Extensões e plugins [normativo]
 
