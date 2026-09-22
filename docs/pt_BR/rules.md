@@ -93,7 +93,7 @@
 
 ### Código e delivery
 
-- Bill é escrito em `Python 3.14`. Todo seu estilo de código é baseado em `PEP 8`. A ideia é que ele seja entregue em um binário único: Windows, Linux e Mac. Seu versionamento é SemVer, e o binário carrega esse número — no Windows ele sai como `bill.exe`, nos outros como `bill`.
+- Bill é escrito em Python, e a versão que ele exige mora em `pyproject.toml`, no `requires-python`. Todo seu estilo de código é baseado em `PEP 8`. A ideia é que ele seja entregue em um binário único: Windows, Linux e Mac. Seu versionamento é SemVer, e o binário carrega esse número — no Windows ele sai como `bill.exe`, nos outros como `bill`.
 
 - O binário carrega o **Caddy** dentro de si. O Caddy é um binário estático único, e no caminho hospedado é ele quem termina TLS e publica o Bill; no caminho container ele roda como container, pelo isolamento. Não há variante de release: um artefato só, e o custo em disco é aceito em troca dessa simplicidade. Como o Caddy vai dentro do binário, a versão dele é a do binário — não há pin separado para ele.
 
