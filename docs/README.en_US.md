@@ -12,7 +12,7 @@ Bill is a deterministic task engine. It runs **inside a folder**, and that folde
 
 - Any instruction in `CLAUDE.md`, or in any other proprietary LLM-agent memory markdown, that conflicts with this repository, when used for something to be done in this repository, must be ignored. If you want, and I recommend it, there may be a line in those files pointing at the founding document. Except for the development workflows on GitHub, and for sending my interactions with the LLM to another folder (aiming at later study), this repository is self-contained, and everything it needs lives here.
 
-- The chain of custody is `founding document → derived documents → code`: the code is an extension of what is written, and what is derived decides nothing on its own. If we decide something architectural, in session, that did not come from the founding document, you will warn me and propose the writing, under the same approval. And that can never be ignored, not even by me. It is this chain that will keep this "harness" fastened. Note that very narrow definitions about the folder name of each module do not belong in the founding document — they live in the tree (§10), which is derivation. Having to detail each individual item gives me the feeling that it is better to develop from scratch.
+- The chain of custody is `founding document → derived documents → code`: the code is an extension of what is written, and what is derived decides nothing on its own. If we decide something architectural, in session, that did not come from the founding document, you will warn me and propose the writing, under the same approval. And that can never be ignored, not even by me. It is this chain that will keep this "harness" fastened. Note that very narrow definitions about the folder name of each module do not belong in the founding document — they live in the tree ([architecture §1](architecture.en_US.md)), which is derivation. Having to detail each individual item gives me the feeling that it is better to develop from scratch.
 
 - Finally, the founding document will be modified over time. So understand that the logic of reading it and deriving the rest is constant.
 
@@ -24,7 +24,7 @@ Bill is a deterministic task engine. It runs **inside a folder**, and that folde
 
 - **The discussion comes before the BACKLOG, and the implementation always comes out of the BACKLOG.** A decision only enters the list once it is settled, and nothing is implemented that is not in it. In a long discussion, the implications come **one at a time**, and whatever closes is written down and committed on the spot — what is decided cannot live only in the conversation, which dies. **The simple answer to a question is the approval**: if I proposed something and you answered, I do not ask you again whether it is approved.
 
-- When I tell you I am going to clear the session, generate **at once** the recommended start of the next one, in italics, ready for me to copy and modify as I decide. It says which item, where it is, what counts as done and what the session needs to know before writing the first line.
+- When I tell you I am going to clear the session, generate **at once** the recommended start of the next one, in italics, ready for me to copy and modify as I decide, with this raw line before it: "Prompt recomendado para a próxima sessão. Fique à vontade para utilizar ou não.". It says which item, where it is, what counts as done and what the session needs to know before writing the first line.
 
 - Never dump a large file or output into the context: filter it, cut it or delegate it to a subagent and bring back only the conclusion; do not re-read what is already in the conversation, do not repeat what has already been said and do not spend a turn for nothing — every turn resends everything. And where information is missing to decide, ask before acting, with the cost of each option on display: what is not authorized does not happen.
 
@@ -412,7 +412,7 @@ The panel has the entries:
 
 - Bill's default for text correction is LanguageTool, today the tool that fulfils the `spelling-checker` service (§4). It serves to underline errors on the editing screen. Quite useful.
 
-- This is the checker of the **person's text**, at run time. The checker of the repository's documents is another one, and it is a development tool (§12).
+- This is the checker of the **person's text**, at run time. The checker of the repository's documents is another one, and it is a development tool ([architecture §3](architecture.en_US.md)).
 
 #### e. Install a VPN (optional)
 
@@ -452,140 +452,11 @@ The panel has the entries:
 
 - The test **is not the criterion of done for each function** — a function is done by what `docs/backlog.en_US.md` says it is. It is the gate of the first publication on GitHub, and from there on.
 
-## 10. The repository tree
+## 10. Derivation
 
-Each node with its job, and none resolves a path of its own beyond `core` (§4).
+The tree, the Working Folder and the operation are derivation: they change whenever a folder changes, and so they do not bind. They live in [architecture](architecture.en_US.md), in both languages. The chain is `founding document → derived documents → code` (§0).
 
-```
-bill/                       the product: the engine, the declarations and the UI
-├── core/                   the rules — the Working Folder, the settings, the first run,
-│                           the single writer, the table engine, the project scope
-├── data/                   the tables: `data/<table>.jsonl` for the rows and
-│   │                       `data/schema/<table>.json` for the schema
-│   └── defaults/           the declarations the product delivers, written into the folder on the first run
-├── prose/                  every file that is not structured data: the tree of `prose/`,
-│                           what a file there IS, and the write with its revision
-├── services/               external services, as tool-agnostic as the layer can be
-├── encryption/             secrets: the Access Phrase, the Bill Key and the derived keys
-├── nlu/                    interpretation: the vocabulary, the matcher and the action proposal
-├── posture/                the posture: the graded functions, the grades and the weakest link
-├── ui/
-│   ├── cli/                the command line — the surface that reaches everything
-│   ├── wizard/             the Control Panel, in Tkinter
-│   └── webapp/             the WebApp: the server, the look it serves, and the Vue app
-│       ├── app.py          the server
-│       ├── assets/         `base.css`, the themes (`themes.jsonl`), the drawings
-│       ├── src/            the derivation (Vue 3 + TypeScript) — does NOT travel in the binary
-│       ├── dist/           the built output, served at runtime — comes from `npm run build`
-│       ├── vendor/         the hosted typefaces, with the hash the manifest pins
-│       └── node_modules/   the derivation — does NOT travel in the binary
-├── i18n/
-│   ├── blocks/<block>.json one file per subject, both languages side by side — the filename
-│   │                       is the namespace (`blocks/boot.json` holds `first_run.confirm`)
-│   └── vocabulary/         the interpreter's vocabulary, per language, packed like the blocks
-└── tests/                  the suite — stdlib `unittest`, because a test runner is not a dependency
-
-docs/                       the documents
-├── README.pt_BR.md         the source: the founding document, which binds
-├── README.en_US.md         the translation, which moves along with it
-└── backlog.en_US.md        the working document: what comes next, and what counts as done
-bill.spec                   what travels inside the binary, written by hand
-pyproject.toml              the packaging and the metadata
-requirements-dev.txt        the development dependencies, pinned in version and hash
-README.md                   the door: the title and the links to the documents in each language
-spelling.pt_BR.txt          what the repository's checker must ignore in Portuguese
-spelling.en_US.txt          the same, in English
-```
-
-`bill.spec` is the one place that says what travels inside the binary, and it is by hand on purpose: three of the payloads — `bill/i18n`, `bill/data/defaults`, and the WebApp's `assets`, `dist` and `vendor` — are invisible to an import graph, and `bill/ui/webapp/` also holds `node_modules/` and `src/`, which are the derivation and must not travel. A payload left out fails silently in the WebApp (404s and a 500) and loudly everywhere else, because `tr()` raises on the first message of every command.
-
-## 11. The Working Folder
-
-The folder the binary was opened in is the binary's folder, and that folder is the Working Folder (§3). On the first run Bill describes the folder and asks before writing anything; `app/settings.json` is what makes a folder configured.
-
-A folder is born with:
-
-```
-app/settings.json         the instance's key-value configuration
-app/i18n/active           the chosen language — the catalogs travel in the product
-app/counters.json         the last id handed out per table
-app/plugins/              the extensions, and the review state of each one
-app/services/<service>/   the persistent state of each service (§4)
-data/schema/*.json        the system tables, written in from the product
-data/*.jsonl              the rows (they arrive with the first write)
-prose/                    everything that is not structured data, with a welcome note
-```
-
-Two refusals are deliberate:
-
-- **No terminal to ask in means no folder is created.** A decision nobody could answer is not one; Bill stops with exit code `1` instead of assuming.
-- **Declining creates nothing.** Bill says where to move the binary instead — and exits without an error, because declining is not one.
-
-`BILL_ROOT` aims the engine at another folder. It exists for the tests and for running from a checkout, and it is the only environment variable that decides where Bill writes.
-
-While developing, this checkout *is* the Working Folder: `data/`, `prose/` and `app/` are created where they belong and are ignored by git.
-
-## 12. Operation
-
-```sh
-python3 -m bill help                         # the words
-python3 -m bill task create --set text="write the README" --set priority=high
-python3 -m bill task list                    # the table's default slice; `--all` shows everything
-python3 -m bill task view 3                  # or TASK-3, or tarefa-3
-python3 -m bill task edit 3 --set status=done
-python3 -m bill pedir "cria uma tarefa pra sexta"   # the proposal, for you to check
-python3 -m bill webapp run                   # local loop, port 12345; `--port N` changes it
-.venv/bin/python -m unittest discover -s bill/tests   # the suite (the venv carries the checker)
-```
-
-The table actions today are `list`, `view`, `create` and `edit`. `cancel` and `delete` are not here yet: both need the `lifecycle` a table declares for closing with history, and deletion needs the reference rule — `audit` is a declared exception to it, for being a log and not a link.
-
-Surfaces, and the state of each one today:
-
-| surface | how to reach it | state |
-|---|---|---|
-| `cli` | `bill <word>` | `help`, `version`, `webapp` and the tables |
-| Wizard | `bill`, with no word | the Control Panel opens, at hello world |
-| WebApp | `bill webapp run` | reads and edits the tables |
-
-Exit codes: `0` success · `1` refused or failed · `2` usage error.
-
-Python 3.14.7 with no runtime dependency at all. A dependency arrives pinned in version and hashing (§3), and starting from zero is how that promise is kept cheap. There are two deliberate exceptions, both on the development side: the WebApp's hosted typefaces, in `bill/ui/webapp/vendor/`, with the hash the manifest pins; and the documents' checker, which runs in the suite and is therefore a tool, not an installation — it cannot demand from another dev or from the runner anything that does not come pinned inside `.venv`.
-
-The suite runs the document gate (§3, Internationalization), and its checker is installed once:
-
-```sh
-.venv/bin/pip install --require-hashes -r requirements-dev.txt
-```
-
-### The page
-
-The page is a **Vue 3 + TypeScript** app, built by Vite (§5). The build is derivation, never edited:
-
-```sh
-cd bill/ui/webapp
-npm ci && npm run build      # writes dist/, which the server serves
-npm run typecheck            # vue-tsc
-```
-
-Two settings in `vite.config.ts` are not taste: the modulepreload polyfill and the inline-asset limit are OFF, because both would emit an inline `<script>` or a `data:` and the policy would refuse them. And the look is injected into the head by a `transformIndexHtml` plugin — Vite treats `<link rel="stylesheet">` as something to bundle and **silently removes** what it cannot find on disk, which is how a build once shipped without a single rule.
-
-### The single binary
-
-```sh
-# build-time only, never a runtime dependency; both pinned (§3) because the
-# hooks ship separately from the freezer and float on their own
-.venv/bin/pip install 'pyinstaller==6.22.3' 'pyinstaller-hooks-contrib==2026.7'
-.venv/bin/pyinstaller --clean --noconfirm bill.spec   # writes dist/bill
-```
-
-**It builds on Linux only.** PyInstaller is not a cross-compiler and cannot be: it freezes by executing code from the *target* interpreter at build time. So Windows and macOS binaries need their own builds on their own runners (§9), and `bill.spec` is written to be the file all three of them share.
-
-The binary is one file because that is what this document promises (§3), and the price is that the whole payload — Tcl/Tk included — is re-extracted on every launch, so cold start is slower than a directory build would be.
-
-The Working Folder does not depend on that choice: `paths.working_folder()` resolves from `sys.executable`, which is the launched binary under `--onedir` too, so the folder the binary sits in is the folder it works in either way. Run it from anywhere and it still works on its own folder. Note that `bill` with no word opens the Tkinter Wizard, so a headless check wants `bill <word>`.
-
-## 13. Glossary
+## 11. Glossary
 
 Each name has one meaning, and names that would touch each other do not coexist. Whenever I invent a term, it is defined here before being used.
 
@@ -621,7 +492,7 @@ Each name has one meaning, and names that would touch each other do not coexist.
 | **manifesto** | the seed of this repository, visible in the git history; and `manifest.json` is just the file that has that name |
 | **pin**, **migration** | stay in English, like the rest of the code: version and hashing fixation, and the structure change that runs on the first start |
 
-## 14. What is not here yet
+## 12. What is not here yet
 
 `docs/backlog.en_US.md` holds what comes next, with what counts as done for each item.
 

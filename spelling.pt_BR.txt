@@ -152,6 +152,7 @@ poc
 podman
 polyfill
 posix
+prompt
 proposital
 prowlarr
 prs
