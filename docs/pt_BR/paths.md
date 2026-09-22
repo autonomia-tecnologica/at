@@ -1,0 +1,33 @@
+# 6. Os dois caminhos de uso [normativo]
+
+- Existem dois caminhos, e os dois são suportados. Eles diferem no que garantem, e a diferença é declarada aqui para que ninguém decida com informação errada.
+
+### Caminho hospedado
+
+- É o Bill e a pasta. O binário é aberto na Pasta de Trabalho, o WebApp sobe pelo comando, o Wizard abre quando não há parâmetro, e a `cli` faz o resto. Não há container nenhum, e a pessoa não precisa de Podman nem de nada além do binário.
+
+- **Não há isolamento**, e o Bill não promete nenhum neste caminho: um comprometimento do WebApp é um comprometimento de processo na sua máquina, com acesso ao que o seu usuário tem. Em troca, o padrão é não sair do laço local, e sair dele exige autenticação e TLS.
+
+- Sair do laço local, aqui, é `bill webapp --include-caddy`: o Caddy que veio dentro do binário termina o TLS e publica o Bill. Sem a bandeira, o WebApp serve em HTTP e só em `127.0.0.1`.
+
+- As integrações (§7) podem existir sem container: quem instala o serviço por conta e aponta o Bill para ele usa o serviço, com a ciência de que o estado daquele serviço não é mais assunto do Bill — e, portanto, que o backup da pasta não o cobre. A aprovação de uma demanda arriscada, aqui, acontece na própria máquina: o serviço `notifier` é do caminho container.
+
+- Expor o Bill pelo caminho hospedado com o Authelia do caminho container é o **modo avançado**, e não é suportado: quem quiser o portão, usa o caminho container.
+
+### Caminho container
+
+- É o Bill montando um ambiente de serviços em containers de imagens fixadas (§7). Aqui existe isolamento, e ele existe por um motivo específico: **conter o raio de explosão de cada serviço**. O comprometimento do `ntfy` alcança a notificação e nada mais; o do corretor alcança o corretor. O que cada serviço expõe é o que ele se propõe a fazer, e nada além.
+
+- Serviço que precisa falar com o Bill — e não o Bill com ele — tem o escopo delimitado: credencial com papel declarado, e só o que aquele papel permite. Mínimo privilégio, aplicado. No `ntfy`, isso é a ACL por tópico: o Bill publica, o celular lê, e nenhum dos dois tokens serve para o resto.
+
+- O caminho container é o que sustenta o portão de autenticação (§7b), e é onde o Bill entra como mais um app atrás dele.
+
+### A virada entre os caminhos
+
+- A passagem de um caminho para o outro é uma **virada**, e virada é transacional: o Bill executa o conjunto de ações e, se alguma não termina com sucesso, volta tudo ao estado anterior. O ambiente não fica pela metade, e o que havia antes continua funcionando.
+
+- No sentido do container, o Forms continua ligado até o Authelia estar **provado** funcionando na frente do Bill — não é "o container subiu", é o Bill recebendo a identidade que espera, pelo caminho real, com o segredo do portão. Só então o Forms se desliga.
+
+- Se o portão cai depois, já com a virada commitada, o Bill **fecha** e avisa: "Portal de autenticação indisponível. Utilize o Wizard para retornar o Bill para modo forms." Ele não reabre o Forms sozinho — reabrir sozinho seria trocar a segurança por conveniência, sem ninguém decidir.
+
+- Se o Bill encontra um ambiente de infraestrutura configurado na pasta mas não encontra o ambiente, ele pergunta: "Foi detectado que você tem um ambiente de infraestrutura configurado nesse ambiente, mas o ambiente de infraestrutura não foi encontrado. Você deseja instalar novamente o Podman/Docker ou restaurar o bill para modo hospedado na máquina?". É a promessa do backup aparecendo na tela: a pasta voltou, e o que faltava era só o chão.
