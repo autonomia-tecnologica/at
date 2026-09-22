@@ -18,13 +18,13 @@
   - **Instalar serviço é do Wizard e só dele** — [Interfaces](interfaces.md).
   - Segredo de máquina se guarda hasheado, com papel; segredo que o Bill **usa**, como a credencial de um serviço, se guarda criptografado na tabela `secret` — [Gestão de segredos](architecture.md#gestão-de-segredos).
   - O Bill autentica nos serviços em vez de se aproveitar de estar na mesma máquina: credencial de administração existe onde ela é necessária, e ela conta na postura — [A postura de segurança](#a-postura-de-segurança).
-  - Serviço que fala com o Bill recebe escopo delimitado — mínimo privilégio: o comprometimento de um serviço alcança a função dele e nada mais — [Caminho container](README.md#7-caminho-container-os-passos-normativo).
+  - Serviço que fala com o Bill recebe escopo delimitado — mínimo privilégio: o comprometimento de um serviço alcança a função dele e nada mais — [Caminho container](paths.md#caminho-container).
   - Identidade que chega pelo portão só vale com o segredo do portão: o Bill sorteia um segredo por instalação, escreve no Caddyfile que ele mesmo gera, e recusa identidade sem ele — [Instalar provedor de identidade como container](container.md#b-instalar-provedor-de-identidade-como-container-obrigatório).
   - O Forms fica ligado até o Authelia estar provado funcionando na frente do Bill; a virada é um conjunto que comita ou volta atrás — [A virada entre os caminhos](paths.md#a-virada-entre-os-caminhos).
   - Portão caído fecha o Bill: ele avisa que o portal de autenticação está indisponível, e a volta ao modo Forms é pelo Wizard ou pela `cli`, os dois locais — [A virada entre os caminhos](paths.md#a-virada-entre-os-caminhos).
   - Toda ação deixa uma linha na tabela `audit`, e a recusa é uma delas — [A auditoria](#a-auditoria).
   - O que se prova se guarda hasheado; o que o Bill usa se guarda criptografado — [Tabelas](architecture.md#tabelas).
-  - O estado persistente de todo serviço mora na Pasta de Trabalho; serviço cujo estado não couber lá não entra — [Caminho container](README.md#7-caminho-container-os-passos-normativo).
+  - O estado persistente de todo serviço mora na Pasta de Trabalho; serviço cujo estado não couber lá não entra — [Configurações gerais](architecture.md#configurações-gerais).
   - **Nenhuma extensão executa código hoje.** A primeira classe é dado puro, e código é a última opção — [Extensões](extensions.md).
   - O tema do portal de autenticação não é o do Bill: ele fica o mais neutro possível, e o `FAQ.md` explica o que está por baixo — [Interfaces](interfaces.md).
   - Autenticador, WebApp, corretor, notificador e VPN rodam em containers isolados no caminho container — [Caminho container](container.md).

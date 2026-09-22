@@ -18,13 +18,13 @@
   - **Installing a service is the Wizard's and only the Wizard's** — [Interfaces](interfaces.md).
   - A machine secret is stored hashed, with a role; a secret Bill **uses**, such as a service credential, is stored encrypted in the `secret` table — [Secret management](architecture.md#secret-management).
   - Bill authenticates to the services instead of taking advantage of being on the same machine: an administrative credential exists where it is necessary, and it counts in the posture — [The security posture](#the-security-posture).
-  - A service that talks to Bill gets a delimited scope — least privilege: the compromise of a service reaches its function and nothing else — [Container path](README.md#7-container-path-the-steps-normative).
+  - A service that talks to Bill gets a delimited scope — least privilege: the compromise of a service reaches its function and nothing else — [Container path](paths.md#container-path).
   - Identity arriving through the gate is only valid with the gate secret: Bill draws a secret per installation, writes it into the Caddyfile it generates itself, and refuses identity without it — [Install the identity provider as a container](container.md#b-install-the-identity-provider-as-a-container-required).
   - Forms stays on until Authelia is proven to work in front of Bill; the switch is a set that commits or rolls back — [The switch between paths](paths.md#the-switch-between-paths).
   - A fallen gate closes Bill: it says the authentication portal is unavailable, and the way back to Forms mode is the Wizard or the `cli`, both local — [The switch between paths](paths.md#the-switch-between-paths).
   - Every action leaves one line in the `audit` table, and a refusal is one of them — [The audit](#the-audit).
   - What is proved is stored hashed; what Bill uses is stored encrypted — [Tables](architecture.md#tables).
-  - The persistent state of every service lives in the Working Folder; a service whose state does not fit there does not come in — [Container path](README.md#7-container-path-the-steps-normative).
+  - The persistent state of every service lives in the Working Folder; a service whose state does not fit there does not come in — [General settings](architecture.md#general-settings).
   - **No extension executes code today.** The first class is pure data, and code is the last option — [Extensions](extensions.md).
   - The theme of the authentication portal is not Bill's: it stays as neutral as possible, and the `FAQ.md` explains what is underneath — [Interfaces](interfaces.md).
   - Authenticator, WebApp, checker, notifier and VPN run in isolated containers on the container path — [Container path](container.md).
