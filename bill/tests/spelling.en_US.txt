@@ -52,6 +52,7 @@ favicon
 fique
 foi
 frontend
+functionalities
 fundador
 github
 headscale

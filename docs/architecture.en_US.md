@@ -7,46 +7,48 @@ The derived half of the founding document: the tree, the Working Folder and the 
 Each node with its job, and none resolves a path of its own beyond `core` (`README` §4).
 
 ```
-bill/                       the product: the engine, the declarations and the UI
-├── core/                   the rules — the Working Folder, the settings, the first run,
-│                           the single writer, the table engine, the project scope
-├── data/                   the tables: `data/<table>.jsonl` for the rows and
-│   │                       `data/schema/<table>.json` for the schema
-│   └── defaults/           the declarations the product delivers, written into the folder on the first run
-├── prose/                  every file that is not structured data: the tree of `prose/`,
-│                           what a file there IS, and the write with its revision
-├── services/               external services, as tool-agnostic as the layer can be
-├── encryption/             secrets: the Access Phrase, the Bill Key and the derived keys
-├── nlu/                    interpretation: the vocabulary, the matcher and the action proposal
-├── posture/                the posture: the graded functions, the grades and the weakest link
+bill/                          the product: the engine, the declarations and the UI
+├── core/                      the rules — the Working Folder, the settings, the first run,
+│                              the single writer, the table engine, the project scope
+├── data/                      the tables: `data/<table>.jsonl` for the rows and
+│   │                          `data/schema/<table>.json` for the schema
+│   └── defaults/              the declarations the product delivers, written into the folder on the first run
+├── prose/                     every file that is not structured data: the tree of `prose/`,
+│                              what a file there IS, and the write with its revision
+├── services/                  external services, as tool-agnostic as the layer can be
+├── encryption/                secrets: the Access Phrase, the Bill Key and the derived keys
+├── nlu/                       interpretation: the vocabulary, the matcher and the action proposal
+├── posture/                   the posture: the graded functions, the grades and the weakest link
 ├── ui/
-│   ├── cli/                the command line — the surface that reaches everything
-│   ├── wizard/             the Control Panel, in Tkinter
-│   └── webapp/             the WebApp: the server, the look it serves, and the Vue app
-│       ├── app.py          the server
-│       ├── assets/         `base.css`, the themes (`themes.jsonl`), the drawings
-│       ├── src/            the derivation (Vue 3 + TypeScript) — does NOT travel in the binary
-│       ├── dist/           the built output, served at runtime — comes from `npm run build`
-│       ├── vendor/         the hosted typefaces, with the hash the manifest pins
-│       └── node_modules/   the derivation — does NOT travel in the binary
+│   ├── cli/                   the command line — the surface that reaches everything
+│   ├── wizard/                the Control Panel, in Tkinter
+│   └── webapp/                the WebApp: the server, the look it serves, and the Vue app
+│       ├── app.py             the server
+│       ├── assets/            `base.css`, the themes (`themes.jsonl`), the drawings
+│       ├── src/               the derivation (Vue 3 + TypeScript) — does NOT travel in the binary
+│       ├── dist/              the built output, served at runtime — comes from `npm run build`
+│       ├── vendor/            the hosted typefaces, with the hash the manifest pins
+│       └── node_modules/      the derivation — does NOT travel in the binary
 ├── i18n/
-│   ├── blocks/<block>.json one file per subject, both languages side by side — the filename
-│   │                       is the namespace (`blocks/boot.json` holds `first_run.confirm`)
-│   └── vocabulary/         the interpreter's vocabulary, per language, packed like the blocks
-└── tests/                  the suite — stdlib `unittest`, because a test runner is not a dependency
-    ├── spelling.pt_BR.txt  what the checker must ignore in Portuguese
-    └── spelling.en_US.txt  the same, in English
+│   ├── blocks/<block>.json    one file per subject, both languages side by side — the filename
+│   │                          is the namespace (`blocks/boot.json` holds `first_run.confirm`)
+│   └── vocabulary/            the interpreter's vocabulary, per language, packed like the blocks
+└── tests/                     the suite — stdlib `unittest`, because a test runner is not a dependency
+    ├── spelling.pt_BR.txt     what the checker must ignore in Portuguese
+    └── spelling.en_US.txt     the same, in English
 
-docs/                       the documents
-├── README.pt_BR.md         the source: the founding document, which binds
-├── README.en_US.md         the translation, which moves along with it
-├── architecture.pt_BR.md   the derivation: the tree, the Working Folder and the operation
-├── architecture.en_US.md   its translation, which moves along with it
-└── backlog.en_US.md        the working document: what comes next, and what counts as done
-bill.spec                   what travels inside the binary, written by hand
-pyproject.toml              the packaging and the metadata
-requirements-dev.txt        the development dependencies, pinned in version and hash
-README.md                   the door: the title and the links to the documents in each language
+docs/                          the documents
+├── README.pt_BR.md            the source: the founding document, which binds
+├── README.en_US.md            the translation, which moves along with it
+├── architecture.pt_BR.md      the derivation: the tree, the Working Folder and the operation
+├── architecture.en_US.md      its translation, which moves along with it
+├── functionalities.pt_BR.md   what the grade measures: the functionalities, levels and grades
+├── functionalities.en_US.md   its translation, which moves along with it
+└── backlog.en_US.md           the working document: what comes next, and what counts as done
+bill.spec                      what travels inside the binary, written by hand
+pyproject.toml                 the packaging and the metadata
+requirements-dev.txt           the development dependencies, pinned in version and hash
+README.md                      the door: the title and the links to the documents in each language
 ```
 
 `bill.spec` is the one place that says what travels inside the binary, and it is by hand on purpose: three of the payloads — `bill/i18n`, `bill/data/defaults`, and the WebApp's `assets`, `dist` and `vendor` — are invisible to an import graph, and `bill/ui/webapp/` also holds `node_modules/` and `src/`, which are the derivation and must not travel. A payload left out fails silently in the WebApp (404s and a 500) and loudly everywhere else, because `tr()` raises on the first message of every command.

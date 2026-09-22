@@ -7,46 +7,48 @@ A metade derivada do documento fundador: a árvore, a Pasta de Trabalho e a oper
 Cada nó com o seu trabalho, e nenhum resolve um caminho por conta própria além do `core` (`README` §4).
 
 ```
-bill/                       o produto: o motor, as declarações e a UI
-├── core/                   as regras — a Pasta de Trabalho, os ajustes, a primeira execução,
-│                           o escritor único, o motor de tabelas, o escopo de projeto
-├── data/                   as tabelas: `data/<tabela>.jsonl` para as linhas e
-│   │                       `data/schema/<tabela>.json` para o esquema
-│   └── defaults/           as declarações que o produto entrega, escritas na pasta na primeira execução
-├── prose/                  todo arquivo que não é dado estruturado: a árvore de `prose/`,
-│                           o que um arquivo ali É, e a escrita com a sua revisão
-├── services/               serviços externos, tão agnóstico à ferramenta quanto a camada consegue
-├── encryption/             segredos: a Frase de Acesso, a Chave do Bill e as chaves derivadas
-├── nlu/                    a interpretação: o vocabulário, o casador e a proposta de ação
-├── posture/                a postura: as funções graduadas, as notas e o elo mais fraco
+bill/                          o produto: o motor, as declarações e a UI
+├── core/                      as regras — a Pasta de Trabalho, os ajustes, a primeira execução,
+│                              o escritor único, o motor de tabelas, o escopo de projeto
+├── data/                      as tabelas: `data/<tabela>.jsonl` para as linhas e
+│   │                          `data/schema/<tabela>.json` para o esquema
+│   └── defaults/              as declarações que o produto entrega, escritas na pasta na primeira execução
+├── prose/                     todo arquivo que não é dado estruturado: a árvore de `prose/`,
+│                              o que um arquivo ali É, e a escrita com a sua revisão
+├── services/                  serviços externos, tão agnóstico à ferramenta quanto a camada consegue
+├── encryption/                segredos: a Frase de Acesso, a Chave do Bill e as chaves derivadas
+├── nlu/                       a interpretação: o vocabulário, o casador e a proposta de ação
+├── posture/                   a postura: as funções graduadas, as notas e o elo mais fraco
 ├── ui/
-│   ├── cli/                a linha de comando — a superfície que alcança tudo
-│   ├── wizard/             o Painel de Controle, em Tkinter
-│   └── webapp/             o WebApp: o servidor, a aparência que ele serve e a app Vue
-│       ├── app.py          o servidor
-│       ├── assets/         `base.css`, os temas (`themes.jsonl`), os desenhos
-│       ├── src/            a derivação (Vue 3 + TypeScript) — NÃO viaja no binário
-│       ├── dist/           o construído, servido em runtime — vem de `npm run build`
-│       ├── vendor/         as fontes hospedadas, com o hash que o manifesto pina
-│       └── node_modules/   a derivação — NÃO viaja no binário
+│   ├── cli/                   a linha de comando — a superfície que alcança tudo
+│   ├── wizard/                o Painel de Controle, em Tkinter
+│   └── webapp/                o WebApp: o servidor, a aparência que ele serve e a app Vue
+│       ├── app.py             o servidor
+│       ├── assets/            `base.css`, os temas (`themes.jsonl`), os desenhos
+│       ├── src/               a derivação (Vue 3 + TypeScript) — NÃO viaja no binário
+│       ├── dist/              o construído, servido em runtime — vem de `npm run build`
+│       ├── vendor/            as fontes hospedadas, com o hash que o manifesto pina
+│       └── node_modules/      a derivação — NÃO viaja no binário
 ├── i18n/
-│   ├── blocks/<bloco>.json um arquivo por assunto, as duas línguas lado a lado — o nome do
-│   │                       arquivo é o namespace (`blocks/boot.json` guarda `first_run.confirm`)
-│   └── vocabulary/         o vocabulário do interpretador, por idioma, empacotado como os blocos
-└── tests/                  a suíte — `unittest` da stdlib, porque um runner não é dependência
-    ├── spelling.pt_BR.txt  o que o corretor deve ignorar em português
-    └── spelling.en_US.txt  o mesmo, em inglês
+│   ├── blocks/<bloco>.json    um arquivo por assunto, as duas línguas lado a lado — o nome do
+│   │                          arquivo é o namespace (`blocks/boot.json` guarda `first_run.confirm`)
+│   └── vocabulary/            o vocabulário do interpretador, por idioma, empacotado como os blocos
+└── tests/                     a suíte — `unittest` da stdlib, porque um runner não é dependência
+    ├── spelling.pt_BR.txt     o que o corretor deve ignorar em português
+    └── spelling.en_US.txt     o mesmo, em inglês
 
-docs/                       os documentos
-├── README.pt_BR.md         a fonte: o documento fundador, que vincula
-├── README.en_US.md         a tradução, que anda junto
-├── architecture.pt_BR.md   a derivação: a árvore, a Pasta de Trabalho e a operação
-├── architecture.en_US.md   a tradução dela, que anda junto
-└── backlog.en_US.md        o documento de trabalho: o que vem a seguir, e o que conta como pronto
-bill.spec                   o que viaja dentro do binário, escrito à mão
-pyproject.toml              a embalagem e o metadata
-requirements-dev.txt        as dependências de desenvolvimento, pinadas em versão e hash
-README.md                   a porta: o título e os links para os documentos em cada língua
+docs/                          os documentos
+├── README.pt_BR.md            a fonte: o documento fundador, que vincula
+├── README.en_US.md            a tradução, que anda junto
+├── architecture.pt_BR.md      a derivação: a árvore, a Pasta de Trabalho e a operação
+├── architecture.en_US.md      a tradução dela, que anda junto
+├── functionalities.pt_BR.md   o que a nota mede: as funcionalidades, níveis e notas
+├── functionalities.en_US.md   a tradução dela, que anda junto
+└── backlog.en_US.md           o documento de trabalho: o que vem a seguir, e o que conta como pronto
+bill.spec                      o que viaja dentro do binário, escrito à mão
+pyproject.toml                 a embalagem e o metadata
+requirements-dev.txt           as dependências de desenvolvimento, pinadas em versão e hash
+README.md                      a porta: o título e os links para os documentos em cada língua
 ```
 
 `bill.spec` é o único lugar que diz o que viaja dentro do binário, e é à mão de propósito: três dos conteúdos — `bill/i18n`, `bill/data/defaults` e os `assets`, `dist` e `vendor` do WebApp — são invisíveis a um grafo de importação, e `bill/ui/webapp/` também guarda `node_modules/` e `src/`, que são a derivação e não podem viajar. Um conteúdo deixado de fora falha em silêncio no WebApp (404 e um 500) e em voz alta em todo o resto, porque `tr()` levanta na primeira mensagem de cada comando.
