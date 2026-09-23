@@ -253,8 +253,16 @@ MIGRATIONS: tuple[Migration, ...] = (
 )
 
 
+def _say(report: Report) -> None:
+    print(tr(report[0], **report[1]))
+
+
 def run(ask: Ask | None = None) -> list[Report]:
-    """Apply what this folder has not run yet, oldest first, and report each.
+    """Apply what this folder has not run yet, oldest first, saying each.
+
+    Each migration is named AS IT HAPPENS, and not collected into a list to be
+    printed at the end: one of them asks a question in the middle, and a report
+    that arrives after the question it belongs to is a report out of order.
 
     A read-only run applies nothing: a verification pass must not move a folder
     any more than it may write a file, and the switch binds the engine, not the
@@ -263,13 +271,15 @@ def run(ask: Ask | None = None) -> list[Report]:
     if files.readonly():
         return []
     done = applied()
-    report: list[Report] = []
+    said: list[Report] = []
     for migration in MIGRATIONS:
         if migration.ident in done:
             continue
-        report.extend(migration.step(ask))
+        for report in migration.step(ask):
+            _say(report)
+            said.append(report)
         _mark(migration.ident)
-    return report
+    return said
 
 
 # -------------------------------------------------------- the language ---
@@ -296,19 +306,8 @@ def offer_language(ask: Ask | None) -> list[Report]:
     if i18n.active_origin() != "folder":
         return []
 
-    moves, collisions = _moves()
-    report: list[Report] = []
-    if collisions:
-        report.append(("boot.migration.folders.collision", {"names": _spelled(collisions)}))
-    elif moves:
-        if _confirm(ask, moves):
-            for internal, current, target in moves:
-                current.rename(target)
-            report.append(("boot.migration.folders.moved", {"names": _spelled(moves)}))
-        else:
-            report.append(("boot.migration.folders.declined", {"names": _spelled(moves)}))
-    born = _birth()
-    if born:
-        report.append(("boot.migration.folders.born", {"names": _spelled(born)}))
+    said = _folders_in_the_language(ask)
+    for report in said:
+        _say(report)
     settings.save({**settings.load(), DECISION: language})
-    return report
+    return said

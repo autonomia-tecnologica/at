@@ -180,6 +180,18 @@ class TheInstanceFolderMoves(FolderCase):
 
 
 class TheFoldersFollowTheLanguage(FolderCase):
+    def test_each_report_arrives_with_its_own_migration(self):
+        # The notice belongs to the third migration. A report collected into a
+        # list and printed at the end arrives AFTER the question it does not
+        # belong to — which is what the folders migration would then be
+        # explaining backwards.
+        self.legacy("app")
+        output = self.caught_up("s")
+        self.assertLess(
+            output.index(i18n.tr("boot.migration.capital.moved")),
+            output.index(i18n.tr("boot.migration.folders.notice", names="data → Tabelas, prose → Arquivos")),
+        )
+
     def test_the_rename_is_offered_and_applied(self):
         self.legacy("app")
         output = self.caught_up("s")

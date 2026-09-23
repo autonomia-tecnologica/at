@@ -80,8 +80,8 @@ def catch_up(ask: Ask | None = None) -> None:
     whoever declined is told what the folder keeps costing them, and is not
     asked again about the same language.
     """
-    for key, fields in migrations.run(ask) + migrations.offer_language(ask):
-        print(tr(key, **fields))
+    migrations.run(ask)
+    migrations.offer_language(ask)
 
 
 def create_working_folder() -> None:
