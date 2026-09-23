@@ -1,9 +1,10 @@
-"""app/settings.json — the instance's key-value configuration (§4).
+"""`settings.json` — the instance's key-value configuration (§4).
 
-Deliberately not the home of the active language: that lives in
-`app/i18n/active`, because the catalogs are packed into the binary and only
-the choice is the folder's. This file carries what is neither translation nor
-table.
+It lives in the instance folder, whose internal name is `app` and whose face is
+`App/` (`paths.instance_dir` resolves it). Deliberately not the home of the
+active language: that lives in `i18n/active`, beside it, because the catalogs
+are packed into the binary and only the choice is the folder's. This file
+carries what is neither translation nor table.
 """
 
 from __future__ import annotations

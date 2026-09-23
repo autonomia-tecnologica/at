@@ -116,12 +116,24 @@ def declared() -> list[dict]:
 
 
 def store_path(table: str) -> Path | None:
-    """Where the table's rows live, relative to the Working Folder."""
+    """Where the table's rows live, relative to the Working Folder.
+
+    The declaration names the folder by its INTERNAL name — `data/tasks.jsonl` —
+    and the resolution happens HERE, never in the declaration (§3). A folder
+    that changes its name changes a path, and the declaration is published while
+    the name on disk is the instance's: writing the localized name into it would
+    put one folder's language into every other folder's copy.
+
+    A first segment that is not an internal name is taken as it is written, so a
+    table of the instance's own can still point anywhere it likes.
+    """
     declared = of(table)
     relative = declared.get("store") if declared else None
     if not isinstance(relative, str) or not relative:
         return None
-    return paths.working_folder() / relative
+    head, _, tail = relative.partition("/")
+    root = paths.folder(head) if head in paths.NAMES else paths.working_folder() / head
+    return root / tail if tail else root
 
 
 def name_key(table: str, many: bool = False) -> str | None:

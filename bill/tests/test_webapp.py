@@ -22,7 +22,7 @@ from pathlib import Path
 from unittest import mock
 
 from bill import i18n
-from bill.core import boot, projects, settings, tables
+from bill.core import boot, paths, projects, settings, tables
 from bill.data import schema
 from bill.ui.webapp import app as webapp
 
@@ -214,7 +214,7 @@ class TheHashedField(ServerCase):
 
     def setUp(self):
         super().setUp()
-        where = self.root / "data" / "schema" / "keeper.json"
+        where = paths.data_dir() / schema.SCHEMA_DIR / "keeper.json"
         where.write_text(
             json.dumps(self.KEEPER, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
@@ -253,7 +253,7 @@ class TheHashedField(ServerCase):
         # route that died instead would leave the page with nothing to draw AND
         # nothing to say — the same blank screen the engine refuses to trade a
         # loud answer for.
-        where = self.root / "data" / "schema" / "keeper.json"
+        where = paths.data_dir() / schema.SCHEMA_DIR / "keeper.json"
         declared = json.loads(where.read_text(encoding="utf-8"))
         declared["fields"]["credential"]["method"] = "scrypt"
         where.write_text(
@@ -540,8 +540,8 @@ class TheProjectBranch(ServerCase):
 class TheProseDoors(ServerCase):
     def setUp(self):
         super().setUp()
-        (self.root / "prose").mkdir(exist_ok=True)
-        (self.root / "prose" / "nota.md").write_text("# oi\n", encoding="utf-8")
+        (paths.prose_dir()).mkdir(exist_ok=True)
+        (paths.prose_dir() / "nota.md").write_text("# oi\n", encoding="utf-8")
 
     def test_the_tree_lists_what_the_folder_holds(self):
         _, _, body = self.get("/api/tree")
@@ -567,14 +567,14 @@ class TheProseDoors(ServerCase):
         status, answer = self.post("/api/file", {"path": "nota.md", "text": "x\n", "base": "velha"})
         self.assertEqual(status, 409)
         self.assertEqual(answer["rev"], rev)
-        self.assertEqual((self.root / "prose" / "nota.md").read_text(encoding="utf-8"), "# oi\n")
+        self.assertEqual((paths.prose_dir() / "nota.md").read_text(encoding="utf-8"), "# oi\n")
 
     def test_a_write_with_the_right_revision_lands(self):
         _, _, body = self.get("/api/file?path=nota.md")
         rev = json.loads(body)["rev"]
         status, answer = self.post("/api/file", {"path": "nota.md", "text": "novo\n", "base": rev})
         self.assertEqual(status, 200)
-        self.assertEqual((self.root / "prose" / "nota.md").read_text(encoding="utf-8"), "novo\n")
+        self.assertEqual((paths.prose_dir() / "nota.md").read_text(encoding="utf-8"), "novo\n")
         self.assertNotEqual(answer["rev"], rev)
 
     def test_a_refusal_speaks_the_catalogue(self):

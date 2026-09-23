@@ -1,0 +1,350 @@
+"""The migration framework: a folder that already exists changes under it.
+
+Updating Bill is replacing the binary inside the folder, so a release that
+changes the folder's structure has to bring the change with it and apply it on
+the first start after the swap (§3). These tests build folders in the shapes
+earlier releases left them in and prove three things:
+
+- a folder that has NOT migrated is still read as a Working Folder — never as a
+  folder that is new, which is the defect migration number one exists for;
+- the rename that touches the person's own folders asks first, says what breaks
+  outside, and whoever declines keeps the name they had;
+- the stamp keeps a migration from running twice, and a read-only run from
+  running at all.
+
+Every test aims Bill at a throwaway folder with `BILL_ROOT`.
+"""
+
+from __future__ import annotations
+
+import io
+import json
+import os
+import tempfile
+import unittest
+from contextlib import redirect_stdout
+from io import StringIO
+from pathlib import Path
+from unittest import mock
+
+from bill import i18n
+from bill.core import boot, migrations, paths, settings, tables
+from bill.data import schema, store
+
+
+class FolderCase(unittest.TestCase):
+    """A throwaway folder, and the answers a person would give."""
+
+    def setUp(self):
+        self.scratch = tempfile.TemporaryDirectory()
+        self.root = Path(self.scratch.name)
+        self.answers: list[str] = []
+        self.env = mock.patch.dict(
+            os.environ, {"BILL_ROOT": str(self.root), "BILL_LANG": "pt_BR"}
+        )
+        self.env.start()
+        i18n.reset()
+
+    def tearDown(self):
+        self.env.stop()
+        i18n.reset()
+        schema.reset()
+        store.reset()
+        self.scratch.cleanup()
+
+    def answer(self, question: str) -> str:
+        """What a person reads so far, kept at the moment of the question — the
+        whole point of the notice is that it comes BEFORE the answer."""
+        self.answers.append(question)
+        self.said.append(self.buffer.getvalue())
+        return self.asked.pop(0) if self.asked else "s"
+
+    def caught_up(self, *answers: str) -> str:
+        self.asked = list(answers)
+        self.answers = []
+        self.said = []
+        self.buffer = StringIO()
+        with redirect_stdout(self.buffer):
+            boot.ensure_working_folder(ask=self.answer)
+        return self.buffer.getvalue()
+
+    def born(self, language: str = "pt_BR") -> None:
+        """A folder in the shape this release writes: the CURRENT structure."""
+        with redirect_stdout(StringIO()):
+            boot.create_working_folder()
+        (self.root / "App" / "i18n" / "active").write_text(
+            language + "\n", encoding="utf-8"
+        )
+        i18n.reset()
+
+    def legacy(self, instance: str = "app", language: str = "pt_BR") -> None:
+        """A folder as an earlier release left it: the instance in `instance/`
+        and the person's folders under their OLD spelling."""
+        where = self.root / instance
+        (where / "i18n").mkdir(parents=True)
+        (where / "settings.json").write_text('{"schema": 1}\n', encoding="utf-8")
+        (where / "i18n" / "active").write_text(language + "\n", encoding="utf-8")
+        for name in ("data", "prose"):
+            (self.root / name).mkdir(exist_ok=True)
+        # The system tables an earlier release seeded, under their OLD spelling:
+        # the declaration carries the internal name `data/`, so it travels with
+        # the rename without being rewritten.
+        schema.seed(self.root / "data" / schema.SCHEMA_DIR)
+        (self.root / "data" / "tasks.jsonl").write_text(
+            json.dumps({"id": 1, "text": "café", "status": "todo"}) + "\n",
+            encoding="utf-8",
+        )
+        i18n.reset()
+
+
+# --------------------------------------------------- a folder is found ---
+
+
+class AnOldFolderIsStillAWorkingFolder(FolderCase):
+    """The defect the framework exists to close: a folder that has not migrated
+    must never read as a folder that is new — Bill would otherwise offer to
+    create a Working Folder on top of the one that is already there."""
+
+    def test_the_old_instance_folder_is_read_as_configured(self):
+        self.legacy(".bill")
+        self.assertTrue(boot.is_configured())
+
+    def test_the_first_run_is_never_offered(self):
+        self.legacy("app")
+        output = self.caught_up()
+        self.assertNotIn(i18n.tr("boot.first_run.notice", folder=self.root), output)
+
+    def test_the_settings_survive_the_move(self):
+        self.legacy("app")
+        self.caught_up()
+        self.assertTrue((self.root / "App" / "settings.json").is_file())
+        self.assertEqual(settings.load()["schema"], settings.SCHEMA)
+
+
+# ------------------------------------------------------------ the moves ---
+
+
+class TheInstanceFolderMoves(FolderCase):
+    def test_the_hidden_spelling_becomes_the_visible_one(self):
+        self.legacy(".bill")
+        output = self.caught_up()
+        self.assertFalse((self.root / ".bill").exists())
+        self.assertTrue((self.root / "App" / "settings.json").is_file())
+        self.assertIn(i18n.tr("boot.migration.legacy.moved"), output)
+
+    def test_both_moves_land_in_one_start(self):
+        # `.bill/` is two renames away from `App/`, and a folder that jumped
+        # both used to be told about neither.
+        self.legacy(".bill")
+        output = self.caught_up()
+        self.assertIn(i18n.tr("boot.migration.legacy.moved"), output)
+        self.assertIn(i18n.tr("boot.migration.capital.moved"), output)
+
+    def test_a_folder_already_named_right_is_not_touched(self):
+        # A folder from a release between the two renames: `App/` already, and
+        # the person's folders still under their old spelling.
+        self.legacy("App")
+        output = self.caught_up("s")
+        self.assertIn(i18n.tr("boot.migration.capital.kept"), output)
+        self.assertTrue((self.root / "App" / "settings.json").is_file())
+
+    def test_a_filesystem_that_cannot_tell_the_two_spellings_apart(self):
+        # macOS and Windows: `App/` and `app/` are ONE name, so the second
+        # exists before there is anything to move. A symlink is that case made
+        # portable — `samefile` is what tells it from a real collision.
+        self.legacy("app")
+        (self.root / "App").symlink_to(self.root / "app", target_is_directory=True)
+        output = self.caught_up("s")
+        self.assertIn(i18n.tr("boot.migration.capital.same"), output)
+        self.assertTrue((self.root / "App" / "settings.json").is_file())
+
+    def test_two_folders_with_one_name_are_reported_and_not_merged(self):
+        self.legacy("app")
+        (self.root / "App").mkdir()
+        (self.root / "App" / "settings.json").write_text('{"schema": 9}\n', encoding="utf-8")
+        output = self.caught_up("s")
+        self.assertIn(i18n.tr("boot.migration.capital.collision"), output)
+        # Neither wins: the migration does not choose between two instances, and
+        # both are left exactly where they were for the person to settle.
+        self.assertEqual(
+            (self.root / "app" / "settings.json").read_text(encoding="utf-8"),
+            '{"schema": 1}\n',
+        )
+        self.assertEqual(
+            (self.root / "App" / "settings.json").read_text(encoding="utf-8"),
+            '{"schema": 9}\n',
+        )
+
+
+# ------------------------------------------------ the person's folders ---
+
+
+class TheFoldersFollowTheLanguage(FolderCase):
+    def test_the_rename_is_offered_and_applied(self):
+        self.legacy("app")
+        output = self.caught_up("s")
+        self.assertTrue((self.root / "Tabelas").is_dir())
+        self.assertTrue((self.root / "Arquivos").is_dir())
+        self.assertFalse((self.root / "data").exists())
+        self.assertFalse((self.root / "prose").exists())
+        self.assertIn("data → Tabelas", output)
+
+    def test_what_breaks_outside_is_said_before_the_question(self):
+        self.legacy("app")
+        self.caught_up("n")
+        names = "data → Tabelas, prose → Arquivos"
+        self.assertIn(i18n.tr("boot.migration.folders.notice", names=names), self.said[0])
+        self.assertEqual(self.answers[0], i18n.tr("boot.migration.folders.confirm", names=names))
+
+    def test_whoever_declines_keeps_the_name_and_hears_the_cost(self):
+        self.legacy("app")
+        output = self.caught_up("n")
+        self.assertTrue((self.root / "data").is_dir())
+        self.assertFalse((self.root / "Tabelas").exists())
+        self.assertIn(i18n.tr("boot.migration.folders.declined", names="data → Tabelas, prose → Arquivos"), output)
+
+    def test_a_declined_folder_is_still_found_and_used(self):
+        # The whole point of the tolerance: declining must leave Bill WORKING,
+        # not leave it looking at a folder that is not there.
+        self.legacy("app")
+        self.caught_up("n")
+        self.assertEqual(paths.data_dir(), self.root / "data")
+        self.assertTrue(store.path("task").parent == self.root / "data")
+        self.assertEqual(tables.rows("task")[0]["text"], "café")
+
+    def test_without_a_terminal_nothing_moves(self):
+        self.legacy("app")
+        output = StringIO()
+        with mock.patch("sys.stdin.isatty", return_value=False):
+            with redirect_stdout(output):
+                boot.ensure_working_folder()
+        self.assertTrue((self.root / "data").is_dir())
+        self.assertFalse((self.root / "Tabelas").exists())
+        self.assertIn(i18n.tr("boot.migration.folders.no_tty"), output.getvalue())
+
+    def test_the_two_that_are_only_named_are_born(self):
+        self.legacy("app")
+        output = self.caught_up("s")
+        self.assertTrue((self.root / "Projetos").is_dir())
+        self.assertTrue((self.root / "Compartilhada").is_dir())
+        self.assertEqual(list((self.root / "Compartilhada").iterdir()), [])
+        self.assertIn(i18n.tr("boot.migration.folders.born", names="Projetos, Compartilhada"), output)
+
+    def test_two_folders_for_one_internal_name_are_not_chosen_between(self):
+        self.legacy("app")
+        (self.root / "Tabelas").mkdir()
+        output = self.caught_up("s")
+        self.assertIn(i18n.tr("boot.migration.folders.collision", names="data"), output)
+        self.assertTrue((self.root / "data").is_dir())
+
+
+# ------------------------------------------------------- the declaration ---
+
+
+class ADeclaredPathResolvesByName(FolderCase):
+    """§3: a folder that changes its name changes a path, and every declared
+    path changes with it, in the same move. The declaration carries the
+    INTERNAL name, and the resolution is what knows the face."""
+
+    def test_the_store_follows_the_folder(self):
+        self.legacy("app")
+        self.caught_up("s")
+        self.assertEqual(store.path("task"), self.root / "Tabelas" / "tasks.jsonl")
+
+    def test_a_declaration_the_instance_wrote_itself_is_taken_as_written(self):
+        self.born()
+        self.assertEqual(store.path("task"), self.root / "Tabelas" / "tasks.jsonl")
+        (self.root / "Tabelas" / "schema" / "meu.json").write_text(
+            json.dumps({
+                "id": "meu", "order": 90, "store": "minhas/coisas.jsonl",
+                "fields": {"id": {"label": "table.field.id"}},
+            }),
+            encoding="utf-8",
+        )
+        schema.reset()
+        self.assertEqual(store.path("meu"), self.root / "minhas" / "coisas.jsonl")
+
+
+# ------------------------------------------------------------- the stamp ---
+
+
+class TheStamp(FolderCase):
+    def test_a_migration_runs_once(self):
+        self.legacy("app")
+        self.caught_up("s")
+        # The second start has nothing left to do, so it asks nothing.
+        again = StringIO()
+        with redirect_stdout(again):
+            boot.ensure_working_folder(ask=lambda question: self.fail("asked again"))
+        self.assertNotIn(i18n.tr("boot.migration.folders.notice", names="data → Tabelas, prose → Arquivos"), again.getvalue())
+
+    def test_the_stamp_names_what_ran(self):
+        self.legacy("app")
+        self.caught_up("s")
+        stamp = json.loads((self.root / "App" / "migrations").read_text(encoding="utf-8"))
+        self.assertEqual(stamp, sorted(item.ident for item in migrations.MIGRATIONS))
+
+    def test_a_read_only_run_moves_nothing(self):
+        self.legacy("app")
+        with mock.patch.dict(os.environ, {"BILL_READONLY": "1"}):
+            self.caught_up("s")
+        self.assertTrue((self.root / "app").is_dir())
+        self.assertFalse((self.root / "App").exists())
+
+
+# ---------------------------------------------------------- the language ---
+
+
+class TheLanguageOffer(FolderCase):
+    """Not a migration: a migration runs once, and the language changes again
+    tomorrow. What is remembered is the decision."""
+
+    def silent(self, *answers: str) -> str:
+        """A start with no `$BILL_LANG`: the folder's language is the one that
+        speaks, which is the only one that may move the person's folders."""
+        without = {name: value for name, value in os.environ.items() if name != i18n.LANG_ENV}
+        self.asked = list(answers)
+        self.answers = []
+        self.said = []
+        self.buffer = StringIO()
+        with mock.patch.dict(os.environ, without, clear=True):
+            i18n.reset()
+            with redirect_stdout(self.buffer):
+                boot.ensure_working_folder(ask=self.answer)
+        return self.buffer.getvalue()
+
+    def changed_to(self, language: str) -> None:
+        (self.root / "App" / "i18n" / "active").write_text(language + "\n", encoding="utf-8")
+        i18n.reset()
+
+    def test_a_new_language_offers_the_rename(self):
+        self.born("pt_BR")
+        self.changed_to("en_US")
+        output = self.silent("s")
+        self.assertTrue((self.root / "Tables").is_dir())
+        self.assertIn("Tabelas → Tables", output)
+
+    def test_declining_keeps_the_name_and_is_not_asked_again(self):
+        self.born("pt_BR")
+        self.changed_to("en_US")
+        first = self.silent("n")
+        self.assertIn(i18n.tr("boot.migration.folders.declined", names="Tabelas → Tables, Arquivos → Files"), first)
+        self.assertTrue((self.root / "Tabelas").is_dir())
+        # The decision is recorded, so the next start is silent about it.
+        second = self.silent("n")
+        self.assertEqual(second, "")
+        self.assertEqual(settings.get("folders"), "en_US")
+
+    def test_the_environment_never_moves_the_folders(self):
+        # `$BILL_LANG` is not the folder's decision, and renaming the person's
+        # folders to follow something that temporary is not the promise.
+        self.born("pt_BR")
+        with mock.patch.dict(os.environ, {"BILL_LANG": "en_US"}):
+            i18n.reset()
+            self.caught_up()
+        self.assertTrue((self.root / "Tabelas").is_dir())
+        self.assertFalse((self.root / "Tables").exists())
+
+
+if __name__ == "__main__":
+    unittest.main()

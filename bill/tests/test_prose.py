@@ -10,7 +10,6 @@ from __future__ import annotations
 import os
 import tempfile
 import unittest
-from pathlib import Path
 from unittest import mock
 
 from bill.core import files
@@ -36,10 +35,10 @@ class TheReading(unittest.TestCase):
         self.scratch = tempfile.TemporaryDirectory()
         self.env = mock.patch.dict(os.environ, {"BILL_ROOT": self.scratch.name})
         self.env.start()
-        (Path(self.scratch.name) / "prose" / "sub").mkdir(parents=True)
-        (Path(self.scratch.name) / "prose" / "nota.md").write_text("# oi\n", encoding="utf-8")
-        (Path(self.scratch.name) / "prose" / "sub" / "codigo.py").write_text("print(1)\n", encoding="utf-8")
-        (Path(self.scratch.name) / "prose" / ".escondido.md").write_text("shh\n", encoding="utf-8")
+        (prose.root() / "sub").mkdir(parents=True)
+        (prose.root() / "nota.md").write_text("# oi\n", encoding="utf-8")
+        (prose.root() / "sub" / "codigo.py").write_text("print(1)\n", encoding="utf-8")
+        (prose.root() / ".escondido.md").write_text("shh\n", encoding="utf-8")
 
     def tearDown(self):
         self.env.stop()
@@ -63,7 +62,7 @@ class TheReading(unittest.TestCase):
         self.assertEqual(prose.kind("script", b"#!/usr/bin/env python3\n"), "python")
 
     def test_a_binary_is_not_text_and_says_so(self):
-        (Path(self.scratch.name) / "prose" / "bin").write_bytes(b"a\0b")
+        (prose.root() / "bin").write_bytes(b"a\0b")
         answer = prose.read("bin")
         self.assertFalse(answer["writable"])
         self.assertIsNone(answer["text"])
@@ -75,8 +74,8 @@ class TheWriting(unittest.TestCase):
         self.scratch = tempfile.TemporaryDirectory()
         self.env = mock.patch.dict(os.environ, {"BILL_ROOT": self.scratch.name})
         self.env.start()
-        (Path(self.scratch.name) / "prose").mkdir(parents=True)
-        self.where = Path(self.scratch.name) / "prose" / "nota.md"
+        (prose.root()).mkdir(parents=True)
+        self.where = prose.root() / "nota.md"
         self.where.write_text("primeiro\n", encoding="utf-8")
 
     def tearDown(self):
@@ -109,7 +108,7 @@ class TheWriting(unittest.TestCase):
         self.assertEqual(status, 404)
 
     def test_a_file_over_the_ceiling_is_refused(self):
-        (Path(self.scratch.name) / "prose" / "grande.md").write_text(
+        (prose.root() / "grande.md").write_text(
             "a" * (prose.MAX_FILE_BYTES + 1), encoding="utf-8")
         status, _ = prose.write("grande.md", "curto\n", prose.read("grande.md")["rev"])
         self.assertEqual(status, 413)

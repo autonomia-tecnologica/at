@@ -26,7 +26,7 @@ from pathlib import Path
 from unittest import mock
 
 from bill import i18n
-from bill.core import boot, tables
+from bill.core import boot, paths, tables
 from bill.data import schema, store
 from bill.ui.cli import main, tree
 
@@ -196,7 +196,7 @@ class Closing(unittest.TestCase):
         self.scratch.cleanup()
 
     def declare(self, table: dict) -> None:
-        where = self.root / "data" / "schema" / f"{table['id']}.json"
+        where = paths.data_dir() / schema.SCHEMA_DIR / f"{table['id']}.json"
         where.write_text(
             json.dumps(table, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
         )

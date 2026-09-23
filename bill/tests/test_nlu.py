@@ -31,7 +31,7 @@ from pathlib import Path
 from unittest import mock
 
 from bill import i18n, nlu
-from bill.core import boot, tables
+from bill.core import boot, paths, tables
 from bill.data import schema, store
 from bill.nlu import grammar
 
@@ -345,7 +345,7 @@ class TheField(RulerCase):
         with mock.patch.dict(os.environ, {"BILL_ROOT": str(self.root)}):
             with redirect_stdout(StringIO()):
                 boot.create_working_folder()
-            self.where = self.root / "data" / "schema" / "moment.json"
+            self.where = paths.data_dir() / schema.SCHEMA_DIR / "moment.json"
             self.where.write_text(
                 json.dumps(
                     {

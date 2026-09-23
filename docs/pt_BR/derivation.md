@@ -71,20 +71,29 @@ docs/                          os documentos
 
 ## 2. A Pasta de Trabalho
 
-A pasta em que o binário foi aberto é a pasta do binário, e essa pasta é a Pasta de Trabalho (§3). Na primeira execução o Bill descreve a pasta e pergunta antes de escrever qualquer coisa; `app/settings.json` é o que faz uma pasta ser uma pasta configurada.
+A pasta em que o binário foi aberto é a pasta do binário, e essa pasta é a Pasta de Trabalho (§3). Na primeira execução o Bill descreve a pasta e pergunta antes de escrever qualquer coisa; `App/settings.json` é o que faz uma pasta ser uma pasta configurada.
+
+**O nome no disco é a face; a máquina lê o nome interno.** Cada pasta tem um nome interno — `app`, `data`, `prose`, `projects`, `shared` —, e é ele que o motor usa e que as declarações citam. O nome que a pessoa lê vem do idioma ativo, e a tabela de `paths.py` é a única que o conhece: `Tabelas/`, `Arquivos/`, `Projetos/` e `Compartilhada/` em `pt_BR`; `Tables/`, `Files/`, `Projects/` e `Shared/` em `en_US`. A pasta da instância é a exceção, e é deliberada: ela não segue o idioma, porque o idioma mora dentro dela — `App/` nos dois.
 
 Uma pasta nasce com:
 
 ```
-app/settings.json         os ajustes da instância, em chave-valor
-app/i18n/active           o idioma escolhido — os catálogos viajam no produto
-app/counters.json         o último id entregue, por tabela
-app/plugins/              as extensões, e o estado de review de cada uma
-app/services/<serviço>/   o estado persistente de cada serviço (§4)
-data/schema/*.json        as tabelas de sistema, escritas pelo produto
-data/*.jsonl              as linhas (chegam com a primeira escrita)
-prose/                    tudo o que não é dado estruturado, com a nota de boas-vindas
+App/settings.json         os ajustes da instância, em chave-valor
+App/i18n/active           o idioma escolhido — os catálogos viajam no produto
+App/counters.json         o último id entregue, por tabela
+App/migrations            até onde esta pasta já migrou
+App/plugins/              as extensões, e o estado de review de cada uma
+App/services/<serviço>/   o estado persistente de cada serviço (§4)
+Tabelas/schema/*.json     as tabelas de sistema, escritas pelo produto
+Tabelas/*.jsonl           as linhas (chegam com a primeira escrita)
+Arquivos/                 tudo o que não é dado estruturado, com a nota de boas-vindas
+Projetos/                 o que pertence a um projeto — nomeada, ainda vazia
+Compartilhada/            o que for compartilhado com outras pessoas — nomeada, ainda vazia
 ```
+
+**A migração.** Atualizar o Bill é trocar o binário dentro da pasta, então toda versão que muda a estrutura da pasta traz a migração dela e ela roda na primeira subida depois da troca (§3). O carimbo é `App/migrations`, e ele mora com o resto do que o Bill escreve, nunca na declaração publicada. As migrações são, hoje, três: `.bill/` → `app/`, `app/` → `App/`, e as pastas da pessoa para o idioma ativo — e essa última pergunta antes, porque renomear quebra o que aponta para elas de fora do Bill. Quem recusa mantém o nome que tinha, e a resolução lê as duas grafias.
+
+Uma pasta que ainda não migrou **é encontrada pelo nome velho**: `paths.instance_dir()` lê o que está no disco antes de decidir, para que uma pasta com `.bill/` não seja lida como pasta nova — que era o defeito que a migração número um existia para fechar.
 
 Duas recusas são deliberadas:
 
@@ -93,7 +102,7 @@ Duas recusas são deliberadas:
 
 `BILL_ROOT` aponta o motor para outra pasta. Ele existe para os testes e para rodar a partir do checkout, e é a única variável de ambiente que decide onde o Bill escreve.
 
-Enquanto se desenvolve, este checkout *é* a Pasta de Trabalho: `data/`, `prose/` e `app/` nascem onde devem nascer e são ignorados pelo git.
+Enquanto se desenvolve, este checkout *é* a Pasta de Trabalho: as pastas nascem onde devem nascer, na grafia do idioma ativo, e todas as grafias são ignoradas pelo git.
 
 ## 3. Operação
 

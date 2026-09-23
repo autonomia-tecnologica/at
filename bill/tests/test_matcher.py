@@ -32,7 +32,7 @@ from pathlib import Path
 from unittest import mock
 
 from bill import i18n, nlu
-from bill.core import boot, settings, tables
+from bill.core import boot, paths, settings, tables
 from bill.data import schema, store
 from bill.i18n import tr
 from bill.ui.cli import main, tree
@@ -78,7 +78,7 @@ class MatcherCase(unittest.TestCase):
 
     def declares(self, table: str, fields: dict) -> None:
         """A table of the instance's own, written where the declarations live."""
-        where = self.root / "data" / "schema" / f"{table}.json"
+        where = paths.data_dir() / schema.SCHEMA_DIR / f"{table}.json"
         where.write_text(
             json.dumps(
                 {

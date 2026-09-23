@@ -71,20 +71,29 @@ docs/                          the documents
 
 ## 2. The Working Folder
 
-The folder the binary was opened in is the binary's folder, and that folder is the Working Folder (§3). On the first run Bill describes the folder and asks before writing anything; `app/settings.json` is what makes a folder configured.
+The folder the binary was opened in is the binary's folder, and that folder is the Working Folder (§3). On the first run Bill describes the folder and asks before writing anything; `App/settings.json` is what makes a folder configured.
+
+**The name on disk is the face; the machine reads the internal name.** Every folder has an internal name — `app`, `data`, `prose`, `projects`, `shared` — and that is the one the engine uses and the one the declarations cite. The name a person reads comes from the active language, and the table in `paths.py` is the only thing that knows it: `Tabelas/`, `Arquivos/`, `Projetos/` and `Compartilhada/` in `pt_BR`; `Tables/`, `Files/`, `Projects/` and `Shared/` in `en_US`. The instance folder is the exception, and it is deliberate: it does not follow the language, because the language lives inside it — `App/` in both.
 
 A folder is born with:
 
 ```
-app/settings.json         the instance's key-value configuration
-app/i18n/active           the chosen language — the catalogs travel in the product
-app/counters.json         the last id handed out per table
-app/plugins/              the extensions, and the review state of each one
-app/services/<service>/   the persistent state of each service (§4)
-data/schema/*.json        the system tables, written in from the product
-data/*.jsonl              the rows (they arrive with the first write)
-prose/                    everything that is not structured data, with a welcome note
+App/settings.json         the instance's key-value configuration
+App/i18n/active           the chosen language — the catalogs travel in the product
+App/counters.json         the last id handed out per table
+App/migrations            how far this folder has migrated
+App/plugins/              the extensions, and the review state of each one
+App/services/<service>/   the persistent state of each service (§4)
+Tables/schema/*.json      the system tables, written in from the product
+Tables/*.jsonl            the rows (they arrive with the first write)
+Files/                    everything that is not structured data, with a welcome note
+Projects/                 what belongs to a project — named, still empty
+Shared/                   what is shared with other people — named, still empty
 ```
+
+**The migration.** Updating Bill is replacing the binary inside the folder, so every release that changes the folder's structure brings its migration and it runs on the first start after the swap (§3). The stamp is `App/migrations`, and it lives with the rest of what Bill writes, never inside the published declaration. There are three migrations today: `.bill/` → `app/`, `app/` → `App/`, and the person's folders into the active language — and the last one asks first, because renaming breaks whatever points at them from outside Bill. Whoever declines keeps the name they had, and the resolution reads both spellings.
+
+A folder that has not migrated yet **is found by its old name**: `paths.instance_dir()` reads what is on disk before deciding, so that a folder with `.bill/` is not read as a new one — which was the defect migration number one existed to close.
 
 Two refusals are deliberate:
 
@@ -93,7 +102,7 @@ Two refusals are deliberate:
 
 `BILL_ROOT` aims the engine at another folder. It exists for the tests and for running from a checkout, and it is the only environment variable that decides where Bill writes.
 
-While developing, this checkout *is* the Working Folder: `data/`, `prose/` and `app/` are created where they belong and are ignored by git.
+While developing, this checkout *is* the Working Folder: the folders are created where they belong, under the active language's spelling, and every spelling is ignored by git.
 
 ## 3. Operation
 

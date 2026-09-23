@@ -9,7 +9,19 @@
 /hooks
 
 # --- Working Folder runtime state (created by the binary where it runs) ------
+# The folders a person reads follow the person's language (§3), so the checkout
+# creates them under whichever spelling is active. Both are ignored, always:
+# which one exists depends on nothing a repository should carry.
+/App
 /app
+/Tables
+/Tabelas
+/Files
+/Arquivos
+/Projects
+/Projetos
+/Shared
+/Compartilhada
 
 # --- Python ------------------------------------------------------------------
 __pycache__/
@@ -60,3 +72,4 @@ desktop.ini
 # --- Data ----------------------------------------------------------
 /data
 /prose
+/.bill

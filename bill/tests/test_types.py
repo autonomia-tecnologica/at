@@ -25,7 +25,7 @@ from pathlib import Path
 from unittest import mock
 
 from bill import i18n
-from bill.core import boot, tables
+from bill.core import boot, paths, tables
 from bill.data import schema, store
 from bill.ui.cli import main
 
@@ -107,7 +107,7 @@ class TypeCase(unittest.TestCase):
         self.scratch.cleanup()
 
     def declare(self, table: dict) -> None:
-        where = self.root / "data" / "schema" / f"{table['id']}.json"
+        where = paths.data_dir() / schema.SCHEMA_DIR / f"{table['id']}.json"
         where.write_text(
             json.dumps(table, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
         )
@@ -254,7 +254,7 @@ class TheStamp(TypeCase):
     def test_no_instant_in_the_store_is_a_naive_local_one(self):
         row = tables.create("task", {"text": "café"})
         tables.edit("task", row["id"], {"status": "doing"})
-        body = (self.root / "data" / "tasks.jsonl").read_text(encoding="utf-8")
+        body = (paths.data_dir() / "tasks.jsonl").read_text(encoding="utf-8")
         found = re.findall(r"\d{4}-\d{2}-\d{2}T[^\"]*", body)
         self.assertTrue(found)
         for value in found:

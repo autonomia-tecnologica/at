@@ -39,7 +39,15 @@ HERE = Path(__file__).resolve().parent
 
 # Nothing here is a document: the runtime folders of a Working Folder, the
 # importable package, the build output and the vendored dependencies.
-SKIP = {"node_modules", ".venv", ".git", "build", "dist", "app", "data", "prose", "hooks", ".claude"}
+# The Working Folder a checkout creates for itself, and the product's other
+# payloads. Both spellings of every folder are here: the checkout's own instance
+# is migrated by running Bill in it, and the gate must hold either way.
+SKIP = {
+    "node_modules", ".venv", ".git", "build", "dist", "hooks", ".claude",
+    "App", "app", "Tables", "Tabelas", "Files", "Arquivos",
+    "Projects", "Projetos", "Shared", "Compartilhada",
+    "data", "prose",
+}
 
 # The door at the root is the only markdown outside a language folder.
 DOOR = ROOT / "README.md"

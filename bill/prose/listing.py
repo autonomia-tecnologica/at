@@ -6,10 +6,11 @@ door and the write door ask the SAME questions (`is_text`, the ceiling) — two
 rules for one question drift, and the drift shows up as a file the page can read
 and cannot save.
 
-**The tree is rooted at `prose/`**, not at the Working Folder: `data/` is the
-table engine's and `app/` is the instance's configuration, and neither is
-"files a person keeps". What the PoC walked was its whole sandbox, which had no
-such split to make.
+**The tree is rooted at the prose folder** — `Arquivos/` in `pt_BR`, `Files/` in
+`en_US`, and `paths.prose_dir()` is what knows which — and not at the Working
+Folder: the tables' folder is the table engine's and the instance folder is the
+configuration's, and neither is "files a person keeps". What the PoC walked was
+its whole sandbox, which had no such split to make.
 """
 
 from __future__ import annotations
@@ -19,8 +20,6 @@ import threading
 from pathlib import Path
 
 from bill.core import files, paths
-
-ROOT = "prose"
 
 # The ceiling, in bytes, for a file a person edits in the page. It binds the
 # reader and the writer alike: a file over it is not text anybody edits here.
