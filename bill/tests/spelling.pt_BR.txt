@@ -89,6 +89,7 @@ faq
 favicon
 forms
 forward
+framework
 frameworks
 from
 frontend
@@ -177,6 +178,7 @@ registrar
 registro
 release
 releia
+rename
 relying
 rest
 review
@@ -219,6 +221,7 @@ typescript
 up
 urls
 utc
+vault
 versionada
 versionado
 versionamento
