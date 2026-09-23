@@ -44,6 +44,13 @@ def ensure_working_folder(ask: Ask | None = None) -> bool:
     `True` when the folder is ready — already configured, or just confirmed.
     `False` when it is not, and Bill must stop without doing anything else.
     """
+    # The terminal is resolved ONCE, here, and both halves use the same door:
+    # the first run and the catch-up ask the person the same question, and a
+    # migration that got a `None` while a terminal sat in front of it would
+    # refuse to move a folder nobody was ever asked about.
+    if ask is None and sys.stdin.isatty():
+        ask = _ask
+
     if is_configured():
         catch_up(ask)
         return True
@@ -52,10 +59,8 @@ def ensure_working_folder(ask: Ask | None = None) -> bool:
     print(tr("boot.first_run.notice", folder=folder))
 
     if ask is None:
-        if not sys.stdin.isatty():
-            print(tr("boot.first_run.no_tty"))
-            return False
-        ask = _ask
+        print(tr("boot.first_run.no_tty"))
+        return False
 
     if not migrations.is_yes(ask(tr("boot.first_run.confirm"))):
         print(tr("boot.first_run.cancelled"))

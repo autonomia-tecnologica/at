@@ -222,6 +222,17 @@ class TheFoldersFollowTheLanguage(FolderCase):
         self.assertFalse((self.root / "Tabelas").exists())
         self.assertIn(i18n.tr("boot.migration.folders.no_tty"), output.getvalue())
 
+    def test_a_terminal_in_front_is_asked(self):
+        # `bill <word>` passes no `ask`: the door to the terminal belongs to
+        # boot. Without it the migration would decline to move a folder with
+        # the person sitting right in front of it.
+        self.legacy("app")
+        with mock.patch("sys.stdin.isatty", return_value=True):
+            with mock.patch("builtins.input", return_value="s"):
+                with redirect_stdout(StringIO()):
+                    boot.ensure_working_folder()
+        self.assertTrue((self.root / "Tabelas").is_dir())
+
     def test_the_two_that_are_only_named_are_born(self):
         self.legacy("app")
         output = self.caught_up("s")
