@@ -16,7 +16,8 @@ bill/                          the product: the engine, the declarations and the
 ├── prose/                     every file that is not structured data: the tree of `prose/`,
 │                              what a file there IS, and the write with its revision
 ├── services/                  external services, as tool-agnostic as the layer can be
-├── encryption/                secrets: the Access Phrase, the Bill Key and the derived keys
+├── encryption/                secrets: the Access Phrase, the Bill Key and the derived keys,
+│                              and `password`, the derivation the hashed field stores
 ├── nlu/                       interpretation: the vocabulary, the matcher and the action proposal
 ├── posture/                   the posture: the graded functions, the grades and the weakest link
 ├── ui/
@@ -119,7 +120,13 @@ Surfaces, and the state of each one today:
 
 Exit codes: `0` success · `1` refused or failed · `2` usage error.
 
-Python 3.14.7 with no runtime dependency at all. A dependency arrives pinned in version and hashing (§3), and starting from zero is how that promise is kept cheap. There are two deliberate exceptions, both on the development side: the WebApp's hosted typefaces, in `bill/ui/webapp/vendor/`, with the hash the manifest pins; and the documents' checker, which runs in the suite and is therefore a tool, not an installation — it cannot demand from another dev or from the runner anything that does not come pinned inside `.venv`.
+Python 3.14.7, with **one** runtime dependency: `PyNaCl`, the binding of `libsodium`, pinned in version and in hashing in `requirements.txt` (§3). The hashed field's derivation is `libsodium`'s, and that is not the standard library, so the price is named instead of avoided. Its wheel carries `libsodium` inside it, so the binary stays self-contained and nothing is asked of the machine that runs it. Two more exceptions are deliberate, and both stay on the development side: the WebApp's hosted typefaces, in `bill/ui/webapp/vendor/`, with the hash the manifest pins; and the documents' checker, which runs in the suite and is therefore a tool, not an installation — it cannot demand from another dev or from the runner anything that does not come pinned inside `.venv`.
+
+That dependency installs first, under the same rule:
+
+```sh
+.venv/bin/pip install --require-hashes -r requirements.txt
+```
 
 The suite runs the document gate (§3, Internationalization), and its checker is installed once:
 

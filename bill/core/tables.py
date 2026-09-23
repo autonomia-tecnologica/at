@@ -24,6 +24,7 @@ from datetime import date, datetime, timezone
 from typing import Any
 
 from bill.data import schema, store
+from bill.encryption import password
 from bill.i18n import tr
 
 ACTIONS = ("list", "view", "create", "edit", "cancel", "delete")
@@ -88,8 +89,21 @@ def number_of(table: str, value: object) -> int | None:
 
 def title(table: str, row: dict) -> str:
     """What a person reads as the row's name: the field the table declares as
-    `primary`, and then the id. Never a field guessed here."""
+    `primary`, and then the id. Never a field guessed here.
+
+    A table that declares a HASHED field as its principal is refused: a title is
+    read, and this field is not. An identity a surface has to spell out is not a
+    credential's job, and the declaration is where that is caught — before any
+    row can carry one.
+    """
+    _checked(table)
     declared = schema.primary(table)
+    if declared and hashed(table, declared):
+        raise TableError(
+            "error.hashed_primary",
+            table=table_name(table),
+            field=label(table, declared),
+        )
     value = row.get(declared) if declared else None
     if isinstance(value, str) and value.strip():
         return value
@@ -196,9 +210,17 @@ def text_of(table: str, field: str, value: Any) -> str:
     A field of one of the two types about time is written the way the READER's
     locale writes it — the day in their order, the instant in their clock.
     """
+    _checked(table)
     declared = schema.field(table, field)
     if value is None:
         return tr("table.word.none")
+    if declared.get("type") == "hashed":
+        # The mask, and never the derivation. The display does not refuse — a
+        # listing that crashed on the very field it is meant to hide would be a
+        # worse answer than the one that says there is something here you do not
+        # read. A value that is not there, which is what a clearing leaves,
+        # reads as nothing and never as a hidden something.
+        return tr("table.word.hashed") if value else tr("table.word.none")
     written = _locale_writer(declared)
     if written is not None:
         return written(value)
@@ -269,10 +291,10 @@ def rows(table: str, show_all: bool = False) -> list[dict]:
     A field that declares `show` lists the values a listing carries; everything
     else is what the listing hides, which is what `--all` puts back.
     """
+    declared = _checked(table)
     loaded = store.load(table)
     if show_all:
         return loaded
-    declared = schema.of(table) or {}
     fields = declared.get("fields")
     if not isinstance(fields, dict):
         return loaded
@@ -330,7 +352,7 @@ def _coerce(table: str, values: dict[str, str], born: bool) -> dict:
     `born` is the difference between the two doors: a row being created receives
     the declared defaults, and an edit receives only what was typed.
     """
-    declared = schema.of(table) or {}
+    declared = _checked(table)
     fields = declared.get("fields")
     fields = fields if isinstance(fields, dict) else {}
 
@@ -356,6 +378,103 @@ def _literal(value: Any) -> Any:
     if isinstance(value, str) and value in _WHEN:
         return _WHEN[value]()
     return value
+
+
+# ------------------------------------------------------------ the hashed ---
+
+# The keys a declaration of a `hashed` field may name, and the whole of them.
+# §4 fixes the method — `libsodium`'s password derivation, the same for every
+# hashed field of every table — so there is nothing here for a declaration to
+# CHOOSE: what it says is what it says about any other field. The refusal is
+# read off this list, so `method`, `algorithm`, `opslimit`, `memlimit` and
+# whatever key somebody invents next are all refused BY NAME without this module
+# having to predict them.
+#
+# `default` is out on purpose, and it is the one absence worth naming: a default
+# is a value the declaration WRITES, and the declaration is published — a
+# credential with a default would be a credential in the repository.
+HASHED_KEYS = ("type", "label", "required", "max_length", "hide")
+
+
+def _checked(table: str) -> dict:
+    """The table's declaration, with its hashed fields held to the closed list.
+
+    The check runs HERE — at the point of use, where the engine reads a
+    declaration to act on a field — and never where the registry loads the
+    folder. The words are `i18n`'s and `i18n` is the core's, so a `data` layer
+    reaching back for them would be the dependency pointing the wrong way; and a
+    registry that dropped the offending table would trade a loud refusal for a
+    blank screen, which is the one answer nobody can act on.
+    """
+    declared = schema.of(table) or {}
+    fields = declared.get("fields")
+    if isinstance(fields, dict):
+        for name, field in fields.items():
+            if isinstance(field, dict) and field.get("type") == "hashed":
+                _refuse_unlisted_keys(table, name, field)
+    return declared
+
+
+def _refuse_unlisted_keys(table: str, name: str, field: dict) -> None:
+    """Refuse a hashed declaration that names a key the closed list lacks."""
+    for key in field:
+        if key not in HASHED_KEYS:
+            # `named` and not `key`: the refusal's own reason is already called
+            # `key`, and the sentence is about the KEY OF THE DECLARATION.
+            raise TableError(
+                "error.hashed_key", field=label(table, name), named=key
+            )
+
+
+def hashed(table: str, field: str) -> bool:
+    """Whether the field is of the type that stores a derivation (§4)."""
+    return schema.field(table, field).get("type") == "hashed"
+
+
+def raw_of(table: str, field: str, value: Any) -> Any:
+    """A value as the store keeps it — for whoever starts from the truth.
+
+    A form opens on what a row already carries, and a cell that shows the stored
+    value asks here. The hashed field is the one the engine does NOT hand over:
+    what it holds is a derivation, a derivation is only ever compared, and
+    whoever asks gets the refusal BY NAME instead of the value.
+    """
+    _checked(table)
+    if hashed(table, field):
+        raise TableError("error.hashed_value", field=label(table, field))
+    return value
+
+
+def verify(table: str, field: str, candidate: str, stored: str) -> bool:
+    """Whether the candidate is what the row's `field` proved — a comparison, and
+    never a string match (§4).
+
+    The answer is a BOOL and never an exception: the right candidate is true, the
+    wrong one is false, and the stored derivation handed back as its own candidate
+    is false too, because this door compares and does not match strings. A stored
+    value a hand edited is false for the same reason — an exception would take
+    down the read that found it.
+
+    What it REFUSES is the field, by name: one the table does not declare, and one
+    it declares as something other than hashed. `raw_of` will not hand the value
+    over, so the comparison is the only door into it — and a door into a
+    derivation opens on a field that holds one.
+
+    It reads its two arguments — the candidate and the stored derivation — and
+    nothing else: no Access Phrase, no `settings.json`, no Working Folder. That is
+    what makes a credential verifiable while Bill is locked, and it is why the
+    value comes IN: the engine hands the whole row over (`find` answers it
+    derivation included) and whoever compares passes the stored value here.
+    """
+    _checked(table)
+    declared = schema.field(table, field)
+    if not declared:
+        raise TableError(
+            "error.unknown_hashed_field", table=table_name(table), field=field
+        )
+    if declared.get("type") != "hashed":
+        raise TableError("error.not_hashed", field=label(table, field))
+    return password.verify(candidate, stored)
 
 
 # ------------------------------------------------------------- the types ---
@@ -426,12 +545,38 @@ def _instant(table: str, name: str, raw: Any) -> str:
         ) from None
 
 
+def _hashed(table: str, name: str, field: dict, raw: Any) -> str:
+    """The derivation of what was typed, and never what was typed (§4).
+
+    There is no method to choose here: the module that holds the primitive fixes
+    it, and the closed list keeps the declaration from reaching it. What the
+    declaration CAN say is a ceiling, and it measures the credential as it was
+    typed — a value past it is refused before anything is derived.
+
+    Nothing typed is not derived: the field is left empty, which is what
+    `_require` refuses when the table declares it required and what a row reads
+    back as nothing. A derivation of the empty value would be a credential
+    nobody holds — not even whoever typed nothing — wearing the mask of one.
+    """
+    if raw is None:
+        return ""
+    text = raw.strip() if isinstance(raw, str) else str(raw)
+    if not text:
+        return ""
+    ceiling = field.get("max_length")
+    if isinstance(ceiling, int) and len(text) > ceiling:
+        raise TableError("error.too_long", field=label(table, name), max=ceiling)
+    return password.derive(text)
+
+
 def _value(table: str, name: str, field: dict, raw: Any) -> Any:
     kind = field.get("type")
     if kind == "day":
         return _day(table, name, raw)
     if kind == "instant":
         return _instant(table, name, raw)
+    if kind == "hashed":
+        return _hashed(table, name, field, raw)
     if not isinstance(raw, str):
         return raw
     if kind == "list":

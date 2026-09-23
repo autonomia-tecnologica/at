@@ -23,6 +23,7 @@ from unittest import mock
 
 from bill import i18n
 from bill.core import boot, projects, settings, tables
+from bill.data import schema
 from bill.ui.webapp import app as webapp
 
 
@@ -182,6 +183,93 @@ class TheTablePayload(ServerCase):
 
     def test_an_unknown_table_is_answered_not_crashed(self):
         self.assertEqual(self.status("/api/table/no-such-table"), 404)
+
+
+class TheHashedField(ServerCase):
+    """The field whose value never reaches the page (§4, item 8).
+
+    The record builder is where the leak was: it handed `row.get(name)` to the
+    page as `raw`, so the stored value of every field travelled to the browser.
+    With the field hashed, the engine refuses to hand it over — the cell draws
+    the mask, and `raw` carries nothing.
+    """
+
+    SECRET = "segredo-do-ator"
+
+    # The product ships no hashed field yet — the `actor` table is item 9 — so
+    # the page is asked about a table of the instance's own.
+    KEEPER = {
+        "id": "keeper",
+        "order": 90,
+        "name": {"one": "table.task.name.one", "many": "table.task.name.many"},
+        "store": "data/keepers.jsonl",
+        "primary": "name",
+        "columns": ["name", "credential"],
+        "fields": {
+            "id": {"label": "table.field.id"},
+            "name": {"label": "table.task.field.text"},
+            "credential": {"label": "table.task.field.desc", "type": "hashed"},
+        },
+    }
+
+    def setUp(self):
+        super().setUp()
+        where = self.root / "data" / "schema" / "keeper.json"
+        where.write_text(
+            json.dumps(self.KEEPER, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        schema.reset()
+        with redirect_stdout(io.StringIO()):
+            tables.create("keeper", {"name": "portão", "credential": self.SECRET})
+
+    def tearDown(self):
+        # The declarations are cached per process and this folder is gone: a
+        # cache left behind would hand the next test a table that is not there.
+        schema.reset()
+        super().tearDown()
+
+    def cell(self, name: str) -> dict:
+        _, _, body = self.get("/api/table/keeper")
+        record = json.loads(body)["records"][0]
+        return next(field for field in record["fields"] if field["name"] == name)
+
+    def test_the_cell_shows_the_mask(self):
+        self.assertEqual(self.cell("credential")["value"], i18n.tr("table.word.hashed"))
+
+    def test_the_payload_carries_no_stored_value_for_the_field(self):
+        # Neither the credential nor the derivation it became: the answer is
+        # read as bytes, because that is what leaves the process.
+        _, _, body = self.get("/api/table/keeper")
+        self.assertNotIn(self.SECRET.encode("utf-8"), body)
+        self.assertNotIn(b"argon2id", body)
+        self.assertIsNone(self.cell("credential")["raw"])
+
+    def test_every_other_field_still_carries_what_is_stored(self):
+        self.assertEqual(self.cell("name")["raw"], "portão")
+
+    def test_a_declaration_the_folder_carries_is_answered_not_crashed(self):
+        # The refusal is the engine's and it travels in the active language: a
+        # route that died instead would leave the page with nothing to draw AND
+        # nothing to say — the same blank screen the engine refuses to trade a
+        # loud answer for.
+        where = self.root / "data" / "schema" / "keeper.json"
+        declared = json.loads(where.read_text(encoding="utf-8"))
+        declared["fields"]["credential"]["method"] = "scrypt"
+        where.write_text(
+            json.dumps(declared, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+        schema.reset()
+        expected = i18n.tr(
+            "table.error.hashed_key",
+            field=i18n.tr("table.task.field.desc"),
+            named="method",
+        )
+        for path in ("/api/table/keeper", "/api/state"):
+            with self.subTest(path=path):
+                status, _, body = self.get(path)
+                self.assertEqual(status, 400)
+                self.assertEqual(json.loads(body)["error"], expected)
 
 
 class TheLook(ServerCase):

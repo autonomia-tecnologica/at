@@ -16,7 +16,8 @@ bill/                          o produto: o motor, as declarações e a UI
 ├── prose/                     todo arquivo que não é dado estruturado: a árvore de `prose/`,
 │                              o que um arquivo ali É, e a escrita com a sua revisão
 ├── services/                  serviços externos, tão agnóstico à ferramenta quanto a camada consegue
-├── encryption/                segredos: a Frase de Acesso, a Chave do Bill e as chaves derivadas
+├── encryption/                segredos: a Frase de Acesso, a Chave do Bill e as chaves derivadas,
+│                              e `password`, a derivação que o campo hasheado guarda
 ├── nlu/                       a interpretação: o vocabulário, o casador e a proposta de ação
 ├── posture/                   a postura: as funções graduadas, as notas e o elo mais fraco
 ├── ui/
@@ -119,7 +120,13 @@ Superfícies, e o estado de cada uma hoje:
 
 Códigos de saída: `0` sucesso · `1` recusado ou falhou · `2` erro de uso.
 
-Python 3.14.7 sem nenhuma dependência de runtime. Uma dependência chega pinada em versão e hashing (§3), e começar do zero é o que mantém essa promessa barata. Há duas exceções deliberadas, as duas do lado do desenvolvimento: as fontes hospedadas do WebApp, em `bill/ui/webapp/vendor/`, com o hash que o manifesto pina; e o corretor dos documentos, que roda na suíte e por isso é ferramenta, não instalação — ele não pode exigir do outro dev nem do runner nada que não venha pinado dentro do `.venv`.
+Python 3.14.7 com **uma** dependência de runtime: `PyNaCl`, a ligação do `libsodium`, pinada em versão e hashing no `requirements.txt` (§3). A derivação do campo hasheado é a do `libsodium`, e ele não é a biblioteca padrão, então o preço está nomeado em vez de evitado. A wheel carrega o `libsodium` dentro dela, então o binário continua autossuficiente e nada é pedido da máquina que o roda. Há mais duas exceções deliberadas, as duas do lado do desenvolvimento: as fontes hospedadas do WebApp, em `bill/ui/webapp/vendor/`, com o hash que o manifesto pina; e o corretor dos documentos, que roda na suíte e por isso é ferramenta, não instalação — ele não pode exigir do outro dev nem do runner nada que não venha pinado dentro do `.venv`.
+
+Essa dependência se instala primeiro, sob a mesma regra:
+
+```sh
+.venv/bin/pip install --require-hashes -r requirements.txt
+```
 
 A suíte roda o gate dos documentos (§3, Internacionalização), e o corretor dele se instala uma vez:
 

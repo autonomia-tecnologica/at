@@ -317,6 +317,23 @@ def _schema_payload(table: str) -> list[dict]:
     ]
 
 
+def _stored(table: str, name: str, value: object) -> object:
+    """The stored value a form starts from — and NOTHING for the field the engine
+    does not hand over.
+
+    `tables.raw_of` refuses the hashed field by name, and that refusal is the
+    answer: a cell draws the mask and a form asks for a new credential, so what
+    the page carries is what it may draw. Every OTHER refusal keeps travelling —
+    this is the page obeying the engine's rule, not a second rule of its own.
+    """
+    try:
+        return tables.raw_of(table, name, value)
+    except tables.TableError as refused:
+        if refused.key != "error.hashed_value":
+            raise
+        return None
+
+
 def _record(table: str, row: dict) -> dict:
     number = store.number_of(row)
     fields = _declared_fields(table)
@@ -329,11 +346,13 @@ def _record(table: str, row: dict) -> dict:
                 "name": name,
                 "type": field.get("type"),
                 # The value as a person reads it; `raw` as it is stored, so a
-                # field that is going to be edited starts from the truth.
+                # field that is going to be edited starts from the truth — and
+                # the hashed field is handed over by nobody, so a credential
+                # never reaches the wire (`_stored`).
                 "value": tables.format_id(table, number) if name == "id"
                          and number is not None
                          else tables.text_of(table, name, row.get(name)),
-                "raw": row.get(name),
+                "raw": _stored(table, name, row.get(name)),
                 "refs": _references(table, name, row),
             }
             for name, field in fields.items()
@@ -422,6 +441,16 @@ class Handler(BaseHTTPRequestHandler):
     # -------------------------------------------------------------- verbs --
 
     def do_GET(self) -> None:  # noqa: N802 — the name http.server dispatches on
+        try:
+            self._route()
+        except tables.TableError as refused:
+            # A declaration the folder carries is refused in the ENGINE's words,
+            # in the active language, as the write path already answers one — a
+            # route that died instead would leave the page with nothing to draw
+            # AND nothing to say, which is the blank screen the engine refuses.
+            self._json({"error": str(refused)}, 400)
+
+    def _route(self) -> None:
         parsed = urlparse(self.path)
         query = parse_qs(parsed.query, keep_blank_values=True)
         segments = [part for part in parsed.path.split("/") if part]

@@ -50,7 +50,14 @@ a = Analysis(
     pathex=[SPECPATH],
     binaries=[],
     datas=DATAS,
-    hiddenimports=[],
+    # `_cffi_backend` is the cffi runtime's own C extension, and no import graph
+    # reaches it: `nacl.bindings` loads it through cffi, at RUNTIME. The
+    # `hook-nacl.py` of `pyinstaller-hooks-contrib` collects `nacl`'s `_lib/`
+    # extensions and leaves this one behind, so a binary built without it dies on
+    # `import nacl.bindings` — `No module named '_cffi_backend'` — which is the
+    # product's one runtime dependency failing to travel. Named here by hand, like
+    # every other payload no import graph can see.
+    hiddenimports=["_cffi_backend"],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

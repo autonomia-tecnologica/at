@@ -7,10 +7,10 @@ name = "bill"
 description = "A deterministic task engine that bootstraps its own environment"
 dynamic = ["version"]
 requires-python = ">=3.14.7"
-# The skeleton is stdlib only. A dependency arrives pinned in version and
-# hashing (§3, Dependência externa) — starting at zero is the
-# cheapest way to keep that promise.
-dependencies = []
+# The product's one runtime dependency: the binding of `libsodium`, which the
+# hashed field's derivation needs (§4, item 8). The version is named here and in
+# `requirements.txt`, with the hashing; a test fails when the two drift.
+dependencies = ["PyNaCl==1.6.2"]
 
 [project.scripts]
 bill = "bill.ui.cli:main"

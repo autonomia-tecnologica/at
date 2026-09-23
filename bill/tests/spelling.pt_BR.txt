@@ -25,6 +25,7 @@ auditados
 auth
 authelia
 autocontido
+autossuficiente
 b
 backend
 backlog
@@ -230,6 +231,7 @@ vs
 vue
 watchdog
 webapp
+wheel
 wizard
 workflows
 world
