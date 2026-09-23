@@ -19,6 +19,7 @@ import { computed } from "vue";
 import { store, word } from "../lib/store";
 import { CHAT_KEY, isCurrent, open, countOf } from "../lib/views";
 import { byName } from "../lib/order";
+import { navRail, toggleNav } from "../lib/nav";
 import Foldable from "./Foldable.vue";
 import ProjectsTree from "./ProjectsTree.vue";
 import FileTree from "./FileTree.vue";
@@ -83,6 +84,34 @@ function openChat(): void {
     <button type="button" class="file" :data-view="SETTINGS_KEY"
             :class="{ on: isCurrent(SETTINGS_KEY) }" @click="openSettings">
       <span>{{ word("settings") }}</span>
+    </button>
+    <!-- THE LAST ROW OF THE FOOT, AND THE ONE THE RAIL CANNOT LOSE (2026-09-22).
+         The collapse button used to sit in the title strip, next to the name; it
+         lives HERE now, for the reason a foot exists at all: this box is always on
+         screen, so a person never has to SCROLL the tree to reach the control that
+         hides the tree. It is also the only target left once the panel IS the rail
+         — which is why the rail hides the foot's rows and not the foot (base.css).
+         The state it reads is `navRail`, the one answer both doors share.
+         IT CARRIES ITS OWN NAME (2026-09-22). It was a bare glyph with an
+         `aria-label` far away from it, which meant a sighted person had to guess
+         what `«` did — and no arrow can answer that: an arrow says WHICH WAY the
+         panel goes, never WHAT HAPPENS to it. The words say what happens. The GLYPH
+         stays as the `::before` of the rule, so the theme still sizes it
+         (`--nav-toggle-size`) and the two sides still swap by selector.
+         ON THE RAIL THE WORDS GO AND THE ARROW TURNS — 44px has no room for a
+         sentence, and the `aria-label` flips to the other verb so a screen reader
+         hears the ACTION and not the position. That flip is also what keeps the
+         accessible name matching the visible one where the visible one exists
+         (WCAG 2.5.3, and the reason the label is not a fixed "Painel"). -->
+    <!-- THE LINE ABOVE THE CONTROL. `hr.sep` is the separator this file already
+         uses to close the foot off from the tree, so the control is set apart by
+         the same mark and not by a second idiom invented here. -->
+    <hr class="sep">
+    <button id="nav-toggle" class="nav-toggle" type="button"
+            :aria-label="word(navRail.railed ? 'expand_menu' : 'collapse_menu')"
+            :aria-expanded="!navRail.railed"
+            @click="toggleNav">
+      <span class="t">{{ word("collapse_menu") }}</span>
     </button>
   </div>
 </template>

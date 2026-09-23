@@ -7,6 +7,7 @@
 // the window is narrow, and that half belongs to the media query (base.css,
 // section 5) — the same state by two doors, and whoever is in front wins.
 
+import { reactive } from "vue";
 import { loadPrefs, savePrefs } from "./prefs";
 
 export const NAV_KEY = "bill.nav";
@@ -41,9 +42,23 @@ export function railedNow(): boolean {
   return NARROW.matches;
 }
 
+// WHAT IS ON SCREEN, AS STATE THE PAGE CAN REACT TO (2026-09-22). There are TWO
+// doors to the same answer — the collapse button and the scrim — and they live in
+// different components (the button is a row of the panel's foot, the scrim is the
+// App's). A `ref` on either side would go stale the moment the OTHER one was
+// clicked, and the button's `aria-expanded` is a claim about what is on screen:
+// it cannot be a claim one of the two doors is allowed to falsify. So the answer
+// is held ONCE, here, where both doors already come for the write.
+export const navRail = reactive({ railed: railedNow() });
+
+export function syncNav(): void {
+  navRail.railed = railedNow();
+}
+
 export function toggleNav(): void {
   savePrefs(NAV_KEY, { state: railedNow() ? "open" : "rail" });
   applyNav();
+  syncNav();
 }
 
 export function watchNav(onChange: () => void): void {

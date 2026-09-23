@@ -10,7 +10,7 @@
 :root {
   /* --- colour: the raw palette --- */
   --bg: #faf4e8;              /* the window ground: cream paper, very light */
-  --panel: #f3ecdd;           /* the secondary surface: sidebar, popover */
+  --panel: #ece2cc;           /* the secondary surface: sidebar, popover */
   --line: #e0d6c1;            /* EVERY inner line: border and dividing rule */
   --ink: #1b1a17;             /* the main text: black ink, warm */
   --dim: #6d6555;             /* the support text: label, header, count */
@@ -38,7 +38,7 @@
   --sidebar-width: 270px;
   --sidebar-rail: 48px;             /* the width of the COLLAPSED panel (the rail) */
   --sidebar-bg: var(--panel);
-  --sidebar-border: 1px solid var(--line);   /* the divide from the window */
+  --sidebar-border: 0;   /* the divide is the STEP of paper, not a line */
   --sidebar-pad: 16px;                        /* the side breathing room of every item */
   --sidebar-indent: 14px;                     /* one nesting step */
   --sidebar-title-color: var(--ink);
@@ -52,7 +52,7 @@
      suffix says so — a two-number value here is the defect back again. */
   --sidebar-title-pad-x: var(--sidebar-pad);             /* the "Bill" at the top */
   --nav-toggle-size: 21px;         /* the collapse glyph: strip target, not a label */
-  --sidebar-title-border: 1px solid var(--line);
+  --sidebar-title-border: 0;
   /* THE DRAWN NAME (2026-09-20): the book's title, set: the word in the theme's own serif over a rule of sepia.
      The drawing is a FILE (`icons/bill-tipography.svg`), painted by the base; the BOX
      is stated because a drawing has no advance width of its own, and the word gives way
@@ -85,7 +85,7 @@
   --sidebar-item-bg-hover: var(--hi);
   --sidebar-item-mark: 2px solid transparent; /* the bar on the left */
   --sidebar-count-color: var(--dim);
-  --sidebar-sep-border: 1px solid var(--line);   /* the line of the bottom item */
+  --sidebar-sep-border: 0;   /* the foot carries its own ground */
   --sidebar-sep-margin: 12px var(--sidebar-pad);
   /* The triangle that says whether the folder is open. It is BIGGER
      than the folder label on purpose: the label is an 11px upper-case,
@@ -294,4 +294,17 @@
   --sidebar-item-bg-on: transparent;
   /* The lateral INSET of the row: at zero the row touches the edge, which is
      what the themes that already existed do; a card theme pushes it away. */
+  /* LESS LINE, MORE LIGHT (2026-09-22). This theme was drawing the shape of the
+     panel — the divide from the canvas, the underline of the name, the rule across
+     the foot — and then letting the base's gradient dissolve the three of them.
+     What the reader wanted was the opposite on both counts: FEWER of them, and the
+     separation said with CONTRAST instead. So the panel's own three lines are gone
+     (`--sidebar-border`, `--sidebar-title-border`, `--sidebar-sep-border`, each
+     emptied where it is declared above), and the ground does the work: the panel is
+     a step of the same paper, one shade down — deepened here — and a step needs no
+     outline to be read as one. */
+  --divider-side: none;
+  --divider-title: none;
+  --divider-head: none;
 }
+

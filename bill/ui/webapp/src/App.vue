@@ -11,14 +11,14 @@
 // on the same origin. Here they are REASSERTED by their owner, and that is what
 // guarantees the class and the preference do not drift after a click.
 
-import { ref, computed, onMounted } from "vue";
+import { computed, onMounted } from "vue";
 import { api } from "./lib/api";
 import { store, applyState, word } from "./lib/store";
 import { nav, ui, isKind, viewFor, open, markPage, poke, resumePath, CHAT_KEY } from "./lib/views";
 import { applyTheme, watchSystem } from "./lib/theme";
 import { applyMotion } from "./lib/motion";
 import { writingState } from "./lib/writing";
-import { applyNav, railedNow, toggleNav, watchNav } from "./lib/nav";
+import { applyNav, syncNav, toggleNav, watchNav } from "./lib/nav";
 import { watchNarrow } from "./lib/breakpoint";
 import { loadPrefs, SELECT_KEY } from "./lib/prefs";
 import { closePop } from "./lib/pop";
@@ -27,8 +27,6 @@ import Sidebar from "./components/Sidebar.vue";
 import Popover from "./components/Popover.vue";
 import Balloon from "./components/Balloon.vue";
 import KindView from "./views/KindView.vue";
-
-const railed = ref(railedNow());
 
 // WHEN THE BALLOON FLIES. The first two are not the page's to decide: the CORE's
 // switch is on (`store.interpreter` — off, there is no function at all), and this
@@ -135,9 +133,12 @@ async function refresh(): Promise<void> {
   poke();
 }
 
+// THE TWO DOORS TO THE SAME DOOR. This is the SCRIM's click — the panel is closed
+// by clicking outside it — and the panel's own button lives in the foot, which is
+// `Sidebar.vue`. Both call `toggleNav`, and both read the one answer it keeps
+// (`navRail`), so neither can leave the other's `aria-expanded` lying.
 function toggle(): void {
   toggleNav();
-  railed.value = railedNow();
 }
 
 onMounted(async () => {
@@ -158,7 +159,7 @@ onMounted(async () => {
   applyMotion();
   applyNav();
   watchNav(() => {
-    railed.value = railedNow();
+    syncNav();
   });
   watchNarrow();
 
@@ -179,9 +180,6 @@ defineExpose({ refresh });
   <nav>
     <h1 id="brand">
       <span class="brand">{{ word("brand") }}</span>
-      <button id="nav-toggle" class="nav-toggle" type="button"
-              :aria-label="word('panel')" :aria-expanded="!railed"
-              @click="toggle"></button>
     </h1>
     <Sidebar />
   </nav>

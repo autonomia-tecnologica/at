@@ -1,37 +1,54 @@
-/* studio, at night — the side the theme WEARS BY ITSELF.
+/* bill, at night — the side the theme WEARS BY ITSELF.
 
-   Every suite this theme is modelled on opens dark, and it is the hour the work is
+   Every suite this theme came from opens dark, and it is the hour the work is
    actually done in: a bright grid of text in a dark room is the interface people
-   choose, and `data/themes.jsonl` says `"side": "dark"` for this theme, so this is
-   the file a person sees the first time the bill is opened.
+   choose, and `assets/themes.jsonl` says `"side": "dark"` for this theme, so this
+   is the file a person sees the first time the app is opened.
 
    THE LADDER OF GREYS IS THE SAME AND REVERSED: the window is the deepest step, the
-   panel is one above it, the card one above that, and the lines are a step above the
+   panel is one above it, the card one above that, and the rules are a step above the
    surface they separate rather than below it — which is the whole difference between
    a dark interface that reads and a dark interface that looks switched off.
-   THE ACCENT IS LIGHTER, and it has to be: `#2f6fd0` on `#2b2b2b` measures 3.0:1,
+   THE ACCENT IS LIGHTER, and it has to be: `#2f6fd0` on `#2e2e2e` measures 3.0:1,
    under the 4.5 the text needs, while `#4c9aff` measures 6.9. The hue is the same
    blue — what the hour changes is how much light it takes to be seen.
-   The material, the density, the small corners, the crisp dividers and the 100ms of
+   The material, the density, the middle corners, the flat relief and the 100ms of
    motion are the day side's and are not repeated here: this file is the same theme
-   with the light off, so only what the LIGHT decides is written again. */
+   with the light off, so only what the LIGHT decides is written again.
+
+   WHAT THE DARK SIDE DECIDES ON ITS OWN (2026-09-22). The ladder carries MORE of
+   the structure here than it does in the day side, because a dark ground separates
+   by light rather than by shade and the steps have to be wider to read.
+   THE ORDER OF THE LADDER IS THE DAY SIDE'S, and that is the correction this file
+   needed: the window is the deepest step, the PANEL sits below the CANVAS, and the
+   card sits on top of it — the same four rungs in the same order as `bill.css`,
+   turned around the middle. The first pass had the panel ABOVE the canvas at night,
+   which is the reverse of the day side and the reverse of the reading: a panel is
+   recessed furniture, and recessed means further from the light at every hour.
+   THE RULES SIT LOW. A bright line on a dark surface is a scratch — it is the first
+   thing the eye finds on the screen and the last thing it should find. Where the
+   shared `--line` still could not hold, the token that owns the job took its own
+   value (`--sidebar-sep-border`, below). THE CONTROLS are the exception and keep the
+   strongest line of the theme (`#444444` against the `#383838` rules): the gap
+   between those two numbers is what `bill.css` says in prose and this file says in
+   values. */
 
 :root {
   /* ===== the raw palette ============================================== */
-  --bg: #1c1c1c;                 /* the window ground: the deepest step */
-  --panel: #2b2b2b;              /* a panel, a card, a popover */
-  --line: #3a3a3a;               /* EVERY inner line: one crisp hairline */
+  --bg: #1a1a1a;                 /* the window ground: the deepest step */
+  --panel: #2e2e2e;              /* a panel, a card, a popover */
+  --line: #383838;               /* EVERY rule: a whisper above its own surface */
   --ink: #e9e9e9;                /* the text */
   --dim: #9c9c9c;                /* the support: labels, headers, counts */
   --accent: #4c9aff;             /* the signal, brought up until it reads */
   --danger: #ff6b5e;             /* what destroys */
-  --hi: #313131;                 /* the wash under the pointer */
+  --hi: #363636;                 /* the wash under the pointer */
 
   /* ===== colour by role =============================================== */
   --color-link: var(--accent);
   /* the deeper step is here too, and here it goes UP instead of down: on the dark
      wash the accent measured 4.25:1, and what fixes it is more light, not less
-     (5.52:1 on the surface). See `studio.css`. */
+     (5.52:1 on the surface). See `bill.css`. */
   --color-selected: #5aa4ff;
 
   /* ===== typography =================================================== */
@@ -45,11 +62,16 @@
   --caps-spacing: .06em;
   --caps-transform: uppercase;
 
-  /* ===== sidebar ====================================================== */
+  /* ===== sidebar ======================================================
+     The panel is one step above the window and one BELOW the canvas, which is the
+     reading the day side uses: the panel is the ground the canvas is laid on. It
+     has no line (`--sidebar-border: 0`) for the same reason it has none by day —
+     the step is the separation, and on a dark screen a drawn edge would be a
+     scratch. */
   --sidebar-width: 248px;
   --sidebar-rail: 44px;
-  --sidebar-bg: #242424;         /* one step above the window */
-  --sidebar-border: 1px solid var(--line);
+  --sidebar-bg: #1e1e1e;         /* one step below the canvas, as by day */
+  --sidebar-border: 0;
   --sidebar-pad: 10px;
   --sidebar-indent: 14px;
   --sidebar-gap: 6px;
@@ -60,9 +82,9 @@
   --sidebar-title-weight: var(--weight-bold);
   --sidebar-title-style: normal;
   --sidebar-title-pad-x: 12px;
-  --sidebar-title-border: 1px solid var(--line);
-  --brand-mark: url("icons/bill-studio-dark.svg");
-  --brand-mark-w: 3.14em;
+  --sidebar-title-border: 0;
+  --brand-mark: url("icons/bill-dark.svg");
+  --brand-mark-w: 2.64em;
   --brand-mark-h: 1.5em;
   --brand-word-ink: transparent;
   --locale-raw: inline;
@@ -82,12 +104,19 @@
   --sidebar-item-weight: var(--weight-normal);
   --sidebar-item-style: normal;
   --sidebar-item-pad: 6px var(--sidebar-pad);
-  --sidebar-item-bg-hover: #2f2f2f;
+  --sidebar-item-bg-hover: #272727;
   --sidebar-item-bg-on: rgba(76, 154, 255, .16);
+  /* the 2px accent bar the day side argues for: kept, for the same reason. */
   --sidebar-item-mark: 2px solid transparent;
   --sidebar-count-color: var(--dim);
-  --sidebar-sep-border: 1px solid var(--line);
+  /* THE SEPARATOR CARRIES ITS OWN VALUE, and it is the one place on this side
+     where the shared `--line` would be wrong: the panel (`#1e1e1e`) is the darkest
+     ground of the ladder, so a line tuned for the canvas reads as a scratch there.
+     The token was already its own; all it needed was to stop borrowing. */
+  --sidebar-sep-border: 1px solid #282828;
   --sidebar-sep-margin: 8px var(--sidebar-pad);
+
+  /* the fold's triangle: small, and it takes the row's ink rather than a colour */
   --caret-size: 9px;
   --caret-color: var(--dim);
   --caret-open: var(--accent);
@@ -98,19 +127,22 @@
   --icon-show: inline;
   --icon-size: 14px;
   --icon-ink: currentColor;
-  --icon-pic-code: url("icons/studio-code.svg");
-  --icon-pic-text: url("icons/studio-text.svg");
-  --icon-pic-data: url("icons/studio-data.svg");
-  --icon-pic-other: url("icons/studio-other.svg");
+  --icon-pic-code: url("icons/bill-code.svg");
+  --icon-pic-text: url("icons/bill-text.svg");
+  --icon-pic-data: url("icons/bill-data.svg");
+  --icon-pic-other: url("icons/bill-other.svg");
 
   /* ===== main window ================================================== */
-  --main-bg: #212121;
+  --main-bg: #252525;
   --main-border: 1px solid var(--line);
+  /* the outlined card, for the same reason as by day: the shadow went, and the rung
+     alone is thinner here than the eye wants for a table over a canvas. */
+  --surface-border: 1px solid var(--line);
   --header-color: var(--dim);
   --header-strong: var(--ink);
   --header-pad-x: 16px;
   --body-pad: 0;
-  --bottom-gap: 0;
+  --bottom-gap: 10px;
   --page-pad-x: 16px;
   --page-pad-y: 14px;
 
@@ -118,14 +150,15 @@
      THE HEAD BAND IS LIGHTER THAN THE TABLE, not darker: on a dark ground the eye
      reads "above" as "more light", and a head darker than its own rows reads as a
      hole. The status colour of a column name is the support ink, the same as on
-     the day side, and the row line is the hairline. */
+     the day side, and the row line is the rule. */
   --table-head-color: var(--dim);
   --table-head-weight: var(--weight-bold);
   --table-head-hover: var(--ink);
-  --table-head-bg: #2f2f2f;
+  --table-head-bg: #343434;
+  --table-border: 1px solid var(--line);
   --table-line: 1px solid var(--line);
   --table-row-hover: var(--hi);
-  --table-row-radius: 3px;
+  --table-row-radius: 7px;
   --cell-pad: 10px;
   --cell-pad-y: 6px;
   --measure: 72ch;
@@ -156,7 +189,7 @@
   --sub-bg-hover: var(--hi);
 
   /* ===== popover ====================================================== */
-  --pop-bg: #303030;             /* the popover is ABOVE the panel, not level with it */
+  --pop-bg: #3a3a3a;             /* the popover is ABOVE the panel, not level with it */
   --pop-border: 1px solid var(--line);
   --pop-pad: 6px;
   --pop-min-w: 180px;
@@ -172,31 +205,37 @@
   --pick-caret-color: var(--dim);
   --pick-caret-hover: var(--accent);
 
-  /* ===== settings ===================================================== */
+  /* ===== settings =====================================================
+     THE CONTROLS ARE THE STRONGEST LINE OF THE THEME, by day and by night. On a
+     dark ground that costs more: `#444444` is the brightest structural line here,
+     and it is allowed to be, because it is the only one that marks something a
+     person can act on. */
   --set-gap: 8px;
   --set-pad: 8px 10px;
-  --set-border: 1px solid var(--line);
+  --set-border: 1px solid #444444;
   --set-mark: 2px solid var(--accent);
   --switch-w: 30px;
   --switch-h: 16px;
   --switch-knob: 12px;
   --switch-inset: 2px;
-  --switch-radius: 8px;
-  --switch-border: 1px solid var(--line);
-  --switch-track: #3a3a3a;
+  --switch-radius: 8px;          /* a 16px track: 8 is the pill, not a choice */
+  --switch-border: 1px solid #444444;
+  --switch-track: #393939;
   --switch-track-on: var(--accent);
   --switch-knob-color: #d8d8d8;
   --switch-knob-on: #ffffff;
   --radio-size: 13px;
-  --radio-border: 1px solid var(--line);
+  --radio-border: 1px solid #444444;
   --radio-checked: 1px solid var(--accent);
   --radio-mark: var(--accent);
   --radio-gap: 6px;
   --group-gap: 8px;
   --group-bg: var(--panel);
   --group-border: 1px solid var(--line);
-  --group-radius: 4px;
-  --group-head-pad: 8px 10px;
+  --group-radius: 10px;
+  --group-pad: 6px 14px 14px;   /* the body of a group: the room the head never gave it */
+  --group-row-gap: 14px;        /* and the room the rows never had between them */
+  --group-head-pad: 8px 14px;
   --group-head-color: var(--dim);
   --group-head-hover: var(--ink);
   --group-head-size: 11px;
@@ -207,33 +246,37 @@
   --scrollbar-size: 12px;
   --scrollbar-width: thin;
   --scrollbar-inset: 3px;
-  --scrollbar-radius: 4px;
+  --scrollbar-radius: 6px;
   --scrollbar-track: transparent;
-  --scrollbar-thumb-rest: #4a4a4a;
-  --scrollbar-thumb: #6a6a6a;
+  --scrollbar-thumb-rest: #4e4e4e;
+  --scrollbar-thumb: #707070;
   --scrollbar-corner: transparent;
 
   /* ===== shape, material and motion ===================================
-     The relief flips: the top light is a tenth as strong (a bright 1px on a dark
-     surface is a scratch) and the drop is black and heavier, because a dark card
-     and its ground are otherwise one surface. The popover's is the deepest of the
-     three — it floats highest, and on a dark screen that has to be said in shadow. */
-  --radius: 4px;
-  --item-radius: 3px;
-  --control-elev: inset 0 1px 0 rgba(255, 255, 255, .07),
-                  0 1px 1px rgba(0, 0, 0, .45);
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, .35),
-                 0 8px 24px rgba(0, 0, 0, .35);
-  --shadow-pop: 0 10px 30px rgba(0, 0, 0, .6),
-                0 0 0 1px rgba(255, 255, 255, .04);
+     THERE IS NO RELIEF, as there is none by day, and at night that is also a
+     correction: the top light used to be a tenth of the day side's (`.07`)
+     precisely because a bright 1px on a dark surface is a scratch, and the honest
+     conclusion was that it should not be there at all — and neither should the
+     drop under it. A dark card and its ground were two surfaces a shadow had to
+     separate; now the rung does that, and a shadow on top of it was saying the same
+     thing twice. THE OVERLAY KEEPS ITS DEPTH — a popover floats over content of
+     unknown darkness, and the shadow is the only thing that says how high it is. */
+  --radius: 10px;
+  --item-radius: 7px;
+  --control-elev: none;
+  --shadow-card: none;
+  --shadow-pop: 0 12px 32px rgba(0, 0, 0, .5),
+                0 0 0 1px rgba(255, 255, 255, .05);
   --panel-blur: none;
   --sheen: none;
   --divider-side: none;
   --divider-title: none;
   --divider-head: none;
-  /* the top bar, at night: a band a step ABOVE the window, not a white wash. */
-  --sheen-head: linear-gradient(to bottom, rgba(255, 255, 255, .05) 0,
-                                rgba(255, 255, 255, .015) 100%);
+  /* THE TOP BAR IS NOT A BAND ANY MORE, and at night that costs the theme its one
+     raised strip: the wash here was a step ABOVE the window, not a gloss, and it
+     was doing real work. It goes anyway — what replaces it is the rule under the
+     bar (`--main-border`), the same as by day, so the two hours read alike. */
+  --sheen-head: none;
   --speed: .1s;
   --ease: cubic-bezier(.2, 0, 0, 1);
   --enter-shift: 0px;

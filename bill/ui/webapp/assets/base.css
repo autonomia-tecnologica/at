@@ -35,9 +35,9 @@
        `.radios`), the VALUE PICKER (`.pick` — the value of a field the entity
        declares `editable`, in the OPEN record: it is the one control there, and
        the panel it opens is the overlay's) and the COLLAPSE BUTTON (`.nav-toggle`,
-       in the panel strip — it
-       is what governs the rail of section 2, and it is the only target left when
-       the rail is collapsed). The states are four and have names: REST, POINTER
+       in the panel's FOOT — it is what governs the rail of section 2, and on the
+       rail it is the only target left, which is why the rail hides that foot's rows
+       and never the foot). The states are four and have names: REST, POINTER
        (`:hover`), SELECTED (`.on`) and OPEN (`:not(.closed)`, the fold's) — the
        switch has only two (REST and SELECTED), because its state is the POSITION
        of the button, not a pointer highlight. A control is also a BOX with a
@@ -218,57 +218,79 @@
      LIST goes away, and does not squeeze: at 44–52px, an item label does not fit.
      What stays is the button, which is the only target of the rail. */
   html.nav-rail nav { width: var(--sidebar-rail); flex-basis: var(--sidebar-rail); }
-  html.nav-rail #kinds, html.nav-rail .brand, html.nav-rail .side-foot {
+  html.nav-rail #kinds, html.nav-rail .brand, html.nav-rail .side-foot > .file,
+  html.nav-rail .side-foot > .sep {
     opacity: 0; visibility: hidden;
     transition: opacity var(--speed) var(--ease), visibility 0s var(--speed); }
-  html.nav-rail .brand { position: absolute; }
-  html.nav-rail nav h1 { justify-content: center; padding-inline: 0; }
+  /* THE FOOT KEEPS ITS LAST ROW ON THE RAIL (2026-09-22). The list and the rows go
+     with the panel; the collapse button does not, because on the rail it is the
+     ONLY way back out — a hidden door with no handle. It was the reason the button
+     used to sit in the title strip, and it is the reason the foot is hidden ROW BY
+     ROW now instead of whole: `opacity: 0` on the box would have taken the button
+     with it, and a child cannot climb out of its ancestor's fade. So the rail hides
+     the buttons that are DESTINATIONS and keeps the one that is a CONTROL. */
+  html.nav-rail .side-foot { width: var(--sidebar-rail); }
   /* THE COLLAPSE BUTTON: the glyph is a SIGN of the file, like the filter funnel and
      the fold triangle — and the SIZE belongs to the theme (`--nav-toggle-size`),
-     because a button that is the only target of a 44px strip cannot have a label's
+     because a button that is the only target of a 44px rail cannot have a label's
      body (the same lesson as `--caret-size`). The state goes by `aria-expanded`,
      which the page keeps: whoever cannot see the rail hears what it is saying.
-     IT SITS NEXT TO THE NAME, and not at the end of the strip: collapsing
-     is a sibling of opening/closing a folder — the panel triangle sits
-     with its label, and this one sits with the page name. The right end
-     of the strip is what the page OFFERS (the language today, the options
-     later: `#head-right`), not a control of the panel.
-     EXPANDED it goes to the RIGHT END of the strip, and what keeps it off the
-     edge is the breathing room of the strip itself (`--sidebar-title-pad-x`, the
-     same on both sides): it sits as far from the right as the name sits from the
-     left. Who pushes it is the `margin-left: auto` — and here it is necessary.
-     ON THE RAIL it goes to the MIDDLE, and that is why the rail needs three
-     things the full strip does not need (below): the `margin-left: auto`
-     UNDONE (an automatic margin beats `justify-content` in flex — that was the
-     defect: the button stayed at the end in both situations, even with the
-     strip asking it to centre), the brand OUT of the flow (invisible, it still
-     took up room and pushed the button off centre) and the side breathing room
-     zeroed (in a 44px rail it does not fit). (Report and fix, 2026-09-15.) */
-  /* A GLYPH, NOT A ROW (2026-09-18). The panel's row rule (`nav button`, below)
-     makes every button take the WHOLE width with `space-between` — and the toggle
-     IS a button inside `nav`, so it was getting a 187px box with the glyph stuck at
-     its LEFT edge. That is the defect: expanded, the `«` was neither at the right
-     (the `margin-left: auto` had no free space left to absorb) nor, collapsed,
-     centred (the box filled the rail). The two declarations below UNDO the row, the
-     same way the brand's `position: absolute` and the rail's zeroed padding above
-     undo the ones that do not fit there; the mark the row draws is already undone
-     by the `border: 0` next to them. */
-  .nav-toggle { margin-left: auto; padding: 0; line-height: 1;
-                width: auto; justify-content: center;
-                /* A CONTROL IS NOT TEXT (2026-09-18): the glyph is a `::before`
-                   inside a button, so dragging on it painted the browser's
-                   SELECTION over it — the highlight of a link, on a thing that is
-                   not one. What this rule says is that the button is a control:
-                   you press it, you do not read it. */
-                user-select: none;
-                background: none; border: 0; cursor: pointer;
-                font-size: var(--nav-toggle-size);
-                color: var(--dim);
-                transition: color var(--speed) var(--ease); }
-  .nav-toggle::before { content: "«"; }
-  .nav-toggle:hover { color: var(--ink); }
-  html.nav-rail .nav-toggle { margin-left: 0; }
-  html.nav-rail .nav-toggle::before { content: "»"; }
+     IT IS A ROW OF THE FOOT (2026-09-22), and it got there from the title strip.
+     The strip was the wrong place for it, and the reason is one the strip cannot
+     fix: the foot is the box that is ALWAYS on screen, so the control that hides
+     the tree is never behind a scroll of the tree. As the last row it also reads
+     as what it is — the end of the panel, the door out — instead of sharing the
+     strip with the page's NAME, which is a different kind of thing (`#head-right`
+     is what a strip OFFERS; a control of the panel belongs with the panel's own).
+     IT CARRIES ITS OWN NAME (2026-09-22). As a bare glyph with the words in an
+     `aria-label` far away from it, it asked a sighted person to guess what `«` did
+     — so the row now says what happens to the panel, in the same body as the three
+     rows above it, and the GLYPH is what moves: the theme still sizes it
+     (`--nav-toggle-size`), the label reads at the row's size so it does not shout
+     over the foot, and on the rail the words give way and the arrow turns.
+     THE GLYPH IS THE GUILLEMET AND STAYED THE GUILLEMET. Single angle quotes
+     (`<` / `>`) were tried here on 2026-09-22 and read badly: at this size, next to
+     a 13px word, a lone `<` is a MATHEMATICAL operator — it reads as "less than",
+     and the eye goes looking for the thing it compares against. The guillemet is a
+     TYPOGRAPHIC mark that only ever means "this way", and it carries the weight of
+     a sign at `--nav-toggle-size` where the single angle does not. Which is the
+     general rule this row is an instance of: a sign borrowed from punctuation
+     beats a sign borrowed from arithmetic.
+     (It sat next to the name from 2026-09-15, and the two defects that put it there
+     — the `margin-left: auto` beating `justify-content`, and the row rule giving it
+     a 187px box with the glyph at the LEFT edge — are both gone with the place.) */
+  /* A CONTROL IS NOT TEXT (2026-09-18): the glyph is a `::before` inside a button,
+     so dragging on it painted the browser's SELECTION over it — the highlight of a
+     link, on a thing that is not one. What this rule says is that the button is a
+     control: you press it, you do not read it. */
+  /* IT IS A ROW OF THE FOOT LIKE THE OTHER TWO (2026-09-22), and that is a rule of
+     the DESIGN SYSTEM, not a look: it wears what `nav button` already gives every
+     row — the same family, weight, ink and line — and this rule only adds what is
+     its own (the sign before the words, and where the two sit relative to each
+     other). NO `color` AND NO `line-height` HERE. It carried `--dim` and a
+     `line-height: 1` while it was a bare glyph, and both survived the move into the
+     foot by accident: at 1 the row's text sat on a tighter line than the rows above
+     it, and in the support ink it read as a caption ABOUT the foot instead of as one
+     of its items. A row that looks like a row is the whole point — the sign is what
+     makes it a control.
+     THE SIGN SITS ON THE TEXT'S BASELINE, and it is the TEXT'S SIZE. Baseline
+     because a flex item's content sits at the top of its stretched box, which put
+     the two lines apart by the difference in half-leading — about 2px, small enough
+     to read as "something is off" and too small to name. Text size because
+     `--nav-toggle-size` was written for a glyph that IS the whole button on a 44px
+     rail, and that is the only place it is still right: a guillemet's ink sits
+     around the x-height, so a bigger em lifts the ink clear of the words it belongs
+     to, and where the ink is is the font's business, not the box's. One size, one
+     baseline — nothing left to nudge, in any theme, at any font. */
+  .nav-toggle { justify-content: flex-start; gap: var(--sidebar-gap);
+                align-items: baseline;
+                user-select: none; }
+  .nav-toggle::before { content: "«"; line-height: 1; }
+  html.nav-rail .nav-toggle { justify-content: center; padding-inline: 0; }
+  html.nav-rail .nav-toggle::before { content: "»";
+                                      font-size: var(--nav-toggle-size); }
+  /* 44px has no room for a sentence: on the rail the NAME goes and the arrow stays. */
+  html.nav-rail .nav-toggle > .t { display: none; }
   /* WHO SCROLLS is the LIST, not the sidebar (2026-09-13). Whoever scrolls loses
      the width of the bar, and the title strip has to cross the whole sidebar: the
      line it closes is a sibling of the `header`'s, and a line stopping 12px before
@@ -285,11 +307,15 @@
               list has to end with the same amount of nothing — otherwise the last
               row can never be scrolled clear of it and the panel hides an item
               nobody can reach. THE NUMBER is the foot's height MINUS the bottom
-              breathing room, which is how deep it bites; measured across the seven
-              themes it runs 54-61px, and 64 is the default that clears all of
-              them. A theme with a taller foot declares its own `--foot-space`; a
-              shorter one only pays a few pixels of air at the end of the scroll. */
-           padding-bottom: var(--foot-space, 64px); }
+              breathing room, which is how deep it bites; measured across the themes
+              it ran 54-61px, and 64 was the default that cleared all of them.
+              THE DEFAULT IS 96 SINCE 2026-09-22, and the gain is the collapse
+              button: it moved into the foot from the title strip (see `.nav-toggle`
+              below), so every theme's foot grew by one row and the old number would
+              have left the last row of the tree under it. A theme with a taller
+              foot declares its own `--foot-space`; a shorter one only pays a few
+              pixels of air at the end of the scroll. */
+           padding-bottom: var(--foot-space, 96px); }
   /* THE FOOT OF THE PANEL — the buttons that are ALWAYS on screen, with the list
      scrolling BEHIND them (2026-09-20). It is OUT OF THE FLOW and pinned to the
      bottom: in the flow it would be one more item of the column and the list would
@@ -1285,7 +1311,27 @@
                  `em` ON PURPOSE: the row is as tall as the theme's own font, so a
                  theme with 16px shows five rows of 16px and a monospaced 14px shows
                  five of 14 — one number, and it means the same thing in all of them. */
-              max-height: calc(5 * 6.5em); overflow-y: auto; }
+              max-height: calc(5 * 6.5em); overflow-y: auto;
+              /* THE CEILING NEEDS AN EDGE TO BE A CEILING (2026-09-22). With
+                 `overflow-y: auto` and nothing else, scrolling leaves a row sliced
+                 at the clip line with NO line where the slice happened — and in a
+                 theme whose rows are BOXES (paper: `--set-border`, `--radius: 0`)
+                 that reads as a rendering fault rather than as "there is more
+                 above". The frame is the theme's, and `none` is the default every
+                 other theme reads: a theme whose rows are separated by GROUND has
+                 no slice to explain, so it pays nothing. */
+              border: var(--list-border, none);
+              /* AND THE FRAME BREATHES — WHERE THERE IS A FRAME (2026-09-22). A
+                 frame drawn flush against its own first row is TWO 1px lines
+                 touching, and two lines that touch read as one thick, dirty line,
+                 which is worse than either. THE INSET BELONGS TO THE FRAME, not to
+                 the list: a theme with no frame has nothing to be inset FROM, and
+                 the same padding there is only a list that starts too far down and
+                 ends too early — which is exactly how the first version of this
+                 rule read, right in paper and wrong in every theme without a line.
+                 So it falls back to `0`, and only the themes that draw the frame
+                 declare `--list-pad` and pay it. */
+              padding: var(--list-pad, 0); }
   /* The BOX of a page choice (`.theme`): pinned to the CLASS of the
      control itself, never to an ancestor the JS builds. The defect that
      gave rise to the hard rule of section 1: the old selector (`.settings
@@ -1394,6 +1440,21 @@
      square group still says `--group-radius: 0` and is obeyed (2026-09-20). */
   .group { background: var(--group-bg); border: var(--group-border);
            border-radius: var(--group-radius, var(--radius)); }
+  /* THE BODY OF A GROUP DID NOT EXIST (2026-09-22), and that was a hole in this
+     file rather than a decision: the head has carried its own padding since it was
+     written (`--group-head-pad`), and the body carried none at all — so the rows of
+     a settings group sat against the border of their own box and against each
+     other, and the tighter the theme's `--dl-pad`, the worse it read. A `dl` is
+     what the body holds, and `dl` already reads `--dl-pad`; that token is the
+     RECORD's (a page of fields), and bending it here would have moved the record
+     too. So the body gets its own two, and BOTH FALL BACK to what the page did
+     before: a theme that says nothing keeps the old geometry exactly, which is why
+     this rule could be added without touching the other twelve themes.
+     `dt:first-child` is zeroed because the body's own top padding is what breathes
+     there now; leaving the margin would have counted the room twice. */
+  .group-body { padding: var(--group-pad, 0); }
+  .group-body dt { margin-top: var(--group-row-gap, var(--dt-gap)); }
+  .group-body dl > dt:first-child { margin-top: 0; }
   .group-head { display: flex; align-items: center; gap: 6px;
                 width: 100%; padding: var(--group-head-pad);
                 background: none; border: 0; text-align: left; cursor: pointer;

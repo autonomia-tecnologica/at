@@ -141,7 +141,7 @@ class TheState(ServerCase):
         _, _, body = self.get("/api/state")
         state = json.loads(body)
         self.assertEqual(state["lang"], "pt_BR")
-        self.assertTrue(any(theme["id"] == "studio" for theme in state["themes"]))
+        self.assertTrue(any(theme["id"] == "bill" for theme in state["themes"]))
         self.assertTrue(all(theme["side"] in ("light", "dark") for theme in state["themes"]))
 
 
@@ -204,7 +204,7 @@ class TheLook(ServerCase):
     def test_an_id_that_names_no_theme_falls_back_to_the_default(self):
         _, _, body = self.get("/theme.css?theme=../../etc/passwd")
         self.assertEqual(body.decode("utf-8"),
-                         (webapp.THEMES / "studio.css").read_text(encoding="utf-8"))
+                         (webapp.THEMES / "bill.css").read_text(encoding="utf-8"))
 
     def test_the_document_carries_the_policy(self):
         # 500 is what a checkout without a build answers, and 200 what a built

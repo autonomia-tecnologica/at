@@ -322,4 +322,24 @@
   --sidebar-item-bg-on: transparent;
   /* The lateral INSET of the row: at zero the row touches the edge, which is
      what the themes that already existed do; a card theme pushes it away. */
+  /* THE FADE IS NOT PAPER'S (2026-09-22). Every divider in this file was falling
+     back to the base's gradient — the line dissolving at both ends — and that is
+     the idiom of a floating web panel, not of a sheet. Paper's line is INK: it
+     begins and it ends, and nothing about it dissolves. `none` is the documented
+     escape hatch, and it takes the three dividers back to the plain `border` of
+     each strip: one solid hairline, two ends, exactly what this theme already
+     declares for `--sidebar-border` and `--main-border`. */
+  --divider-side: none;
+  --divider-title: none;
+  --divider-head: none;
+  /* THE FRAME OF THE THEME LIST (2026-09-22). This is one of the few themes where
+     a BORDER is what separates — every row here is a box, and the frame around the
+     list is the same line doing the same job one level up. Without it a scroll
+     leaves a row sliced against nothing. */
+  --list-border: 1px solid var(--line);
+  /* and the inset that keeps the frame off its own first row: the gap the
+     rows already keep between themselves, one level up. */
+  --list-pad: var(--set-gap);
 }
+
+

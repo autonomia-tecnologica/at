@@ -33,7 +33,7 @@ from bill.ui import ask as door
 
 HOST = "127.0.0.1"
 DEFAULT_PORT = 12345
-DEFAULT_THEME = "studio"
+DEFAULT_THEME = "bill"
 
 # The page runs under this, which is why nothing inline and no `data:` is ever
 # built into it: Vite is configured for it, and the themes are checked for it.
@@ -183,7 +183,8 @@ PAGE_WORDS = (
     "dark_mode", "dark_system", "dark_theme", "dark_light", "dark_dark",
     "motion", "themes", "no_project", "new_project", "delete_project",
     "move_to_project", "records", "hidden", "no_records", "error", "filter",
-    "columns", "refers", "panel", "back", "write", "leave_write", "saving",
+    "columns", "refers", "panel", "collapse_menu", "expand_menu",
+    "back", "write", "leave_write", "saving",
     "saved", "save_failed", "language_name", "language_flag",
     "ft_text", "ft_markdown", "ft_python", "ft_json", "ft_yaml", "ft_shell",
     "ft_dockerfile", "ft_binary", "ft_other",
