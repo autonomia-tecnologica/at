@@ -4,8 +4,8 @@ The rule comes from §3 (Código e delivery): the folder the binary was opened i
 is the binary's folder, and that folder is the Working Folder.
 
 **The name on disk is the face; the machine reads the internal name.** `app`,
-`data`, `prose`, `projects` and `shared` are the product's words — the engine
-branches on them and on nothing a person says. What a person reads is the
+`data`, `prose`, `projects`, `shared` and `harness` are the product's words — the
+engine branches on them and on nothing a person says. What a person reads is the
 localized name, and it is a DECLARATION of the table below, never an `if` in the
 code that acts: the same rule that makes a table's id `task` while the name on
 screen comes from `i18n`.
@@ -39,6 +39,11 @@ NAMES: dict[str, dict[str, str]] = {
     "prose": {"pt_BR": "Arquivos", "en_US": "Files"},
     "projects": {"pt_BR": "Projetos", "en_US": "Projects"},
     "shared": {"pt_BR": "Compartilhada", "en_US": "Shared"},
+    # The one whose name is the same word in both languages, like `App/`: a
+    # person looking for what an agent loads looks for `harness` in either, and
+    # pt_BR took the word whole. It is declared here rather than spelled in the
+    # code, which is what keeps the engine branching on the internal name.
+    "harness": {"pt_BR": "Harness", "en_US": "Harness"},
 }
 
 # The instance folder, and it is NOT localized — deliberately. The language
@@ -51,6 +56,12 @@ INSTANCE = "App"
 # migration read this list: a folder that carries one of these and no `App/` is
 # a folder that has not migrated, never a folder that is new.
 LEGACY_INSTANCE = (".bill", "app")
+
+# The note whoever starts inside the folder reads (§0, item 25). NOT localized,
+# and that is the point: it presents the folder to whoever works in it, and both
+# a person and a model look for it by that name — exactly the way `README.md`
+# keeps its spelling in every language. The TEXT is translated; the name is not.
+AGENT_NOTE = "AGENT.md"
 
 
 def working_folder() -> Path:
@@ -122,6 +133,15 @@ def settings_file() -> Path:
     return app_dir() / "settings.json"
 
 
+def agent_note() -> Path:
+    """`AGENT.md`, at the folder's root — where such a reader looks first.
+
+    Not inside `Arquivos/`: that folder is the person's material, and this note
+    is the folder presenting itself. It is Bill's, and Bill writes it once.
+    """
+    return working_folder() / AGENT_NOTE
+
+
 def i18n_dir() -> Path:
     return app_dir() / "i18n"
 
@@ -152,6 +172,19 @@ def shared_dir() -> Path:
     treated later: the transport, and what this does to the backup promise, are
     the session that comes after (§3)."""
     return folder("shared")
+
+
+def harness_dir() -> Path:
+    """`Harness/` — where what the agent loads lives (§2, item 25).
+
+    Nobody's material and not Bill's own state: it is what governs whoever works
+    in the folder — the skill that writes into a project's vault, the rule that
+    belongs to a project — beside the note that presents the folder, which sits
+    at the root because that is where such a reader looks first. Bill guarantees
+    the place and writes nothing in it: it is born named and empty, like
+    `Projetos/` and `Compartilhada/`.
+    """
+    return folder("harness")
 
 
 def active_language() -> str:

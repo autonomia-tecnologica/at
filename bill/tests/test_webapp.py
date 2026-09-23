@@ -11,6 +11,7 @@ import io
 import json
 import os
 import re
+import socket
 import tempfile
 import threading
 import unittest
@@ -658,6 +659,38 @@ class TheAskDoor(ServerCase):
         self.assertEqual(answer["kind"], "refused")
         self.assertEqual(answer["text"], i18n.tr("nlu.error.interpreter_off"))
         self.assertEqual(len(tables.rows("task")), 1)  # and nothing was written
+
+
+class ThePort(unittest.TestCase):
+    """`bill webapp` when somebody else already answers on that port.
+
+    It is the way the command fails in practice — the PoC on 12345, or a second
+    Bill — and what the person used to get was a bare `OSError: Address already
+    in use`, which names neither the port nor a way out.
+    """
+
+    def setUp(self):
+        self.env = mock.patch.dict(os.environ, {"BILL_LANG": "pt_BR"})
+        self.env.start()
+        i18n.reset()
+
+    def tearDown(self):
+        self.env.stop()
+        i18n.reset()
+
+    def test_a_taken_port_is_named_instead_of_dying_raw(self):
+        holder = socket.socket()
+        holder.bind((webapp.HOST, 0))
+        holder.listen(1)
+        port = holder.getsockname()[1]
+        try:
+            output = io.StringIO()
+            with redirect_stdout(output):
+                code = webapp.run(port)
+        finally:
+            holder.close()
+        self.assertEqual(code, 1)
+        self.assertIn(i18n.tr("webapp.port_taken", port=port), output.getvalue())
 
 
 class TheReadOnlySwitch(ServerCase):

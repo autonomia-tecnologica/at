@@ -73,11 +73,12 @@ docs/                          os documentos
 
 A pasta em que o binário foi aberto é a pasta do binário, e essa pasta é a Pasta de Trabalho (§3). Na primeira execução o Bill descreve a pasta e pergunta antes de escrever qualquer coisa; `App/settings.json` é o que faz uma pasta ser uma pasta configurada.
 
-**O nome no disco é a face; a máquina lê o nome interno.** Cada pasta tem um nome interno — `app`, `data`, `prose`, `projects`, `shared` —, e é ele que o motor usa e que as declarações citam. O nome que a pessoa lê vem do idioma ativo, e a tabela de `paths.py` é a única que o conhece: `Tabelas/`, `Arquivos/`, `Projetos/` e `Compartilhada/` em `pt_BR`; `Tables/`, `Files/`, `Projects/` e `Shared/` em `en_US`. A pasta da instância é a exceção, e é deliberada: ela não segue o idioma, porque o idioma mora dentro dela — `App/` nos dois.
+**O nome no disco é a face; a máquina lê o nome interno.** Cada pasta tem um nome interno — `app`, `data`, `prose`, `projects`, `shared` e `harness` —, e é ele que o motor usa e que as declarações citam. O nome que a pessoa lê vem do idioma ativo, e a tabela de `paths.py` é a única que o conhece: `Tabelas/`, `Arquivos/`, `Projetos/` e `Compartilhada/` em `pt_BR`; `Tables/`, `Files/`, `Projects/` e `Shared/` em `en_US`. Duas pastas são a exceção, e as duas são deliberadas: a pasta da instância não segue o idioma, porque o idioma mora dentro dela — `App/` nos dois —, e a `Harness/` não segue porque o `pt_BR` tomou a palavra inteira, então os dois idiomas a escrevem igual.
 
 Uma pasta nasce com:
 
 ```
+AGENT.md                  a pasta se apresentando, para quem trabalha nela
 App/settings.json         os ajustes da instância, em chave-valor
 App/i18n/active           o idioma escolhido — os catálogos viajam no produto
 App/counters.json         o último id entregue, por tabela
@@ -89,9 +90,17 @@ Tabelas/*.jsonl           as linhas (chegam com a primeira escrita)
 Arquivos/                 tudo o que não é dado estruturado, com a nota de boas-vindas
 Projetos/                 o que pertence a um projeto — nomeada, ainda vazia
 Compartilhada/            o que for compartilhado com outras pessoas — nomeada, ainda vazia
+Harness/                  o que governa quem trabalha na pasta — nomeada, ainda vazia
 ```
 
-**A migração.** Atualizar o Bill é trocar o binário dentro da pasta, então toda versão que muda a estrutura da pasta traz a migração dela e ela roda na primeira subida depois da troca (§3). O carimbo é `App/migrations`, e ele mora com o resto do que o Bill escreve, nunca na declaração publicada. As migrações são, hoje, três: `.bill/` → `app/`, `app/` → `App/`, e as pastas da pessoa para o idioma ativo — e essa última pergunta antes, porque renomear quebra o que aponta para elas de fora do Bill. Quem recusa mantém o nome que tinha, e a resolução lê as duas grafias.
+A nota na raiz é o arquivo que a pasta carrega para quem trabalha dentro dela: ela
+diz o que a pasta é, o que ela guarda e como chegar ao resto, e cita o documento
+fundador em vez de repetir regra (§0). O **nome** dela não segue o idioma — uma
+nota cujo nome anda com a tradução é uma nota que um modelo deixa de achar —,
+enquanto o texto segue. Ela é escrita uma vez, como a nota de boas-vindas, e uma
+pasta que já existia a ganha por migração.
+
+**A migração.** Atualizar o Bill é trocar o binário dentro da pasta, então toda versão que muda a estrutura da pasta traz a migração dela e ela roda na primeira subida depois da troca (§3). O carimbo é `App/migrations`, e ele mora com o resto do que o Bill escreve, nunca na declaração publicada. As migrações são, hoje, cinco: `.bill/` → `app/`, `app/` → `App/`, as pastas da pessoa para o idioma ativo, o `AGENT.md` com que a pasta se apresenta, e a `Harness/`. A terceira pergunta antes, porque renomear quebra o que aponta para elas de fora do Bill; quem recusa mantém o nome que tinha, e a resolução lê as duas grafias. As outras quatro mexem só no que o Bill escreve, e nenhuma delas sobrescreve nada.
 
 Uma pasta que ainda não migrou **é encontrada pelo nome velho**: `paths.instance_dir()` lê o que está no disco antes de decidir, para que uma pasta com `.bill/` não seja lida como pasta nova — que era o defeito que a migração número um existia para fechar.
 

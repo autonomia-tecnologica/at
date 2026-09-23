@@ -66,8 +66,10 @@ class FirstRun(unittest.TestCase):
         self.confirm()
         self.assertTrue((self.root / "Projetos").is_dir())
         self.assertTrue((self.root / "Compartilhada").is_dir())
+        self.assertTrue((self.root / "Harness").is_dir())
         self.assertEqual(list((self.root / "Projetos").iterdir()), [])
         self.assertEqual(list((self.root / "Compartilhada").iterdir()), [])
+        self.assertEqual(list((self.root / "Harness").iterdir()), [])
 
     def test_a_folder_born_now_has_nothing_to_catch_up_on(self):
         # The stamp exists so the first start of an OLD folder differs from the
@@ -96,6 +98,54 @@ class FirstRun(unittest.TestCase):
         welcome = self.root / "Arquivos" / i18n.tr("prose.welcome.filename")
         self.assertTrue(welcome.is_file())
         self.assertEqual(welcome.read_text(encoding="utf-8"), i18n.tr("prose.welcome.body"))
+
+    def test_the_folder_is_born_with_a_note_that_presents_it(self):
+        """`AGENT.md`, at the root — where whoever works in the folder looks.
+
+        Not inside `Arquivos/`: that folder is the person's material, and the
+        note is the folder's own (§0, item 25).
+        """
+        self.confirm()
+        note = self.root / "AGENT.md"
+        self.assertTrue(note.is_file())
+        self.assertEqual(note.read_text(encoding="utf-8"), i18n.tr("folder.agent.body"))
+        self.assertFalse((self.root / "Arquivos" / "AGENT.md").exists())
+
+    def test_the_note_keeps_its_name_in_every_language(self):
+        """The TEXT follows the language; the NAME does not.
+
+        A note whose name moved with the translation is a note whatever works in
+        the folder stops finding — the same reason `README.md` keeps its spelling
+        everywhere, and the opposite of `Bem-vindo.md`.
+        """
+        with mock.patch.dict(os.environ, {"BILL_LANG": "en_US"}):
+            i18n.reset()
+            self.confirm()
+        self.assertTrue((self.root / "AGENT.md").is_file())
+        self.assertEqual(
+            (self.root / "AGENT.md").read_text(encoding="utf-8"),
+            i18n.tr("folder.agent.body"),
+        )
+
+    def test_the_note_is_written_once_and_only_once(self):
+        """An edit is the person's, and a deletion was meant.
+
+        Both halves matter and they pull in opposite directions: a note that
+        overwrote an edit argues with its owner, and one that came back after
+        being deleted does the same.
+        """
+        self.confirm()
+        note = self.root / "AGENT.md"
+        note.write_text("o que eu escrevi aqui\n", encoding="utf-8", newline="\n")
+
+        with redirect_stdout(io.StringIO()):
+            boot.ensure_working_folder(ask=lambda question: self.fail("asked again"))
+        self.assertEqual(note.read_text(encoding="utf-8"), "o que eu escrevi aqui\n")
+
+        note.unlink()
+        with redirect_stdout(io.StringIO()):
+            boot.ensure_working_folder(ask=lambda question: self.fail("asked again"))
+        self.assertFalse(note.exists())
 
     def test_declining_writes_nothing(self):
         self.assertFalse(self.confirm("n"))
@@ -129,6 +179,9 @@ class FirstRun(unittest.TestCase):
         self.assertTrue((self.root / "Files").is_dir())
         self.assertTrue((self.root / "Projects").is_dir())
         self.assertTrue((self.root / "Shared").is_dir())
+        # `Harness/` does not move with the language either: pt_BR took the word
+        # whole, so both languages spell it the same way.
+        self.assertTrue((self.root / "Harness").is_dir())
         # The instance folder is the one name that does not move with the
         # language: the language is recorded INSIDE it.
         self.assertTrue((self.root / "App" / "settings.json").is_file())

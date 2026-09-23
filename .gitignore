@@ -9,6 +9,10 @@
 /hooks
 
 # --- Working Folder runtime state (created by the binary where it runs) ------
+# The note that presents the folder is written at its root, where whoever works
+# in it looks first — which, from a checkout, is this repository's root.
+/AGENT.md
+
 # The folders a person reads follow the person's language (§3), so the checkout
 # creates them under whichever spelling is active. Both are ignored, always:
 # which one exists depends on nothing a repository should carry.
@@ -22,6 +26,7 @@
 /Projetos
 /Shared
 /Compartilhada
+/Harness
 
 # --- Python ------------------------------------------------------------------
 __pycache__/

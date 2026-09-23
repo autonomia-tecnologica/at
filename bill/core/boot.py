@@ -26,7 +26,7 @@ from __future__ import annotations
 import sys
 from typing import Callable
 
-from bill.core import migrations, paths, settings
+from bill.core import files, migrations, paths, settings
 from bill.data import schema
 from bill.i18n import active_code, tr, write_active
 
@@ -91,8 +91,9 @@ def create_working_folder() -> None:
     already be there, and finding them is not a conflict.
 
     Every folder is born under the name the ACTIVE LANGUAGE gives it, and the
-    two that no session fills yet — `Projetos/` and `Compartilhada/` — are born
-    empty here: the folder is whole on its own from the first run on.
+    three that no session fills yet — `Projetos/`, `Compartilhada/` and
+    `Harness/` — are born empty here: the folder is whole on its own from the
+    first run on.
     """
     paths.app_dir().mkdir(parents=True, exist_ok=True)
     for directory in (
@@ -100,6 +101,7 @@ def create_working_folder() -> None:
         paths.prose_dir(),
         paths.projects_dir(),
         paths.shared_dir(),
+        paths.harness_dir(),
     ):
         directory.mkdir(parents=True, exist_ok=True)
 
@@ -113,6 +115,7 @@ def create_working_folder() -> None:
     write_active(active_code())
 
     _write_welcome()
+    _write_agent_note()
 
     # Born in this release's shape, so it has nothing to catch up on: the stamp
     # exists so the FIRST start of an old folder differs from the first start of
@@ -126,6 +129,26 @@ def _write_welcome() -> None:
     if welcome.exists():
         return
     welcome.write_text(tr("prose.welcome.body"), encoding="utf-8", newline="\n")
+
+
+def _write_agent_note() -> None:
+    """`AGENT.md` — the folder introducing itself (§0, item 25).
+
+    Whoever opens the folder — a person, or a model working in it — reads what
+    its root carries, so the root carries a note that says what this folder is,
+    what it holds and how to reach the rest. It POINTS: the rules are the
+    product's, they live in the founding document, and a note that restated them
+    here would be the second copy of a rule (§0).
+
+    Written ONCE, like the welcome note and for the same reason: it is the
+    folder's, and a note that comes back is a note arguing with whoever deleted
+    it. It is deliberately NOT inside `Arquivos/` — that folder is the person's
+    material, and this one is the folder's own.
+    """
+    note = paths.agent_note()
+    if note.exists():
+        return
+    files.atomic_write_text(note, tr("folder.agent.body"))
 
 
 def _ask(question: str) -> str:

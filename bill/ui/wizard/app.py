@@ -53,7 +53,21 @@ def open_wizard(argv: Sequence[str] | None = None) -> bool:
         build(root)
         root.mainloop()
     finally:
-        # A window closed by the person, or by the display going away, must not
-        # leave a half-destroyed root behind.
-        root.destroy()
+        _destroy(root, tk)
     return True
+
+
+def _destroy(root, tk) -> None:
+    """Destroy the root, unless it is already gone — which it usually is.
+
+    The Close button IS `root.destroy` (`build`), so by the time `mainloop`
+    returns the person's own click has destroyed the root already, and asking it
+    to destroy itself a second time is a `TclError` on the way out of a window
+    that closed correctly. A display that went away mid-loop raises the same
+    one. Neither is a failure — the window is closed either way — so the second
+    call is refused instead of thrown.
+    """
+    try:
+        root.destroy()
+    except tk.TclError:
+        pass

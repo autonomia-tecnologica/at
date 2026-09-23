@@ -5,7 +5,9 @@ The documents exist in two languages, and the rule says the two change together
 does. It checks four things, in the order a mistake happens:
 
 1. the NAME — every markdown lives under the folder of its language, and the name
-   does not repeat it; only the root door sits outside a language folder;
+   does not repeat it; only the root door sits outside a language folder, and the
+   note a Working Folder's runtime writes at its root, which is not a document of
+   the product but the folder presenting itself;
 2. the PAIR — a document has its sibling, the same name in the other language's
    folder;
 3. the STRUCTURE — the pair carries the same headings, in the same order, because
@@ -45,12 +47,19 @@ HERE = Path(__file__).resolve().parent
 SKIP = {
     "node_modules", ".venv", ".git", "build", "dist", "hooks", ".claude",
     "App", "app", "Tables", "Tabelas", "Files", "Arquivos",
-    "Projects", "Projetos", "Shared", "Compartilhada",
+    "Projects", "Projetos", "Shared", "Compartilhada", "Harness",
     "data", "prose",
 }
 
 # The door at the root is the only markdown outside a language folder.
 DOOR = ROOT / "README.md"
+
+# And the one markdown that is not ours to place: the note `boot` writes at the
+# root of every Working Folder. From a checkout this root IS the Working Folder,
+# so the note lands here — in the ACTIVE LANGUAGE, which is why it cannot sit in
+# a language folder, and by a NAME that does not move with the language, which is
+# the whole point of it. It is state, like the folders above, and not a document.
+RUNTIME = {ROOT / "AGENT.md"}
 
 # Documents of the WORK, not for the reader: they have a language and no pair.
 WORKING = {"backlog"}
@@ -77,7 +86,7 @@ _WORD = re.compile(r"[^\W\d_]+", re.UNICODE)
 def documents() -> list[Path]:
     found: list[Path] = []
     for path in ROOT.rglob("*.md"):
-        if SKIP.intersection(path.parts):
+        if SKIP.intersection(path.parts) or path in RUNTIME:
             continue
         found.append(path)
     return sorted(found)

@@ -18,7 +18,9 @@
     "migration.folders.moved": "As pastas passaram a falar o idioma da tela: {names}.",
     "migration.folders.declined": "As pastas ficaram com o nome que tinham: {names}. O custo é esse: elas falam um idioma e a tela fala outro. O Bill lê as duas grafias, mas quem abrir a pasta vai ler um nome que não é o seu.",
     "migration.folders.born": "Nasceram, nomeadas e ainda vazias: {names}.",
-    "migration.folders.collision": "Há duas pastas para o mesmo nome interno ({names}): escolher uma seria esconder a outra. Nada foi movido — junte as duas à mão, se era isso."
+    "migration.folders.collision": "Há duas pastas para o mesmo nome interno ({names}): escolher uma seria esconder a outra. Nada foi movido — junte as duas à mão, se era isso.",
+    "migration.note.written": "O Bill escreveu `AGENT.md` na raiz da pasta: é a nota que apresenta a pasta a quem começa a trabalhar nela.",
+    "migration.note.kept": "A pasta já tinha um `AGENT.md` — o que estava lá ficou, e nada foi sobrescrito."
   },
   "en_US": {
     "first_run.notice": "Bill was opened in the folder {folder}.\n\nThere is no App/settings.json here, so this is taken to be a new Working Folder.\n\nDo you confirm that Bill should use this folder? An empty folder, anywhere on your computer, is recommended. Cancel and move the file elsewhere if you disagree.",
@@ -39,6 +41,8 @@
     "migration.folders.moved": "The folders now speak the language of the screen: {names}.",
     "migration.folders.declined": "The folders kept the name they had: {names}. That is the cost: they speak one language and the screen speaks another. Bill reads both spellings, but whoever opens the folder reads a name that is not theirs.",
     "migration.folders.born": "Born, named and still empty: {names}.",
-    "migration.folders.collision": "There are two folders for the same internal name ({names}): picking one would hide the other. Nothing was moved — join them by hand if that is what you meant."
+    "migration.folders.collision": "There are two folders for the same internal name ({names}): picking one would hide the other. Nothing was moved — join them by hand if that is what you meant.",
+    "migration.note.written": "Bill wrote `AGENT.md` at the folder root: it is the note that presents the folder to whoever starts working in it.",
+    "migration.note.kept": "The folder already carried an `AGENT.md` — the one that was there stayed, and nothing was overwritten."
   }
 }

@@ -73,11 +73,12 @@ docs/                          the documents
 
 The folder the binary was opened in is the binary's folder, and that folder is the Working Folder (§3). On the first run Bill describes the folder and asks before writing anything; `App/settings.json` is what makes a folder configured.
 
-**The name on disk is the face; the machine reads the internal name.** Every folder has an internal name — `app`, `data`, `prose`, `projects`, `shared` — and that is the one the engine uses and the one the declarations cite. The name a person reads comes from the active language, and the table in `paths.py` is the only thing that knows it: `Tabelas/`, `Arquivos/`, `Projetos/` and `Compartilhada/` in `pt_BR`; `Tables/`, `Files/`, `Projects/` and `Shared/` in `en_US`. The instance folder is the exception, and it is deliberate: it does not follow the language, because the language lives inside it — `App/` in both.
+**The name on disk is the face; the machine reads the internal name.** Every folder has an internal name — `app`, `data`, `prose`, `projects`, `shared` and `harness` — and that is the one the engine uses and the one the declarations cite. The name a person reads comes from the active language, and the table in `paths.py` is the only thing that knows it: `Tabelas/`, `Arquivos/`, `Projetos/` and `Compartilhada/` in `pt_BR`; `Tables/`, `Files/`, `Projects/` and `Shared/` in `en_US`. Two folders are the exception, and both are deliberate: the instance folder does not follow the language, because the language lives inside it — `App/` in both — and `Harness/` does not, because `pt_BR` took the word whole, so both languages spell it the same way.
 
 A folder is born with:
 
 ```
+AGENT.md                  the folder presenting itself, to whoever works in it
 App/settings.json         the instance's key-value configuration
 App/i18n/active           the chosen language — the catalogs travel in the product
 App/counters.json         the last id handed out per table
@@ -89,9 +90,17 @@ Tables/*.jsonl            the rows (they arrive with the first write)
 Files/                    everything that is not structured data, with a welcome note
 Projects/                 what belongs to a project — named, still empty
 Shared/                   what is shared with other people — named, still empty
+Harness/                  what governs whoever works in the folder — named, still empty
 ```
 
-**The migration.** Updating Bill is replacing the binary inside the folder, so every release that changes the folder's structure brings its migration and it runs on the first start after the swap (§3). The stamp is `App/migrations`, and it lives with the rest of what Bill writes, never inside the published declaration. There are three migrations today: `.bill/` → `app/`, `app/` → `App/`, and the person's folders into the active language — and the last one asks first, because renaming breaks whatever points at them from outside Bill. Whoever declines keeps the name they had, and the resolution reads both spellings.
+The note at the root is the one file a folder carries for whoever works inside it:
+it says what the folder is, what it holds and how to reach the rest, and it cites
+the founding document instead of repeating a rule (§0). Its **name** does not
+follow the language — a note whose name moved with the translation is a note a
+model stops finding — while the text does. It is written once, as the welcome note
+is, and a folder that already existed gains it by migration.
+
+**The migration.** Updating Bill is replacing the binary inside the folder, so every release that changes the folder's structure brings its migration and it runs on the first start after the swap (§3). The stamp is `App/migrations`, and it lives with the rest of what Bill writes, never inside the published declaration. There are five migrations today: `.bill/` → `app/`, `app/` → `App/`, the person's folders into the active language, the `AGENT.md` the folder presents itself with, and `Harness/`. The third asks first, because renaming breaks whatever points at them from outside Bill; whoever declines keeps the name they had, and the resolution reads both spellings. The other four touch only what Bill writes, and none of them overwrites anything.
 
 A folder that has not migrated yet **is found by its old name**: `paths.instance_dir()` reads what is on disk before deciding, so that a folder with `.bill/` is not read as a new one — which was the defect migration number one existed to close.
 

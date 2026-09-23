@@ -10,7 +10,9 @@ earlier releases left them in and prove three things:
 - the rename that touches the person's own folders asks first, says what breaks
   outside, and whoever declines keeps the name they had;
 - the stamp keeps a migration from running twice, and a read-only run from
-  running at all.
+  running at all;
+- a folder that already existed gains the note that presents it, and a note the
+  folder already carried is never overwritten.
 
 Every test aims Bill at a throwaway folder with `BILL_ROOT`.
 """
@@ -253,6 +255,21 @@ class TheFoldersFollowTheLanguage(FolderCase):
         self.assertEqual(list((self.root / "Compartilhada").iterdir()), [])
         self.assertIn(i18n.tr("boot.migration.folders.born", names="Projetos, Compartilhada"), output)
 
+    def test_the_harness_folder_arrives_by_its_own_migration(self):
+        # A folder from the release before this one: the two named folders are
+        # there, the stamp is at four, and `Harness/` does not exist. Migration
+        # three is published — folders have already run it — so the third name
+        # is born by a step of its own instead of by an edit to that one.
+        self.born()
+        (self.root / "Harness").rmdir()
+        migrations.stamp_file().write_text(
+            json.dumps([1, 2, 3, 4]) + "\n", encoding="utf-8"
+        )
+        output = self.caught_up()
+        self.assertTrue((self.root / "Harness").is_dir())
+        self.assertEqual(list((self.root / "Harness").iterdir()), [])
+        self.assertIn(i18n.tr("boot.migration.folders.born", names="Harness"), output)
+
     def test_two_folders_for_one_internal_name_are_not_chosen_between(self):
         self.legacy("app")
         (self.root / "Tabelas").mkdir()
@@ -367,6 +384,46 @@ class TheLanguageOffer(FolderCase):
             self.caught_up()
         self.assertTrue((self.root / "Tabelas").is_dir())
         self.assertFalse((self.root / "Tables").exists())
+
+
+# ------------------------------------------------------------- the note ---
+
+
+class TheFolderPresentsItself(FolderCase):
+    """`AGENT.md` — the note whoever starts inside the folder reads (§0).
+
+    A folder born now carries it from `boot`; a folder that was already on disk
+    when the note was decided gains it here. It is the plainest case of "adds
+    what is missing and overwrites nothing", which is why it does not ask.
+    """
+
+    def test_a_folder_that_already_existed_gains_the_note(self):
+        self.legacy("app")
+        self.assertFalse((self.root / "AGENT.md").exists())
+        output = self.caught_up()
+        note = self.root / "AGENT.md"
+        self.assertTrue(note.is_file())
+        self.assertEqual(note.read_text(encoding="utf-8"), i18n.tr("folder.agent.body"))
+        self.assertIn(i18n.tr("boot.migration.note.written"), output)
+
+    def test_a_note_the_folder_already_carried_is_left_alone(self):
+        self.legacy("app")
+        (self.root / "AGENT.md").write_text("o que eu escrevi\n", encoding="utf-8", newline="\n")
+        output = self.caught_up()
+        self.assertEqual(
+            (self.root / "AGENT.md").read_text(encoding="utf-8"), "o que eu escrevi\n"
+        )
+        self.assertIn(i18n.tr("boot.migration.note.kept"), output)
+
+    def test_the_note_arrives_once(self):
+        # The stamp is what makes the second start silent: a note that came back
+        # would be a note arguing with whoever deleted it.
+        self.legacy("app")
+        self.caught_up()
+        (self.root / "AGENT.md").unlink()
+        output = self.caught_up()
+        self.assertFalse((self.root / "AGENT.md").exists())
+        self.assertNotIn(i18n.tr("boot.migration.note.written"), output)
 
 
 if __name__ == "__main__":

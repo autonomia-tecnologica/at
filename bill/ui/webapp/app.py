@@ -18,6 +18,7 @@ registry does not name.
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import json
 import os
@@ -724,8 +725,20 @@ def make_server(port: int = DEFAULT_PORT) -> ThreadingHTTPServer:
 
 
 def run(port: int = DEFAULT_PORT) -> int:
-    server = make_server(port)
     from bill.i18n import tr
+
+    try:
+        server = make_server(port)
+    except OSError as error:
+        if error.errno != errno.EADDRINUSE:
+            raise
+        # A port somebody else is already serving on is the way this fails in
+        # practice — the PoC on 12345, or a second Bill — and the bare `OSError:
+        # Address already in use` names neither the port nor a way out. Bill
+        # says both, and the two ways out are the person's: another port, or
+        # freeing this one.
+        print(tr("webapp.port_taken", port=port))
+        return 1
 
     print(tr("webapp.serving", url=f"http://{HOST}:{port}"))
     try:

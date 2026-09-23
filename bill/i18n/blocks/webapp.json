@@ -1,6 +1,7 @@
 {
   "pt_BR": {
     "serving": "Bill WebApp em {url}",
+    "port_taken": "A porta {port} já está em uso — quem responde nela não é este Bill. Rode `bill webapp --port <outra>` para escolher outra porta, ou feche o que está atendendo nela.",
     "title": "Bill",
     "brand": "Bill",
     "tasks": "Tarefas",
@@ -63,6 +64,7 @@
   },
   "en_US": {
     "serving": "Bill WebApp at {url}",
+    "port_taken": "Port {port} is already in use — whatever answers on it is not this Bill. Run `bill webapp --port <another>` to pick another port, or close whatever is serving on it.",
     "title": "Bill",
     "brand": "Bill",
     "tasks": "Tasks",

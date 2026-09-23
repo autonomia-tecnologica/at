@@ -246,10 +246,55 @@ def _spelled(entries) -> str:
     return ", ".join(parts)
 
 
+def _agent_note(ask: Ask | None) -> list[Report]:
+    """`AGENT.md` at the folder's root — the folder introducing itself.
+
+    A folder born by this release already carries the note, because `boot` writes
+    it where it lays the folder down; a folder that was already on disk when the
+    note was decided does not, and this is the catch-up. It is a migration for
+    the same reason a rename is: the STRUCTURE of the folder changed, and the
+    folder that exists has to end up in the shape the release declares.
+
+    The impact is nil outside — a new file at the root, and nothing points at it
+    yet — and it never overwrites: a folder that already carries one keeps it,
+    whoever wrote it. So this one does not ask.
+    """
+    note = paths.agent_note()
+    if note.exists():
+        return [("boot.migration.note.kept", {})]
+    files.atomic_write_text(note, tr("folder.agent.body"))
+    return [("boot.migration.note.written", {})]
+
+
+def _harness_folder(ask: Ask | None) -> list[Report]:
+    """`Harness/` — where what the agent loads lives (§2, item 25).
+
+    Born named and empty, like `Projetos/` and `Compartilhada/`: the folder is
+    whole on its own from the first run on, and what lands in it is whoever
+    works in the folder's to put there. Bill guarantees the place, nothing more.
+
+    Migration THREE births the two it read off the retired environment, and a
+    published migration is never edited — folders have already run it — so this
+    one arrives as its own step rather than as a third name in that list. A
+    folder that still owes migration three hears both, and a folder that has
+    already run it hears only this.
+
+    The impact is nil outside — a new empty folder at the root, and nothing
+    points at it yet — so it does not ask.
+    """
+    target = paths.harness_dir()
+    if target.exists():
+        return []
+    target.mkdir(parents=True, exist_ok=True)
+    return [("boot.migration.folders.born", {"names": target.name})]
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, _legacy_instance),
     Migration(2, _capitalized_instance),
     Migration(3, _folders_in_the_language),
+    Migration(4, _agent_note),
+    Migration(5, _harness_folder),
 )
 
 
