@@ -26,7 +26,7 @@
 
 - Tabelas de usuário permitem CRUD completa da própria tabela.
 
-- O schema de tabela tem muitas funcionalidades, como campos padrão na exibição e ordem padrão na exibição de tabelas. Os rótulos de exibição que ele carrega são chaves de `i18n`, nunca o texto final. O contador de ids não mora no esquema: ele conta o que aconteceu nesta pasta, e o esquema é publicado — então ele vive em `app/counters.json`, e é escrito antes da linha, porque um id entregue está gasto mesmo se a escrita seguinte falhou.
+- O schema de tabela tem muitas funcionalidades, como campos padrão na exibição e ordem padrão na exibição de tabelas. Os rótulos de exibição que ele carrega são chaves de `i18n`, nunca o texto final. O contador de ids não mora no esquema: ele conta o que aconteceu nesta pasta, e o esquema é publicado — então ele vive em `App/counters.json`, e é escrito antes da linha, porque um id entregue está gasto mesmo se a escrita seguinte falhou.
 
 - O esquema declara **tipos de campo**, e cada tipo tem regra fixa, sem escolha por campo:
   - **hasheado** — guarda o resultado de uma derivação segura, feita com `libsodium`; o valor não volta na leitura, só se confere.
@@ -56,7 +56,7 @@
 
 ### Configurações gerais
 
-- As configurações do bill moram dentro de `app/settings.json`, dentro da pasta de trabalho. Aí moram propriedades em formato chave-valor. `i18n` não mora aqui: os blocos de tradução são empacotados no binário e o idioma ativo mora em `app/i18n/active`.
+- As configurações do bill moram dentro de `App/settings.json`, dentro da pasta de trabalho. Aí moram propriedades em formato chave-valor. `i18n` não mora aqui: os blocos de tradução são empacotados no binário e o idioma ativo mora em `App/i18n/active`.
 
 - **As configurações são alcançáveis pela API do core** (`setting:read` e `setting:edit` são permissões), porque é por ali que passa tudo o que age — inclusive a leitura do **limiar de risco** que valia no instante em que uma demanda correu, que é o que a linha da auditoria registra.
 
@@ -64,7 +64,7 @@
 
 - O Wizard Tkinter exibe as possibilidades de instalação do ambiente. No modo avançado habilitado, o Wizard apresenta a renderização do arquivo de configurações, permitindo modificar quaisquer uma. Segue a escolha de designer de algumas ferramentas, como VS Code, que possuem a base das configurações em JSON, mas permitem a alteração na UI.
 
-- Cada serviço pode ter dados persistidos. Nesse caso, eles moram em `app/services/<serviço>`, como `app/services/vpn` ou `app/services/spelling-checker`. O nome do serviço é canônico e não muda com a ferramenta que o cumpre: `spelling-checker` é o serviço, LanguageTool é quem o cumpre hoje (§7d), e o que um dia o substituir não renomeia pastas nem chaves. O que é rótulo de exibição é chave de `i18n`.
+- Cada serviço pode ter dados persistidos. Nesse caso, eles moram em `App/services/<serviço>`, como `App/services/vpn` ou `App/services/spelling-checker`. O nome do serviço é canônico e não muda com a ferramenta que o cumpre: `spelling-checker` é o serviço, LanguageTool é quem o cumpre hoje (§7d), e o que um dia o substituir não renomeia pastas nem chaves. O que é rótulo de exibição é chave de `i18n`.
 
 - Essa pasta não é conveniência, é condição de entrada: um serviço só entra no §7 se o estado persistente dele couber aí dentro. Serviço que guarda a vida dele em algum volume que ninguém copia deixa o backup da pasta mentir.
 

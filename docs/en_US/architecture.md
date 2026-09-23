@@ -26,7 +26,7 @@
 
 - User tables allow full CRUD of the table itself.
 
-- The table schema has many features, such as default fields in the display and default order in the display of tables. The display labels it carries are `i18n` keys, never the final text. The id counter does not live in the schema: it counts what happened in this folder, and the schema is published — so it lives in `app/counters.json`, and it is written before the row, because an id handed out is spent even if the write that followed failed.
+- The table schema has many features, such as default fields in the display and default order in the display of tables. The display labels it carries are `i18n` keys, never the final text. The id counter does not live in the schema: it counts what happened in this folder, and the schema is published — so it lives in `App/counters.json`, and it is written before the row, because an id handed out is spent even if the write that followed failed.
 
 - The schema declares **field types**, and each type has a fixed rule, with no choice per field:
   - **hashed** — stores the result of a secure derivation, made with `libsodium`; the value does not come back on a read, it is only compared.
@@ -56,7 +56,7 @@
 
 ### General settings
 
-- Bill's settings live inside `app/settings.json`, inside the working folder. There live properties in key-value format. `i18n` does not live here: the translation blocks are packed into the binary and the active language lives in `app/i18n/active`.
+- Bill's settings live inside `App/settings.json`, inside the working folder. There live properties in key-value format. `i18n` does not live here: the translation blocks are packed into the binary and the active language lives in `App/i18n/active`.
 
 - **The settings are reachable through the core API** (`setting:read` and `setting:edit` are permissions), because that is where everything that acts passes through — including the reading of the **risk threshold** that was in force at the instant a demand ran, which is what the audit line records.
 
@@ -64,7 +64,7 @@
 
 - The Tkinter Wizard displays the installation possibilities of the environment. With advanced mode enabled, the Wizard presents the rendering of the settings file, allowing any of them to be modified. It follows the design choice of some tools, such as VS Code, which have the base of the settings in JSON but allow the change in the UI.
 
-- Each service may have persisted data. In that case, it lives in `app/services/<service>`, such as `app/services/vpn` or `app/services/spelling-checker`. The service name is canonical and does not change with the tool that fulfils it: `spelling-checker` is the service, LanguageTool is who fulfils it today (§7d), and whatever replaces it one day renames neither folders nor keys. What is a display label is an `i18n` key.
+- Each service may have persisted data. In that case, it lives in `App/services/<service>`, such as `App/services/vpn` or `App/services/spelling-checker`. The service name is canonical and does not change with the tool that fulfils it: `spelling-checker` is the service, LanguageTool is who fulfils it today (§7d), and whatever replaces it one day renames neither folders nor keys. What is a display label is an `i18n` key.
 
 - That folder is not a convenience, it is a condition of entry: a service only enters §7 if its persistent state fits in there. A service that keeps its life in some volume nobody copies makes the folder backup lie.
 

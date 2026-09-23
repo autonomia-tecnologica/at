@@ -32,4 +32,4 @@ Cada nome tem um só significado, e nomes que se encostariam não convivem. Semp
 | **Frase de Acesso** | o que a pessoa sabe e digita; dela se deriva a **Chave do Bill** |
 | **Chave do Bill** | a chave derivada da Frase de Acesso; dela derivam as **chaves derivadas**, por serviço |
 | **manifesto** | a semente deste repositório, visível no histórico do git; e `manifest.json` é só o arquivo que tem esse nome |
-| **pin**, **migration** | ficam em inglês, como o resto do código: fixação de versão e hashing, e a mudança de estrutura que roda na primeira subida |
+| **pin**, **migration**, **migration framework** | ficam em inglês, como o resto do código: fixação de versão e hashing; a mudança de estrutura que roda na primeira subida; e o conjunto delas — a máquina de migração —, o carimbo, a ordem e a regra de que uma publicada não se edita |

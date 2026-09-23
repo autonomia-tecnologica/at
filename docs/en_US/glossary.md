@@ -32,4 +32,4 @@ Each name has one meaning, and names that would touch each other do not coexist.
 | **Access Phrase** | what the person knows and types; from it the **Bill Key** is derived |
 | **Bill Key** | the key derived from the Access Phrase; from it the **derived keys** derive, per service |
 | **manifesto** | the seed of this repository, visible in the git history; and `manifest.json` is just the file that has that name |
-| **pin**, **migration** | stay in English, like the rest of the code: version and hashing fixation, and the structure change that runs on the first start |
+| **pin**, **migration**, **migration framework** | stay in English, like the rest of the code: version and hashing fixation; the structure change that runs on the first start; and the set of them — what carries the stamp, the order and the rule that a published one is not edited |
