@@ -34,7 +34,7 @@ from bill.ui.webapp import app as webapp
 
 from bill_deploy import environment as env
 from bill_deploy import podman, switch, vpn
-from bill_deploy.cli import OK, REFUSED, USAGE, _services, main
+from bill_deploy.cli import OK, REFUSED, USAGE, services, main
 
 
 class FakeRuntime:
@@ -427,7 +427,7 @@ class TheCli(FolderCase):
     """`bill-deploy services switch` and `services forms` — the two local doors."""
 
     def test_the_switch_reaches_the_environment_with_the_persons_answer(self):
-        code, text = self.quiet(_services, ["switch"], ask=lambda question: "n")
+        code, text = self.quiet(services, ["switch"], ask=lambda question: "n")
         self.assertEqual(code, OK)
         self.assertIn(i18n.tr("services.no_podman.hosted"), text)
 
@@ -435,7 +435,7 @@ class TheCli(FolderCase):
         self.person()
         self.runtime()
         with mock.patch.object(switch, "proved", lambda answer=None: False):
-            code, text = self.quiet(_services, ["switch"])
+            code, text = self.quiet(services, ["switch"])
         self.assertEqual(code, REFUSED)
         self.assertIn(i18n.tr("services.switch.unproved"), text)
 
@@ -443,9 +443,9 @@ class TheCli(FolderCase):
         self.person()
         self.runtime()
         with mock.patch.object(switch, "proved", lambda answer=None: True):
-            self.quiet(_services, ["switch"])
+            self.quiet(services, ["switch"])
         self.assertTrue(gate.on_gate())
-        code, text = self.quiet(_services, ["forms"])
+        code, text = self.quiet(services, ["forms"])
         self.assertEqual(code, OK)
         self.assertIn(i18n.tr("services.forms.done"), text)
         self.assertFalse(gate.on_gate())

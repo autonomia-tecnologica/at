@@ -53,11 +53,11 @@ def open_wizard(argv: Sequence[str] | None = None) -> bool:
         build(root)
         root.mainloop()
     finally:
-        _destroy(root, tk)
+        destroy(root, tk)
     return True
 
 
-def _destroy(root, tk) -> None:
+def destroy(root, tk) -> None:
     """Destroy the root, unless it is already gone — which it usually is.
 
     The Close button IS `root.destroy` (`build`), so by the time `mainloop`
@@ -66,6 +66,10 @@ def _destroy(root, tk) -> None:
     that closed correctly. A display that went away mid-loop raises the same
     one. Neither is a failure — the window is closed either way — so the second
     call is refused instead of thrown.
+
+    It is public because the deploy's Wizard closes its window the same way and
+    the rule is one rule (item 27, `bill_deploy/wizard.py`): two artifacts with
+    two windows have one way out of a window that is already gone.
     """
     try:
         root.destroy()

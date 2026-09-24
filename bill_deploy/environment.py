@@ -1395,3 +1395,21 @@ def status() -> None:
              scope=notifier.PHONE_SCOPE)
           if notifier.phone_token() is not None
           else tr("services.notifier.phone.absent", where=phone))
+
+
+def standing() -> bool:
+    """Whether the environment is on its feet: every service's container running.
+
+    It is the question §7a's checks end at, and the one thing an exit code
+    cannot carry: choosing a way out of a machine with no Podman, or refusing
+    the elevation, EXITS `0` — nothing failed — and leaves the environment
+    standing nowhere. So it is asked of the CONTAINERS and not of the record,
+    because what a person needs to know is what is running.
+
+    `status` says the same thing one service at a time, and the Wizard of §7
+    reads it as one answer (`bill_deploy/wizard.py`): the step of §7a closed when
+    the environment is standing, and not when the command happened to exit `0`.
+    """
+    if not podman.present():
+        return False
+    return all(_state_of(service) == RUNNING for service in SERVICES)

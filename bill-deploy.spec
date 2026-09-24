@@ -26,6 +26,14 @@ reaches them. The `vocabulary` — the interpreter's word list — is `bill`'s t
 the deploy neither reads a sentence nor proposes one. A payload left out of a
 build fails silently, so each one left out is named here rather than omitted in
 silence.
+
+**Tcl/Tk travels here, and it is the Wizard's price.** The deploy's Wizard
+(`bill_deploy/wizard.py`) is the front §6 declares for this artifact, and a
+Tkinter window needs the interpreter's toolchain: `_tkinter` and the Tcl/Tk
+libraries beside it, some tens of megabytes extracted on every launch of a
+`--onefile` binary. It is written here instead of discovered at the pyz level
+because the price is part of what the artifact IS — `bill` pays it already, and
+whoever reads a build has to be able to read this one too.
 """
 
 ENTRY = "bill_deploy/__main__.py"
@@ -60,7 +68,15 @@ a = Analysis(
     # reaches `nacl` the same way `bill` does — the first run seeds the `actor`
     # table, and the hashed field's derivation is `libsodium`'s — so the same
     # hand-named payload travels here.
-    hiddenimports=["_cffi_backend"],
+    #
+    # `tkinter` is the Wizard's, and it is named for the reason above and one
+    # more: the module that reaches it does so INSIDE a function, because a
+    # machine with no display has to be answered and not crashed on
+    # (`bill_deploy/wizard.py`), and a payload decided by an import that only
+    # happens at run time is a payload this file has to say out loud. Its hook
+    # is what drags `_tkinter` and the Tcl/Tk libraries in with it (the
+    # docstring is where the price is declared).
+    hiddenimports=["_cffi_backend", "tkinter"],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

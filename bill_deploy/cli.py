@@ -59,9 +59,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         return REFUSED
 
     if not words:
-        # The Wizard of §7 is the natural front for this artifact (item 27), and
-        # it is not built yet: the wordless command answers with the help, which
-        # is the shape §5 already declares for the other artifact's too.
+        # The Wizard of §7 is the natural front for this artifact (§6, item 27):
+        # deploying is a SEQUENCE and not a sentence, and the screen walks it.
+        # A machine with no display is still a legitimate place to run the
+        # deploy — there the words below ARE the whole of it, which is what §5's
+        # one-way rule buys — and the window says so in `bill`'s own sentence
+        # before the help is printed.
+        from bill_deploy import wizard  # noqa: PLC0415 — it reads this module
+
+        if wizard.open_wizard():
+            return OK
         print(tree.as_text())
         return OK
 
@@ -80,25 +87,27 @@ def main(argv: Sequence[str] | None = None) -> int:
         return OK
 
     if word == "services":
-        return _services(rest)
+        return services(rest)
 
     print(tr("deploy.error.unknown_word", word=word))
     print(tr("deploy.error.usage"))
     return USAGE
 
 
-def _services(
+def services(
     rest: list[str],
     ask: Ask | None = None,
     secret: Ask | None = None,
 ) -> int:
     """`bill-deploy services` — the container environment (§7a).
 
-    The Wizard is the screen that installs services, and it is not built; §5's
-    rule is that everything of the Wizard is reachable from the `cli`, and this
-    is that door for the environment — `up` brings it up, `down` takes it down,
-    and `status` says what is standing, which is also what the wordless
-    `services` answers.
+    The Wizard is the screen that installs services, and it reads THIS door and
+    no other (`bill_deploy/wizard.py` walks it one word at a time): §5's rule is
+    that everything of the Wizard is reachable from the `cli`, and the way to
+    make that a property instead of a promise is for the screen to have no other
+    road. So this is the door for the environment — `up` brings it up, `down`
+    takes it down, and `status` says what is standing, which is also what the
+    wordless `services` answers.
 
     Two of the words are not about the environment at all, and they live here
     because this is the surface §6 says reaches them: `switch` is the

@@ -36,7 +36,7 @@ from bill import i18n
 from bill.core import actors, boot, gate
 from bill_deploy import environment as env
 from bill_deploy import notifier, podman, vpn
-from bill_deploy.cli import OK, REFUSED, USAGE, _services, main
+from bill_deploy.cli import OK, REFUSED, USAGE, services, main
 
 # The token the fake notifier draws: `tk_` and 32 characters, which is ntfy's
 # own rule. The value is nobody's — what the tests read is where it WENT.
@@ -474,7 +474,7 @@ class TheDoor(FolderCase):
     def test_the_phone_door_answers_ok_and_draws_the_credential(self):
         self.machine()
         with mock.patch.object(env, "GRACE", 0.0):
-            code, text = self.quiet(_services, ["phone"])
+            code, text = self.quiet(services, ["phone"])
         self.assertEqual(code, OK)
         self.assertIn(DRAWN_TOKEN, text)
         self.assertEqual(notifier.phone_token(), DRAWN_TOKEN)
@@ -482,7 +482,7 @@ class TheDoor(FolderCase):
     def test_the_phone_door_is_a_refusal_when_the_credential_is_not_made(self):
         self.machine(fails=("access",))
         with mock.patch.object(env, "GRACE", 0.0):
-            code, _ = self.quiet(_services, ["phone"])
+            code, _ = self.quiet(services, ["phone"])
         self.assertEqual(code, REFUSED)
 
     def test_the_credential_door_reads_it_twice_and_without_echo(self):
@@ -497,7 +497,7 @@ class TheDoor(FolderCase):
             asked.append(question)
             return NEW_CREDENTIAL
 
-        code, text = self.quiet(_services, ["credential", "Rafael"],
+        code, text = self.quiet(services, ["credential", "Rafael"],
                                 ask=lambda question: "", secret=secret)
         self.assertEqual(code, OK)
         self.assertEqual(len(asked), 2)
@@ -509,7 +509,7 @@ class TheDoor(FolderCase):
     def test_a_mismatch_is_the_cores_own_refusal_and_changes_nothing(self):
         self.person()
         code, text = self.quiet(
-            _services, ["credential", "Rafael"],
+            services, ["credential", "Rafael"],
             ask=lambda question: "",
             secret=self.answer(NEW_CREDENTIAL, "outra-coisa"),
         )
@@ -522,7 +522,7 @@ class TheDoor(FolderCase):
         # core's, and so is the sentence.
         self.person()
         code, text = self.quiet(
-            _services, ["credential", "Rafael"],
+            services, ["credential", "Rafael"],
             ask=lambda question: "", secret=self.answer("curta", "curta"),
         )
         self.assertEqual(code, REFUSED)
@@ -530,7 +530,7 @@ class TheDoor(FolderCase):
         self.assertIsNotNone(actors.authenticate("Rafael", CREDENTIAL))
 
     def test_the_word_without_a_name_says_which_word_needs_one(self):
-        code, text = self.quiet(_services, ["credential"])
+        code, text = self.quiet(services, ["credential"])
         self.assertEqual(code, USAGE)
         self.assertIn(i18n.tr("deploy.services.credential.ask"), text)
 
@@ -551,7 +551,7 @@ class TheDoor(FolderCase):
     def test_a_name_nobody_wears_is_refused_in_the_deploys_words(self):
         self.person()
         code, text = self.quiet(
-            _services, ["credential", "Ninguem"],
+            services, ["credential", "Ninguem"],
             ask=lambda question: "", secret=self.answer(NEW_CREDENTIAL,
                                                         NEW_CREDENTIAL),
         )

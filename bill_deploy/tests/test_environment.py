@@ -37,7 +37,7 @@ from bill.ui.webapp import app as webapp
 
 from bill_deploy import environment as env
 from bill_deploy import notifier, podman, tree, vpn
-from bill_deploy.cli import OK, REFUSED, USAGE, _services, main
+from bill_deploy.cli import OK, REFUSED, USAGE, services, main
 
 # An address that is nobody's: RFC 5737's block for documentation. Whoever binds
 # it fails with EADDRNOTAVAIL, which is exactly the answer the orchestrator
@@ -1153,7 +1153,7 @@ class TheDoor(FolderCase):
         self.assertIn(i18n.tr("services.no_podman.no_tty"), text)
 
     def test_the_offer_reaches_the_environment_with_the_persons_answer(self):
-        code, text = self.quiet(_services, ["up"], ask=lambda question: "n")
+        code, text = self.quiet(services, ["up"], ask=lambda question: "n")
         self.assertEqual(code, OK)
         self.assertIn(i18n.tr("services.no_podman.hosted"), text)
 
