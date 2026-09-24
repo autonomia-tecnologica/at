@@ -11,11 +11,17 @@ declaration, and the declaration changes nothing in a translation.
 The schema is DECLARATION, and it ships with the product; the rows are the
 instance's. That split is why the id counter does not live here (it counts what
 happened in one folder) — the store keeps it.
+
+Two doors write a declaration, and they are told apart by what they do to one
+that is already there: `seed` lays down the whole file where it is ABSENT, and
+`extend` grows one that exists, key by key, without ever overwriting what a
+person put there (§3, migration).
 """
 
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from functools import lru_cache
 from importlib import resources
 from pathlib import Path
@@ -30,6 +36,107 @@ SUFFIX = ".json"
 def directory() -> Path:
     """Where the declarations of THIS folder live."""
     return paths.data_dir() / SCHEMA_DIR
+
+
+@dataclass(frozen=True)
+class Extended:
+    """What one additive write to a declaration found, and what it did.
+
+    `state` is `written` when the declaration was there to grow, `missing` when
+    the folder does not carry it and `unreadable` when it is there and does not
+    parse. The last two are told apart on purpose: one is a file that is not
+    there, the other is a file Bill must not touch, and a report that blurred
+    them would say the wrong thing about somebody's folder.
+
+    `added` and `collisions` are dotted paths inside the declaration —
+    `fields.since.type`, `columns`, `lifecycle` — and they are paths because a
+    name is what a person opens the file to find. `added` is what was written;
+    `collisions` is where the folder already carried something ELSE, and the
+    folder's value is the one that stays.
+    """
+
+    table: str
+    added: tuple[str, ...] = ()
+    collisions: tuple[str, ...] = ()
+    state: str = "written"
+
+
+def extend(table: str, additions: dict) -> Extended:
+    """Grow the folder's declaration of `table` by `additions` — never
+    overwriting it.
+
+    The additions are written the way the DECLARATION writes itself — a `fields`
+    entry, the `enum` of a closed vocabulary, a `columns` entry, the `type` a
+    field was born without — and they are merged in recursively:
+
+    - a key the folder does not carry is added whole, subtree and all;
+    - a dict meets a dict and the merge goes deeper;
+    - a list gains the entries it is missing, in the order they were declared,
+      and keeps the ones it has where they are;
+    - anything else already there with another value is a COLLISION, and the
+      person's edit wins: the path goes back in `collisions` to be said out
+      loud, never resolved here (§3, migration).
+
+    Only a write that ADDS something rewrites the file, and it is the atomic
+    write (§3). A declaration that already carries everything is left exactly as
+    it is, bytes included — the common case for a folder that migrated late, and
+    reformatting the file of somebody who did not need migrating would be Bill
+    editing what it was only supposed to read.
+
+    A declaration the person deleted is NOT recreated, and one that does not
+    parse is NOT replaced: both come back in `state`, and neither is touched.
+    The first is a deletion that was meant — `seed` makes the same promise for
+    the whole file — and the second is a file that exists, whose rewrite would
+    destroy whatever the person put there (`files.read_json`).
+    """
+    target = directory() / f"{table}{SUFFIX}"
+    if not target.is_file():
+        return Extended(table, state="missing")
+    try:
+        declared = files.read_json(target, default=None)
+    except (OSError, json.JSONDecodeError):
+        return Extended(table, state="unreadable")
+    if not isinstance(declared, dict):
+        # JSON that parses and is not an object is not a declaration either, and
+        # it is read as the file it is: present, and not something to rewrite.
+        return Extended(table, state="unreadable")
+
+    added: list[str] = []
+    collisions: list[str] = []
+    _grow(declared, additions, "", added, collisions)
+    if added:
+        body = json.dumps(declared, ensure_ascii=False, indent=2) + "\n"
+        files.atomic_write_text(target, body)
+        # The registry was filled before the write, and whoever extends and then
+        # reads — the migration — would be told the table declares what it did
+        # before. `seed` resets for the same reason.
+        reset()
+    return Extended(table, tuple(added), tuple(collisions))
+
+
+def _grow(declared: dict, additions: dict, where: str, added: list, collisions: list) -> None:
+    """Merge `additions` into `declared`, in place, recording every path.
+
+    `where` is the dotted path of `declared` inside the table's declaration —
+    empty at the root — and it is what makes the report name the place a person
+    has to open.
+    """
+    for key, value in additions.items():
+        path = f"{where}.{key}" if where else key
+        if key not in declared:
+            declared[key] = value
+            added.append(path)
+            continue
+        mine = declared[key]
+        if isinstance(mine, dict) and isinstance(value, dict):
+            _grow(mine, value, path, added, collisions)
+        elif isinstance(mine, list) and isinstance(value, list):
+            fresh = [item for item in value if item not in mine]
+            if fresh:
+                mine.extend(fresh)
+                added.append(path)
+        elif mine != value:
+            collisions.append(path)
 
 
 def bundled() -> dict[str, dict]:

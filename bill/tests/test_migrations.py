@@ -79,6 +79,28 @@ class FolderCase(unittest.TestCase):
         )
         i18n.reset()
 
+    def forgotten(self) -> None:
+        """Forget the stamp, so every migration runs as on the first start after
+        a binary swap — which is the state the whole door exists for."""
+        (self.root / "App" / "migrations").unlink()
+        schema.reset()
+
+    def declaration(self, table: str) -> Path:
+        """The folder's copy of a table's declaration, where a person edits it."""
+        return self.root / "Tabelas" / "schema" / f"{table}.json"
+
+    def rewrite(self, where: Path, declared: dict) -> None:
+        """A declaration written the way a hand would write it: the folder's, and
+        not Bill's. The indent is deliberately not the one `seed` writes, so a
+        test that says "the file was not touched" reads the bytes and not the
+        content."""
+        where.write_text(
+            json.dumps(declared, ensure_ascii=False, indent=4) + "\n",
+            encoding="utf-8",
+            newline="\n",
+        )
+        schema.reset()
+
     def legacy(self, instance: str = "app", language: str = "pt_BR") -> None:
         """A folder as an earlier release left it: the instance in `instance/`
         and the person's folders under their OLD spelling."""
@@ -303,6 +325,219 @@ class ADeclaredPathResolvesByName(FolderCase):
         )
         schema.reset()
         self.assertEqual(store.path("meu"), self.root / "minhas" / "coisas.jsonl")
+
+
+class TheDeclarationGrows(FolderCase):
+    """The hard half of item 5: a migration that touches the DECLARATION.
+
+    A release that adds a key to a declaration of the product carries the
+    addition and merges it into the folder's copy — a file a PERSON edits. This
+    is where "never overwrites" gets its real test, because a rename has nothing
+    to collide with: what is missing is added, the person's edit beats Bill at
+    every collision, and the report names the path instead of choosing.
+
+    The folder is born by this release and then worn back to the shape an
+    earlier one left it in — a declaration is the one thing a fixture can age
+    without a filesystem.
+    """
+
+    def worn(self, table: str, drop) -> Path:
+        """The folder's declaration of `table`, as an earlier release left it."""
+        where = self.declaration(table)
+        declared = json.loads(where.read_text(encoding="utf-8"))
+        drop(declared)
+        self.rewrite(where, declared)
+        return where
+
+    def test_the_type_a_field_was_missing_arrives(self):
+        self.born()
+
+        def before(declared):
+            for field in ("since", "deadline"):
+                declared["fields"][field].pop("type", None)
+            declared["fields"]["modifications"]["append"].pop("type", None)
+            declared.pop("lifecycle", None)
+
+        where = self.worn("task", before)
+        self.forgotten()
+        output = self.caught_up()
+        declared = json.loads(where.read_text(encoding="utf-8"))
+        self.assertEqual(declared["fields"]["since"]["type"], "day")
+        self.assertEqual(declared["fields"]["deadline"]["type"], "day")
+        self.assertEqual(declared["fields"]["modifications"]["append"]["type"], "instant")
+        self.assertEqual(declared["lifecycle"]["cancel"]["status"], "cancelled")
+        self.assertIn(
+            i18n.tr(
+                "boot.migration.declarations.extended",
+                names="task.fields.since.type, task.fields.deadline.type, "
+                      "task.fields.modifications.append.type, task.lifecycle",
+            ),
+            output,
+        )
+
+    def test_the_edit_a_person_made_survives_the_merge(self):
+        self.born()
+
+        def before(declared):
+            declared["fields"]["text"]["max_length"] = 200
+            declared["fields"]["meu_campo"] = {"label": "table.field.id"}
+            declared.pop("lifecycle", None)
+
+        where = self.worn("task", before)
+        self.forgotten()
+        self.caught_up()
+        declared = json.loads(where.read_text(encoding="utf-8"))
+        # What the person wrote is theirs, and what the release adds lands beside
+        # it: the two are not the same kind of thing, and the merge keeps both.
+        self.assertEqual(declared["fields"]["text"]["max_length"], 200)
+        self.assertIn("meu_campo", declared["fields"])
+        self.assertEqual(declared["lifecycle"]["cancel"]["status"], "cancelled")
+
+    def test_a_collision_is_named_and_the_edit_wins(self):
+        self.born()
+
+        def before(declared):
+            declared["fields"]["since"]["type"] = "text"
+            declared.pop("lifecycle", None)
+
+        where = self.worn("task", before)
+        self.forgotten()
+        output = self.caught_up()
+        declared = json.loads(where.read_text(encoding="utf-8"))
+        self.assertEqual(declared["fields"]["since"]["type"], "text")
+        self.assertIn(
+            i18n.tr(
+                "boot.migration.declarations.collision",
+                names="task.fields.since.type",
+            ),
+            output,
+        )
+        # The report does not stop the rest: what did not collide still arrives.
+        self.assertEqual(declared["lifecycle"]["cancel"]["status"], "cancelled")
+
+    def test_a_declaration_the_person_deleted_is_not_brought_back(self):
+        self.born()
+        where = self.declaration("task")
+        where.unlink()
+        schema.reset()
+        self.forgotten()
+        output = self.caught_up()
+        self.assertFalse(where.exists())
+        self.assertIn(
+            i18n.tr("boot.migration.declarations.missing", names="task"), output
+        )
+
+    def test_a_declaration_left_unreadable_is_not_touched(self):
+        self.born()
+        where = self.declaration("task")
+        where.write_text("{ isto não é json\n", encoding="utf-8", newline="\n")
+        schema.reset()
+        self.forgotten()
+        output = self.caught_up()
+        # Rewriting it would destroy whatever the person put there — and a file
+        # that is there and does not parse is not the same thing as one absent.
+        self.assertEqual(where.read_text(encoding="utf-8"), "{ isto não é json\n")
+        self.assertIn(
+            i18n.tr("boot.migration.declarations.unreadable", names="task"), output
+        )
+
+    def test_a_folder_that_already_carried_everything_is_not_rewritten(self):
+        self.born()
+        where = self.declaration("task")
+        declared = json.loads(where.read_text(encoding="utf-8"))
+        self.rewrite(where, declared)
+        before = where.read_text(encoding="utf-8")
+        self.forgotten()
+        output = self.caught_up()
+        # Nothing to add means no write at all: reformatting the file of somebody
+        # who did not need migrating would be Bill editing what it may only read.
+        self.assertEqual(where.read_text(encoding="utf-8"), before)
+        self.assertIn(i18n.tr("boot.migration.declarations.unchanged"), output)
+
+
+class TheMechanismGrowsAnyDeclaration(FolderCase):
+    """The primitive behind the migration, on a table of the INSTANCE's own.
+
+    The product's additions are dated and named at module level, so the three
+    kinds a release may add — a field, a value of a closed vocabulary, an entry
+    of a list — are proved here, on a declaration this test writes, the same way
+    item 15's first slice proved the declared types on a table of its own.
+    """
+
+    def declare(self, declared: dict) -> Path:
+        where = self.root / "Tabelas" / "schema" / f"{declared['id']}.json"
+        where.parent.mkdir(parents=True, exist_ok=True)
+        self.rewrite(where, declared)
+        return where
+
+    def mine(self) -> Path:
+        return self.declare(
+            {
+                "id": "meu",
+                "order": 90,
+                "store": "minhas/coisas.jsonl",
+                "columns": ["nome"],
+                "fields": {
+                    "id": {"label": "table.field.id"},
+                    "nome": {"label": "table.field.id", "type": "number"},
+                    "status": {"label": "table.field.id", "enum": {"aberto": "x"}},
+                },
+            }
+        )
+
+    def test_a_field_a_closed_value_and_an_entry_all_arrive(self):
+        where = self.mine()
+        grown = schema.extend(
+            "meu",
+            {
+                "fields": {
+                    "peso": {"label": "table.field.id", "type": "number"},
+                    "status": {"enum": {"fechado": "y"}},
+                },
+                "columns": ["status"],
+            },
+        )
+        self.assertEqual(grown.state, "written")
+        self.assertEqual(
+            list(grown.added),
+            ["fields.peso", "fields.status.enum.fechado", "columns"],
+        )
+        self.assertEqual(grown.collisions, ())
+        declared = json.loads(where.read_text(encoding="utf-8"))
+        self.assertEqual(declared["fields"]["peso"]["type"], "number")
+        # The vocabulary gains the value it lacked and keeps the ones it had.
+        self.assertEqual(declared["fields"]["status"]["enum"]["fechado"], "y")
+        self.assertEqual(declared["fields"]["status"]["enum"]["aberto"], "x")
+        # An entry is APPENDED, never reordered: the order is the declaration's.
+        self.assertEqual(declared["columns"], ["nome", "status"])
+
+    def test_an_entry_the_list_already_carried_is_not_repeated(self):
+        self.mine()
+        grown = schema.extend("meu", {"columns": ["nome"]})
+        self.assertEqual(grown.added, ())
+        self.assertEqual(grown.collisions, ())
+        declared = json.loads(self.declaration("meu").read_text(encoding="utf-8"))
+        self.assertEqual(declared["columns"], ["nome"])
+
+    def test_a_collision_is_named_and_the_file_is_not_rewritten(self):
+        where = self.mine()
+        before = where.read_text(encoding="utf-8")
+        grown = schema.extend("meu", {"fields": {"nome": {"type": "text"}}})
+        self.assertEqual(grown.added, ())
+        self.assertEqual(grown.collisions, ("fields.nome.type",))
+        self.assertEqual(where.read_text(encoding="utf-8"), before)
+        declared = json.loads(before)
+        self.assertEqual(declared["fields"]["nome"]["type"], "number")
+
+    def test_what_is_not_there_to_grow_says_which_of_the_two_it_is(self):
+        where = self.mine()
+        where.unlink()
+        schema.reset()
+        self.assertEqual(schema.extend("meu", {"columns": ["x"]}).state, "missing")
+        where.write_text("não é json\n", encoding="utf-8", newline="\n")
+        grown = schema.extend("meu", {"columns": ["x"]})
+        self.assertEqual(grown.state, "unreadable")
+        self.assertEqual(where.read_text(encoding="utf-8"), "não é json\n")
 
 
 # ------------------------------------------------------------- the stamp ---

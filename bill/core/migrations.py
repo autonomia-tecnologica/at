@@ -440,6 +440,110 @@ def _objects(ask: Ask | None) -> list[Report]:
     return _hand_over(GROWN)
 
 
+# What THIS release adds to declarations that are ALREADY on disk — migration
+# nine. It is written the way a declaration writes itself, so what a release
+# adds to a table is readable as the slice of that table it is, and the merge
+# never has to be told which kind of key it is holding.
+#
+# The additions are DATED: they are what earlier swaps changed in silence,
+# before the machinery existed to carry them. A folder that ran those releases
+# heard nothing — the seed writes only the declarations that are ABSENT, and
+# these tables were already there — so the folder that exists catches up here,
+# on the first start after THIS swap. `type` a field was born without is what
+# item 15's first slice added to five fields of three tables; the `lifecycle`
+# is what item 6 added to `task` and `project`, and a folder that never heard
+# it cannot close a row.
+#
+# A published migration is never edited, so the next release that grows a
+# declaration brings its own step and its own additions, and this one goes on
+# meaning what it meant on the day it shipped.
+EXTENDED: dict[str, dict] = {
+    "task": {
+        "fields": {
+            "since": {"type": "day"},
+            "deadline": {"type": "day"},
+            "modifications": {"append": {"type": "instant"}},
+        },
+        "lifecycle": {
+            "cancel": {
+                "status": "cancelled",
+                "reason": {"into": "desc", "text": "table.closed.reason"},
+                "reason_required": True,
+            }
+        },
+    },
+    "project": {
+        "fields": {"since": {"type": "day"}},
+        "lifecycle": {
+            "cancel": {
+                "status": "cancelled",
+                "reason": {"into": "desc", "text": "table.closed.reason"},
+                "reason_required": True,
+            }
+        },
+    },
+    "reminder": {
+        "fields": {
+            "on_date": {"type": "day"},
+            "since": {"type": "day"},
+        }
+    },
+}
+
+
+def _declarations_extended(ask: Ask | None) -> list[Report]:
+    """Migration nine: the declaration keys earlier swaps added in silence.
+
+    It is the HARD half of item 5, and the rule it exists to serve is §3's: a
+    migration never overwrites what is already there — it adds what is missing
+    and reports what it skipped. What is hard about it is that the declaration
+    is a file a PERSON edits, so every addition meets whatever they wrote there:
+    the `type` a field was missing, the `enum` of a closed vocabulary, an entry
+    of a list, a whole block a table never had.
+
+    A collision — the path already carrying something else — is the person's
+    edit winning, and it is SAID, by the name of the path it happened at, so
+    whoever reads can open the file and find it. Bill does not choose between
+    its declaration and the person's: it says what it found, which is the same
+    choice it makes about the image pin (§3).
+
+    Two other things about the folder have a report of their own, and neither is
+    touched: a declaration that is not there — a deletion that was meant, and
+    `seed` does not bring back either — and one that does not parse, which is
+    the person's file and not Bill's to rewrite.
+
+    It does not ask: a declaration of the product's own, and nothing outside the
+    folder points at it (§3, migration).
+    """
+    added: list[str] = []
+    collisions: list[str] = []
+    missing: list[str] = []
+    unreadable: list[str] = []
+    for table, additions in EXTENDED.items():
+        grown = schema.extend(table, additions)
+        if grown.state == "missing":
+            missing.append(table)
+            continue
+        if grown.state == "unreadable":
+            unreadable.append(table)
+            continue
+        added.extend(f"{table}.{path}" for path in grown.added)
+        collisions.extend(f"{table}.{path}" for path in grown.collisions)
+
+    report: list[Report] = []
+    if added:
+        report.append(("boot.migration.declarations.extended", {"names": ", ".join(added)}))
+    if collisions:
+        report.append(("boot.migration.declarations.collision", {"names": ", ".join(collisions)}))
+    if missing:
+        report.append(("boot.migration.declarations.missing", {"names": ", ".join(missing)}))
+    if unreadable:
+        report.append(("boot.migration.declarations.unreadable", {"names": ", ".join(unreadable)}))
+    if not report:
+        report.append(("boot.migration.declarations.unchanged", {}))
+    return report
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, _legacy_instance),
     Migration(2, _capitalized_instance),
@@ -449,6 +553,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(6, _declarations),
     Migration(7, _catalogue),
     Migration(8, _objects),
+    Migration(9, _declarations_extended),
 )
 
 
