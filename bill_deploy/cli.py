@@ -22,15 +22,28 @@ import sys
 from collections.abc import Callable, Sequence
 
 from bill import __version__
-from bill.core import boot, files
+from bill.core import actors, boot, files, tables
 from bill.i18n import tr
 
 from bill_deploy import environment, tree
 from bill_deploy.environment import HOSTED, INSTALL, UP
 
 # What a person answers with, injected so a test can answer without a terminal —
-# the same shape `boot` and `bill`'s `cli` take.
+# the same shape `boot` and `bill`'s `cli` take. The credential's door takes two
+# readers, because one of them reads WITHOUT ECHO (the account's own shape,
+# `bill admin`).
 Ask = Callable[[str], str]
+
+# The words of `services`, read off the tree that OFFERS them — the declaration
+# is `tree.py`'s and this is the same list, so a word can never dispatch without
+# being offered nor the other way round (§5's one-way rule).
+_SERVICES = tree.find("services")
+WORDS = tuple(node.name for node in _SERVICES.children) if _SERVICES else ()
+
+# The one word that takes an argument, and it is a NAME: the gate asserts a name
+# and the `users.yml` it derives is keyed by one (§7b). The tree carries what a
+# word IS and not how it is spelled after it, which is why this is said here.
+ARGUMENT = "credential"
 
 # The exit codes, and they are the product's: one `cli` answers like the other.
 OK = 0
@@ -74,7 +87,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     return USAGE
 
 
-def _services(rest: list[str], ask: Ask | None = None) -> int:
+def _services(
+    rest: list[str],
+    ask: Ask | None = None,
+    secret: Ask | None = None,
+) -> int:
     """`bill-deploy services` — the container environment (§7a).
 
     The Wizard is the screen that installs services, and it is not built; §5's
@@ -93,21 +110,37 @@ def _services(rest: list[str], ask: Ask | None = None) -> int:
     one alert, through the credential `up` created, to the topic — §5's rule that
     what the Wizard does is reachable from the `cli`.
 
+    **The last two are the OPERATOR's acts** (item 27), and they are here
+    because the environment is what they are about. `phone` draws the phone's
+    credential — the other end of §7f's per-topic ACL — and prints it once,
+    because it has to reach the phone. `credential` is §7b's: it gives a person
+    the credential the gate proves, and it is the one word of this surface that
+    takes an ARGUMENT, because the thing it changes is a NAME.
+
     The Podman is checked by the ENVIRONMENT and not here: the two ways out of a
     machine without it are §7a's sentence, and they are composed where the
     environment is (`bill_deploy/environment.py`). What this surface does is read
     the answer and turn it into an exit code — the `no_answer` of a terminal
     that could not ask being the one that decided nothing.
 
-    `ask` is injectable the way `boot` takes its own: a test walks the whole
-    offer without a terminal.
+    `ask` and `secret` are injectable the way `boot` takes its own: a test walks
+    the whole offer, and the whole credential conversation, without a terminal.
     """
     from bill_deploy import notifier, switch
 
     word = rest[0] if rest else "status"
-    if len(rest) > 1 or word not in (
-        "up", "down", "status", "notify", "switch", "forms",
-    ):
+    args = rest[1:]
+    if word not in WORDS:
+        return _reject("services")
+    if word == ARGUMENT:
+        if len(args) > 1:
+            return _reject("services")
+        if not args:
+            # The word needs to know WHOSE credential, and saying which words
+            # exist would not say that: the usage is this word's own.
+            print(tr("deploy.services.credential.ask"))
+            return USAGE
+    elif args:
         return _reject("services")
 
     if word == "status":
@@ -124,6 +157,15 @@ def _services(rest: list[str], ask: Ask | None = None) -> int:
         outcome = notifier.push(tr("services.notifier.test.title"),
                                 tr("services.notifier.test.body"))
         return OK if outcome == notifier.SENT else REFUSED
+    if word == "phone":
+        # §7f's other end, and the person's act: the phone's credential is drawn
+        # by the notifier, kept at `0600`, and PRINTED ONCE — it has to reach the
+        # phone, and the only road there is the person's eyes. A second run does
+        # not print it again (`notifier.subscribe`).
+        outcome = notifier.subscribe()
+        return OK if outcome in (notifier.PHONE_DRAWN, notifier.PHONE_HELD) else REFUSED
+    if word == ARGUMENT:
+        return _credential(args[0], ask, secret)
     try:
         if word == "switch":
             outcome = switch.to_gate(ask if ask is not None else _reader())
@@ -152,11 +194,68 @@ def _services(rest: list[str], ask: Ask | None = None) -> int:
     return OK if outcome in (UP, INSTALL, HOSTED) else REFUSED
 
 
-def _reader() -> Ask | None:
-    """A line reader, when there is a terminal to use."""
+def _credential(name: str, ask: Ask | None, secret: Ask | None) -> int:
+    """`bill-deploy services credential <name>` — the operator's act (§7b).
+
+    The credential is read WITHOUT ECHO and twice, exactly as the first
+    administrator's is (`bill admin`): it does not travel through the command
+    line, so it stays out of the shell's history and out of anybody's `ps`, and
+    it is read twice because a credential is not recovered — there is no
+    "forgot the password" in a folder on your own disk.
+
+    **The rules are the core's, and so are their sentences.** The length is
+    `actors.check_credential`'s and the mismatch is the same refusal the first
+    administrator's door raises, because it is the same rule and §3 is explicit
+    that whoever asks does not get to decide it. What this surface owns is the
+    conversation and the outcome: everything the ACT says is the environment's
+    (`environment.set_credential`).
+
+    A person nobody names is refused here with the deploy's own word and not as
+    an engine error: the name is what the gate asserts and what the `users.yml`
+    is keyed by, so a name nobody wears is a gate with nothing to prove.
+    """
+    if ask is None and secret is None:
+        ask, secret = _readers()
+    if ask is None or secret is None:
+        # The same refusal the first administrator's door makes: a credential
+        # typed where nobody could answer is not a credential.
+        print(tr("services.credential.no_tty"))
+        return REFUSED
+
+    try:
+        credential = secret(tr("services.credential.secret"))
+        if credential != secret(tr("services.credential.again")):
+            raise actors.AdminError("error.mismatch")
+        outcome = environment.set_credential(name, credential)
+    except (actors.AdminError, tables.TableError) as refused:
+        print(refused)
+        return REFUSED
+    except files.ReadOnly as error:
+        # The row is a write of the folder's, and the read-only switch is the
+        # one writer's rule — the same answer every other engine gives (§3).
+        print(tr("deploy.error.read_only", where=error.where))
+        return REFUSED
+
+    if outcome == environment.CREDENTIAL_UNKNOWN:
+        print(tr("services.credential.unknown", name=name))
+        return REFUSED
+    # `CHANGED` did everything it set out to; `PENDING` already said, in its own
+    # words, that the folder has the new credential and the gate does not.
+    return OK if outcome == environment.CREDENTIAL_CHANGED else REFUSED
+
+
+def _readers() -> tuple[Ask | None, Ask | None]:
+    """A line reader and a no-echo reader, when there is a terminal to use."""
     if not sys.stdin.isatty():
-        return None
-    return lambda question: input(question)
+        return None, None
+    import getpass
+
+    return (lambda question: input(question), getpass.getpass)
+
+
+def _reader() -> Ask | None:
+    """A line reader, when there is a terminal to ask a YES/NO question in."""
+    return _readers()[0]
 
 
 def _reject(word: str) -> int:

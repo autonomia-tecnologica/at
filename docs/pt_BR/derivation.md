@@ -168,6 +168,8 @@ python3 -m bill_deploy services up           # o caminho container: os serviços
 python3 -m bill_deploy services status       # o que está de pé, e em que imagem
 python3 -m bill_deploy services down         # abaixo; a pasta fica
 python3 -m bill_deploy services notify       # um alerta pelo notificador, provando a entrega
+python3 -m bill_deploy services phone        # o token de leitura do celular: sorteado, e impresso uma vez
+python3 -m bill_deploy services credential <nome>   # a credencial que o portão prova, e o provedor reiniciado
 .venv/bin/python -m unittest discover -t .   # as duas suítes (o venv traz o corretor)
 ```
 
@@ -177,7 +179,8 @@ Superfícies, e o estado de cada uma hoje:
 
 | superfície | como se chega | estado |
 |---|---|---|
-| `cli` | `bill <palavra>` | `help`, `version`, `webapp`, `services`, `admin`, `ask` e as tabelas |
+| `cli` | `bill <palavra>` | `help`, `version`, `webapp`, `admin`, `lang`, `ask` e as tabelas |
+| `cli` do deploy | `bill-deploy <palavra>` | `help`, `version` e as seis palavras de `services` mais as duas do operador — `phone` e `credential`; ele não carrega WebApp, e o Wizard dele é a fatia 3 do item 27 |
 | Wizard | — | fora do ar enquanto o item 9 não chega à fatia 3: `bill` sem palavra imprime o `help` |
 | WebApp | `bill webapp run` | lê e edita as tabelas, alcança o interpretador pelo chat e pelo balão, recusa subir numa pasta sem administrador e — havendo um — pede a credencial e não responde nada da API antes de ela ser provada; e é onde o teto se MOVE: a entrada Pessoas, com as telas do ator e do papel, a lista fechada contra a qual um papel se escreve, e a credencial de máquina que o Bill mina |
 

@@ -22,6 +22,11 @@ WORDS: tuple[Node, ...] = (
     # point of the return existing (`bill_deploy/switch.py`).
     # `notify` is §7f's, and it is the one word that proves the delivery by hand:
     # one alert, through the credential `up` created, to the topic.
+    #
+    # `phone` and `credential` are the OPERATOR's acts (item 27), and they are
+    # the environment's because the two things they change are: §7f's other end
+    # of the topic's ACL, and the credential §7b's gate proves. `credential` is
+    # the one word of this artifact that takes an argument — a NAME.
     Node(
         "services",
         "deploy.services.about",
@@ -32,6 +37,8 @@ WORDS: tuple[Node, ...] = (
             Node("switch", "deploy.services.switch.about"),
             Node("forms", "deploy.services.forms.about"),
             Node("notify", "deploy.services.notify.about"),
+            Node("phone", "deploy.services.phone.about"),
+            Node("credential", "deploy.services.credential.about"),
         ),
     ),
     Node("help", "deploy.help.about"),

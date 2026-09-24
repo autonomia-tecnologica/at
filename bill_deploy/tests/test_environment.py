@@ -70,6 +70,12 @@ SAID = (
     # never the value. The delivery's own sentences are gated beside it, in
     # `test_notifier.py`.
     "services.notifier.credential.at", "services.notifier.credential.absent",
+    "services.notifier.phone.at", "services.notifier.phone.absent",
+    # Item 27's second operator act (§7b): the credential, the derivation the
+    # provider reads, and the restart that makes the new one the one it proves.
+    "services.credential.changed", "services.credential.hosted",
+    "services.credential.unknown", "services.credential.pending",
+    "services.restarted",
 )
 
 
@@ -1127,8 +1133,13 @@ class TheDoor(FolderCase):
         node = tree.find("services")
         self.assertIsNotNone(node)
         assert node is not None
-        self.assertEqual([child.name for child in node.children],
-                         ["up", "down", "status", "switch", "forms", "notify"])
+        self.assertEqual(
+            [child.name for child in node.children],
+            ["up", "down", "status", "switch", "forms", "notify", "phone",
+             "credential"],
+            "a word the dispatch takes and the help does not offer (or the "
+            "other way round) is the defect §5's one-way rule exists for",
+        )
 
     def test_status_is_what_the_wordless_command_answers(self):
         code, text = self.quiet(main, ["services"])
@@ -1156,7 +1167,8 @@ class TheDoor(FolderCase):
         code, text = self.quiet(main, ["help"])
         self.assertEqual(code, OK)
         self.assertIn("services", text)
-        self.assertIn("up, down, status, switch, forms, notify", text)
+        self.assertIn(
+            "up, down, status, switch, forms, notify, phone, credential", text)
 
     def test_the_delivery_is_proved_by_hand_and_says_where_it_would_come_from(self):
         # §7f's proof, walked from the `cli`: one alert, through the credential,

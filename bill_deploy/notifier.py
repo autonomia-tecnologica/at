@@ -25,9 +25,21 @@ backup promise).
 has a password, so Bill draws one and hands it over on the STDIN of `podman exec
 -i` — never in the argv, which the whole machine reads through `ps`. The token
 itself is drawn BY ntfy inside the container and comes back on STDOUT, which is
-the one place Bill ever reads it; the argv never carries it. And nothing here
-prints a value: the messages name the FILE, `status` says whether it exists, and
-the delivery says what the notifier answered.
+the one place Bill ever reads it; the argv never carries it. And Bill's own
+credential is never printed: the messages name the FILE, `status` says whether
+it exists, and the delivery says what the notifier answered.
+
+**The phone's credential is printed, and it is printed exactly once.** The ACL
+has two ends, and §7f names the other one: Bill publishes, the phone reads. That
+token is the PERSON'S, and there is no way for it to reach a phone except
+through the person's eyes — so it is the one value this artifact prints, and it
+follows the rule item 10's machine credential already follows in the page: a
+credential Bill hands to somebody is handed over ONCE. Printed when it is drawn
+and never again: what is kept is the value the phone kept, the file is where a
+person goes to read it a second time, and a value that came out in a scrollback
+is not printed a third time to be safe (`subscribe`). Its scope is the mirror of
+Bill's — `read-only` on the topic, and nothing else — so the two tokens §6
+declares neither serve for the other's work nor for anything beyond the topic.
 
 **The service's own folder is where the token sits, and the container sees it.**
 That is the same place the configuration Bill wrote for ntfy already lives, and
@@ -65,9 +77,20 @@ LABEL = "bill"
 # one. Measured (the module's docstring).
 SCOPE = "write-only"
 
+# The other end of the ACL (§7f), and it is another ACCOUNT and not another
+# token of the same one: ntfy's access is per user and per topic, so one account
+# cannot be `write-only` and `read-only` on the same topic at once — and the two
+# ends §6 declares are two credentials, each with the scope its own work needs.
+PHONE_USER = "phone"
+PHONE_LABEL = "phone"
+PHONE_SCOPE = "read-only"
+
 # Where the credential lives: the service's own state folder (`environment.state`),
 # which is the one folder the container mounts and the one the backup covers.
 TOKEN_FILE = "token"
+# The phone's, beside it and inside the same folder — so the copied folder comes
+# back with BOTH ends of the ACL, which is what §3's backup promise costs.
+PHONE_FILE = "phone-token"
 
 # How much password Bill draws for the account it creates. The value is handed
 # over and forgotten — nobody logs in with it, and the credential that matters
@@ -90,10 +113,12 @@ TIMEOUT = 10.0
 # alphabet tomorrow still parses instead of silently answering none.
 TOKEN_WORD = re.compile(r"tk_[a-z0-9]{10,}")
 
-# The outcomes of `provision`, and of `push`. The `cli` is what turns the
-# push's into an exit code.
+# The outcomes of `provision`, of `subscribe`, and of `push`. The `cli` is what
+# turns the push's into an exit code.
 DRAWN = "drawn"       # Bill had none, and made one
 HELD = "held"         # Bill already had one, and it was left alone
+PHONE_DRAWN = "phone_drawn"  # the phone had none, and got one — shown once
+PHONE_HELD = "phone_held"    # the phone already had one, and it is not shown
 SENT = "sent"         # the notifier took the alert
 NO_TOKEN = "no_token"  # nothing to authenticate with
 FAILED = "failed"     # it was asked and did not happen
@@ -109,6 +134,41 @@ def token_file() -> Path:
     return environment.state(environment.NOTIFIER) / TOKEN_FILE
 
 
+def phone_file() -> Path:
+    """`App/services/notifier/phone-token` — the phone's credential (§7f).
+
+    The same folder as Bill's and for the same reason: the state of a service
+    lives under `App/services/<service>/`, so a copied folder carries both ends
+    of the ACL and comes back able to publish and to read.
+    """
+    return environment.state(environment.NOTIFIER) / PHONE_FILE
+
+
+def _held(path: Path) -> str | None:
+    """The value a `0600` file carries, or `None` when it holds nothing.
+
+    An empty file is nobody's credential and not a credential that is the empty
+    string: the caller has to be able to tell "there is none" from "there is
+    one" (`token`, `phone_token`).
+    """
+    try:
+        kept = path.read_text(encoding="utf-8").strip()
+    except FileNotFoundError:
+        return None
+    return kept or None
+
+
+def _keep(path: Path, value: str) -> Path:
+    """Write a credential at `0600` — the interim while the vault does not exist.
+
+    The mode is the writer's (`files.atomic_write_text`), because the value is
+    only unreadable if the permission is set on the file that is about to carry
+    it, and not after.
+    """
+    files.atomic_write_text(path, f"{value.strip()}\n", mode=0o600)
+    return path
+
+
 def token() -> str | None:
     """The credential, or `None` when Bill has none yet.
 
@@ -116,22 +176,26 @@ def token() -> str | None:
     moment of the POST and never travels through a message (§ the module's
     docstring).
     """
-    try:
-        held = token_file().read_text(encoding="utf-8").strip()
-    except FileNotFoundError:
-        return None
-    return held or None
+    return _held(token_file())
 
 
 def write_token(value: str) -> Path:
-    """Keep the credential at `0600` — the interim while the vault does not exist.
+    """Keep Bill's credential — never printed, and read only by the POST."""
+    return _keep(token_file(), value)
 
-    The mode is the writer's (`files.atomic_write_text`), because the value is
-    only unreadable if the permission is set on the file that is about to carry
-    it, and not after.
+
+def phone_token() -> str | None:
+    """The phone's credential, or `None` when it has none yet.
+
+    It IS printable, and it is printed in exactly one place (`subscribe`): what
+    a person needs here is where it is, and `status` says the file.
     """
-    files.atomic_write_text(token_file(), f"{value.strip()}\n", mode=0o600)
-    return token_file()
+    return _held(phone_file())
+
+
+def write_phone_token(value: str) -> Path:
+    """Keep the phone's credential beside Bill's, at the same `0600`."""
+    return _keep(phone_file(), value)
 
 
 def target() -> str:
@@ -233,10 +297,8 @@ def _inside(*argv: str, **kw: object):
                        "ntfy", *argv], **kw)
 
 
-def provision() -> str:
-    """Create Bill's credential in the notifier — the environment's own act (§7f).
-
-    Four calls, in this order, and each one is a decision:
+def _draw(user: str, label: str, scope: str) -> str | None:
+    """The four calls that make ONE credential in the notifier, in this order.
 
     1. **the account starts clean.** `user remove` first, because the only way a
        credential is ever re-drawn is a token file that went away, and that is a
@@ -246,10 +308,41 @@ def provision() -> str:
     2. **the account.** ntfy refuses a user with no password, so Bill draws one,
        hands it over on STDIN — never in the argv — and forgets it.
     3. **the scope.** §3 asks least privilege for whoever reaches Bill, and the
-       mirror of it is this line: the account may publish to the topic and do
-       nothing else.
+       mirror of it is this line: the account reaches the topic with the scope
+       its own work needs and does nothing else.
     4. **the token**, drawn by ntfy itself and read off its own line. Bill never
        invents the value, so it never has to write it into an argv.
+
+    `None` is a step that refused, and it has already been said in the caller's
+    own word for WHICH credential was being made (`subscribe`, `provision`).
+    """
+    _inside("user", "remove", user)
+    password = secrets.token_urlsafe(PASSWORD_BYTES)
+    added = _inside("user", "add", "--role", "user", user,
+                    input=f"{password}\n{password}\n")
+    if added.returncode != 0:
+        print(tr("services.notifier.undrawn", call=f"ntfy user add {user}"))
+        return None
+
+    scoped = _inside("access", user, TOPIC, scope)
+    if scoped.returncode != 0:
+        print(tr("services.notifier.undrawn", call=f"ntfy access {user} {TOPIC}"))
+        return None
+
+    created = _inside("token", "add", "--label", label, user)
+    found = TOKEN_WORD.search(created.stdout or "")
+    if created.returncode != 0 or found is None:
+        print(tr("services.notifier.undrawn", call=f"ntfy token add {user}"))
+        return None
+    return found.group(0)
+
+
+def provision() -> str:
+    """Create Bill's credential in the notifier — the environment's own act (§7f).
+
+    The write end of the ACL, and it is the environment that draws it: it is
+    made when the notifier comes up, by the four calls `_draw` names, and kept
+    in a `0600` file beside the notifier's own state.
 
     An environment that already has a credential is left exactly as it is: the
     file is the truth, and whoever wants a new one deletes it and brings the
@@ -262,26 +355,59 @@ def provision() -> str:
                  where=f"{environment.NOTIFIER_DATA}/{environment.NOTIFIER_AUTH}"))
         return FAILED
 
-    _inside("user", "remove", USER)
-    password = secrets.token_urlsafe(PASSWORD_BYTES)
-    added = _inside("user", "add", "--role", "user", USER,
-                    input=f"{password}\n{password}\n")
-    if added.returncode != 0:
-        print(tr("services.notifier.undrawn", call=f"ntfy user add {USER}"))
+    drawn = _draw(USER, LABEL, SCOPE)
+    if drawn is None:
         return FAILED
 
-    scoped = _inside("access", USER, TOPIC, SCOPE)
-    if scoped.returncode != 0:
-        print(tr("services.notifier.undrawn", call=f"ntfy access {USER} {TOPIC}"))
-        return FAILED
-
-    created = _inside("token", "add", "--label", LABEL, USER)
-    found = TOKEN_WORD.search(created.stdout or "")
-    if created.returncode != 0 or found is None:
-        print(tr("services.notifier.undrawn", call=f"ntfy token add {USER}"))
-        return FAILED
-
-    write_token(found.group(0))
+    write_token(drawn)
     print(tr("services.notifier.drawn", where=token_file(), topic=TOPIC,
              scope=SCOPE))
     return DRAWN
+
+
+def subscribe() -> str:
+    """Draw the phone's credential — the other end of the ACL, and PRINTS IT ONCE.
+
+    §6 says it in one line: in `ntfy` the ACL is per topic, **Bill publishes and
+    the phone reads**, and neither token serves for anything else. The write end
+    is `provision`'s and happens with the environment; this is the read end, and
+    it is the OPERATOR's act (item 27): the phone is not the machine the
+    environment runs on, so nothing here can be decided by bringing the
+    environment up.
+
+    **It is the one value this artifact prints, and it is printed here.** The
+    token has to reach the phone, and the only road to a phone is the person's
+    eyes — so the value comes out of the container on `token add`'s stdout,
+    lands in a `0600` file, and is shown ONCE, in the same breath. A second run
+    does not print it: the file is where a person reads it again, and the value
+    is the one the phone kept (the module's docstring).
+
+    Two scopes and not one, and it is measured (§ the module's docstring): the
+    account may READ the topic and nothing else — it cannot publish to it, and
+    it cannot reach another one. An environment that already has the phone's
+    credential is left alone, and the way to a new one is deleting the file and
+    running this again, which is the rotation `_draw` starts clean for.
+    """
+    if phone_token() is not None:
+        print(tr("services.notifier.phone.held", where=phone_file()))
+        return PHONE_HELD
+    if not podman.present():
+        # A machine with no runtime has no notifier to ask, and there is nothing
+        # to wait for: `up` is what names the two ways out, and this word is the
+        # operator's and can be reached before the environment ever stood.
+        print(tr("services.no_podman.status"))
+        return FAILED
+    if not _ready():
+        print(tr("services.notifier.not_ready",
+                 where=f"{environment.NOTIFIER_DATA}/{environment.NOTIFIER_AUTH}"))
+        return FAILED
+
+    drawn = _draw(PHONE_USER, PHONE_LABEL, PHONE_SCOPE)
+    if drawn is None:
+        return FAILED
+
+    write_phone_token(drawn)
+    print(tr("services.notifier.phone.drawn", token=drawn, topic=TOPIC,
+             scope=PHONE_SCOPE, url=environment.notifier_url(),
+             where=phone_file()))
+    return PHONE_DRAWN

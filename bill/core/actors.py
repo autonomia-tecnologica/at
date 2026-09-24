@@ -443,6 +443,30 @@ def check_credential(credential: str) -> None:
         raise AdminError("error.short", min=MIN_CREDENTIAL)
 
 
+def change_credential(row: dict, credential: str) -> dict:
+    """A person's credential replaced — one act on one row (item 27, §7b).
+
+    §3 says Basic and Forms are the SAME credential, and on the container path
+    the gate proves it too: so replacing it is not three things but one, and it
+    is here because the derivation is the engine's (`tables.edit` hashes on the
+    way in, `tables._hashed`) and the length is the rule the first administrator
+    is already held to — whoever asks does not get to decide the rule.
+
+    **The credential that was there is not recoverable, and that is the whole
+    of what this does.** The row keeps a derivation, so nothing here can put
+    the previous one back: what the door takes from this moment on is what was
+    just typed. On the container path the change only reaches the gate when the
+    provider is started again, because `users.yml` is read at START — which is
+    the deploy's act and not this module's (`environment.set_credential`).
+
+    A person with no credential is a person who does not enter (`admins`), and
+    GIVING them one is the same act as replacing it: the row is what the
+    entrance reads, and there is no second door for a first credential.
+    """
+    check_credential(credential)
+    return tables.edit("actor", store.number_of(row), {"credential": credential})
+
+
 def create_admin(name: str, credential: str) -> dict:
     """The row of the person who administers, with the role created before it.
 

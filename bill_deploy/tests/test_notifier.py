@@ -47,7 +47,11 @@ SAID = (
     "services.notifier.undrawn", "services.notifier.no_token",
     "services.notifier.delivered", "services.notifier.undelivered",
     "services.notifier.test.title", "services.notifier.test.body",
-    "deploy.services.notify.about",
+    # §7f's other end: the phone's credential, and the two sentences that carry
+    # it — one of them carrying the VALUE, which is what makes it the one
+    # message of this product a person has to be able to read twice.
+    "services.notifier.phone.drawn", "services.notifier.phone.held",
+    "deploy.services.notify.about", "deploy.services.phone.about",
 )
 
 

@@ -112,6 +112,13 @@ HOSTED = "hosted"         # the folder stays on the hosted path, and nothing mov
 NO_ANSWER = "no_answer"   # no terminal to ask in: neither way was taken
 FAILED = "failed"         # a service did not come up
 
+# The outcomes of the gate's credential change — item 27's operator act (§7b).
+# The row is written in all three: what separates them is how far the change
+# travelled, and the person is owed exactly that difference.
+CREDENTIAL_CHANGED = "changed"   # the row, the derivation and the provider
+CREDENTIAL_UNKNOWN = "unknown"   # nobody in this folder wears that name
+CREDENTIAL_PENDING = "pending"   # the folder has it; the gate does not yet
+
 # Where the site is, and it is Bill's own (§3, §6): the environment's Caddy
 # publishes Bill's site, and it publishes it on the loop until the gate exists —
 # exposure demands authentication, and the container path's is the gate (§7b).
@@ -501,7 +508,7 @@ def _notifier_command() -> tuple[str, ...]:
 
     The image's entrypoint is `ntfy` and it carries **no `CMD` at all**: run with
     nothing after the image, it prints its own help and exits, which is a
-    notifier that never comes up and a `bill services status` that says so
+    notifier that never comes up and a `bill-deploy services status` that says so
     forever. So the subcommand is a decision of Bill's, written where every other
     decision about a container is. It is a callable like the WebApp's even though
     it resolves nothing, because `Service.command` has one shape.
@@ -1143,7 +1150,7 @@ def up(ask: Ask | None = None) -> str:
     creates lives in the database the notifier's server writes when it starts and
     nothing can be created before that. And an environment whose services stood
     IS up: what a credential that did not get made costs is the delivery, which
-    has its own door (`bill services notify`) and its own line in `status` —
+    has its own door (`bill-deploy services notify`) and its own line in `status` —
     rolling the containers back over it would be undoing the environment the
     person asked for in the name of the cherry on the cake.
     """
@@ -1181,6 +1188,109 @@ def up(ask: Ask | None = None) -> str:
 
     notifier.provision()
     return UP
+
+
+def _service(name: str) -> Service | None:
+    """A service of the manifest by its name, or `None` — the manifest is the list."""
+    return next((service for service in SERVICES if service.name == name), None)
+
+
+def restart(name: str) -> bool:
+    """Put one service's container up again, with the files Bill writes for it.
+
+    It exists for the gate and for one reason (`set_credential`): the provider
+    reads `users.yml` when it STARTS, so a derivation rewritten under a standing
+    container is a derivation nothing proves — the act that changes a credential
+    is only complete when the container has read the file again.
+
+    **It is not `up`**: nothing is pulled (the container was standing, so the
+    image is here) and the pin is not re-recorded. What it IS is `_prepare` —
+    the service's own writers, run again — and then the container recreated from
+    the same argv `_start` would use. A service whose container never stood is
+    not restarted and answers `False`: there is nothing to start again, and what
+    brings it up is `up`, with the pull and the pin (`set_credential` says so).
+
+    **The session secret is not re-drawn, and that is what makes this cheap.**
+    It is drawn once and kept (`_drawn`), and it is what seals the session
+    cookie: the same value across a restart keeps every session that was open,
+    and the registry those sessions live in is the folder's (`IDENTITY_DATA`).
+    §3 declares that price where the operator's act is recorded, because it is
+    the one thing a person changing a credential has to know.
+    """
+    service = _service(name)
+    if service is None or not podman.present():
+        return False
+    if _state_of(service) == ABSENT:
+        return False
+
+    where = _prepare(service)
+    image = running(service, held())
+
+    for address in addresses(service):
+        if not address_ready(address):
+            print(tr("services.up.waiting", service=tr(service.label),
+                     address=address))
+        if not wait_for(address):
+            print(tr("services.up.no_address", service=tr(service.label),
+                     address=address))
+            return False
+
+    # The name is the service, and two containers cannot share one — the same
+    # line `_start` runs, for the same reason.
+    podman.run(["rm", "--force", container(service.name)])
+    if podman.run(run_argv(service, image)).returncode != 0:
+        print(tr("services.up.failed", service=tr(service.label),
+                 reference=image.reference()))
+        return False
+
+    print(tr("services.restarted", service=tr(service.label), where=where))
+    return True
+
+
+def set_credential(name: str, credential: str) -> str:
+    """Give a person the credential the gate proves — the operator's act (§7b).
+
+    Item 27's second operator act, and the three things it is are one sentence:
+    **who** is an actor belongs to Bill, the row carries the credential, and the
+    gate proves it — so the row is written (`actors.change_credential`, which
+    derives it like every other), the `users.yml` is derived from it by the
+    service's own writer (`_prepare`), and the provider is started again so that
+    the derivation new is the one it proves (`restart`).
+
+    **The hosted path has no gate, and that is not an error.** §3 says Basic and
+    Forms are the same credential, so the row changes and there is nothing to
+    restart: the door takes the new credential on the next request. It is SAID,
+    because a person who changed a credential expects a door to take it, and
+    being quiet about which door would be the lie.
+
+    **The price of the restart is declared and not hidden.** The sessions
+    already open are not evicted — the session secret is the same and the
+    registry is the folder's — so a credential changed because it leaked leaves
+    the sessions it had opened standing until they expire. §3 records it; this
+    function says it on the screen (`services.credential.changed`), because
+    whoever is changing a credential is the one who has to know.
+
+    A name nobody wears is `CREDENTIAL_UNKNOWN` and not an error: `named` is the
+    one lookup the entrance and the gate share, so this answers what the door
+    would answer, with the words the deploy owns.
+    """
+    row = actors.named(name)
+    if row is None:
+        return CREDENTIAL_UNKNOWN
+    who = str(row.get("name", "")).strip()
+
+    actors.change_credential(row, credential)
+
+    if not gate.on_gate():
+        print(tr("services.credential.hosted", name=who))
+        return CREDENTIAL_CHANGED
+    if not restart(IDENTITY):
+        print(tr("services.credential.pending", name=who))
+        return CREDENTIAL_PENDING
+
+    print(tr("services.credential.changed", name=who,
+             where=state(IDENTITY) / IDENTITY_USERS))
+    return CREDENTIAL_CHANGED
 
 
 def ways_out(ask: Ask | None = None) -> str:
@@ -1246,9 +1356,10 @@ def status() -> None:
     The credential's import is inside the function because `notifier` reads THIS
     module — the two are one subject.
 
-    §7f's credential closes the report, and it closes it with the FILE and never
-    with the value: the token is a secret, and what a person needs to know is
-    that it exists and where it lives (`bill_deploy/notifier.py`).
+    §7f's credentials close the report, and each line closes with the FILE and
+    never with the value: Bill's token is a secret and the phone's is printed
+    once, at the moment it is drawn (`bill_deploy/notifier.py`), and what a
+    person needs from this report is that each one exists and where it lives.
     """
     from bill_deploy import notifier  # noqa: PLC0415 — it reads this module
 
@@ -1278,3 +1389,9 @@ def status() -> None:
              scope=notifier.SCOPE)
           if notifier.token() is not None
           else tr("services.notifier.credential.absent", where=where))
+
+    phone = notifier.phone_file()
+    print(tr("services.notifier.phone.at", where=phone, topic=notifier.TOPIC,
+             scope=notifier.PHONE_SCOPE)
+          if notifier.phone_token() is not None
+          else tr("services.notifier.phone.absent", where=phone))
