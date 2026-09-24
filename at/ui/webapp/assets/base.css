@@ -1,0 +1,1990 @@
+/* base — the RULES of AT's look: layout and shape, the same for every theme.
+
+   Served ALWAYS and AFTER the theme (`index.html`): the theme brings the
+   TOKENS (values named by ROLE) and this file consumes them — every rule here
+   reads `var(--token)`. A THEME ONLY CHANGES VARIABLES (rule, 2026-09-13):
+   who declares a selector is this file; the theme declares only `:root`. */
+
+/* ===== 1. THE CONTRACT ================================================
+   What this file IS, and the rule that makes a new piece fit without becoming
+   a hack (2026-09-14). The base is the design system of the AT: the RULES
+   and the vocabulary of ROLES that the themes fill. Every interface piece
+   enters fitted into one of these roles, and a new role is declared BEFORE
+   the piece is born — never after, so that there is nothing to reinterpret.
+
+   THE LAYERS, by role (the tokens each one reads):
+     · surfaces — what stays BEHIND: `--bg` (the
+       window), `--sidebar-bg`, `--main-bg`, `--panel`
+       (the secondary surface), `--pop-bg` (what floats). A surface also has a
+       MATERIAL, and it is a layer of its own (2026-09-21): the frost
+       (`--surface-blur`), the elevation (`--shadow-card`) and the two images a
+       card may wear (`--surface-light`, `--surface-texture`). It is the same
+       gesture the overlays had from the start (`--pop-blur`, `--shadow-pop`) and
+       it took until today to reach the one surface a person reads;
+     · chassis — what SEPARATES: the dividers that are not a box (`--divider-side`
+       on the panel, `--divider-title`/`--divider-head` on the two halves of the
+       title line, 2026-09-21) and the veil they dissolve into (`--sheen-title`,
+       `--sheen-head`). A theme may return a whole `border-image` here, which is
+       the only opening the DIVIDING LINE has that a border cannot give it;
+     · controls — what gets PRESSED: the panel row (`nav button`), the FOLD
+       (`.fold-head` — the header that opens and closes, and is ONE only: the panel
+       folder `nav .folder` and the page group `.group-head`; the body it animates
+       is `.foldable`/`.fold`), the file item (`nav .entry`), the Settings choice
+       (`.theme`), the on/off (`.switch`) and the SINGLE choice (`.radio` — the
+       NATIVE radio, with the line that wraps it in `.radio-row` and the group in
+       `.radios`), the VALUE PICKER (`.pick` — the value of a field the entity
+       declares `editable`, in the OPEN record: it is the one control there, and
+       the panel it opens is the overlay's) and the COLLAPSE BUTTON (`.nav-toggle`,
+       in the panel's FOOT — it is what governs the rail of section 2, and on the
+       rail it is the only target left, which is why the rail hides that foot's rows
+       and never the foot). The states are four and have names: REST, POINTER
+       (`:hover`), SELECTED (`.on`) and OPEN (`:not(.closed)`, the fold's) — the
+       switch has only two (REST and SELECTED), because its state is the POSITION
+       of the button, not a pointer highlight. A control is also a BOX with a
+       VOLUME, which is `--control-elev` (2026-09-21) — the bezel, the top light
+       and the drop in one `box-shadow`, and it belongs to the RAISED controls
+       only: the ghosts (`.pick`, `.back`, the subproject row) have no relief at
+       rest by design;
+     · text — what gets READ: ink (`--ink`), support (`--dim`), selected
+       (`--color-selected`), link (`--color-link`) and the header pairs. It also
+       owns the NAME at the top of the panel, which a theme may wear WRITTEN or
+       DRAWN (`--brand-mark`, `--brand-mark-w`/`-h`, `--brand-word-ink`,
+       2026-09-20);
+     · layout — where things SIT: the width of the panel (full and
+       collapsed), the height of the two title strips, the nesting step
+       and the breathing rooms. It also owns the RESPONSIVE — the two
+       window-width bands in which those values give way (section 5);
+     · overlay — what floats OVER: the panels that hang on a control or on a
+       point (`.pop`, the `z-index`) — the column's filter, its columns, the
+       row's menu and the VALUE PICKER. It is FROM HERE that a future popup
+       composes — radius, shadow, ground and motion already exist; it adds only
+       what is new (the veil behind and the trapped focus, which is BEHAVIOUR, in
+       JS);
+     · motion — the TIME (`--speed`, `--ease`) and the two doors that silence
+       it (the system preference and the person's choice, in section 4).
+
+   THE BREAKPOINT IS A DECLARED EXCEPTION (2026-09-15): a media query DOES NOT
+   READ TOKENS — `@media (max-width: var(--x))` is invalid in CSS —, so the band
+   numbers and the few values that exist ONLY INSIDE them live in this file, as
+   literals. It is the only family of layout value that does not live in a theme,
+   and it is like that by LIMIT OF THE LANGUAGE, not by choice: every value that
+   can derive from a token does (`calc(var(--cell-pad) - 2px)`), and what cannot
+   is said where it is (section 5).
+
+   THE HARD RULE (2026-09-14): **the box of a control is a base rule pinned to
+   the CLASS of the control itself — never to an ancestor the JS builds.** The
+   defect that gave rise to it: `.settings .toggle` did not match the motion
+   button, because only ONE of the screens built the `.settings` ancestor — the
+   button wore the browser default, and nothing in the file said so. Without an
+   ancestor, the failure mode disappears BY CONSTRUCTION: there is no ancestor to
+   get wrong. (A Python test does not catch this — there is no DOM here —, and
+   that is why the guarantee is the rule, not a check.) */
+
+/* ===== 1b. THE TYPEFACES ================================================
+   Five families, all OFL-1.1, served by THIS host through the `/vendor/` door —
+   the same door `marked` comes through, with the same pin (the exact version and
+   the lockfile) and the same identity on the wire. `@font-face` is an at-rule
+   and not a selector, so it lives HERE and not in a theme: a theme keeps NAMING
+   the family (`--font-ui`, `--font-blackletter`, `--font-pixel`) and nothing
+   else, which is the contract it already had (2026-09-21).
+
+   WHAT THIS FIXES. The themes were written naming the faces their era wore — EB
+   Garamond, UnifrakturMaguntia, Inter, Silkscreen — and NOT ONE of them was on
+   the machine: `fc-match` sent every one to Noto Sans, so the gothic title was
+   never gothic, the glass app was never Inter, and the pixel hotel was never
+   pixel. Half of "this looks homemade" was that, and it cost no theme file: the
+   stacks are unchanged, the faces simply exist now. The one exception is
+   Frutiger Aero, which names Frutiger and Segoe UI — both PROPRIETARY and not
+   obtainable — and takes Open Sans, the closest open humanist of that line.
+
+   THEY ARE LAZY. A browser fetches a face only when a rendered element asks for
+   that family, so a theme that names none of the five downloads none of them,
+   and one that does pays about 20 KB per weight — the LATIN subset only, which
+   is the whole of what this app's text needs.
+   `swap` and not `block`: the text is never invisible, and these come off
+   localhost in a millisecond.
+   THE NAMES ARE THE UPSTREAM NAMES on purpose: the OFL protects them, and the
+   themes already write them — renaming would cost 20 theme files to fix a
+   problem that does not exist. */
+@font-face { font-family: "EB Garamond"; font-style: normal; font-weight: 400;
+             font-display: swap; src: url("/vendor/font-eb-garamond-400") format("woff2"); }
+@font-face { font-family: "EB Garamond"; font-style: normal; font-weight: 500;
+             font-display: swap; src: url("/vendor/font-eb-garamond-500") format("woff2"); }
+@font-face { font-family: "EB Garamond"; font-style: normal; font-weight: 600;
+             font-display: swap; src: url("/vendor/font-eb-garamond-600") format("woff2"); }
+@font-face { font-family: "EB Garamond"; font-style: normal; font-weight: 700;
+             font-display: swap; src: url("/vendor/font-eb-garamond-700") format("woff2"); }
+@font-face { font-family: "UnifrakturMaguntia"; font-style: normal; font-weight: 400;
+             font-display: swap; src: url("/vendor/font-unifrakturmaguntia") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 400;
+             font-display: swap; src: url("/vendor/font-inter-400") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 500;
+             font-display: swap; src: url("/vendor/font-inter-500") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 600;
+             font-display: swap; src: url("/vendor/font-inter-600") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 700;
+             font-display: swap; src: url("/vendor/font-inter-700") format("woff2"); }
+@font-face { font-family: "Open Sans"; font-style: normal; font-weight: 400;
+             font-display: swap; src: url("/vendor/font-open-sans-400") format("woff2"); }
+@font-face { font-family: "Open Sans"; font-style: normal; font-weight: 500;
+             font-display: swap; src: url("/vendor/font-open-sans-500") format("woff2"); }
+@font-face { font-family: "Open Sans"; font-style: normal; font-weight: 600;
+             font-display: swap; src: url("/vendor/font-open-sans-600") format("woff2"); }
+@font-face { font-family: "Open Sans"; font-style: normal; font-weight: 700;
+             font-display: swap; src: url("/vendor/font-open-sans-700") format("woff2"); }
+@font-face { font-family: "Silkscreen"; font-style: normal; font-weight: 400;
+             font-display: swap; src: url("/vendor/font-silkscreen-400") format("woff2"); }
+@font-face { font-family: "Silkscreen"; font-style: normal; font-weight: 700;
+             font-display: swap; src: url("/vendor/font-silkscreen-700") format("woff2"); }
+
+/* ===== 2. THE RULES ===================================================== */
+  * { box-sizing: border-box; }
+  body { margin: 0; height: 100vh; display: flex; background: var(--bg);
+         color: var(--ink);
+         font: var(--font-size)/var(--line-height) var(--font-ui); }
+  /* THE HAIRLINE THAT DISSOLVES AT THE ENDS (2026-09-15): the CHASSIS dividers do
+     not end at a dry point. The vertical that separates the panel from the main
+     area fades at BOTH ends; the lying one that closes the two title strips fades
+     at the two WINDOW EDGES — the near half fades on the left and stays whole on
+     the right, and the far one does the opposite, so that what you see is ONE
+     line crossing the page and dissolving at the ends. It is the idiom of 2026 for
+     a line nobody wants to read end to end (Linear, Vercel), and it demands the
+     ASYMMETRY: symmetric in the two halves, the dissolve would open a clearing
+     exactly at their meeting point, in the middle of the window.
+     WHY ONLY HERE: `border-image` does not go with a rounded corner. The BOXES
+     (popover, group, switch, the choice) keep the whole hairline of their token,
+     because it is the corner that defines them; the chassis is straight from end
+     to end, and it is where the dissolve fits.
+     WHO PAINTS is the `--line` of each theme — the divider has no colour of its
+     own. The divider's token is still read, and what it still gives is the
+     THICKNESS: a `border-image` is drawn in the AREA of the border, so the 1px
+     comes from the token and the colour from the dissolve. The fractions are
+     proportion, never pixels: the breathing room belongs to the drawing, and a
+     spacing in numbers here would be a theme value living in the wrong file.
+     THE DISSOLVE IS THE DEFAULT, NOT THE LAW (2026-09-21). Until today a theme
+     could choose the colour and the thickness of a divider and nothing else — the
+     DRAWING was a literal here, and the Gothic said out loud that it wanted to
+     ornament its lines and could not. The three chassis dividers now read a token
+     of their own — `--divider-side` (the panel's vertical, dissolving at both
+     ends), `--divider-title` (the near half of the lying line, whole at the
+     meeting point) and `--divider-head` (the far half, whole there too) — and the
+     fallback of each IS the literal it used to be, so every theme that says
+     nothing keeps the exact pixels it had. What a theme may now return is a whole
+     `border-image`: a repeating gradient for a dashed rule, stacked gradients for
+     a `double`, or an ornament drawn in a file of `icons/` — the same door the
+     marks and the bucket icons already come through, and the only one the page's
+     `default-src 'self'` accepts. `none` is the documented way back to the plain
+     `border-bottom`. The ASYMMETRY between the two lying halves is part of the
+     drawing: a theme that overrides ONE of them has to answer for the meeting
+     point in the middle of the window. */
+  nav { position: relative;      /* the anchor of the FOOT, below */
+        width: var(--sidebar-width); flex: 0 0 var(--sidebar-width);
+        border-right: var(--sidebar-border);
+        border-image: var(--divider-side, linear-gradient(to bottom, transparent 0,
+                                                          var(--line) 4%, var(--line) 96%,
+                                                          transparent 100%) 1);
+        display: flex; flex-direction: column; overflow: hidden;
+        background: var(--sidebar-bg);
+        /* The GLASS: with a translucent sidebar, what is seen behind it is the
+           window ground — and the blur is what dissolves it (Frutiger Aero).
+           `none` in the opaque themes, where there is nothing to blur. */
+        backdrop-filter: var(--panel-blur);
+        /* The SAME bottom-edge breathing room of the main area (see `main`): it is
+           what unsticks Settings from the foot of the window, and without it the
+           panel ends at one height and the main area at another. */
+        padding-bottom: var(--bottom-gap);
+        transition: width var(--speed) var(--ease),
+                    flex-basis var(--speed) var(--ease); }
+  /* COLLAPSING ANIMATES — but what moves is the BOX, never the text (2026-09-15).
+     The first version animated the width and let the content readjust along with
+     it: the item labels rewrote themselves every frame ("rebuilding the text",
+     Rafael's report), and no trick hides that — the width IS the layout, and
+     animating it with the content loose is asking for a relayout sixty times a
+     second. What makes the gesture clean is the CONTENT having its own and
+     CONSTANT width (`#kinds { width: var(--sidebar-width) }`, below): it never
+     readjusts, and the box that shrinks only CLIPS it. The border is what travels;
+     the panel slides inside it. And what leaves the scene does not vanish at once
+     — `display: none` would be a blink in the middle of the movement: it fades, in
+     the same duration, and stays THERE with its layout still — and it is that pair
+     that gives the gesture back: animation without rewriting. */
+  /* THE COLLAPSED PANEL — THE RAIL (2026-09-15): collapsing is the sidebar keeping
+     only the title strip and the button, and the content panel taking the rest. The
+     rail width belongs to the THEME (`--sidebar-rail`), like the full width, and it
+     travels in the same duration as everything: collapsing is motion, and it obeys
+     the two doors (section 4). WHO COMMANDS is the person's choice, and the class
+     that says it lives in `<html>` (`nav-rail`, `nav-open` — `js/nav.js`). The
+     window width only decides when there was NO choice, and that half belongs to
+     section 5, not here: the same state, by two doors, and the person's first. THE
+     LIST goes away, and does not squeeze: at 44–52px, an item label does not fit.
+     What stays is the button, which is the only target of the rail. */
+  html.nav-rail nav { width: var(--sidebar-rail); flex-basis: var(--sidebar-rail); }
+  html.nav-rail #kinds, html.nav-rail .brand, html.nav-rail .side-foot > .file,
+  html.nav-rail .side-foot > .sep {
+    opacity: 0; visibility: hidden;
+    transition: opacity var(--speed) var(--ease), visibility 0s var(--speed); }
+  /* THE FOOT KEEPS ITS LAST ROW ON THE RAIL (2026-09-22). The list and the rows go
+     with the panel; the collapse button does not, because on the rail it is the
+     ONLY way back out — a hidden door with no handle. It was the reason the button
+     used to sit in the title strip, and it is the reason the foot is hidden ROW BY
+     ROW now instead of whole: `opacity: 0` on the box would have taken the button
+     with it, and a child cannot climb out of its ancestor's fade. So the rail hides
+     the buttons that are DESTINATIONS and keeps the one that is a CONTROL. */
+  html.nav-rail .side-foot { width: var(--sidebar-rail); }
+  /* THE COLLAPSE BUTTON: the glyph is a SIGN of the file, like the filter funnel and
+     the fold triangle — and the SIZE belongs to the theme (`--nav-toggle-size`),
+     because a button that is the only target of a 44px rail cannot have a label's
+     body (the same lesson as `--caret-size`). The state goes by `aria-expanded`,
+     which the page keeps: whoever cannot see the rail hears what it is saying.
+     IT IS A ROW OF THE FOOT (2026-09-22), and it got there from the title strip.
+     The strip was the wrong place for it, and the reason is one the strip cannot
+     fix: the foot is the box that is ALWAYS on screen, so the control that hides
+     the tree is never behind a scroll of the tree. As the last row it also reads
+     as what it is — the end of the panel, the door out — instead of sharing the
+     strip with the page's NAME, which is a different kind of thing (`#head-right`
+     is what a strip OFFERS; a control of the panel belongs with the panel's own).
+     IT CARRIES ITS OWN NAME (2026-09-22). As a bare glyph with the words in an
+     `aria-label` far away from it, it asked a sighted person to guess what `«` did
+     — so the row now says what happens to the panel, in the same body as the three
+     rows above it, and the GLYPH is what moves: the theme still sizes it
+     (`--nav-toggle-size`), the label reads at the row's size so it does not shout
+     over the foot, and on the rail the words give way and the arrow turns.
+     THE GLYPH IS THE GUILLEMET AND STAYED THE GUILLEMET. Single angle quotes
+     (`<` / `>`) were tried here on 2026-09-22 and read badly: at this size, next to
+     a 13px word, a lone `<` is a MATHEMATICAL operator — it reads as "less than",
+     and the eye goes looking for the thing it compares against. The guillemet is a
+     TYPOGRAPHIC mark that only ever means "this way", and it carries the weight of
+     a sign at `--nav-toggle-size` where the single angle does not. Which is the
+     general rule this row is an instance of: a sign borrowed from punctuation
+     beats a sign borrowed from arithmetic.
+     (It sat next to the name from 2026-09-15, and the two defects that put it there
+     — the `margin-left: auto` beating `justify-content`, and the row rule giving it
+     a 187px box with the glyph at the LEFT edge — are both gone with the place.) */
+  /* A CONTROL IS NOT TEXT (2026-09-18): the glyph is a `::before` inside a button,
+     so dragging on it painted the browser's SELECTION over it — the highlight of a
+     link, on a thing that is not one. What this rule says is that the button is a
+     control: you press it, you do not read it. */
+  /* IT IS A ROW OF THE FOOT LIKE THE OTHER TWO (2026-09-22), and that is a rule of
+     the DESIGN SYSTEM, not a look: it wears what `nav button` already gives every
+     row — the same family, weight, ink and line — and this rule only adds what is
+     its own (the sign before the words, and where the two sit relative to each
+     other). NO `color` AND NO `line-height` HERE. It carried `--dim` and a
+     `line-height: 1` while it was a bare glyph, and both survived the move into the
+     foot by accident: at 1 the row's text sat on a tighter line than the rows above
+     it, and in the support ink it read as a caption ABOUT the foot instead of as one
+     of its items. A row that looks like a row is the whole point — the sign is what
+     makes it a control.
+     THE SIGN SITS ON THE TEXT'S BASELINE, and it is the TEXT'S SIZE. Baseline
+     because a flex item's content sits at the top of its stretched box, which put
+     the two lines apart by the difference in half-leading — about 2px, small enough
+     to read as "something is off" and too small to name. Text size because
+     `--nav-toggle-size` was written for a glyph that IS the whole button on a 44px
+     rail, and that is the only place it is still right: a guillemet's ink sits
+     around the x-height, so a bigger em lifts the ink clear of the words it belongs
+     to, and where the ink is is the font's business, not the box's. One size, one
+     baseline — nothing left to nudge, in any theme, at any font. */
+  .nav-toggle { justify-content: flex-start; gap: var(--sidebar-gap);
+                align-items: baseline;
+                user-select: none; }
+  .nav-toggle::before { content: "«"; line-height: 1; }
+  html.nav-rail .nav-toggle { justify-content: center; padding-inline: 0; }
+  html.nav-rail .nav-toggle::before { content: "»";
+                                      font-size: var(--nav-toggle-size); }
+  /* 44px has no room for a sentence: on the rail the NAME goes and the arrow stays. */
+  html.nav-rail .nav-toggle > .t { display: none; }
+  /* WHO SCROLLS is the LIST, not the sidebar (2026-09-13). Whoever scrolls loses
+     the width of the bar, and the title strip has to cross the whole sidebar: the
+     line it closes is a sibling of the `header`'s, and a line stopping 12px before
+     the edge is not the same line. On top of that, the title stops scrolling with
+     the list — the two lines stay aligned the whole time, not only at the top. */
+  /* The LIST has a width of its OWN, that of the full sidebar, and it never
+     changes: it is what the `nav` clips when it shrinks. Without this, the list
+     would follow the box and the labels would rewrite every frame of the
+     animation (see the `nav`, above). A flex item is only stretched when its
+     width is `auto` — declared, it wins, and that is what pins it. */
+  #kinds { flex: 1; min-height: 0; overflow-y: auto;
+           width: var(--sidebar-width);
+           /* THE ROOM THE FOOT COVERS. The foot is OUT of the flow (below), so the
+              list has to end with the same amount of nothing — otherwise the last
+              row can never be scrolled clear of it and the panel hides an item
+              nobody can reach. THE NUMBER is the foot's height MINUS the bottom
+              breathing room, which is how deep it bites; measured across the themes
+              it ran 54-61px, and 64 was the default that cleared all of them.
+              THE DEFAULT IS 96 SINCE 2026-09-22, and the gain is the collapse
+              button: it moved into the foot from the title strip (see `.nav-toggle`
+              below), so every theme's foot grew by one row and the old number would
+              have left the last row of the tree under it. A theme with a taller
+              foot declares its own `--foot-space`; a shorter one only pays a few
+              pixels of air at the end of the scroll. */
+           padding-bottom: var(--foot-space, 96px); }
+  /* THE FOOT OF THE PANEL — the buttons that are ALWAYS on screen, with the list
+     scrolling BEHIND them (2026-09-20). It is OUT OF THE FLOW and pinned to the
+     bottom: in the flow it would be one more item of the column and the list would
+     end above it, and what is wanted is the opposite — a long tree passing UNDER
+     the box, which is why the box carries the panel's own ground (`--sidebar-bg`,
+     blur included where the theme is glass) and the list is padded by
+     `--foot-space`. It COLLAPSES with the panel — the rail rule above takes it
+     away with the list —, and it sits INSIDE the bottom breathing room, so the
+     strip that reveals the auto-hiding taskbar stays free. */
+  .side-foot {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    width: var(--sidebar-width);
+    /* IT REACHES THE FOOT OF THE WINDOW *AND* CARRIES THE BREATHING ROOM: the box
+       covers the last `--foot-space` of the list and runs to the very bottom edge —
+       a ground with a gap under it would show the list through the gap —, and the
+       `--bottom-gap` becomes the box's own padding, so the BUTTON keeps the
+       distance from the screen edge that token exists for (the strip that reveals
+       the auto-hiding taskbar). */
+    padding-bottom: var(--bottom-gap);
+    background: var(--sidebar-bg);
+    backdrop-filter: var(--panel-blur); }
+  /* WHAT LEAVES THE SCENE fades and STAYS there — with its layout still, which is what
+     prevents the rewrite. The `visibility` comes in LATE on purpose: it takes it out
+     of the keyboard's reach at the END of the fade, never at the start, and returns at
+     once when the panel opens (the `0s` without delay of the resting state). */
+  #kinds, .brand, .side-foot {
+    transition: opacity var(--speed) var(--ease), visibility 0s; }
+  /* THE TITLE STRIP: the sidebar (`nav h1`) and the main area (`header`) open
+     at the SAME height — the line the two close has to be a single one. AND THE
+     HEIGHT IS A CALCULATION, not a value the theme chooses (2026-09-15): what
+     is wanted is the TOP distance to equal the LEFT one, and since what lives
+     in the strip is centred, that only holds if the strip has TWICE the lateral
+     breathing room plus its tallest thing — the name line, or the collapse
+     button, whichever is bigger. The theme gives the PARTS (the breathing room,
+     the font, the glyph); the relation is from here. The count uses the SIDEBAR
+     tokens for both strips on purpose: that way the two close on the same line
+     even with different fonts inside them. The theme's breathing room is
+     lateral ONLY (hence the `-pad-x`): the vertical comes from the count. The
+     two centre what they hold, so a bigger font does not push the line — it
+     grows to both sides. `min-height` and not `height`: a long title breaks in
+     two, the strip grows — cutting would be the silent failure.
+     THE DRAWN NAME COUNTS HERE TOO (2026-09-20): a mark has no line box, so its
+     height is a token of its own — and it enters THIS count and not one of its
+     own, because the two strips still have to close on the same line. The count is
+     the SIDEBAR's for both, on purpose: the launcher's `header` carries no brand
+     and grows with a tall mark anyway, which is the top↔left symmetry holding
+     there as well.
+     THE `em` RESOLVES IN THE TITLE'S FONT — ON BOTH (2026-09-21). The comment
+     above promises the two strips close on one line, and for six of the twelve
+     themes they did not: `--brand-mark-h` is written in `em`, and an `em` resolves
+     against the font-size of the element that USES it. `nav h1` sets
+     `--sidebar-title-size`; `header` declared none and inherited `--font-size`, so
+     the mark was silently two different lengths — `gothic` (21px title, 16px body)
+     closed the sidebar at 65.60px against the bar's 63.50px, and `old-internet`
+     at 55.00 against 51.76. `paper` and `tipography` escaped only because they set
+     the two sizes EQUAL, which is a coincidence, not a rule. What fixes it is the
+     `font-size` below: the count is computed in the title's font on both strips,
+     and the bar's own words take the body's size back on the line right under the
+     mark (`header > *`, section 2) — the header holds no loose text, so nothing is
+     left behind. The theme gives the two sizes and keeps them different; the
+     relation is from here, and now it holds for any pair. */
+  nav h1, header { font-size: var(--sidebar-title-size);
+                   min-height: calc(2 * var(--sidebar-title-pad-x)
+                                     + max(var(--sidebar-title-size) * var(--line-height),
+                                           var(--nav-toggle-size),
+                                           var(--brand-mark-h, 0px)));
+                   display: flex; align-items: center; position: relative;
+                   gap: var(--sidebar-gap); }
+  /* The NAME of the page at the top of the panel is the STRONG part of the title — the
+     pair of the `b` in the header (`--header-strong`), on the other side of the same
+     strip. It is an element of its own because the theme may want a colour ONLY for it,
+     and without the element there is nowhere to put that colour without painting the
+     language along with it (`comunidade` keeps the house purple there, 2026-09-15). */
+  /* THE DRAWN NAME (2026-09-20): a theme may wear the name DRAWN instead of
+     written, and the door is the icon set's — the theme declares the DRAWING in a
+     token and this file paints it, with an inert fallback so a theme that brings
+     none pays nothing. The drawing is a FILE served from `/icons/`: the page runs
+     under `default-src 'self'` and refuses `data:` (`app.py`), so an embedded
+     drawing is a drawing that never paints.
+     THE BOX IS DECLARED, because a drawing has no advance width of its own
+     (`--brand-mark-w`/`-h`) — and it is measured in the TITLE's font: the
+     `font-size` here is left alone, so `em` keeps meaning the title's em.
+     THE WORD GIVES WAY WITHOUT LEAVING: what buries it is the INK
+     (`--brand-word-ink: transparent`), and a transparent `color` does not take the
+     accessible name off the `h1` — `display: none` would. The drawing is
+     decoration: no `aria-label`, no title, and the text is still what says "AT". */
+  nav h1 .brand { color: var(--brand-word-ink, var(--sidebar-title-strong));
+                  display: inline-block;
+                  width: var(--brand-mark-w, auto);
+                  height: var(--brand-mark-h, auto);
+                  background-image: var(--brand-mark, none);
+                  background-repeat: no-repeat;
+                  background-position: center;
+                  background-size: contain; }
+  /* The SHEEN of the two title strips: a veil the THEME draws over them (`--sheen`
+     — `none` in the paper themes, a gradient in Frutiger Aero). The value is an
+     IMAGE, so who declares it is still the theme, and the selector is still this
+     file. The `position: relative` above is what pins the veil to the strip
+     (without it, `inset: 0` would stretch it across the window) and the
+     `pointer-events: none` is what keeps the veil from eating the title's click. */
+  /* AND EACH STRIP MAY WANT ITS OWN (2026-09-21): `--sheen` paints both, and it is
+     still the one a theme declares; `--sheen-title` and `--sheen-head` let a theme
+     that wants a highlight on ONE of them say so without giving up the pair — the
+     top bar of a professional application catches the light and the panel beside it
+     does not, and that difference is the whole reason the two tokens exist. */
+  nav h1::after, header::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none; }
+  nav h1::after { background-image: var(--sheen-title, var(--sheen)); }
+  header::after { background-image: var(--sheen-head, var(--sheen)); }
+  /* The strip's FONT-SIZE is not here: the group rule above (`nav h1, header`)
+     declares it, because the `em` of the mark has to resolve in it on BOTH strips
+     — and a second declaration of the same metric is a second metric waiting to
+     disagree (2026-09-21). Everything else of the sidebar strip is below. */
+  nav h1 { font-family: var(--sidebar-title-family);
+           font-weight: var(--sidebar-title-weight);
+           font-style: var(--sidebar-title-style);
+           letter-spacing: var(--caps-spacing);
+           text-transform: var(--caps-transform); color: var(--sidebar-title-color);
+           margin: 0; padding-inline: var(--sidebar-title-pad-x);
+           border-bottom: var(--sidebar-title-border);
+           /* THE NEAR HALF of the title line: whole at the meeting
+              point (on the right), dissolving at the window edge
+              (on the left). Its pair is the `header`, below. */
+           border-image: var(--divider-title, linear-gradient(to right, transparent 0,
+                                                              var(--line) 4%,
+                                                              var(--line) 100%) 1); }
+  /* THE THREE SHAPES OF THE LANGUAGE at the top of the panel (2026-09-14): the
+     page builds the three and the THEME says which one appears — `--locale-raw`
+     (the raw identifier, `pt_BR`), `--locale-name` (the language in full) and
+     `--locale-flag` (the flag). It is the same choice the theme already makes
+     for the other tokens: the value is its, the selector is this file's.
+     The BOX of the raw identifier is ITS OWN: the title is upper-case by
+     token (`--caps-transform`), and `PT_BR` is not the identifier `at
+     lang` writes — `text-transform: none` gives the spelling back, and
+     who undoes it is a rule of the base (the theme declares no selector).
+     AND IT LIVES AT THE RIGHT END OF THE WINDOW, in the SUPPORT body (2026-09-15): the
+     language says what language the page is in, it is not its name — in the title's
+     body it shared the strip with the brand and squeezed both (`liquid-glass`, a 17px
+     title, is where it broke; on a smaller screen it would break sooner). WHO PUSHES
+     IT is the `margin-left: auto` of the end box, below: the gap between it and the
+     title is what is left of the strip, and no fixed width decides that. */
+  #head-right { margin-left: auto; display: flex; align-items: center;
+                gap: var(--sidebar-gap); }
+  #head-right .loc { text-transform: none; font-size: var(--locale-size);
+                     color: var(--dim); }
+  #head-right .raw { display: var(--locale-raw); }
+  #head-right .name { display: var(--locale-name); }
+  #head-right .flag { display: var(--locale-flag); }
+  /* The RIGHT END of the main strip is ONE box, and not a place per thing: the
+     language lives in it, and the page's OPTIONS come into it when they exist —
+     which is the corner today's apps use for that (2026-09-15). The breathing room
+     between whatever comes to live inside it is the same as the panel items'. */
+  nav button { display: flex; justify-content: space-between; gap: var(--sidebar-gap);
+               /* The item takes the WHOLE width it is given, in EVERY theme: the
+                  ground of the hover and of the selection reaches both edges, and
+                  the count lands on the same right edge everywhere. What shapes
+                  the distance between the label and the edge is the theme's
+                  PADDING — never a margin that shortens the box, which is what
+                  `--sidebar-item-inset` was and why it went (2026-09-15). */
+               width: 100%;
+               padding: var(--sidebar-item-pad); background: none;
+               border: 0; border-left: var(--sidebar-item-mark);
+               border-radius: var(--item-radius);
+               color: var(--sidebar-item-color);
+               font-family: var(--sidebar-item-family);
+               font-weight: var(--sidebar-item-weight);
+               font-style: var(--sidebar-item-style);
+               text-align: left; cursor: pointer;
+               transition: background-color var(--speed) var(--ease),
+                           color var(--speed) var(--ease),
+                           border-color var(--speed) var(--ease); }
+  /* The SELECTED item also has a ground (`--sidebar-item-bg-on`), and its rule
+     comes BEFORE the `:hover` on purpose: same specificity, whoever comes later
+     wins — with the `:hover` last, the selected item still responds to the
+     pointer. In the themes that do not paint the selection the token is
+     `transparent`, and nothing changes from what already was. */
+  nav button.on { background: var(--sidebar-item-bg-on);
+                  border-left-color: var(--color-selected);
+                  color: var(--color-selected); }
+  nav button:hover { background: var(--sidebar-item-bg-hover); }
+  /* The count goes to the RIGHT EDGE, whatever else the line carries: with
+     `space-between` alone a line that gained a third child would SPREAD its
+     children instead of pushing this one out. Same rule the subproject row
+     already obeys (`.subs .sub .n`, 2026-09-15). */
+  nav .n { color: var(--sidebar-count-color); margin-left: auto; }
+  /* The line that separates the bottom item (Settings) from the rest of the panel:
+     it belongs to the THEME, which is who knows how to draw a line (2026-09-13). */
+  nav hr.sep { margin: var(--sidebar-sep-margin); border: 0;
+               border-top: var(--sidebar-sep-border); }
+  nav .folder { justify-content: flex-start; gap: 6px; padding: var(--sidebar-folder-pad);
+                align-items: center;
+                color: var(--sidebar-folder-color);
+                font-family: var(--sidebar-folder-family);
+                font-size: var(--sidebar-folder-size);
+                font-weight: var(--sidebar-folder-weight);
+                font-style: var(--sidebar-folder-style);
+                letter-spacing: var(--caps-spacing); text-transform: var(--caps-transform); }
+  nav .folder:hover { background: none; color: var(--sidebar-folder-hover); }
+  /* The TRIANGLE is a TEXT glyph: its size is its font's, never the label's — that
+     is how it ends up bigger than the label without touching the label. It belongs
+     to the FOLD, not to a screen: the panel folder and the page group draw it the
+     same. Who says which head is its own is the `fold-head`, which `foldable`
+     (prefs.js) puts on EVERY head that opens and closes — the rules below talk to
+     it, never to the panel, and that is what makes the fold a single one. */
+  .caret { display: inline-block; line-height: 1;
+           font-size: var(--caret-size); color: var(--caret-color);
+           transition: transform var(--speed) var(--ease),
+                       color var(--speed) var(--ease); }
+  .fold-head:hover .caret { color: var(--caret-hover); }
+  .fold-head:not(.closed) .caret { color: var(--caret-open); }
+  .fold-head.closed .caret { transform: rotate(-90deg); }
+  /* WHAT OPENS, animated — and that is why it does NOT hide with `display:
+     none`: what is not drawn has no height to animate. The collapse is the
+     height of ONE grid track (`1fr` ↔ `0fr`), and what animates is the track
+     itself. The content goes inside ONE layer (`.fold`), which `foldable`
+     (prefs.js) creates: with N direct children there would be N tracks, and
+     none of them would be "the box". The layer takes the `overflow: hidden`
+     and the `min-height: 0` — without the minimum, the track does not shrink
+     below the content. Who earns `.foldable` is only the box that FOLDS: the
+     subprojects (`projects.js`) do not have the class, they follow in normal
+     flow, and the grid does not reach them (2026-09-14). */
+  .foldable { display: grid; grid-template-rows: 1fr;
+              transition: grid-template-rows var(--speed) var(--ease); }
+  .foldable.closed { grid-template-rows: 0fr; }
+  .fold { min-height: 0; overflow: hidden; }
+  /* A folder indents EVERYTHING it holds by one step — a folder inside a folder
+     included, however deep it goes. The step lives in the BOX that holds a level
+     and never in the button, so a level indents the next by itself: nothing here
+     counts levels (2026-09-12). */
+  nav .kinds, nav .branch { padding-left: var(--sidebar-indent); }
+  nav .file { color: var(--sidebar-item-color); }
+  /* THE FILE ROW and ITS ICON (2026-09-14): every file enters the tree with a
+     BUCKET — code, text, data or other —, and the bucket belongs to the SERVER,
+     which is who enumerates (`data-bucket`): the page keeps no extension table
+     at all. The icon comes BEFORE the name, and who decides the SHAPE is the
+     theme: `--icon-code|text|data|other` bring the glyph (a letter in the
+     console, a graphic sign in the papers) and
+     `--icon-show` says whether it appears (`inline`) or not (`none`) — a theme
+     without an icon is a line of theme, never a `content` invented by this file.
+     The row is a FOLDER's, not a panel button's: `flex-start`,
+     because the `space-between` of `nav button` would push the name
+     to the opposite edge. That is why the class is `.entry` and not
+     `.file` — `.file` is the WHOLE panel row (a project is one too),
+     and the project's count depends on exactly that `space-between`. */
+  nav .entry { justify-content: flex-start; gap: 6px; align-items: center; }
+  nav .entry .icon { display: var(--icon-show); min-width: 1.2em; }
+  /* THE SHAPE IS A GLYPH: the theme brings a CHARACTER — a letter, an emoji, a
+     sign — and `content` prints it. It wears the row's own colour for free,
+     because a character IS text. */
+  nav .entry .icon::before { content: var(--icon-other, ""); }
+  nav .entry[data-bucket="code"] .icon::before { content: var(--icon-code, ""); }
+  nav .entry[data-bucket="text"] .icon::before { content: var(--icon-text, ""); }
+  nav .entry[data-bucket="data"] .icon::before { content: var(--icon-data, ""); }
+  /* THE SHAPE IS A DRAWING (2026-09-19): a theme may bring its icons as SVG
+     instead of as characters — and the reason it can is that a CHARACTER was
+     never the right carrier for a drawing. `</>` typed is two brackets and a
+     slash, so its width is its font's and its slash is a glyph the typeface
+     happened to have; the same `<>` DRAWN is the same shape in every theme, at
+     every size, whatever font is up. So a theme that has drawings declares them
+     in `--icon-pic-*` (one per bucket, an SVG in a `url()`), plus two things the
+     drawing needs and a character did not: `--icon-size` (a picture has no
+     advance width of its own) and `--icon-ink` (a picture takes no colour from
+     the text around it — a `mask` gives it the SHAPE, `background` gives it the
+     ink, and it is `currentColor`, so the drawing dims, highlights and turns
+     selected exactly like the name it sits beside).
+
+     The two paths do not meet: a theme declares one or the other. `content: ""`
+     is what an absent glyph token falls back to, and `--icon-size` defaults to
+     ZERO — an empty box paints nothing — so a theme that brings CHARACTERS pays
+     not one pixel for this rule, and neither file has to say which kind it is. */
+  /* AND A DRAWING MAY BRING ITS OWN COLOUR (2026-09-20). A mask gives one ink to
+     every file of the tree, which is what a hairline set wants and what a CHUNKY,
+     glossy set cannot live with: an era that drew its icons with gradients and a
+     white shine loses all of it in silhouette. So there is a second channel, and a
+     theme takes one of the two: `--icon-pic-*` is the drawing used as a MASK
+     (one ink, and the icon dims and lights with the name beside it) and
+     `--icon-full-*` is the drawing PAINTED WHOLE, colour and all — no mask, so
+     what the SVG declares is what arrives. The two do not meet, and they do not
+     collide: an unset `--icon-pic-*` leaves `mask: none`, and an unset
+     `--icon-full-*` leaves no image — every theme that already worked pays
+     nothing for the other door. The price of the colour is the state: an icon
+     that carries its own ink does not dim with the row. */
+  nav .entry .icon::after {
+                 content: ""; display: inline-block;
+                 width: var(--icon-size, 0); height: var(--icon-size, 0);
+                 background-color: var(--icon-ink, transparent);
+                 background-image: var(--icon-full-other, none);
+                 background-repeat: no-repeat;
+                 background-position: center;
+                 background-size: contain;
+                 /* THE SHAPE OF A PIXEL (2026-09-21). An era whose icons are drawn
+                    on a 16×16 grid wants them NEAREST — interpolated, they are a
+                    blur of the thing they used to be. The Hotel asked for it in
+                    writing (item 4 of its note) and did not need it yet, because
+                    its own drawings are SVG shown at exactly 16px; the token is
+                    what makes the day it needs a RASTER cost nothing. `auto` is the
+                    browser's own default, so no theme pays for the door. */
+                 image-rendering: var(--icon-rendering, auto);
+                 -webkit-mask: var(--icon-pic-other, none) center / contain no-repeat;
+                 mask: var(--icon-pic-other, none) center / contain no-repeat; }
+  nav .entry[data-bucket="code"] .icon::after {
+                 -webkit-mask-image: var(--icon-pic-code, none);
+                 mask-image: var(--icon-pic-code, none); }
+  nav .entry[data-bucket="text"] .icon::after {
+                 -webkit-mask-image: var(--icon-pic-text, none);
+                 mask-image: var(--icon-pic-text, none); }
+  nav .entry[data-bucket="data"] .icon::after {
+                 -webkit-mask-image: var(--icon-pic-data, none);
+                 mask-image: var(--icon-pic-data, none); }
+  /* AND THE SECOND DOOR, ONE PER BUCKET AS WELL — the same shape of rule, and it
+     has to be spelled out for the same reason the mask is: `--icon-full-*` is a
+     token PER BUCKET, and a single declaration in the row above would paint every
+     bucket with the last one it read. */
+  nav .entry[data-bucket="code"] .icon::after {
+                 background-image: var(--icon-full-code, none); }
+  nav .entry[data-bucket="text"] .icon::after {
+                 background-image: var(--icon-full-text, none); }
+  nav .entry[data-bucket="data"] .icon::after {
+                 background-image: var(--icon-full-data, none); }
+  nav .entry[data-bucket="other"] .icon::after {
+                 background-image: var(--icon-full-other, none); }
+  /* THE SURFACE OF AN OPEN FILE — the box the file's content sits in (2026-09-19).
+     THREE shapes wear it and they are ONE page: the rendered prose of a `.md`, the
+     writing field, and the plain text of what is not prose — a `.py`, the reason a
+     binary cannot be shown. THE FILE PAGE IS ONE PAGE: what changes with the type
+     is the words of the strip and whether the buttons appear, never the box. It is
+     the theme's `--panel` — solid where the theme is paper, glass where it is glass
+     — and the theme's corner, so a glass theme rounds it and a paper one squares it.
+     WRITTEN ONCE, for the three: a second declaration of the same metric is a second
+     metric waiting to disagree. What each keeps of its own is right below. */
+  .prose, .write-wrap, pre.text, .record-body {
+    /* The anchor of the material's layer, and the stacking context that keeps it
+       above the ground (see the `::before` rule below). */
+    position: relative; z-index: 0;
+    margin: var(--page-pad-y, 18px) var(--page-pad-x, 20px) 0;
+    /* THE CARD BREATHES ON ALL FOUR SIDES (2026-09-20). The foot used to be `0`,
+       and the breathing there came from the LAST BLOCK's own margin — `1em` of a
+       `<p>`, `0.5em` of an `<h1>`: a different number per file, and NONE for
+       `pre.text`, whose lines carry no margin at all. The record had already
+       declared this foot by hand (a `dl` ends in a `<dd>`, and the last field
+       touching the edge reads as a cut). The edge belongs to the SURFACE, so the
+       surface keeps it — and the first and last blocks give up their own, in the
+       two rules below, which say exactly that and did not reach until now. */
+    padding: var(--page-pad-y, 18px) var(--page-pad-x, 20px);
+    background: var(--panel); border-radius: var(--radius);
+    /* THE EDGE OF THE SURFACE IS A THEME'S TO DRAW (2026-09-20). It defaults to
+       `none` because most themes separate the surface by GROUND — glass over sky,
+       a lighter card over the page —, and there the line would be a second,
+       redundant separation. The paper themes are the other case: `--panel` is the
+       same white as the window, so the box is invisible and the only thing that
+       can say "this is a card" is a drawn line. A theme that declares it draws it;
+       every other theme reads `none` and pays nothing. */
+    border: var(--surface-border, none);
+    /* THE MATERIAL OF THE SURFACE (2026-09-21). Until today a theme could give
+       this box a GROUND and a corner and nothing else, and the whole vocabulary of
+       material lived on the frame: the panel and the foot frost, the overlay
+       frosts, and the one surface a person actually reads had none of it. That is
+       what the report of 2026-09-21 named — "no texture, the lines are hard, no
+       bezel, no light, no volume" — a glass theme could say `--panel: rgba(…,.55)` and
+       get a flat wash, because a translucent GROUND without a blur is not glass,
+       it is pale paint. Four tokens, all optional, all `none` for every theme that
+       says nothing:
+         · `--surface-blur` — the frost, and it falls back to the panel's glass,
+           exactly like `.pop`, `.veil` and `.dialog` already do, so the glass
+           themes get it for free and the paper ones read `none`;
+         · `--shadow-card` — the elevation a card that is not an overlay needs;
+           the name is the Hotel's, who asked for it in writing (`hotel.css`,
+           "WHAT THIS THEME WANTED AND THE BASE DOES NOT ALLOW", item 3) and said
+           the glass theme wanted it too;
+         · `--surface-light` and `--surface-texture` — two IMAGES, painted by the
+           layer below rather than by the ground (a `background-image` on this rule
+           would have to fight the `background: var(--panel)` above, and a theme
+           that one day makes `--panel` a gradient would lose it in silence). */
+    backdrop-filter: var(--surface-blur, var(--panel-blur));
+    box-shadow: var(--shadow-card, none); }
+  /* THE LAYER THE MATERIAL IS PAINTED ON — one pseudo, four surfaces, and the
+     `z-index: -1` on it and the `z-index: 0` on the parent are a PAIR: without the
+     parent becoming a stacking context the negative layer would slide UNDER the
+     surface's own ground and paint nothing. With it the order is ground → light and
+     texture → the words, and nothing else moves: the layer takes no pointer (the
+     text is still selectable) and stops at the corner (`border-radius: inherit`).
+     Two image slots, one `none` each by default — `background-image: none, none`
+     is valid, so the themes that bring nothing pay not one pixel.
+     THE SURFACES ARE THE FOUR THAT READ AS A PAGE, and none of them can hold a
+     `.pop`: the panel that floats is a single instance at the root of the shell
+     (Popover.vue), so nothing inside these boxes has to paint above the page. */
+  .prose::before, .write-wrap::before, pre.text::before, .record-body::before {
+    content: ""; position: absolute; inset: 0; z-index: -1;
+    pointer-events: none; border-radius: inherit;
+    background-image: var(--surface-light, none), var(--surface-texture, none);
+    background-repeat: no-repeat, repeat; }
+  /* THE FOURTH SHAPE OF THAT SURFACE IS THE OPEN RECORD (2026-09-20): the task
+     screen was the one page where the content had no ground — the fields floated
+     on the sky and the glass. It is the same card, foot included: the BOTTOM it
+     used to declare by hand is now the surface's own, for every shape. The top it
+     never needed to fix — the first `<dt>` breathes with `--dt-gap` on top of the
+     padding. */
+  /* AND THE SURFACE FILLS THE PAGE, not its own text (2026-09-20). A short file
+     used to leave the box ending in the middle of the screen, with the window's
+     ground under it — which reads as a cut, and it is the one thing a page of prose
+     must not look like. What the eye wants is the opposite: the page is the CARD,
+     and the card is the height of the room it is in. So the page is a COLUMN and
+     the surface is what grows in it; a long file grows past the room and scrolls,
+     exactly as it did.
+     `min-height` and not `height`: the length of a file is not this rule's business
+     — a long one has to push the page down, not be cut by it. */
+  .file-page, .record-page { display: flex; flex-direction: column; min-height: 100%; }
+  .file-page > .prose, .file-page > .write-wrap, .file-page > pre.text,
+  .record-page > .record-body { flex: 1 0 auto; }
+  pre.text { overflow-wrap: break-word; white-space: pre-wrap;
+             word-break: break-word; }
+  /* THE RENDERED PROSE — the open `.md`, after CommonMark (2026-09-14). The
+     renderer gives back HTML and nothing more: no stylesheet comes with it, and
+     it is not it that decides margin. Few rules on purpose — the theme's
+     typography answers for the BODY of the text, and here only what raw HTML
+     does not have comes in: the breathing room between blocks, the quote inset,
+     the code ground. The tokens are the existing ones (no theme changes for it). */
+  /* The prose FILLS the useful area (2026-09-15): it was tied to `--measure`, and
+     an open `.md` in a wide window left half the page empty. The cap of
+     `--measure` stays alive where it is about the TABLE, not about the prose: a
+     COLUMN does not pass it (records.js), and it is what keeps a long line of
+     text from becoming a one-line band. */
+  .prose { overflow-wrap: break-word; }
+  /* THE EDGE BLOCKS GIVE UP THEIR OWN MARGIN: the card's padding is the edge, and
+     a second spacing on top of it is the void that should not be there. These two
+     rules said exactly that from the start and did NOT REACH: the rendered HTML
+     arrived inside a wrapper `div` of the component, so `:first-child` matched the
+     WRAPPER — which has no margin — and the title inside kept its full `1.4em`.
+     The wrapper is gone (`ProseField.vue`, 2026-09-20) and the two rules say what
+     they always meant.
+     THE FIELD'S PROSE IS NOT THIS CASE (`:not(.field-prose)`): it is a field of the
+     record's `dl` and not a page, so it has no padding of its own to double — that
+     variant zeroes the page's insets on purpose, and the breathing there belongs to
+     the `dt`/`dd` rhythm. Leaving it out keeps the record exactly as it was, which
+     is the only honest thing to do while the change is about the FILE's page. */
+  .prose:not(.field-prose) > :first-child { margin-block-start: 0; }
+  .prose:not(.field-prose) > :last-child { margin-block-end: 0; }
+  .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+    line-height: 1.25; margin-block: 1.4em 0.5em; }
+  .prose p, .prose ul, .prose ol, .prose blockquote, .prose pre, .prose table,
+  .prose dl { margin-block: 0 1em; }
+  .prose a { color: var(--color-link); }
+  .prose code { background: var(--panel); border-radius: var(--radius);
+                padding: 0.1em 0.3em; }
+  .prose pre { background: var(--panel); border-radius: var(--radius);
+               padding: var(--cell-pad); overflow-x: auto; }
+  .prose pre code { background: none; padding: 0; }
+  .prose blockquote { border-inline-start: 3px solid var(--line);
+                      color: var(--dim); padding-inline-start: var(--cell-pad); }
+  .prose hr { border: 0; border-block-start: var(--main-border); }
+  .prose th, .prose td { text-align: start; padding: var(--cell-pad-y) var(--cell-pad);
+                         border-bottom: var(--table-line); }
+  .prose th { color: var(--table-head-color); font-weight: var(--table-head-weight); }
+  .prose img { max-width: 100%; }
+  /* THE PROSE OF A FIELD (2026-09-15): the same prose, now inside the open
+     record's `<dd>`. The `<dd>` already indents (`--dd-indent`) and the `<dl>`
+     already breathes (`--dl-pad`) — the page's own margin here was a SECOND
+     inset, and it was the PAGE's: it exists so the open `.md` does not touch
+     the edge of the useful area, which is not this case. The modifier hangs on
+     the element ITSELF, never on an ancestor the JS builds (section 1). */
+  .prose.field-prose { margin: 0; padding: 0; background: none; border-radius: 0;
+                       /* AND NO EDGE (2026-09-20): this prose is a FIELD of the
+                          record's `<dl>`, not a page of its own — the record is the
+                          card and the `dl` is what breathes inside it. A theme that
+                          draws the surface's edge (`--surface-border`) was drawing
+                          a second box around one of the fields. */
+                       border: 0;
+                       /* AND NO MATERIAL EITHER (2026-09-21): the frost, the
+                          elevation and the layer of light/texture belong to a CARD,
+                          and this is a field inside one — the record already wears
+                          them, and a second set around one field is the same
+                          mistake the edge above was. The layer goes by `content`,
+                          which is what turns a pseudo off without a second rule to
+                          keep in sync. */
+                       backdrop-filter: none; box-shadow: none; }
+  .prose.field-prose::before { content: none; }
+  /* THE WRITING FIELD — the box the open `.md` is written in, and the LAYER that
+     draws the checker's flags behind it (2026-09-19).
+     THE CONTRACT IS THE WHOLE TRICK: the two boxes must lay the text out in the
+     SAME place, or the flags land on the wrong words. That is why every metric
+     below is shared by the two selectors and written ONCE — a second declaration
+     of the same metric is a second metric waiting to disagree, and it would
+     disagree silently, on the one screen where nobody is measuring. The person
+     types in the TEXTAREA (the native caret, selection, keyboard and undo stack);
+     the layer is a transparent copy of the same words whose only visible mark is
+     the flag. */
+  /* FULLSCREEN IS ITS OWN CASE (2026-09-19): there the field owns the whole window,
+     and the page's breathing room — the margin that separates it from the edge of
+     the useful area — is not a page's to keep: the window IS the edge. The surface
+     stops being a card too: nothing is behind it to separate it FROM. */
+  html.write-full .write-wrap { margin: 0; border-radius: 0; }
+  .write { position: relative; }
+  .write-field, .write-marks {
+    /* THE METRIC CONTRACT — the same for both, always. */
+    margin: 0; padding: 0; border: 0; box-sizing: border-box; width: 100%;
+    font: inherit; line-height: inherit; letter-spacing: inherit;
+    word-spacing: inherit; text-align: start; text-indent: 0; tab-size: 4;
+    white-space: pre-wrap; overflow-wrap: break-word; word-break: normal;
+    /* The Android font boosting inflates ONE of the two if it inflates either,
+       and the two would part company on the phone: the number is explicit. */
+    -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
+    color: var(--ink); }
+  .write-field { display: block; resize: none; overflow: hidden;
+                 /* No fill of its own, like the dialog's field: the page's ground
+                    shows through, and a control with its own would break the two
+                    themes whose `--bg` is a gradient. */
+                 background: none;
+                 /* NO DOUBLE-TAP ZOOM IN THE FIELD (2026-09-20). The reason written
+                    here used to be that the double tap was the way INTO the prose,
+                    and this property was what let the browser report the second tap
+                    as a `dblclick` instead of zooming. THAT GESTURE IS GONE (the
+                    prose is reached by LEAVING the editing, `FileView`), and what is
+                    left underneath it is a reason of its own: a field is TAPPED to
+                    place the caret, and the browser zooming instead is a page that
+                    jumps under the finger. */
+                 touch-action: manipulation; }
+  .write-field:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .write-marks { position: absolute; inset: 0; overflow: hidden;
+                 pointer-events: none; user-select: none; color: transparent; }
+  /* THE FLAG. `--danger` is the role that already means "this is wrong" and it is
+     the theme's colour like every other one — no theme is touched for it, and in
+     the two themes that declare no colour at all it is their ink, which is that
+     theme's own answer. `skip-ink: none` keeps the wave under the whole word
+     instead of breaking it at the descenders. */
+  .write-marks .mark { text-decoration: underline wavy var(--danger);
+                       text-decoration-skip-ink: none;
+                       text-decoration-thickness: 1px; }
+  /* THE ROW OF ACTIONS ABOVE A PAGE'S CONTENT (2026-09-20 — it was
+     `.file-actions`, and the record page made the name a lie). On an open file it
+     is the button that enters AND leaves the writing, the one that takes the whole
+     window and the line that says what the save is doing; on an open RECORD it is
+     the step back. One row, one metric, and it sits ABOVE the surface — where
+     nothing moves when the status line appears, because a status that pushed the
+     text down would move the line under the person's eyes. Two buttons are not a
+     toolbar: a toolbar is everything the format can do, and this is where one
+     page's controls live. */
+  .page-actions { display: flex; align-items: center; gap: var(--set-gap);
+                  /* Three buttons and a sentence of status on a phone held
+                     upright: what does not fit drops to the next line instead of
+                     squeezing every control into an unreadable row. */
+                  flex-wrap: wrap;
+                  /* THE USEFUL-AREA BREATHING ROOM, split into its AXES
+                     (2026-09-19): the top (`--page-pad-y`) and the sides
+                     (`--page-pad-x`) are two tokens now, and the sides are the ONE
+                     gutter the table, the prose and this row all share — 20px, the
+                     value that replaced the old 24px sides. The first version wrote
+                     `0 var(--page-pad) var(--cell-pad)` — nesting a shorthand inside
+                     a shorthand — and the `padding` came out as five values and was
+                     thrown away whole: a token is consumed WHOLE, or not at all. */
+                  margin: var(--page-pad-y, 18px) var(--page-pad-x, 20px) 0; padding: 0; }
+  .file-state { color: var(--dim); }
+  /* A SAVE THAT DID NOT LAND says so in the colour that means it. Nothing was
+     lost and nothing was written — the text on the screen is untouched. */
+  .file-state.bad { color: var(--danger); }
+  /* FULL SCREEN IS LAYOUT, NOT AN OVERLAY (2026-09-19). The shell takes away the
+     two things that steal room from the page — the panel and the drawer's veil —
+     and what is left is the whole window for the text, with `#body` still the
+     only scroller and the pop still above everything. An overlay would have had
+     to sit above the drawer (20) and below the pop (10): impossible without
+     moving the pop's layer for a mode of the page. The `header` STAYS — it is
+     where the path of the file is written, and while the file is being written it
+     has no other name on the screen. */
+  html.write-full nav, html.write-full .scrim { display: none; }
+  /* THE WHOLE ROW GOES — BUT ONLY WITH THE BROWSER'S OWN FULL SCREEN (2026-09-19).
+     `write-full` is layout and it is asked for by a button; the row has to stay
+     there, because a button is the way out of what a button turned on.
+     `write-full-os` is different: the BROWSER is in full screen, the way out is
+     the system's — Esc on a desktop, the back gesture or the swipe from the top on
+     a phone —, so the row costs room and answers nothing. A phone that refuses the
+     Fullscreen API never wears this class and keeps everything.
+     WHAT IS NOT ROOM IS A FAILURE (2026-09-20). "Salvando…" and "Salvo" are the
+     page talking about itself while the text is what matters, and in full screen
+     they are gone; the rule below brings the row BACK for `.bad` and only for it,
+     with the buttons still hidden — a save that did not land is not a sentence
+     about the page, it is text that is not on the disk, and swallowing it because
+     the screen is prettier that way is the one failure that costs a chapter. */
+  html.write-full-os .page-actions .btn { display: none; }
+  html.write-full-os .page-actions { display: none; }
+  html.write-full-os .page-actions:has(.file-state.bad) { display: flex; }
+  /* THE BREATHING ROOM OF THE BOTTOM EDGE — and it is ONE, for the TWO
+     ends of the page (2026-09-15). In the main area: the LYING bar of
+     whoever scrolls is born on the LOWER edge of the box, never between
+     content and padding — the inside padding lands BELOW the bar. For it
+     not to be born on the last row of the SCREEN, what rises is the BOX,
+     and who raises it is this BOTTOM padding of `main`, outside; the
+     last row of the screen is the strip that reveals the auto-hiding
+     taskbar, and the bar in it is stolen mid-drag (Rafael's report).
+     And the SAME breathing room holds for the left panel, which takes it as
+     bottom padding of the `nav` (below): it is what unsticks the last line of
+     the panel — Settings — from the foot of the window, which without this
+     touches the edge. One rule, two ends, and the two finish at the same height.
+     The padding belongs to `main` and to `nav`, and NEVER to `#body`, on
+     purpose: the `#body` one would be inert for the bar and would sit INSIDE the
+     area that scrolls — the ghost air under the last row, which someone sees on
+     reaching the end. That is why what guards this is the test, not the eye. */
+  main { flex: 1; display: flex; flex-direction: column; min-width: 0;
+         background: var(--main-bg); padding-bottom: var(--bottom-gap); }
+  /* THE FAR HALF of the title line: whole at the meeting point (on the left),
+     dissolving at the window edge (on the right) — the mirror of the sidebar strip,
+     and it is the pair of the two that makes the line ONE. */
+  header { padding-inline: var(--header-pad-x); border-bottom: var(--main-border);
+           border-image: var(--divider-head, linear-gradient(to right, var(--line) 0,
+                                                             var(--line) 96%,
+                                                             transparent 100%) 1);
+           /* THE FROST OF THE TOP BAR, and it defaults to `none` and not to the
+              panel's glass: this strip is opaque in every theme today, and a bar
+              that started blurring the page behind it without anybody asking would
+              be the design system inventing a look. A theme that wants the frosted
+              bar — the professional suites all have one — says `--head-blur`. */
+           backdrop-filter: var(--head-blur, none);
+           color: var(--header-color); }
+  /* THE BAR WEARS THE TITLE'S FONT ONLY TO BE MEASURED (2026-09-21). The strip's
+     `min-height` is computed in the title's font on this box too — that is what
+     makes the `em` of `--brand-mark-h` mean the same thing in the two title
+     strips, and it is the fix for the sidebar closing taller than the bar. The
+     font-size is a MEASURING device here, not a look: what the bar SAYS keeps the
+     body's size, handed back to the two boxes that hold every word of it. The
+     `header` has no loose text — `#head-title` and `#head-right` are the whole of
+     its content — so there is nothing the rule below can miss, and the language
+     inside `#head-right` keeps its own size (`--locale-size`, further up) for
+     being more specific. */
+  header > * { font-size: var(--font-size); }
+  header b { color: var(--header-strong); font-weight: var(--weight-bold); }
+  /* The column's filter is a FUNNEL the theme draws — the page names it, the
+     theme shows it. Drawn rather than typed: a glyph would depend on the font.
+     Dim at rest, ink on hover, accent while the column is actually filtered. */
+  th .fbtn { margin-left: 6px; background: none; border: 0; padding: 1px;
+             cursor: pointer; line-height: 0; vertical-align: -1px; }
+  th .fbtn::before { content: ""; display: inline-block;
+                     width: var(--funnel); height: var(--funnel);
+                     background: var(--funnel-color);
+                     clip-path: polygon(0 0, 100% 0, 62% 46%, 62% 100%,
+                                        38% 100%, 38% 46%); }
+  th .fbtn:hover::before { background: var(--funnel-hover); }
+  th .fbtn.on::before { background: var(--funnel-on); }
+  .pop { position: absolute; z-index: 10; max-height: var(--pop-max-h);
+         overflow: auto; background: var(--pop-bg); border: var(--pop-border);
+         border-radius: var(--radius); padding: var(--pop-pad);
+         min-width: var(--pop-min-w); box-shadow: var(--shadow-pop);
+         /* THE FROST (2026-09-19): the pop is an overlay like the rest — it reads
+            the same glass. Opaque themes stay opaque (`--panel-blur: none`); a
+            glass theme that thins its `--pop-bg` gets the blur for free, no rule
+            change. */
+         backdrop-filter: var(--pop-blur, var(--panel-blur)); }
+  /* THE DIALOG — the piece that STOPS the page and asks (2026-09-18).
+     It is not a `.pop`: a pop hangs on the control that asked for it, or opens at
+     the pointer, and this one takes the middle of the window and stops everything
+     — that is what its veil is for. But it COMPOSES from the same layer, which is
+     what section 1 promised a future popup would do: the ground, the line, the
+     radius, the shadow and the motion are the overlay's tokens, so a theme that
+     restyles the pop restyles the dialog with it. Nothing here declares a value. */
+  .veil { position: fixed; inset: 0; z-index: 30;
+          /* The veil is INK, not the page's ground, and that is the whole point:
+             `--bg` is a GRADIENT in two themes, and `color-mix` with a gradient is
+             invalid — the declaration is dropped and the veil renders NOTHING at
+             all. (`--scrim`, above, has had exactly that hole since it was
+             written; this is the same fix, and it is why the drawer's veil was
+             invisible in the Aero and Liquid Glass themes.) */
+          background: color-mix(in srgb, var(--ink) 30%, transparent);
+          /* THE FROST (2026-09-19): a modern overlay does not just darken what it
+             covers — it DISSOLVES it. The blur is the overlay's own role
+             (`--veil-blur`) and falls back to the panel's glass (`--panel-blur`),
+             so a glass theme frosts the page behind the dialog for free while a
+             paper theme stays flat (`none`). `backdrop-filter` repaints the
+             backdrop, never reflows it — the "soft, no lag" motion. */
+          backdrop-filter: var(--veil-blur, var(--panel-blur));
+          animation: veil-in var(--speed) var(--ease); }
+  .dialog { position: fixed; z-index: 31; left: 50%; top: 50%;
+            transform: translate(-50%, -50%);
+            width: min(var(--measure), calc(100vw - 2 * var(--cell-pad)));
+            max-height: calc(100vh - 2 * var(--cell-pad)); overflow: auto;
+            display: flex; flex-direction: column; gap: var(--set-gap);
+            padding: var(--cell-pad); background: var(--pop-bg);
+            border: var(--pop-border); border-radius: var(--radius);
+            box-shadow: var(--shadow-pop);
+            backdrop-filter: var(--pop-blur, var(--panel-blur));
+            animation: dialog-in var(--speed) var(--ease); }
+  .dialog h2 { margin: 0; font-weight: var(--weight-medium); }
+  .dialog p { margin: 0; color: var(--dim); }
+  /* THE REFUSAL IS NOT SUPPORT TEXT. What `.dialog p` gives is `--dim`, which is
+     right for a sentence read past on the way to the form; the entrance's answer
+     is the one the person is waiting for, so it wears the theme's own
+     `--danger` — the ink a control that DESTROYS already wears. Nothing new is
+     declared: the token is one every theme carries (`base.css` reads it for
+     `.btn.danger` without a fallback). */
+  .dialog .refused { color: var(--danger); }
+  .dialog-actions { display: flex; justify-content: flex-end; gap: var(--set-gap); }
+  /* WHAT GOES WITH IT is a list of labelled counts — `dt`/`dd` is the shape the
+     at already uses for a label and its value, and `--dt-gap` the distance it
+     already keeps between them. The gap is the pair's, in a grid of two columns:
+     every label lines up with the one above it, which is what makes a list of
+     counts readable at a glance instead of a sentence to be parsed. */
+  .dialog-facts { display: grid; grid-template-columns: auto 1fr;
+                  gap: var(--dt-gap); margin: 0; }
+  .dialog-facts dt { color: var(--dim); }
+  .dialog-facts dd { margin: 0; }
+  /* THE FORM: one field, its name above it, and the same action row below. */
+  .dialog form { display: flex; flex-direction: column; gap: var(--set-gap); }
+  .dialog label { display: flex; flex-direction: column; gap: var(--dt-gap); }
+  .dialog label > span { color: var(--dim); }
+  .dialog .btn:disabled { opacity: .55; cursor: default; }
+  /* THE BUTTON. The dialog needed an ACTION and there was none: the panel's rows
+     are `nav button`, a choice is `.theme`, a row of a pop is `.opt`. This is the
+     plain one, and it is declared as the base rule of its own class — pinned to
+     the control itself, never to an ancestor the JS builds (the hard rule of
+     section 1). */
+  .btn { padding: var(--set-pad); background: var(--panel);
+         border: var(--set-border); border-radius: var(--radius); color: var(--ink);
+         font: inherit; cursor: pointer;
+         transition: background-color var(--speed) var(--ease); }
+  .btn:hover { background: var(--hi); }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  /* THE ONE ROLE THAT SHOUTS: what DESTROYS. The colour is the theme's, and every
+     theme declares it — `paper` declares it BLACK, because that theme has no
+     colour at all and a red there would be a different theme wearing its name. */
+  .btn.danger { color: var(--danger); border-color: var(--danger); }
+  /* THE VOLUME OF A CONTROL (2026-09-21). The relief of a button was the last
+     thing a theme could not say: `border` gives an edge and cannot give a LIGHT,
+     and `border` is the wrong tool anyway — it takes room, so a bevel written with
+     one moves the label by a pixel every time the theme gains a side. A box-shadow
+     is drawn outside the layout, and it is where a bezel, a top highlight and a
+     drop are the SAME declaration: `inset 0 1px 0 rgba(255,255,255,.6), 0 1px 2px
+     rgba(0,0,0,.18)` is one value, and only the theme can write it. The Hotel
+     asked for exactly this and named it (item 3 of the same note: "the bevel only
+     closes on two sides"), which is why the token exists and why it is `none`
+     everywhere until a theme claims it.
+     IT IS THE RAISED ONES — the controls that ARE a box. The ghost controls
+     (`.pick`, `.back`, the subproject row) stay out on purpose: they were designed
+     to have no relief at rest, and a bevel there would be a box nobody asked for. */
+  nav button:not(.nav-toggle), .btn, .theme, .switch, .radio {
+    box-shadow: var(--control-elev, none); }
+  /* The form's field. No fill of its own: the border is the box, and the dialog's
+     ground shows through — which is also what keeps it valid in the two themes
+     whose `--bg` is a gradient. */
+  .dialog input { padding: var(--set-pad); background: none;
+                  border: var(--set-border); border-radius: var(--radius);
+                  color: var(--ink); font: inherit; }
+  .dialog input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .pop .opt { display: flex; gap: 8px; align-items: center; padding: var(--pop-item-pad);
+              border-radius: var(--item-radius);
+              color: var(--ink); cursor: pointer; white-space: nowrap;
+              transition: background-color var(--speed) var(--ease); }
+  /* An option that is a BUTTON (the row menu) wears the same look: the native
+     button is reset here so the row of the menu is the row of the filter. */
+  button.opt { background: none; border: 0; font: inherit; width: 100%;
+               text-align: left; color: var(--ink); }
+  .pop .opt:hover { background: var(--pop-item-bg-hover); }
+  /* WHAT THE PANEL SAYS before it offers: the support text above the rows — the
+     checker's own words, which are data and not a word of this page. The distance
+     is the one the AT already keeps between a label and its value. */
+  .pop-note { margin: 0 0 var(--dt-gap); color: var(--dim); }
+  /* THE VALUE PICKER (2026-09-15): the one control in the OPEN record — the value
+     of a field the entity declares `editable`, with the field's own vocabulary as
+     the panel. The PANEL is the filter's `.pop` to the letter, rows and all; what
+     is new is the TRIGGER, and it follows the FUNNEL: the box hangs on the class
+     of the control ITSELF (the hard rule of section 1) and the caret is DRAWN —
+     a glyph would depend on the font. At REST the control IS the value the record
+     reads, with no frame of its own: that surface is made for reading, and what
+     says the value opens is the mark, not a box around it. */
+  /* THE PICK IS A GHOST IN EVERY THEME BY CONSTRUCTION — it is the value of a
+     field being read, and a box around every value would make the record a form.
+     `--pick-border`/`--pick-pad` exist for the theme that has no other way to say
+     a control is a control: where the ground does not change under the pointer
+     (paper: `--hi` is a hairline of ink), the outline IS the affordance. The
+     defaults are the ghost — `0` and `0` —, so nothing moves for the themes that
+     were already happy. */
+  .pick { display: inline-flex; align-items: center; gap: var(--pick-gap);
+          padding: var(--pick-pad, 0); background: none;
+          border: var(--pick-border, 0); border-radius: var(--radius);
+          color: var(--ink); font: inherit; text-align: left; cursor: pointer;
+          transition: color var(--speed) var(--ease); }
+  .pick::after { content: ""; display: inline-block;
+                 width: var(--pick-caret); height: var(--pick-caret);
+                 background: var(--pick-caret-color);
+                 clip-path: polygon(0 0, 100% 0, 50% 100%); }
+  /* POINTER and OPEN, and the theme paints both with the one ink it declares for
+     a mark being handled: OPEN is the class this control wears while its own
+     panel is up, and the panel's way out takes it off (records.js). */
+  .pick:hover, .pick.on { color: var(--color-selected); }
+  .pick:hover::after, .pick.on::after { background: var(--pick-caret-hover); }
+  /* The row of the value the field HOLDS, inside that panel: marked with the ink
+     of the selection — the same one the theme in use wears in Settings —, so the
+     panel says what the record says. It is the OPTION's mark, not a ground: the
+     ground under the pointer is the option row's own (`--pop-item-bg-hover`), and
+     a current row that shared it would read as the row under the finger. */
+  .pop .opt.on { color: var(--color-selected); }
+  /* The `#body` FILLS what is left of the window. In a flex column it already
+     shrinks to zero to scroll inside — the automatic minimum of whoever has an
+     `overflow` other than `visible` is zero, and that is why the long table
+     scrolls here instead of stretching the window —, but without the `flex: 1`
+     the opposite did not hold: with a short table the box was the size of the
+     content, and the lying bar showed up just under the last row, in the MIDDLE
+     of the page, instead of at its end (2026-09-13). */
+  #body { flex: 1; overflow: auto; padding: var(--body-pad); }
+  /* The table is TOLD its shape: the page measures every column (records.js) and
+     hands the widths over in a <colgroup>. `fixed` is what makes it obey — under
+     `auto` there is no room to distribute when the columns do not fit, so a long
+     text column falls to its longest word while the table scrolls, which is the
+     sliver we are getting rid of (2026-09-13). */
+  table { border-collapse: separate; border-spacing: 0; width: 100%;
+          table-layout: fixed;
+          /* THE THEME CORNER (2026-09-19): the table takes the corner the theme
+             draws on every card — `--radius` — so a glass theme rounds it and a
+             paper theme squares it, with no theme touched. The corner you SEE is on
+             the header (below): it is the only surface of the table with a fill of
+             its own. `--table-radius` is the knob a theme MAY turn to diverge the
+             table from its cards. */
+          border-radius: var(--table-radius, var(--radius));
+          /* THE TEXT SURFACE (2026-09-19): the body of the table is not the page
+             ground showing through — it is its own surface, the theme's `--panel`,
+             which a glass theme may leave translucent and a paper theme paints
+             solid. The header keeps its own fill (`--table-head-bg`, below). */
+          background: var(--panel);
+          /* THE SAME MATERIAL AS THE OTHER SURFACES (2026-09-21): the table IS a
+             card — it is the main screen of the app — and it was the one whose
+             ground could be glass with no frost on it. The layer of light and
+             texture is deliberately NOT here: a pseudo-element on a `table` would
+             have to fight the anonymous table boxes, and the table has rows, cells
+             and a stuck head to carry a material of their own. */
+          backdrop-filter: var(--surface-blur, var(--panel-blur));
+          box-shadow: var(--shadow-card, none); }
+  /* THE TABLE'S OWN BREATHING ROOM (2026-09-19): the table was the one surface
+     that ran edge to edge — glued to the walls of the useful area — while the
+     prose, the record and the settings each kept their own room. Now it keeps the
+     SAME gutter as the rest on the SIDES (`--page-pad-x`) and on the TOP
+     (`--page-pad-y`): a margin that insets the whole table, and a width that hands
+     the side margin back so the table still fills its box instead of overflowing
+     it. The TOP margin is what lets the sticky header keep its breathing room AND
+     still work: the margin is part of the table's box, so it scrolls away and the
+     header — stuck at `top: 0` — covers the rows cleanly, with no gap for one to
+     peek through. The margin is the table's, not `#body`'s, on purpose: `#body` is
+     the shared scroller, and padding there would stack on every page that already
+     pads itself. Below 960 the SIDE gutter is zeroed (section 5): there the columns
+     are measured to fit the panel exactly, and a gutter here would read as 40px of
+     overflow. The prose's own table (a markdown table) is the one excluded — it
+     already sits inside `.prose`'s room. */
+  #body table:not(.prose table) {
+    margin: var(--page-pad-y, 18px) var(--page-pad-x, 20px) 0;
+    width: calc(100% - 2 * var(--page-pad-x, 20px));
+    /* THE BOX OF THE TABLE AS A WHOLE, and it is the same story as the surface's
+       edge: a theme whose rows separate by GROUND (a hover, a head band) does not
+       need it, and a theme whose ground is all one colour needs it to say where
+       the table ENDS — `--table-line` draws under each cell and never closes.
+       Read only in the WIDE rule on purpose: below the band the table is not a
+       table any more, it is a stack of cards (`display: block`), and a border
+       around the stack would wrap what is already separated. */
+    border: var(--table-border, none);
+    /* AND THE BOTTOM IS NOT DRAWN TWICE. The frame's fourth side lands exactly
+       where the last row's separator already is (`--table-line`), and two 1px
+       lines glued read as one thick, dirty line — the defect Rafael saw on the
+       first paper build (2026-09-20). One line, one role, one place: the bottom
+       of the frame IS the last row's line. A theme that draws the frame and no
+       row line at all would leave the box open at the foot — no theme does, and
+       that is the trade this rule takes. */
+    border-bottom: 0; }
+  th, td { text-align: left; padding: var(--cell-pad-y) var(--cell-pad);
+           vertical-align: top; }
+  /* THE ROW LINE is the BODY's, not a grid (2026-09-19): `separate` (above) is what
+     lets a hovered row round its corners — `collapse` cannot, and its square band is
+     the Windows-97 look. The line now lives only under the data rows; the header
+     carries its own divider (the `th` rule, below), so the two read as ONE edge, not
+     a lattice of boxes. */
+  tbody td { border-bottom: var(--table-line);
+             transition: background-color var(--speed) var(--ease); }
+  /* A cell never bleeds into its neighbour: its width is the one the page
+     measured, and a value longer than that wraps (break-word for a long token).
+     The HEADER is left to overflow: it is nowrap, measured a shade tight, and a
+     clipped column name is worse than a funnel one pixel over the gap. */
+  td { overflow: hidden; overflow-wrap: break-word; }
+  /* A hidden span the page measures a string with — its width in the active
+     font. Never seen; it exists so a column can be measured, not guessed.
+     AND IT LIVES OFF THE PAGE, to the left (2026-09-15): a string of up to
+     200 characters with `white-space: pre` is a box of ~1500px, and such a
+     box hanging on the `<body>` — which is where it lives, `records.js` —
+     becomes PAGE OVERFLOW: the lying bar of the whole window. The vertical
+     is not another thing either: with a lying bar, the visible height
+     shrinks and `body { height: 100vh }` becomes taller than the window.
+     The negative offset solves both at once — the overflow to the LEFT (and
+     UP) is not reachable by scrolling, so it puts no bar at all. And the
+     measure does not change: the width is the FONT's, not the position's. */
+  .probe { position: absolute; left: -10000px; visibility: hidden;
+           white-space: pre; pointer-events: none; }
+  /* A COLUMN's name is one line — never wrapped: a header broken in two is not
+     the column's name any more (2026-09-12). Values below still wrap. */
+  th { color: var(--table-head-color); font-weight: var(--table-head-weight);
+       position: sticky; top: 0; background: var(--table-head-bg);
+       /* THE FROST OF THE STUCK BAND (2026-09-21). The head is the one surface of
+          the table that STAYS while the rows move under it, and the themes that
+          thin its fill — frutiger-aero's `rgba(255,255,255,.62)` — were letting
+          the rows scroll THROUGH: the ghost of a cell, a few pixels off the column
+          it belongs to, reading as a shadow out of alignment (Rafael's report). It
+          is the same hole the overlays had and closed the same way in 2026-09-19 —
+          `.pop`, `.veil` and `.dialog` all read `var(--pop-blur, var(--panel-blur))`
+          — and the header was simply never given the door. A theme that keeps its
+          band opaque reads `--panel-blur: none` and pays nothing; the glass ones
+          get the dissolve for free, and a theme that wants to differ says
+          `--table-head-blur`.
+          NOT ON THE `table`, deliberately: a filter on the box would make the
+          TABLE the backdrop root, and the stuck head would then blur the rows
+          instead of the page behind them. */
+       backdrop-filter: var(--table-head-blur, var(--panel-blur));
+       white-space: nowrap;
+       /* THE HEADER DIVIDER (2026-09-19): the header is ONE edge, drawn with the
+          page's own hairline (`--main-border`) — a shade firmer than the row line —
+          so it reads as a header, not as the topmost row of a grid. */
+       border-bottom: var(--main-border);
+       transition: color var(--speed) var(--ease); }
+  /* THE TABLE'S CORNERS (2026-09-19): the header band is the one surface of the
+     table with a fill, so its two top corners ARE the table's corners. They take
+     the same corner as the `table` rule above, and the sticky header carries them
+     up with it — rounded at rest, rounded at the top when stuck. */
+  thead th:first-child { border-top-left-radius: var(--table-radius, var(--radius)); }
+  thead th:last-child { border-top-right-radius: var(--table-radius, var(--radius)); }
+  th.sortable { cursor: pointer; user-select: none; }
+  th.sortable:hover { color: var(--table-head-hover); }
+  /* Reordering a column: the one in the air dims, and the header it hovers shows
+     the edge it will land on. Drawn as a shadow — a border would shift the row. */
+  th.drag { opacity: var(--drag-opacity); }
+  th.drop-before { box-shadow: inset var(--drop-mark-width) 0 0 var(--drop-mark); }
+  th.drop-after { box-shadow: inset calc(-1 * var(--drop-mark-width)) 0 0 var(--drop-mark); }
+  /* THE COUNT OF THE HIDDEN COLUMNS, UNDER THE GRID (2026-09-20) — it was a last
+     `<th>` until today, and a cell that is not a column pays for the disguise: it
+     has no data under it, and the header's own line has to be drawn for it. Out
+     here it is a sentence with the page's SIDE INSET, so it lines up with the
+     first column it is talking about. WHERE THE COLUMNS ARE A RULE there is
+     nothing to bring back by hand and the sentence is alone: it wears the same ink,
+     and the only difference is that it does not answer the pointer. */
+  /* THE COUNT OF THE COLUMNS THAT STEPPED ASIDE — OUTSIDE THE TABLE, ABOVE IT AND
+     FLUSH WITH ITS RIGHT EDGE (2026-09-20). Three positions were tried and two were
+     wrong: UNDER the grid it reads as "+3 ROWS", which is not what it counts, and
+     OVER the grid's corner it has to borrow room from the last column — which
+     WIDENS THE TABLE, the one thing this count may never do. Outside, above, it
+     touches neither: the grid keeps its width and its columns, and the number sits
+     where a reader looks for the count of a table without being a part of it.
+     THE INSET IS THE TABLE'S OWN: `--page-pad-x` is the breathing room the table
+     keeps from the edge of the useful area, and the count ends on that same line. */
+  .hidden-count { margin: var(--page-pad-y, 18px) var(--page-pad-x, 20px) 0;
+                  text-align: right; color: var(--pill-color); }
+  .hidden-count button, .hidden-count span { padding: 0; background: none; border: 0;
+                  color: inherit; font: inherit; }
+  .hidden-count button { cursor: pointer; }
+  .hidden-count button:hover { color: var(--pill-hover); }
+  tbody tr { cursor: pointer; }
+  /* The hover is a ROUNDED band, not a square strip (2026-09-19): the background
+     lives on the CELLS — a `tr` background does not round under `separate`, and its
+     square strip is the Windows-97 look. The first/last cell carry the rounded ends.
+     The radius is the row's own role, smaller than the card's `--radius`, because a
+     table row is a hairline tall. (On the narrow screen the table is no longer a
+     table — the 640 band — and there the hover returns to the whole surface.) */
+  tbody tr:hover td { background: var(--table-row-hover); }
+  tbody tr:hover td:first-child {
+    border-top-left-radius: var(--table-row-radius, 8px);
+    border-bottom-left-radius: var(--table-row-radius, 8px); }
+  tbody tr:hover td:last-child {
+    border-top-right-radius: var(--table-row-radius, 8px);
+    border-bottom-right-radius: var(--table-row-radius, 8px); }
+  td.id { color: var(--id-color); white-space: nowrap; }
+  .empty { color: var(--empty-color); padding: var(--empty-pad); }
+  /* The projects DIRECTLY under the one open: a line each, above the tasks —
+     a subproject is not a task and does not go in the table below. */
+  .subs { border-bottom: var(--subs-border); }
+  .subs .sub { display: flex; gap: var(--sub-gap); align-items: baseline;
+               width: 100%; padding: var(--sub-pad); background: none; border: 0;
+               color: var(--sub-color); font: inherit; text-align: left;
+               cursor: pointer;
+               transition: background-color var(--speed) var(--ease); }
+  .subs .sub:hover { background: var(--sub-bg-hover); }
+  .subs .sub b { color: var(--sub-strong); font-weight: var(--weight-medium); }
+  .subs .sub .st, .subs .sub .n { color: var(--sub-dim); }
+  .subs .sub .n { margin-left: auto; }
+  dl { margin: 0; padding: var(--dl-pad); }
+  dt { color: var(--dt-color); margin-top: var(--dt-gap); }
+  dd { margin: 0 0 0 var(--dd-indent); word-break: break-word; }
+  .back { padding: var(--back-pad); color: var(--back-color); cursor: pointer;
+          /* THE 2026 BACK is a ghost, not a slab (2026-09-19): no box at rest — the
+             word sits quiet and findable, and only under the pointer does it gather a
+             wash and a hairline, which is the affordance of a control without the
+             weight of a button. The transparent border reserves the 1px so nothing
+             shifts, and the 2px nudge is the whole gesture of "going back" — a
+             transform, never a reflow. */
+          display: inline-flex; align-items: center; gap: var(--sidebar-gap);
+          border: 1px solid transparent;
+          border-radius: var(--item-radius);
+          user-select: none;
+          transition: color var(--speed) var(--ease),
+                      background-color var(--speed) var(--ease),
+                      border-color var(--speed) var(--ease),
+                      transform var(--speed) var(--ease); }
+  .back:hover { background: var(--hi); border-color: var(--line);
+                transform: translateX(-2px); }
+  /* Settings: the choices of the PAGE — one row per declared theme,
+     and the one in use carries the mark. The chosen theme does not
+     leave its place: it stays marked, and clicking another swaps
+     the look at once (2026-09-13). The motion on/off, next to it,
+     is NOT one of these rows: it is a switch (below). */
+  .settings { display: flex; flex-direction: column; gap: var(--set-gap);
+              /* THE LIST HAS A CEILING: about five rows, and the rest by scroll —
+                 with eleven themes the page would otherwise grow with the
+                 vocabulary, which is data and can keep growing. The ceiling is in
+                 `em` ON PURPOSE: the row is as tall as the theme's own font, so a
+                 theme with 16px shows five rows of 16px and a monospaced 14px shows
+                 five of 14 — one number, and it means the same thing in all of them. */
+              max-height: calc(5 * 6.5em); overflow-y: auto;
+              /* THE CEILING NEEDS AN EDGE TO BE A CEILING (2026-09-22). With
+                 `overflow-y: auto` and nothing else, scrolling leaves a row sliced
+                 at the clip line with NO line where the slice happened — and in a
+                 theme whose rows are BOXES (paper: `--set-border`, `--radius: 0`)
+                 that reads as a rendering fault rather than as "there is more
+                 above". The frame is the theme's, and `none` is the default every
+                 other theme reads: a theme whose rows are separated by GROUND has
+                 no slice to explain, so it pays nothing. */
+              border: var(--list-border, none);
+              /* AND THE FRAME BREATHES — WHERE THERE IS A FRAME (2026-09-22). A
+                 frame drawn flush against its own first row is TWO 1px lines
+                 touching, and two lines that touch read as one thick, dirty line,
+                 which is worse than either. THE INSET BELONGS TO THE FRAME, not to
+                 the list: a theme with no frame has nothing to be inset FROM, and
+                 the same padding there is only a list that starts too far down and
+                 ends too early — which is exactly how the first version of this
+                 rule read, right in paper and wrong in every theme without a line.
+                 So it falls back to `0`, and only the themes that draw the frame
+                 declare `--list-pad` and pay it. */
+              padding: var(--list-pad, 0); }
+  /* The BOX of a page choice (`.theme`): pinned to the CLASS of the
+     control itself, never to an ancestor the JS builds. The defect that
+     gave rise to the hard rule of section 1: the old selector (`.settings
+     .toggle`) demanded an ancestor only ONE of the screens built — the
+     motion control lived in a `dd` alone, did not match, wore the browser
+     default, and nothing here said so (2026-09-14). The group keeps what
+     is ITS OWN: the stacking and the breathing room between the choices. */
+  .theme {
+                     display: flex; flex-direction: column; gap: 2px;
+                     padding: var(--set-pad); background: var(--panel);
+                     border: var(--set-border); border-radius: var(--radius);
+                     color: var(--ink); font: inherit; text-align: left;
+                     cursor: pointer;
+                     transition: background-color var(--speed) var(--ease); }
+  .theme:hover { background: var(--hi); }
+  .theme.on { border-left: var(--set-mark); }
+  /* THE SWITCH — AT's on/off (2026-09-14). A TRACK and a BUTTON that
+     slides from one edge to the other; the state is the button's POSITION, never
+     a text. A design-system control like the others: the base declares the RULE,
+     the theme declares the `--switch-*` — and that is what makes the same on/off
+     wear the look of each theme (square corner in paper, pill in Aero).
+     The BUTTON is the track's `::after`: a piece that is only drawing
+     gets no DOM node. The `left` is measured against the track's box,
+     so the on state is `100%` minus the inset and the button's own
+     diameter. The displacement animates in the theme's duration
+     (`--speed`/`--ease`), and that is why the switch also obeys the two
+     doors of the motion (section 4): motion off, it swaps sides dry. */
+  .switch { position: relative; display: inline-block; vertical-align: middle;
+            width: var(--switch-w); height: var(--switch-h);
+            padding: 0; background: var(--switch-track);
+            border: var(--switch-border); border-radius: var(--switch-radius);
+            cursor: pointer;
+            transition: background-color var(--speed) var(--ease),
+                        border-color var(--speed) var(--ease); }
+  .switch::after { content: ""; position: absolute; top: 50%;
+                   margin-top: calc(var(--switch-knob) / -2);
+                   left: var(--switch-inset);
+                   width: var(--switch-knob); height: var(--switch-knob);
+                   background: var(--switch-knob-color);
+                   border-radius: var(--switch-radius);
+                   transition: left var(--speed) var(--ease),
+                               background-color var(--speed) var(--ease); }
+  .switch.on { background: var(--switch-track-on); }
+  .switch.on::after { left: calc(100% - var(--switch-inset) - var(--switch-knob));
+                      background: var(--switch-knob-on); }
+  /* THE RADIO (2026-09-15) — the SINGLE choice, the second control that DECIDES
+     (the first is the switch, which TURNS ON): three options, one marked. It is
+     the NATIVE `<input type="radio">` with `appearance: none` — the SHAPE belongs
+     to the theme (the `--radio-*`), the BEHAVIOUR to the browser, and that is
+     what you gain by not drawing a button with `role="radio"`: the arrows move
+     inside the group, the group is ONE tab stop, and the screen reader announces
+     "2 of 3" with the page saying none of it: a button reimplements all three.
+     The DOT is a radial GRADIENT, centred BY CONSTRUCTION: the `background-origin`
+     is the padding box, which on a symmetric border has the same centre as the
+     circle. The first version drew it by clipping the `background` at the
+     `content-box` with a `padding` of a quarter of the diameter, and it came off
+     centre in FOUR of the five themes: a quarter of 14px is 3.5px, and half a
+     pixel of padding on each side is half a pixel of a crooked dot — the 16px
+     theme was the only exact one. The gradient has no such count to get wrong, and
+     the `flex: none` prevents the other twist: a radio squeezed by the row. The
+     outer ring is `--radio-border` at rest and `--radio-checked` when chosen; the
+     dot is `--radio-mark`. The shape is round by DEFINITION, not by taste: a
+     square radio is not a radio. And the dot does not fade — a gradient does not
+     animate —; what animates is the ring, which is a border.
+     The WHOLE ROW is the label — the `<label>` wraps the input, so clicking
+     the word chooses as clicking the dot does —, and the chosen state also
+     paints the label (`--color-selected`): in a group of three, the dot
+     alone does not say which one counts at first sight. Who says it is the
+     class of the LABEL itself (`.radio-row.on`), never an ancestor's. */
+  .radios { display: flex; flex-wrap: wrap; gap: var(--radio-gap); }
+  .radio-row { display: inline-flex; align-items: center; gap: var(--radio-gap);
+               cursor: pointer; color: var(--ink);
+               transition: color var(--speed) var(--ease); }
+  .radio-row.on { color: var(--color-selected); }
+  .radio { appearance: none; flex: none;
+           width: var(--radio-size); height: var(--radio-size);
+           margin: 0; padding: 0; background: none;
+           border: var(--radio-border); border-radius: 50%;
+           cursor: pointer; vertical-align: middle;
+           transition: border-color var(--speed) var(--ease); }
+  /* The POINTER lights the ring in the same tone it takes when chosen — the notice
+     that that circle can be pressed —, and goes quiet when it is already marked. */
+  .radio:hover:not(:checked) { border-color: var(--radio-mark); }
+  /* The TWO stops at the same position: it is what makes the circle's border hard,
+     and the middle full. A radius of a quarter of the diameter leaves the dot with
+     HALF of it — the proportion that reads as a radio. */
+  .radio:checked { border: var(--radio-checked);
+                   background-image: radial-gradient(circle,
+                       var(--radio-mark) calc(var(--radio-size) / 4),
+                       transparent calc(var(--radio-size) / 4)); }
+  /* THE CHECK (2026-09-23) — the MANY choice, the radio's sibling and the
+     control the role screen is made of (item 11: a role is a SET of permissions,
+     and a set is checked, not chosen one by one). It is the NATIVE
+     `<input type="checkbox">` for the same reason the radio is native: the
+     behaviour is the browser's — the space bar, the indeterminate state, the
+     reader announcing "checked" — and a button wearing `role="checkbox"` would
+     reimplement all three. It shares every token with the radio, because it is
+     the same question asked of many at once: the ring is the theme's, the words
+     beside it are the theme's ink, and the row paints itself when chosen. */
+  .checks { display: flex; flex-wrap: wrap; gap: var(--radio-gap); }
+  .check-row { display: inline-flex; align-items: center; gap: var(--radio-gap);
+               cursor: pointer; color: var(--ink);
+               transition: color var(--speed) var(--ease); }
+  .check-row.on { color: var(--color-selected); }
+  /* The ring is SQUARE BY DEFINITION — a round checkbox is a radio —, and the
+     chosen state FILLS it: the tick would have to be DRAWN, and a pseudo-element
+     on an `<input>` is rendered by no browser; the `data:` URL that would replace
+     it is refused by the page's own policy (`CSP`, `default-src 'self'`). */
+  .check { appearance: none; flex: none;
+           width: var(--radio-size); height: var(--radio-size);
+           margin: 0; padding: 0; background: none;
+           border: var(--radio-border); border-radius: var(--check-radius, 3px);
+           cursor: pointer; vertical-align: middle;
+           transition: border-color var(--speed) var(--ease); }
+  .check:hover:not(:checked) { border-color: var(--radio-mark); }
+  .check:checked { border: var(--radio-checked); background: var(--radio-mark); }
+  /* THE FORM OF A PAGE — the role and the machine are the first screens that
+     WRITE a row, and they are not a modal: they cannot borrow `.dialog`'s
+     clothes, and what they borrow is the field's RULE. The same border, the same
+     `--set-pad`, the same native control, because a second look for a text box
+     is a second look for the same thing. The label sits above the control at the
+     distance the AT already keeps between a label and its value. */
+  .form { display: flex; flex-direction: column; gap: var(--set-gap); }
+  .form label { display: flex; flex-direction: column; gap: var(--dt-gap); }
+  .form label > span { color: var(--dim); }
+  .form input, .form textarea, .form select {
+      padding: var(--set-pad); background: none;
+      border: var(--set-border); border-radius: var(--radius);
+      color: var(--ink); font: inherit; }
+  .form input:focus-visible, .form textarea:focus-visible, .form select:focus-visible {
+      outline: 2px solid var(--accent); outline-offset: 1px; }
+  .form textarea { min-height: 4em; resize: vertical; }
+  /* A BLOCK OF A PAGE'S FORM — the heading, the checks it groups, the warning it
+     carries — with the distance the AT already keeps between things. The
+     heading is a WORD and not a size: nothing in this page shouts, and a heading
+     that grew the type would be a theme deciding how loud a screen is. */
+  .form-block { display: flex; flex-direction: column; gap: var(--dt-gap);
+                margin-top: var(--set-gap); }
+  .form-block h2, .form-block h3 { margin: 0; font-size: 1em;
+                                   font-weight: var(--weight-medium); color: var(--dim); }
+  .form-block > h2 { color: var(--ink); }
+  /* WHAT THE CATALOGUE DOES NOT KNOW (§4): the role names a permission that does
+     not exist, AT does not fall over, and the SAYING is what gets read. It
+     wears the ink of what destroys — this is a warning and not support text. */
+  .unknown { display: flex; flex-direction: column; gap: var(--dt-gap);
+             padding: var(--set-pad); border: var(--set-border);
+             border-radius: var(--radius); }
+  .unknown h3 { margin: 0; font-weight: var(--weight-medium); color: var(--danger); }
+  .unknown p { margin: 0; color: var(--dim); }
+  /* THE SETTINGS GROUP (2026-09-14): a SECTION that folds. It is the SAME fold of
+     the sidebar folder — the triangle, the animated opening and the "born closed"
+     (`.fold-head`/`.foldable`, above) —, in the clothes of the PAGE: the `--group-*`
+     belong to the theme, the rule is this file's. The header is the button that
+     opens and closes, the body the box `foldable` dresses. What separates one group
+     from another is only the breathing room (`--group-gap`), never a sibling rule. */
+  /* Settings wear the SAME useful-area breathing room as a
+     file: they are the other page that is not a table, and
+     without it the groups touched the edge (2026-09-15). */
+  .groups { display: flex; flex-direction: column; gap: var(--group-gap);
+            padding: var(--page-pad-y, 18px) var(--page-pad-x, 20px) 0; }
+  /* The corner falls back to the card's OWN (`--radius`), the same way the table's
+     does (`var(--table-radius, var(--radius))`, section 2): the intent "inherit the
+     general corner unless the theme diverges" is stated ONCE, here, instead of
+     depending on every theme remembering to write the alias. A theme that wants a
+     square group still says `--group-radius: 0` and is obeyed (2026-09-20). */
+  .group { background: var(--group-bg); border: var(--group-border);
+           border-radius: var(--group-radius, var(--radius)); }
+  /* THE BODY OF A GROUP DID NOT EXIST (2026-09-22), and that was a hole in this
+     file rather than a decision: the head has carried its own padding since it was
+     written (`--group-head-pad`), and the body carried none at all — so the rows of
+     a settings group sat against the border of their own box and against each
+     other, and the tighter the theme's `--dl-pad`, the worse it read. A `dl` is
+     what the body holds, and `dl` already reads `--dl-pad`; that token is the
+     RECORD's (a page of fields), and bending it here would have moved the record
+     too. So the body gets its own two, and BOTH FALL BACK to what the page did
+     before: a theme that says nothing keeps the old geometry exactly, which is why
+     this rule could be added without touching the other twelve themes.
+     `dt:first-child` is zeroed because the body's own top padding is what breathes
+     there now; leaving the margin would have counted the room twice. */
+  .group-body { padding: var(--group-pad, 0); }
+  .group-body dt { margin-top: var(--group-row-gap, var(--dt-gap)); }
+  .group-body dl > dt:first-child { margin-top: 0; }
+  .group-head { display: flex; align-items: center; gap: 6px;
+                width: 100%; padding: var(--group-head-pad);
+                background: none; border: 0; text-align: left; cursor: pointer;
+                color: var(--group-head-color);
+                font-family: var(--group-head-family);
+                font-size: var(--group-head-size);
+                font-weight: var(--group-head-weight);
+                transition: color var(--speed) var(--ease); }
+  .group-head:hover { color: var(--group-head-hover); }
+  .theme.on b { color: var(--color-selected); }
+  .theme b { font-weight: var(--weight-medium); }
+  .theme .key, .theme .desc { color: var(--dim); }
+  th .to { color: var(--dim); margin-left: 4px; }
+  a.ref, a.url { color: var(--color-link); text-decoration: none;
+                 /* NO hairline at rest (2026-09-19): the 1997 link is an underlined
+                    word; the 2026 one is an accent word that underlines only under the
+                    pointer. The theme's own line (`--link-underline`) keeps its
+                    geometry — what goes is its colour, until the pointer brings the
+                    hover line back. The radius + padding/margin give the hover a soft
+                    wash without shifting the text a single pixel. */
+                 border-bottom: var(--link-underline);
+                 border-bottom-color: transparent;
+                 border-radius: 4px; padding: 0 2px; margin: 0 -2px;
+                 cursor: pointer;
+                 transition: color var(--speed) var(--ease),
+                             border-color var(--speed) var(--ease),
+                             background-color var(--speed) var(--ease); }
+  a.ref:hover, a.url:hover { border-bottom: var(--link-underline-hover);
+                             background: var(--hi); }
+  /* THE INTERPRETER'S BOX (2026-09-22) — the two SHAPES a person reaches it
+     through (the chat and the balloon), and the one thing they share: both ask the
+     same sentence and show the same answer (`ask.ts`), which is why the drawing is
+     one rule, `.turn`, and what changes between them is only the cloth. A TURN is
+     the sentence that was asked, the proposal it became — in the ENGINE's own
+     words, never a second sentence of the page's — and the answer after it. */
+  .turn { display: flex; flex-direction: column; gap: var(--dt-gap); }
+  .turn .said, .turn .proposal, .turn .answer { margin: 0; }
+  .turn .said { color: var(--dim); }
+  /* AN ANSWER KEEPS ITS OWN LINES. The engine's answer to `lista as tarefas` is a
+     LISTING — rows on their own lines — and a `<p>` would fold the whole of it
+     into one paragraph. The columns are the engine's spacing and the page does not
+     re-cut them: what arrives is what is read. */
+  .turn .answer { white-space: pre-wrap; }
+  .turn .proposal .tag { color: var(--dim); margin-right: var(--dt-gap); }
+  /* What the interpreter could NOT read is not the same as what the engine
+     refused: a refusal carries no proposal above it, and a question was never an
+     order. The two are answers all the same, and they wear the quiet ink. */
+  .turn[data-kind="question"] .answer,
+  .turn[data-kind="refused"] .answer { color: var(--dim); }
+
+  /* THE CHAT is a VIEW: it fills the panel's body, the conversation scrolls
+     inside itself, and the box that asks stays at the foot — where the hands
+     are. */
+  .chat { display: flex; flex-direction: column; height: 100%;
+          gap: var(--set-gap); }
+  .chat-log { flex: 1; display: flex; flex-direction: column;
+              gap: var(--set-gap); overflow-y: auto; padding: var(--cell-pad); }
+  .chat-form, .balloon-form { display: flex; align-items: center;
+                              gap: var(--set-gap); }
+  .chat-form { padding: 0 var(--cell-pad) var(--cell-pad); }
+  .chat-say, .balloon-say {
+    flex: 1; min-width: 0; padding: var(--set-pad);
+    background: var(--panel); color: var(--ink);
+    border: var(--set-border); border-radius: var(--radius);
+    font: inherit; }
+  .chat-say:focus-visible, .balloon-say:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  /* THE BALLOON — the third SHAPE, and the third ANCHOR: `pop.ts`'s two hang on
+     the control that asked for it or open at the pointer, and this one hangs on
+     NOTHING and stays over whatever view is open. It is a LAYER OF ITS OWN and
+     not the pop's single slot: a balloon that lived there would close every time a
+     column's filter opened, which is the one thing a box that stays over the view
+     cannot do. It sits over the view and over a pop, and UNDER the veil — what
+     stops the page is what covers it.
+     What it carries is the EFFECT: the answer is read here and the view underneath
+     is redrawn in place, which is why it takes the sentence about what is on the
+     screen and keeps no conversation. */
+  .balloon { position: fixed; z-index: 20;
+             right: var(--cell-pad); bottom: var(--cell-pad);
+             width: min(var(--measure), calc(100vw - 2 * var(--cell-pad)));
+             /* IT STAYS ON THE WINDOW: an answer may be a listing, and a box that
+                grew upward past the top edge would put the box out of reach. */
+             max-height: calc(100vh - 2 * var(--cell-pad)); overflow: auto;
+             display: flex; flex-direction: column; gap: var(--set-gap);
+             padding: var(--pop-pad); background: var(--pop-bg);
+             border: var(--pop-border); border-radius: var(--radius);
+             box-shadow: var(--shadow-pop);
+             backdrop-filter: var(--pop-blur, var(--panel-blur));
+             animation: balloon-in var(--speed) var(--ease); }
+
+  /* THE RULER of the demand filter (§4) — the scale a risk lives on, the line of
+     the threshold, and one mark per DECLARED risk. It draws and decides nothing:
+     below the line a demand runs, AT or above it it waits, and that is the
+     engine's rule and not the drawing's. The two regions ARE the rule, which is
+     why they are drawn from the threshold: the boundary between them is the line.
+     THE MARK IS DRAWN TO THE RIGHT OF ITS OWN VALUE and never centred on it, so a
+     demand exactly ON the line falls on the WAITING side — the side the engine
+     will put it on. Centring it would draw the one demand that matters on the
+     wrong side of the line it is read against. */
+  .ruler { display: flex; flex-direction: column; gap: var(--dt-gap);
+           padding: var(--dl-pad); }
+  .ruler-track { position: relative; display: flex; overflow: hidden;
+                 height: var(--ruler-h, 10px);
+                 border: var(--set-border); border-radius: var(--radius); }
+  .ruler-part { display: block; height: 100%; }
+  .ruler-part.runs { background: var(--panel); }
+  .ruler-part.waits { flex: 1; background: var(--hi); }
+  .ruler-line { position: absolute; top: 0; bottom: 0; width: 2px;
+                margin-left: -1px; background: var(--accent); }
+  .ruler-mark { position: absolute; top: 0; bottom: 0; width: 2px;
+                background: var(--ink); }
+  .ruler-legend { display: flex; color: var(--dim); }
+  .ruler-legend .runs, .ruler-legend .waits { display: block; text-align: center; }
+  .ruler-legend .waits { flex: 1; }
+  .ruler-note { margin: 0; color: var(--dim); }
+  .ruler-none { margin: 0; color: var(--empty-color); }
+
+/* ===== 3. THE SCROLLBARS ==============================================
+   The THREE containers that scroll: the sidebar list (`#kinds` —
+   the sidebar itself does not scroll, see section 2), the table
+   area (`#body`) and the filter popover (`.pop`). The bar is
+   DRAWN by the look — colour, thickness, radius, inset and corner
+   are theme tokens — by TWO paths, ONE PER ENGINE, never both:
+     · standard: `scrollbar-width` and `scrollbar-color` (the thickness only
+       accepts `auto | thin | none`, and there is no radius, inset or hover);
+     · WebKit/Blink (Chromium, Edge, Safari): the pseudo-elements
+       `::-webkit-scrollbar`, the only path with radius, inset and hover.
+   THE LYING BAR IS NOT BORN ON THE WINDOW EDGE: the box that scrolls stops
+   before it, and who stops it is the bottom padding of `main` — the slack
+   is `--body-gap`, and the why is in the comment of the rule (2026-09-15).
+   The padding INSIDE the box is no use for this: it lands BELOW the bar,
+   never above it, and it is the detour that reads the same in the file.
+   THE THICKNESS YOU AIM AT is what is left of the box minus the inset of BOTH
+   sides (today 16 − 2·2 = 12px): `--scrollbar-size` and `--scrollbar-inset`
+   are two independent values, and it is the RELATION between them — not each
+   one alone — that decides whether the thumb can be grabbed with the pointer.
+   The test demands it; neither number, alone, would say that.
+   The thumb has TWO weights, and never stops existing: at REST it is faint —
+   the same ink at low alpha —, and turns SOLID with the pointer over IT. It
+   is not hiding and showing: the bar is always in sight, and the gutter
+   always reserved, which is what keeps the table from readjusting its width
+   when the thumb appears. A `scrollbar-width: none` in place of this would
+   make the bar VANISH — and then there would be no target at all to point at,
+   which is exactly what the two weights solve (Rafael's choice, 2026-09-13).
+   THE THUMB is the only point of the bar that knows how to hear the pointer, and
+   that is the ENGINE's, not this file's (checked in the browser, 2026-09-13):
+   Chromium does not hit-test the gutter — the empty part of the bar generates no
+   state at all —, and the path that would try to reach it, with `:hover` on the
+   bar's box followed by the thumb, is not accepted by the parser (a bar
+   pseudo-element after `:hover`). What is left is the box THAT SCROLLS, whose
+   `:hover` is the whole area, content included: the bar would be on show the whole
+   time the pointer was over the table, which is almost always. Not worth it.
+   In the standard branch there is not even the thumb: there what is painted with
+   `scrollbar-color` is the CONTAINER, and Gecko exposes the thumb to no selector
+   — the bar stays at REST, in sight and findable, which is where it should be.
+   That is why this branch has no `:hover`, and it is not an oversight.
+   The gate is `-moz-appearance`, NOT `selector(::-webkit-scrollbar)`:
+   since Firefox 153 Gecko answers `true` to that `selector()` without
+   implementing the drawing (MDN's note), and whoever asked by it
+   would give Firefox the wrong branch — no bar from the theme.
+   The standard properties with a value other than `auto` make Chromium IGNORE
+   the WebKit pseudo-elements (CSSWG resolution, 2024-04): that is why they live
+   ONLY in the standard branch. Moving them out of it — or putting a colour pair
+   on `body`/`:root`, which is INHERITED — erases the whole drawing without
+   breaking anything visible in the code. The `ThemeFiles` test locks that. */
+
+/* The STANDARD branch: the bar stays at REST, with no hover. Here there is no way
+   to hear the pointer — the thumb is not reachable by any selector, and what is
+   painted with `scrollbar-color` is the CONTAINER, which answers the pointer with
+   the whole box, never with the bar. So the colour is the FAINT one, and the bar
+   stays in sight and findable; a transparent pair here would hide the bar forever. */
+@supports (-moz-appearance: none) {
+  #kinds, #body, .pop, .settings {
+    scrollbar-width: var(--scrollbar-width);
+    scrollbar-color: var(--scrollbar-thumb-rest) var(--scrollbar-track);
+  }
+}
+
+/* The WebKit/Blink branch: BOTH axes, the same drawing. The width is the upright
+   bar and the height the lying one — the two read the SAME token on purpose: the
+   at's bar is a single one, lying or upright. Omitting the height is the classic
+   defect: the lying bar ends up at the system thickness. */
+@supports not (-moz-appearance: none) {
+  #kinds::-webkit-scrollbar,
+  #body::-webkit-scrollbar,
+  .pop::-webkit-scrollbar,
+  .settings::-webkit-scrollbar {
+    width: var(--scrollbar-size);
+    height: var(--scrollbar-size);
+  }
+  /* The track is the whole gutter — with a transparent track, the inset gap shows
+     the GROUND of the box, not a painted ring. */
+  #kinds::-webkit-scrollbar-track,
+  #body::-webkit-scrollbar-track,
+  .pop::-webkit-scrollbar-track,
+  .settings::-webkit-scrollbar-track {
+    background-color: var(--scrollbar-track);
+  }
+  /* The INSET of the thumb: the border is transparent (it paints nothing) and the
+     ground is CLIPPED at the `content-box` — only the middle shows, and the click
+     target is still the whole box. Colour and clip are SEPARATE declarations on
+     purpose: the `background` shortcut here would RESET the clip and the gap would
+     no longer be seen — including coming from a `:hover` that used the shortcut. */
+  #kinds::-webkit-scrollbar-thumb,
+  #body::-webkit-scrollbar-thumb,
+  .pop::-webkit-scrollbar-thumb,
+  .settings::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb-rest);
+    background-clip: content-box;
+    border: var(--scrollbar-inset) solid transparent;
+    border-radius: var(--scrollbar-radius);
+  }
+  /* The thumb turns SOLID with the pointer ON TOP OF IT. The thumb's box answers
+     the pointer even where nothing is painted — it is box, not ink —, and it is
+     the only point of the bar the engine lets be heard (the why is in the block
+     above, with the date of the check). */
+  #kinds::-webkit-scrollbar-thumb:hover,
+  #body::-webkit-scrollbar-thumb:hover,
+  .pop::-webkit-scrollbar-thumb:hover,
+  .settings::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb);
+  }
+  /* The corner where the two bars cross: it only exists when BOTH axes scroll —
+     without this rule, who paints is the engine. */
+  #kinds::-webkit-scrollbar-corner,
+  #body::-webkit-scrollbar-corner,
+  .pop::-webkit-scrollbar-corner,
+  .settings::-webkit-scrollbar-corner {
+    background-color: var(--scrollbar-corner);
+  }
+}
+
+/* ===== 4. THE MOTION, AND THE TWO DOORS TO SILENCE IT ==================
+   The transitions above and the page ENTRANCE, here — AT's motion belongs
+   to the BASE (rule), and its TIME belongs to the theme (`--speed`, `--ease`).
+   Turning it off is another thing, and has TWO doors to the same zero:
+     · the SYSTEM preference — `prefers-reduced-motion`, which the
+       browser already answers on its own and which also covers
+       whoever turns the motion reduction on in the operating system;
+     · the PERSON's choice — the `no-motion` class on the `<html>`, set
+       before the first paint (`js/boot.js`) and flipped in Settings.
+   They are TWO blocks because CSS does not let a `@media` enter a
+   selector list; the rule is the SAME, and a test charges that both are
+   there — a block that disappears gives the motion back in silence.
+   What is zeroed are the DURATIONS, never `transition: none` nor `animation:
+   none`: suppressing the mechanism would suppress along with it the
+   `transitionend` and the `animationend` that someone may one day listen
+   for. And the `!important` is not brute force: the motion lives in class
+   selectors (`nav button`, which is more specific than the `*` here), and
+   without it the lock would lose to exactly what it came to switch off.
+   THE TWO DURATIONS, and not only the transitions': an ANIMATION is
+   not a transition, and a door that zeroed only `transition-duration`
+   would leave exactly the entrance — the one seen first — passing
+   over the choice of whoever switched it off (2026-09-15). */
+/* THE VIEW THAT ARRIVES (2026-09-15): the panel does not "just appear" — what it
+   shows ENTERS. The rule is this one; the values are the theme's, and they are the
+   two that already say who it is: the DISTANCE comes from `--enter-shift` (a paper
+   theme puts zero and only the ink arriving is left; the glass rises from far away)
+   and the TIME comes from the `--speed`/`--ease`, the same ones of every transition
+   — a dry theme enters dry, without a second vocabulary of motion just for this.
+   WHO ENTERS is the panel CONTENT (`#body > *`), and not the box: the box persists
+   between views, and what animates is what is SWAPPED. It was the first design —
+   the animation on the box — that made the effect happen only on F5: clicking a
+   menu row swaps the node, and the box, which did not change, had nothing to
+   re-animate. With the target on the child, every view that arrives arrives
+   entering, and the click on the menu comes to have the same effect as the opening.
+   THE EXCEPTION is the live channel: when the disk changes, what is redone is the SAME
+   view, and an entrance at every saved file would blink the screen of whoever is reading
+   (including the ones the LLM itself writes). Who knows that is whoever redraws, and it
+   says so through `.no-enter` — the duration zeroed, never the mechanism (the section
+   below explains why). The `both` is what holds the first paint in the `from` state:
+   without it the content would appear whole for one frame and only then start entering. */
+@keyframes enter {
+  /* From ABOVE, and not from below: a downward shift INSIDE whatever scrolls
+     increases its scrollable area, and the panel bar blinks at every view that
+     arrives (the `transform` enters the overflow count, it is the engine's). Up and
+     to the left there is no scrolling — it is the same reason as `.probe`, above. */
+  from { opacity: 0; transform: translateY(calc(-1 * var(--enter-shift))); }
+  to   { opacity: 1; transform: none; }
+}
+#body > * { animation: enter var(--speed) var(--ease) both; }
+#body.no-enter > * { animation-duration: 0s; }
+
+/* THE OVERLAY ENTRANCE (2026-09-19): the veil FADES and the dialog rises and
+   blooms — the two pieces that stop the page arrive as a gesture, not a blink.
+   Both animate ONLY `opacity` and `transform` (never layout), so they stay on the
+   compositor and cost nothing per frame; the theme's `--speed`/`--ease` are the
+   same ones of every other motion, and the two doors below silence them along
+   with the rest. The `from` keeps the dialog's own centring translate — it is the
+   SAME `translate(-50%, -50%)`, plus the scale, so the box blooms around its
+   centre instead of sliding to it. */
+@keyframes veil-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes dialog-in {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(.95); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+/* THE BALLOON ENTERS FROM ITS OWN EDGE: it lives in a corner, and a box in a
+   corner that rose from BELOW would come from off the window. It slides in from
+   the side it is anchored to, by the theme's own shift — a dry theme enters dry,
+   like everything else here. */
+@keyframes balloon-in {
+  from { opacity: 0; transform: translateX(var(--enter-shift)); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0s !important;
+                           animation-duration: 0s !important; }
+}
+html.no-motion, html.no-motion *,
+html.no-motion *::before, html.no-motion *::after {
+  transition-duration: 0s !important;
+  animation-duration: 0s !important;
+}
+
+/* ===== 5. THE RESPONSIVE ==============================================
+   TWO WIDTH BANDS, and only two (2026-09-15). The numbers are LITERALS
+   — the exception declared in section 1 —, and what each one governs:
+     · 960px — the panel collapses. It is the SAME rail as the choice
+       (`nav-rail`, section 2), by another door: the width decides for whoever
+       NEVER chose. Whoever chose to open keeps the sidebar (`nav-open`), and
+       whoever chose to collapse already has it collapsed at any width — it is
+       that asymmetry that makes the person beat the window in both directions,
+       and that is why the selector is `:not(.nav-open)` and not `.nav-rail`.
+     · 640px — what was still big-screen gives way: the two title strips come down, the
+       cell breathing room tightens, the filter popover stops going past the window and
+       the corner language leaves (it is the support of the support, and it was the first
+       to break in a tight band). The USEFUL AREA breathing room stays as it is: 20px in
+       a 600 window does not tighten (its sides are now their own token, `--page-pad-x`,
+       shared with the table — but a tight band is not the place to tighten them).
+       The one that DOES give way is the TABLE'S gutter: below 960 the columns are
+       measured to fit the panel exactly, so the gutter is dropped there (section 2).
+   THE 960 BREAKPOINT IS ALSO IN THE JS (`js/nav.js`), and for a practical reason: the
+   button needs to know what the width did in order to know what to do with the click,
+   and a media query neither reads tokens nor answers anybody's question. The two numbers
+   are a PAIR, like the theme's and the motion's keys — whoever guards them is the ruler. */
+/* THE DRAWER: on a narrow screen, OPENING does not PUSH — it stays on top (2026-09-15).
+   The sidebar takes the full width the window does not have to give; if it took
+   it from the content, what is left is a sausage of text, and the table that
+   already scrolls sideways would earn one more bar because of the leftover. Out
+   of the flow, the `main` keeps the whole window and nothing tightens.
+   The width still ANIMATES: what changes from state to state is the width, and the
+   transition is the `nav`'s — so the drawer grows from the rail instead of blinking.
+   The VEIL separates what stayed behind and is the target of whoever wants to close.
+   The `z-index` of the veil sits BETWEEN the filter popover (10) and the drawer (20): with
+   the drawer open the popover is not in use, and if it were it is not it that commands. */
+.scrim { display: none; position: fixed; inset: 0; z-index: 15;
+         /* INK, and not `--bg`: the ground is a GRADIENT in two themes, and
+            `color-mix` with a gradient does not fail loudly — it fails by
+            rendering NOTHING, so the drawer's veil was invisible in Aero and
+            Liquid Glass and nobody could see why (fixed 2026-09-18, with the
+            dialog's veil, which is where the hole was found). */
+         background: color-mix(in srgb, var(--ink) 30%, transparent);
+         backdrop-filter: var(--veil-blur, var(--panel-blur)); }
+
+@media (max-width: 960px) {
+  /* THE CHASSIS OUT OF THE FLOW, in BOTH states (2026-09-15): here the sidebar
+     never shares space with the content — neither collapsed nor open. Collapsed,
+     it is the rail resting over a band the `main` RESERVES; open, it is the drawer
+     on top, with the veil. The reserve is the width of the RAIL, which is a
+     constant. And it is the CONSTANT flow that makes the gesture clean: while the
+     width of the `nav` animates from the rail to the full one, the content does
+     not move. If the `nav` went back into the flow on closing — or left it only on
+     opening —, every frame of the animation would change the `main` width, and the
+     text would rewrite frame by frame: it is the "rebuilding the text" Rafael saw,
+     and it belongs to the FLOW, not to the animation (report and fix, 2026-09-15). */
+  /* THE SHAPE: everything below belongs to the SHELL, and the shell is DECLARED
+     (`html.shell`, in index.html) — never guessed from the markup. A page WITHOUT
+     a menu — the launcher (`/apps`), a login — does not declare it, and none of
+     this reaches it (2026-09-18).
+
+     The defect that put this here: the `main` reserve below applied to every page,
+     and the launcher came out with 48px of dead margin on the LEFT — measured at
+     390px, `main[x=48 w=342]` in a 390 window. The design system knew ONE page
+     shape, and every other one inherited rules about a `nav` it does not have. The
+     admin page of a system is not a special case of its content page: they are two
+     shapes, and the rules say which one they are talking about. */
+  html.shell nav { position: fixed; z-index: 20; top: 0; bottom: 0; left: 0; }
+  html.shell main { margin-left: var(--sidebar-rail); }
+  /* THE OTHER DOOR of the rail: here it comes from the WIDTH. The declarations are
+     the same as section 2's (the choice) on purpose — the two doors give the same
+     state, and nothing here may diverge from there. */
+  html.shell:not(.nav-open) nav { width: var(--sidebar-rail); flex-basis: var(--sidebar-rail); }
+  html.shell:not(.nav-open) #kinds, html.shell:not(.nav-open) .brand,
+  html.shell:not(.nav-open) .side-foot {
+    opacity: 0; visibility: hidden;
+    transition: opacity var(--speed) var(--ease), visibility 0s var(--speed); }
+  html.shell:not(.nav-open) .brand { position: absolute; }
+  html.shell:not(.nav-open) nav h1 { justify-content: center; padding-inline: 0; }
+  html.shell:not(.nav-open) .nav-toggle { margin-left: 0; }
+  html.shell:not(.nav-open) .nav-toggle::before { content: "»"; }
+  html.shell.nav-open .scrim { display: block; }
+  /* FULL SCREEN GIVES THE RESERVE BACK (2026-09-19). In this band the panel is
+     out of the flow and the `main` RESERVES the width of the rail for it (above)
+     — and with the panel hidden by `write-full` (section 2) that reserve is a
+     dead strip on the left of the very screen that asked for all of it. The rule
+     lives HERE and not in section 2 because the reserve does: at any other width
+     the `main` has no left margin to take back. */
+  html.write-full main { margin-left: 0; }
+
+  /* NO BAR ON A NARROW SCREEN (2026-09-18). On a desktop the bar is DRAWN and
+     always in sight on purpose (section 3): it is a target you aim at with the
+     pointer, and the reserved gutter is what keeps a column from jumping when the
+     thumb appears. On a phone neither half of that holds — there is no pointer to
+     aim, and the gutter is not reserved room but LOST room, on a panel that already
+     has none to give. The section does not scroll any less: what goes is the
+     drawing. This is the one place where section 3's rule is overruled, and it is
+     overruled by the same argument that wrote it. */
+  #kinds, #body, .pop, .settings { scrollbar-width: none; }
+  #kinds::-webkit-scrollbar,
+  #body::-webkit-scrollbar,
+  .pop::-webkit-scrollbar,
+  .settings::-webkit-scrollbar { display: none; }
+  /* THE TABLE SIDE GUTTER GOES AWAY (2026-09-19): below this band the columns are
+     measured to fit the panel exactly (TableView's narrow measure), and the side
+     gutter above would leave the table 40px wider than the room it is handed — the
+     sideways scroll this band exists to avoid. The table returns to the side edge
+     it always had here; its TOP breathing (`--page-pad-y`) stays, and the page's
+     own breathing (`--page-pad-x`) stays too. */
+  #body table:not(.prose table) { margin: var(--page-pad-y, 18px) 0 0; width: 100%; }
+}
+@media (max-width: 640px) {
+  /* THE COUNT KEEPS ITS PLACE HERE, and only its GUTTER goes: below this band the
+     table is a stack of cards (`display: block`) and the columns are measured to
+     fit the panel exactly, so the side inset the count shares with the table
+     (section 2) has nothing left to line up with — it reads flush with the stack.
+     The rule is the MARGIN alone. It used to carry `position: static`, an override
+     of a pinned state the desktop rule no longer declares — it had been a no-op
+     for as long as the pin was gone, and it is removed here (2026-09-20). */
+  .hidden-count { margin: var(--page-pad-y, 18px) 0 0; }
+  /* THE STRIP DOES NOT SHRINK HERE: its height is what makes the top distance equal
+     the left one (the text is centred), and shortening it would break exactly that
+     equality on the screen where it is seen the most. What gives way in this strip
+     are the cell and popover breathing rooms, which have no symmetry ruler. */
+  th, td { padding: calc(var(--cell-pad-y) - 2px) calc(var(--cell-pad) - 2px); }
+  .pop { max-width: calc(100vw - 24px); }
+  #head-right .loc { display: none; }
+
+  /* THE ROW STOPS BEING A ROW (2026-09-18). Below this width the arithmetic does
+     NOT close: the four essential columns alone ask for 352px and the panel has
+     342 — the prose column came out five characters wide and broke every word. So
+     the row becomes a CARD: the columns stack, each one carrying its own header as
+     a LABEL (`data-label`, put there by the page), and reading is vertical instead
+     of sideways. It is the same table, the same data and the same theme; what
+     changes is the SHAPE, and the shape is the thing a narrow screen cannot keep.
+     Nothing here declares a value: the card wears the panel's ground, the line and
+     the radius, like every other surface of the AT. */
+  table, tbody, tr, td { display: block; }
+  thead { display: none; }              /* the header became the labels */
+  tr { margin-bottom: var(--group-gap); padding: var(--cell-pad);
+       background: var(--panel); border: var(--set-border);
+       border-radius: var(--radius); }
+  td { display: flex; gap: var(--group-gap); padding: 0; }
+  td + td { margin-top: var(--dt-gap); }
+  td::before { content: attr(data-label); flex: 0 0 auto; color: var(--dim); }
+  /* The card hover is the WHOLE surface again (2026-09-19): a card is one thing,
+     and here it is the card that lights — the row-band hover of the desktop is a
+     table's idiom, and this is no longer a table. */
+  tbody tr:hover { background: var(--table-row-hover); }
+  tbody tr:hover td { background: none; }
+  tbody tr:hover td:first-child, tbody tr:hover td:last-child { border-radius: 0; }
+}
+

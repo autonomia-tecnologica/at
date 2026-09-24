@@ -3,7 +3,7 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "bill"
+name = "at"
 description = "A deterministic task engine that bootstraps its own environment"
 dynamic = ["version"]
 requires-python = ">=3.14.7"
@@ -12,30 +12,30 @@ requires-python = ">=3.14.7"
 # `requirements.txt`, with the hashing; a test fails when the two drift.
 dependencies = ["PyNaCl==1.6.2"]
 
-# Two artifacts and two entry points (§3, item 27): `bill` is the folder and the
-# app, and `bill-deploy` is §7 whole — the environment, the switch and the only
-# elevation in the product. `bill` imports nothing of `bill_deploy`, and the
+# Two artifacts and two entry points (§3, item 27): `at` is the folder and the
+# app, and `at-deploy` is §7 whole — the environment, the switch and the only
+# elevation in the product. `at` imports nothing of `at_deploy`, and the
 # suite affirms it.
 [project.scripts]
-bill = "bill.ui.cli:main"
-bill-deploy = "bill_deploy.cli:main"
+at = "at.ui.cli:main"
+at-deploy = "at_deploy.cli:main"
 
-# The version has one home: `bill.__version__`, and both artifacts wear it.
+# The version has one home: `at.__version__`, and both artifacts wear it.
 # There is one release, and it publishes both files.
 [tool.setuptools.dynamic]
-version = { attr = "bill.__version__" }
+version = { attr = "at.__version__" }
 
 [tool.setuptools.packages.find]
-include = ["bill*"]
-exclude = ["bill.tests*", "bill_deploy.tests*"]
+include = ["at*"]
+exclude = ["at.tests*", "at_deploy.tests*"]
 
 # Three payloads are data, not code, and all of them are invisible to an import
 # graph: without them the built artifact ships no `blocks/*.json` (every surface
 # answers in raw keys), no `defaults/*.json` (the first run seeds no system
 # table) and no `vocabulary/*.json` (the interpreter names nothing a person
 # says). The WebApp's `assets/`, `dist/` and `vendor/` are collected by
-# `bill.spec` instead, because they must stay out of a wheel: `dist/` is derived,
+# `at.spec` instead, because they must stay out of a wheel: `dist/` is derived,
 # and the three together are what the single binary carries (§3).
 [tool.setuptools.package-data]
-"bill.i18n" = ["blocks/*.json", "vocabulary/*.json"]
-"bill.data" = ["defaults/*.json"]
+"at.i18n" = ["blocks/*.json", "vocabulary/*.json"]
+"at.data" = ["defaults/*.json"]

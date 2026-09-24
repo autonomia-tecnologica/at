@@ -1,0 +1,24 @@
+{
+  "pt_BR": {
+    "welcome.filename": "Bem-vindo.md",
+    "welcome.body": "# Bem-vindo\n\nEsta é a pasta de prosa do AT: tudo o que não é dado estruturado mora aqui.\n\nAbra a WebApp (`at webapp run`) e a dobra **Arquivos** mostra esta pasta.\n",
+    "not_text": "Este arquivo não é texto — o AT não o abre para editar.",
+    "not_served": "Este arquivo não é um dos que o AT serve.",
+    "not_writable": "Este arquivo não é escrito por aqui.",
+    "empty_write": "Uma escrita vazia foi recusada: nada seria salvo.",
+    "too_large": "Grande demais para editar aqui.",
+    "changed_on_disk": "O arquivo mudou no disco desde que você o abriu.",
+    "read_only": "Modo somente leitura: nada foi escrito."
+  },
+  "en_US": {
+    "welcome.filename": "Welcome.md",
+    "welcome.body": "# Welcome\n\nThis is AT's prose folder: everything that is not structured data lives here.\n\nOpen the WebApp (`at webapp run`) and the **Files** fold shows this folder.\n",
+    "not_text": "This file is not text — AT does not open it for editing.",
+    "not_served": "This file is not one AT serves.",
+    "not_writable": "This file is not written from here.",
+    "empty_write": "An empty write was refused: nothing would be saved.",
+    "too_large": "Too large to edit here.",
+    "changed_on_disk": "The file changed on disk since you opened it.",
+    "read_only": "Read-only mode: nothing was written."
+  }
+}

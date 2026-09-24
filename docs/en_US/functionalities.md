@@ -16,7 +16,7 @@ The first functionality with more than one way of being used. The service is `no
 |---|---|---|
 | off | nothing is installed, and there is no notification at all | `S` |
 | installed | the `ntfy` container exists and runs | `S` |
-| as a service | Bill has it configured | `S` |
+| as a service | AT has it configured | `S` |
 | read-only token | the token only reads | `S` |
 | read-and-write token, no second factor | the token reads and writes, and nothing beyond it confirms who is using it | `A` |
 | the same, with the token service (TOTP) | the second factor closes the token | `S` |

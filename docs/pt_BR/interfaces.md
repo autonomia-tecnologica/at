@@ -2,17 +2,17 @@
 
 ### Linha de comando (`cli`), aplicação web (WebApp) e interface Tkinter (Wizard)
 
-- Ao abrir o Bill, seja em linha de comando, seja direto pela interface gráfica, temos o "Painel de Controle". É uma interface em Tkinter, o Wizard. Aqui são configuradas as "entranhas" do ambiente do Bill, sendo sua primeira camada a aplicação web.
+- Ao abrir o AT, seja em linha de comando, seja direto pela interface gráfica, temos o "Painel de Controle". É uma interface em Tkinter, o Wizard. Aqui são configuradas as "entranhas" do ambiente do AT, sendo sua primeira camada a aplicação web.
 
-- Chamar o binário direto do terminal carrega a interface Tkinter. Qualquer outro parâmetro passado faz o programa agir como uma `cli`. `bill ajuda`, ou `bill help`, mostra como usar a cli completamente. Você pode modificar nas configurações para o comando `bill` não abrir o Tkinter e sim o `bill help`.
+- Chamar o binário direto do terminal carrega a interface Tkinter. Qualquer outro parâmetro passado faz o programa agir como uma `cli`. `at ajuda`, ou `at help`, mostra como usar a cli completamente. Você pode modificar nas configurações para o comando `at` não abrir o Tkinter e sim o `at help`.
 
-- A linha de comando funciona para tudo do Bill. Qualquer funcionalidade que ele exponha, seja na API REST (utilizada pelo frontend do WebApp), seja no WebApp em si, é acessível pela linha de comando.
+- A linha de comando funciona para tudo do AT. Qualquer funcionalidade que ele exponha, seja na API REST (utilizada pelo frontend do WebApp), seja no WebApp em si, é acessível pela linha de comando.
 
-- O Wizard é uma tela que permite realizar configurações mais críticas do Bill que eu não queria deixar disponível na rede. Ele tem papéis que não se mudam de lugar: a **primeira subida**, em que a Pasta de Trabalho é confirmada e o primeiro admin é criado; a **instalação de serviços**, e só ele instala; a **volta ao modo Forms**, quando o portão de autenticação cai; e a gestão das chaves principais no modo avançado.
+- O Wizard é uma tela que permite realizar configurações mais críticas do AT que eu não queria deixar disponível na rede. Ele tem papéis que não se mudam de lugar: a **primeira subida**, em que a Pasta de Trabalho é confirmada e o primeiro admin é criado; a **instalação de serviços**, e só ele instala; a **volta ao modo Forms**, quando o portão de autenticação cai; e a gestão das chaves principais no modo avançado.
 
-- Enquanto o Painel de Controle não estiver construído, a primeira subida acontece na `cli`: `bill admin` pergunta o nome e lê a credencial sem eco, e `bill` sem palavra imprime o `help`. O Wizard não perde o papel — a tela do primeiro admin é dele —, e a porta é a mesma: a regra desta seção é que tudo do `Wizard` seja alcançável pela `cli`.
+- Enquanto o Painel de Controle não estiver construído, a primeira subida acontece na `cli`: `at admin` pergunta o nome e lê a credencial sem eco, e `at` sem palavra imprime o `help`. O Wizard não perde o papel — a tela do primeiro admin é dele —, e a porta é a mesma: a regra desta seção é que tudo do `Wizard` seja alcançável pela `cli`.
 
-- O `cli` executa apenas localmente, em exceção quando está comunicando com APIs externas para devida configuração. E é ele, ou o Wizard, que devolve o Bill ao modo Forms: as duas são superfícies locais, e é por isso que a volta existe.
+- O `cli` executa apenas localmente, em exceção quando está comunicando com APIs externas para devida configuração. E é ele, ou o Wizard, que devolve o AT ao modo Forms: as duas são superfícies locais, e é por isso que a volta existe.
 
 - Papel e permissão **não** são assunto do Wizard: isso é tela do WebApp, e o atrito de fazer admin por lá não se paga. O Wizard fica com o que só ele pode fazer.
 
@@ -20,7 +20,7 @@
 
 - A linguagem natural entra como **recurso** do WebApp e da `cli`, e não como uma quarta superfície: nada se torna possível só por falar. O que a pessoa digita vira uma proposta, e o que ela pode propor é o que ela já pode fazer.
 
-- **O interpretador é determinístico.** Não há LLM no tempo de execução: a LLM ajuda a **escrever** o vocabulário, e o que roda é código com dado. Isso é o que corta o cordão com o token de terceiros, e é por isso que o Bill não precisa de placa de vídeo para entender uma frase.
+- **O interpretador é determinístico.** Não há LLM no tempo de execução: a LLM ajuda a **escrever** o vocabulário, e o que roda é código com dado. Isso é o que corta o cordão com o token de terceiros, e é por isso que o AT não precisa de placa de vídeo para entender uma frase.
 
 - O que o interpretador consulta é o **vocabulário**, por idioma, empacotado no produto junto dos blocos de `i18n`, porque traduzir vocabulário e traduzir texto é a mesma tarefa. O vocabulário é dado burro: pares expressão → expressão canônica, com idioma e região, e nada condicional. O que depende de contexto é gramática, e gramática é código do produto.
 
@@ -28,9 +28,9 @@
 
 - **O teto de acesso é o que o ator pode; o limiar de risco é o que ele pode sem perguntar.** Toda demanda tem um **risco**, medido pelo core a partir do que o produto declara por ação e por argumento — nunca pelo interpretador, porque quem pede não avalia o próprio risco. O **limiar** mora nas configurações: abaixo dele a ação corre, acima dela a pessoa aprova. O risco de cada ação é ajustável em `settings.json`, e o de uma extensão é aceito no momento de instalar.
 
-- A aprovação chega por notificação, e a notificação é **campainha, não chave**: o toque abre o Bill e a aprovação acontece dentro dele, com a sessão valendo. A credencial não mora na central de notificações. Um job que roda sozinho pode ser aprovado assim, e a aprovação é uma linha na auditoria, separada da demanda que esperou.
+- A aprovação chega por notificação, e a notificação é **campainha, não chave**: o toque abre o AT e a aprovação acontece dentro dele, com a sessão valendo. A credencial não mora na central de notificações. Um job que roda sozinho pode ser aprovado assim, e a aprovação é uma linha na auditoria, separada da demanda que esperou.
 
-- **A função de agente é desligável**, e desligá-la é tirar o interpretador da API do core: quem não quer a camada de linguagem usa o Bill sem ela e não perde mais nada além dela.
+- **A função de agente é desligável**, e desligá-la é tirar o interpretador da API do core: quem não quer a camada de linguagem usa o AT sem ela e não perde mais nada além dela.
 
 - Como o interpretador é determinístico, **a responsabilidade volta para quem pediu**: um mal-entendido é defeito nosso ou frase mal escrita, e o rastro diz quem pediu. O `FAQ.md` diz isso com todas as letras, junto do conselho de que escrever bem é o melhor remédio.
 
@@ -61,24 +61,24 @@ O painel tem as entradas:
 
 A entrada **Pessoas** guarda as duas tabelas de sistema do teto de acesso, e cada linha abre a tela dela. Nada aqui é texto livre: a permissão é `objeto:ação` sobre uma **lista fechada**, e o que a pessoa marca é marcado a partir dela.
 
-- **A tela do `role` desenha a lista fechada como marcações** — os objetos, e as ações que cada um aceita — e escreve o conjunto de volta pela rota de tabela que a `cli` já percorre. Um papel que nomeia uma permissão que o catálogo não tem **não derruba o Bill**: o dizer do §4 é desenhado na tela, ao lado do papel, até que alguém a tire de lá.
-- **A tela do `actor` é onde a credencial de máquina é minada.** Um token não é algo que uma pessoa digita, então o Bill o sorteia, a linha guarda a derivação e o token aparece **uma vez** — ele nunca é lido de volta. A mesma tela dá à máquina um token novo, que é o preço de um perdido ou vazado, e o **revoga**: a linha fica, porque um ator é o nome que a auditoria vai carregar, e a porta simplesmente para de abrir.
+- **A tela do `role` desenha a lista fechada como marcações** — os objetos, e as ações que cada um aceita — e escreve o conjunto de volta pela rota de tabela que a `cli` já percorre. Um papel que nomeia uma permissão que o catálogo não tem **não derruba o AT**: o dizer do §4 é desenhado na tela, ao lado do papel, até que alguém a tire de lá.
+- **A tela do `actor` é onde a credencial de máquina é minada.** Um token não é algo que uma pessoa digita, então o AT o sorteia, a linha guarda a derivação e o token aparece **uma vez** — ele nunca é lido de volta. A mesma tela dá à máquina um token novo, que é o preço de um perdido ou vazado, e o **revoga**: a linha fica, porque um ator é o nome que a auditoria vai carregar, e a porta simplesmente para de abrir.
 - **Nada disso é uma segunda regra.** As telas são alcançáveis por quem carrega a permissão — o papel do administrador carrega o catálogo inteiro por construção — e todo o resto é recusado pelo servidor, nas palavras dele.
 
 #### Design System e temas
 
 - O Design System é de desenvolvimento da LLM. Crescimento gradual de componentes.
 
-- O suporte a temas é parte estrutural do Bill. Vários temas me ajudam a testar a força do Design System em cima de diferentes visões. Ao mesmo tempo que me fazem ficar feliz de usar o sistema. PRs de tema são bem-vindas, mas estão totalmente sujeitas ao meu julgamento pessoal e ficarei feliz em compartilhar meu péssimo gosto, se não quiser aceitar uma PR. Mas não se acanhe!
+- O suporte a temas é parte estrutural do AT. Vários temas me ajudam a testar a força do Design System em cima de diferentes visões. Ao mesmo tempo que me fazem ficar feliz de usar o sistema. PRs de tema são bem-vindas, mas estão totalmente sujeitas ao meu julgamento pessoal e ficarei feliz em compartilhar meu péssimo gosto, se não quiser aceitar uma PR. Mas não se acanhe!
 
-- O tema vale para o WebApp inteiro, **tela de login incluída**: não existe página do Bill que escape do Design System, e a entrada é a primeira impressão que ele tem que causar.
+- O tema vale para o WebApp inteiro, **tela de login incluída**: não existe página do AT que escape do Design System, e a entrada é a primeira impressão que ele tem que causar.
 
-- O portal do Authelia **não** é uma tela do Bill, e não há como vesti-lo com o Design System: o Authelia aceita logo, favicon, textos traduzidos e uma de quatro paletas, e nada além disso. Então o tema dele fica o mais neutro possível, e o `FAQ.md` diz de quem é aquela tela — educar sobre o que a pessoa está usando de fato faz parte do produto.
+- O portal do Authelia **não** é uma tela do AT, e não há como vesti-lo com o Design System: o Authelia aceita logo, favicon, textos traduzidos e uma de quatro paletas, e nada além disso. Então o tema dele fica o mais neutro possível, e o `FAQ.md` diz de quem é aquela tela — educar sobre o que a pessoa está usando de fato faz parte do produto.
 
 #### Templates
 
-- Bill usa `Vue`. Por mais que eu não goste de usar muitas dependências externas pelo risco de Supply Chain, e que a maioria disso seja causada por bibliotecas JavaScript, eu gosto do `Vue`. Acho uma perda válida pela gestão de templates que ele traz. Por mais que eu não esteja escrevendo esse código, não me agrada ver a LLM criando arquivos JavaScript individuais para páginas. Dificulta minha legibilidade e sou muito a favor de boa legibilidade.
+- AT usa `Vue`. Por mais que eu não goste de usar muitas dependências externas pelo risco de Supply Chain, e que a maioria disso seja causada por bibliotecas JavaScript, eu gosto do `Vue`. Acho uma perda válida pela gestão de templates que ele traz. Por mais que eu não esteja escrevendo esse código, não me agrada ver a LLM criando arquivos JavaScript individuais para páginas. Dificulta minha legibilidade e sou muito a favor de boa legibilidade.
 
 #### TypeScript e frameworks
 
-- WebApp do Bill é escrito em TypeScript e _transpilado_ usando `ViteJS`. O TypeScript é bem escrito respeitando módulos e domínios, facilitando a gestão humana.
+- WebApp do AT é escrito em TypeScript e _transpilado_ usando `ViteJS`. O TypeScript é bem escrito respeitando módulos e domínios, facilitando a gestão humana.

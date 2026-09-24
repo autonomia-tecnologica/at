@@ -7,7 +7,7 @@ The derived half of the founding document: the tree, the Working Folder and the 
 Each node with its job, and none resolves a path of its own beyond `core` (§4).
 
 ```
-bill/                          the product: the engine, the declarations and the UI
+at/                          the product: the engine, the declarations and the UI
 ├── core/                      the rules — the Working Folder, the settings, the first run,
 │                              the single writer, the table engine, the project scope,
 │                              the permission catalogue and the actors
@@ -21,7 +21,7 @@ bill/                          the product: the engine, the declarations and the
 │                              generates and the process that terminates the TLS (§3, §6)
 ├── vendor/caddy/              the Caddy release tarball, byte for byte as the vendor
 │                              ships it, which is what travels inside the binary (§3, §6)
-├── encryption/                secrets: the Access Phrase, the Bill Key and the values it
+├── encryption/                secrets: the Access Phrase, the Vault Key and the values it
 │                              protects (`vault`), and `password`, the derivation the hashed
 │                              field stores
 ├── nlu/                       interpretation: the vocabulary, the matcher and the action proposal
@@ -47,9 +47,9 @@ bill/                          the product: the engine, the declarations and the
     ├── spelling.pt_BR.txt     what the checker must ignore in Portuguese
     └── spelling.en_US.txt     the same, in English
 
-bill_deploy/                   the SECOND artifact: §7 whole — the environment, the
+at_deploy/                   the SECOND artifact: §7 whole — the environment, the
 │                              switch between the two paths and the only elevation in the
-│                              product (§3, item 27). It imports `bill`'s core and `bill`
+│                              product (§3, item 27). It imports `at`'s core and `at`
 │                              imports nothing of it
 ├── cli.py                     its command line: the `services` words, and nothing else
 ├── tree.py                    the words it offers — help and dispatch read the one list
@@ -88,11 +88,11 @@ docs/                          the documents
     └── backlog.md             the working document, English only: what comes next, and what counts as done
 ```
 
-The two specs — `bill.spec` and `bill-deploy.spec` — are the one place that says what travels inside each artifact, and they are by hand on purpose: the payloads — `bill/i18n`, `bill/data/defaults`, the Caddy's tarball under `bill/vendor/caddy/`, and the WebApp's `assets`, `dist` and `vendor` — are invisible to an import graph, and `bill/ui/webapp/` also holds `node_modules/` and `src/`, which are the derivation and must not travel. A payload left out fails silently in the WebApp (404s and a 500) and loudly everywhere else, because `tr()` raises on the first message of every command. The deploy's spec is short on purpose: it carries no WebApp, no interpreter and no Caddy, because it reaches none of them.
+The two specs — `at.spec` and `at-deploy.spec` — are the one place that says what travels inside each artifact, and they are by hand on purpose: the payloads — `at/i18n`, `at/data/defaults`, the Caddy's tarball under `at/vendor/caddy/`, and the WebApp's `assets`, `dist` and `vendor` — are invisible to an import graph, and `at/ui/webapp/` also holds `node_modules/` and `src/`, which are the derivation and must not travel. A payload left out fails silently in the WebApp (404s and a 500) and loudly everywhere else, because `tr()` raises on the first message of every command. The deploy's spec is short on purpose: it carries no WebApp, no interpreter and no Caddy, because it reaches none of them.
 
 ## 2. The Working Folder
 
-The folder the binary was opened in is the binary's folder, and that folder is the Working Folder (§3). On the first run Bill describes the folder and asks before writing anything; `App/settings.json` is what makes a folder configured.
+The folder the binary was opened in is the binary's folder, and that folder is the Working Folder (§3). On the first run AT describes the folder and asks before writing anything; `App/settings.json` is what makes a folder configured.
 
 **The name on disk is the face; the machine reads the internal name.** Every folder has an internal name — `app`, `data`, `prose`, `projects`, `shared` and `harness` — and that is the one the engine uses and the one the declarations cite. The name a person reads comes from the active language, and the table in `paths.py` is the only thing that knows it: `Tabelas/`, `Arquivos/`, `Projetos/` and `Compartilhada/` in `pt_BR`; `Tables/`, `Files/`, `Projects/` and `Shared/` in `en_US`. Two folders are the exception, and both are deliberate: the instance folder does not follow the language, because the language lives inside it — `App/` in both — and `Harness/` does not, because `pt_BR` took the word whole, so both languages spell it the same way.
 
@@ -116,18 +116,18 @@ Harness/                  what governs whoever works in the folder — named, st
 
 That listing is what a folder is born with. One folder arrives later, and only if
 the person asks for it: `App/caddy/` — the Caddy unpacked out of the binary, the
-stamp that says which platform it serves, the Caddyfile Bill generates, and the
+stamp that says which platform it serves, the Caddyfile AT generates, and the
 Caddy's own storage, its local authority among the rest. It is written by
-`bill webapp --include-caddy` and by nothing else (§6, §12), and it lives in
+`at webapp --include-caddy` and by nothing else (§6, §12), and it lives in
 `App/` for the reason §3 gives: what was extracted to run belongs to the folder,
 so a copied folder comes back with the Caddy and the certificates it had.
 
 The other folder that arrives only when it is asked for is `App/services/`, the
-state of the container path's services (§7a). What writes in it is `bill-deploy services
+state of the container path's services (§7a). What writes in it is `at-deploy services
 up`: `images.json` records the pin this folder IS at, per service, and each
 service's own folder carries what it reads — `dnsmasq/dnsmasq.conf`, the names of
-access, and `caddy/Caddyfile`, the Caddyfile Bill generates, with the storage
-inside the container. Nothing comes up without Podman: Bill checks whether it
+access, and `caddy/Caddyfile`, the Caddyfile AT generates, with the storage
+inside the container. Nothing comes up without Podman: AT checks whether it
 exists and, if it does not, offers the two ways out — install it, or continue on
 the hosted path. The images are pinned in version and hashing, as §3 demands, so
 the folder's pin and the binary's are compared on every `up` — and an instance
@@ -140,38 +140,38 @@ follow the language — a note whose name moved with the translation is a note a
 model stops finding — while the text does. It is written once, as the welcome note
 is, and a folder that already existed gains it by migration.
 
-**The migration.** Updating Bill is replacing the binary inside the folder, so every release that changes the folder's structure brings its migration and it runs on the first start after the swap (§3). The stamp is `App/migrations`, and it lives with the rest of what Bill writes, never inside the published declaration. There are eight migrations today: `.bill/` → `app/`, `app/` → `App/`, the person's folders into the active language, the `AGENT.md` the folder presents itself with, `Harness/`, the declarations of the tables a release introduces, and the administrator's role catching up with the permissions a release grew the catalogue by — twice, because the catalogue grew twice and a published migration is never edited. The third asks first, because renaming breaks whatever points at them from outside Bill; whoever declines keeps the name they had, and the resolution reads both spellings. The other seven touch only what Bill writes, and none of them overwrites anything — the sixth names the tables THAT release brings, and not the whole directory, so it never brings back a declaration a person deleted, and the last two hand over only what the folder never had the CHANCE to carry.
+**The migration.** Updating AT is replacing the binary inside the folder, so every release that changes the folder's structure brings its migration and it runs on the first start after the swap (§3). The stamp is `App/migrations`, and it lives with the rest of what AT writes, never inside the published declaration. There are eight migrations today: `.bill/` → `app/`, `app/` → `App/`, the person's folders into the active language, the `AGENT.md` the folder presents itself with, `Harness/`, the declarations of the tables a release introduces, and the administrator's role catching up with the permissions a release grew the catalogue by — twice, because the catalogue grew twice and a published migration is never edited. The third asks first, because renaming breaks whatever points at them from outside AT; whoever declines keeps the name they had, and the resolution reads both spellings. The other seven touch only what AT writes, and none of them overwrites anything — the sixth names the tables THAT release brings, and not the whole directory, so it never brings back a declaration a person deleted, and the last two hand over only what the folder never had the CHANCE to carry.
 
 A folder that has not migrated yet **is found by its old name**: `paths.instance_dir()` reads what is on disk before deciding, so that a folder with `.bill/` is not read as a new one — which was the defect migration number one existed to close.
 
 Two refusals are deliberate:
 
-- **No terminal to ask in means no folder is created.** A decision nobody could answer is not one; Bill stops with exit code `1` instead of assuming.
-- **Declining creates nothing.** Bill says where to move the binary instead — and exits without an error, because declining is not one.
+- **No terminal to ask in means no folder is created.** A decision nobody could answer is not one; AT stops with exit code `1` instead of assuming.
+- **Declining creates nothing.** AT says where to move the binary instead — and exits without an error, because declining is not one.
 
-`BILL_ROOT` aims the engine at another folder. It exists for the tests and for running from a checkout, and it is the only environment variable that decides where Bill writes.
+`AT_ROOT` aims the engine at another folder. It exists for the tests and for running from a checkout, and it is the only environment variable that decides where AT writes.
 
 While developing, this checkout *is* the Working Folder: the folders are created where they belong, under the active language's spelling, and every spelling is ignored by git.
 
 ## 3. Operation
 
 ```sh
-python3 -m bill help                         # the words
-python3 -m bill task create --set text="write the README" --set priority=high
-python3 -m bill task list                    # the table's default slice; `--all` shows everything
-python3 -m bill task view 3                  # or TASK-3, or tarefa-3
-python3 -m bill task edit 3 --set status=done
-python3 -m bill admin                        # the first administrator: a name, and the credential with no echo
-python3 -m bill pedir "cria uma tarefa pra sexta"   # the proposal, and the answer
-python3 -m bill webapp run                   # local loop, port 12345; `--port N` changes it
-python3 -m bill webapp --include-caddy       # exposed, with the Caddy's TLS on `--port`
+python3 -m at help                         # the words
+python3 -m at task create --set text="write the README" --set priority=high
+python3 -m at task list                    # the table's default slice; `--all` shows everything
+python3 -m at task view 3                  # or TASK-3, or tarefa-3
+python3 -m at task edit 3 --set status=done
+python3 -m at admin                        # the first administrator: a name, and the credential with no echo
+python3 -m at pedir "cria uma tarefa pra sexta"   # the proposal, and the answer
+python3 -m at webapp run                   # local loop, port 12345; `--port N` changes it
+python3 -m at webapp --include-caddy       # exposed, with the Caddy's TLS on `--port`
                                              # and `--host` naming the address it answers on
-python3 -m bill_deploy services up           # the container path: the services at the pin
-python3 -m bill_deploy services status       # what is standing, and on which image
-python3 -m bill_deploy services down         # down; the folder stays
-python3 -m bill_deploy services notify       # one alert through the notifier, proving the delivery
-python3 -m bill_deploy services phone        # the phone's read token: drawn, and printed once
-python3 -m bill_deploy services credential <name>   # the credential the gate proves, and the provider restarted
+python3 -m at_deploy services up           # the container path: the services at the pin
+python3 -m at_deploy services status       # what is standing, and on which image
+python3 -m at_deploy services down         # down; the folder stays
+python3 -m at_deploy services notify       # one alert through the notifier, proving the delivery
+python3 -m at_deploy services phone        # the phone's read token: drawn, and printed once
+python3 -m at_deploy services credential <name>   # the credential the gate proves, and the provider restarted
 .venv/bin/python -m unittest discover -t .   # both suites (the venv carries the checker)
 ```
 
@@ -181,21 +181,21 @@ Surfaces, and the state of each one today:
 
 | surface | how to reach it | state |
 |---|---|---|
-| `cli` | `bill <word>` | `help`, `version`, `webapp`, `admin`, `lang`, `ask` and the tables |
-| the deploy's `cli` | `bill-deploy <word>` | `help`, `version` and the six `services` words plus the operator's two — `phone` and `credential`; it carries no WebApp, and its Wizard is item 27's third slice |
-| Wizard | — | down until item 9 reaches slice 3: `bill` with no word prints the `help` |
-| WebApp | `bill webapp run` | reads and edits the tables, reaches the interpreter through the chat and the balloon, refuses to come up in a folder with no administrator and — when there is one — asks for the credential and gives no answer of the API before it is proved; and it is where the ceiling is MOVED: the People entry, with the actor and the role screens, the closed list a role is written against, and the machine credential Bill mints |
+| `cli` | `at <word>` | `help`, `version`, `webapp`, `admin`, `lang`, `ask` and the tables |
+| the deploy's `cli` | `at-deploy <word>` | `help`, `version` and the six `services` words plus the operator's two — `phone` and `credential`; it carries no WebApp, and its Wizard is item 27's third slice |
+| Wizard | — | down until item 9 reaches slice 3: `at` with no word prints the `help` |
+| WebApp | `at webapp run` | reads and edits the tables, reaches the interpreter through the chat and the balloon, refuses to come up in a folder with no administrator and — when there is one — asks for the credential and gives no answer of the API before it is proved; and it is where the ceiling is MOVED: the People entry, with the actor and the role screens, the closed list a role is written against, and the machine credential AT mints |
 
-`bill webapp` serves HTTP on the local loop, and `--include-caddy` is the
+`at webapp` serves HTTP on the local loop, and `--include-caddy` is the
 exposure §3 demands TLS for: the Caddy that came inside the binary terminates it
-with Bill's own certificate, and the WebApp stays on `127.0.0.1` behind it. What
+with AT's own certificate, and the WebApp stays on `127.0.0.1` behind it. What
 `--host` names changes with the flag — the loop it may bind without it, and the
 name the certificate is issued for with it, since a certificate is issued for a
 name and `0.0.0.0` is not one.
 
 Exit codes: `0` success · `1` refused or failed · `2` usage error.
 
-Python 3.14.7, with **one** runtime dependency: `PyNaCl`, the binding of `libsodium`, pinned in version and in hashing in `requirements.txt` (§3). The hashed field's derivation is `libsodium`'s, and that is not the standard library, so the price is named instead of avoided. Its wheel carries `libsodium` inside it, so the binary stays self-contained and nothing is asked of the machine that runs it. Two more exceptions are deliberate, and both stay on the development side: the WebApp's hosted typefaces, in `bill/ui/webapp/vendor/`, with the hash the manifest pins; and the documents' checker, which runs in the suite and is therefore a tool, not an installation — it cannot demand from another dev or from the runner anything that does not come pinned inside `.venv`.
+Python 3.14.7, with **one** runtime dependency: `PyNaCl`, the binding of `libsodium`, pinned in version and in hashing in `requirements.txt` (§3). The hashed field's derivation is `libsodium`'s, and that is not the standard library, so the price is named instead of avoided. Its wheel carries `libsodium` inside it, so the binary stays self-contained and nothing is asked of the machine that runs it. Two more exceptions are deliberate, and both stay on the development side: the WebApp's hosted typefaces, in `at/ui/webapp/vendor/`, with the hash the manifest pins; and the documents' checker, which runs in the suite and is therefore a tool, not an installation — it cannot demand from another dev or from the runner anything that does not come pinned inside `.venv`.
 
 That dependency installs first, under the same rule:
 
@@ -214,7 +214,7 @@ The suite runs the document gate (§3, Internationalization), and its checker is
 The page is a **Vue 3 + TypeScript** app, built by Vite (§5). The build is derivation, never edited:
 
 ```sh
-cd bill/ui/webapp
+cd at/ui/webapp
 npm ci && npm run build      # writes dist/, which the server serves
 npm run typecheck            # vue-tsc
 ```
@@ -228,14 +228,14 @@ Two settings in `vite.config.ts` are not taste: the modulepreload polyfill and t
 # requirements, with version and hash (§3), because the hooks ship separately
 # from the freezer and float on their own
 .venv/bin/pip install --require-hashes -r requirements-dev.txt
-.venv/bin/pyinstaller --clean --noconfirm bill.spec          # writes dist/bill
-.venv/bin/pyinstaller --clean --noconfirm bill-deploy.spec   # writes dist/bill-deploy
+.venv/bin/pyinstaller --clean --noconfirm at.spec          # writes dist/at
+.venv/bin/pyinstaller --clean --noconfirm at-deploy.spec   # writes dist/at-deploy
 ```
 
-**One release, two files, and the split IS the point.** `bill` is the folder and the app — the tables, the prose, the interpreter, the WebApp and the Wizard — and `bill-deploy` is §7 whole: the Podman, the VPN, the DNS, the gate's containers, the edge, the transactional switch and the only elevation in the product. It is a second artifact and not a second command of the same one because the promise §3 makes is read off what the FILE is: a `bill` that *cannot* ask is a stronger promise than a `bill` that does not. The elevation MOVED and is not duplicated, and what keeps the two apart is the import graph — `bill_deploy` imports `bill`, and `bill` imports nothing of the deploy — which the suite affirms from the sources. The shared core (`paths`, `i18n`, `files`, the table engine) travels in both, collected from the same files: one source and not two.
+**One release, two files, and the split IS the point.** `at` is the folder and the app — the tables, the prose, the interpreter, the WebApp and the Wizard — and `at-deploy` is §7 whole: the Podman, the VPN, the DNS, the gate's containers, the edge, the transactional switch and the only elevation in the product. It is a second artifact and not a second command of the same one because the promise §3 makes is read off what the FILE is: a `at` that *cannot* ask is a stronger promise than a `at` that does not. The elevation MOVED and is not duplicated, and what keeps the two apart is the import graph — `at_deploy` imports `at`, and `at` imports nothing of the deploy — which the suite affirms from the sources. The shared core (`paths`, `i18n`, `files`, the table engine) travels in both, collected from the same files: one source and not two.
 
-Each binary is one file because that is what the founding document promises (§3), and the price is that the whole payload — Tcl/Tk included — is re-extracted on every launch, so cold start is slower than a directory build would be. The deploy carries no Tcl/Tk and no WebApp: its payload is the `i18n` blocks and the table declarations, because it confirms the Working Folder exactly as `bill` does and has to be able to make one.
+Each binary is one file because that is what the founding document promises (§3), and the price is that the whole payload — Tcl/Tk included — is re-extracted on every launch, so cold start is slower than a directory build would be. The deploy carries no Tcl/Tk and no WebApp: its payload is the `i18n` blocks and the table declarations, because it confirms the Working Folder exactly as `at` does and has to be able to make one.
 
-**It builds on Linux only.** PyInstaller is not a cross-compiler and cannot be: it freezes by executing code from the *target* interpreter at build time. So Windows and macOS binaries need their own builds on their own runners (§9), and the two specs are written to be the files all three platforms share — `bill-deploy.spec` is not a second target of `bill.spec`, because a spec IS one artifact and the two differ in the entry point, the payloads and the exclusions.
+**It builds on Linux only.** PyInstaller is not a cross-compiler and cannot be: it freezes by executing code from the *target* interpreter at build time. So Windows and macOS binaries need their own builds on their own runners (§9), and the two specs are written to be the files all three platforms share — `at-deploy.spec` is not a second target of `at.spec`, because a spec IS one artifact and the two differ in the entry point, the payloads and the exclusions.
 
-The Working Folder does not depend on that choice: `paths.working_folder()` resolves from `sys.executable`, which is the launched binary under `--onedir` too, so the folder the binary sits in is the folder it works in either way. Run it from anywhere and it still works on its own folder. Note that `bill` with no word prints the help — the Tkinter Wizard is down until item 9's third slice —, so a headless check wants `bill <word>`. The two artifacts share the folder's STATE and not an API, so `bill-deploy services up` works on the same folder `bill` serves, and `bill` keeps serving it with the deploy absent.
+The Working Folder does not depend on that choice: `paths.working_folder()` resolves from `sys.executable`, which is the launched binary under `--onedir` too, so the folder the binary sits in is the folder it works in either way. Run it from anywhere and it still works on its own folder. Note that `at` with no word prints the help — the Tkinter Wizard is down until item 9's third slice —, so a headless check wants `at <word>`. The two artifacts share the folder's STATE and not an API, so `at-deploy services up` works on the same folder `at` serves, and `at` keeps serving it with the deploy absent.

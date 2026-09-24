@@ -7,7 +7,7 @@ A metade derivada do documento fundador: a árvore, a Pasta de Trabalho e a oper
 Cada nó com o seu trabalho, e nenhum resolve um caminho por conta própria além do `core` (§4).
 
 ```
-bill/                          o produto: o motor, as declarações e a UI
+at/                          o produto: o motor, as declarações e a UI
 ├── core/                      as regras — a Pasta de Trabalho, os ajustes, a primeira execução,
 │                              o escritor único, o motor de tabelas, o escopo de projeto,
 │                              o catálogo de permissões e os atores
@@ -21,7 +21,7 @@ bill/                          o produto: o motor, as declarações e a UI
 │                              processo que termina o TLS (§3, §6)
 ├── vendor/caddy/              o tarball de release do Caddy, byte a byte como o fornecedor
 │                              o publica, e é ele que viaja dentro do binário (§3, §6)
-├── encryption/                segredos: a Frase de Acesso, a Chave do Bill e os valores que ela
+├── encryption/                segredos: a Frase de Acesso, a Chave do Cofre e os valores que ela
 │                              protege (`vault`), e `password`, a derivação que o campo hasheado
 │                              guarda
 ├── nlu/                       a interpretação: o vocabulário, o casador e a proposta de ação
@@ -47,9 +47,9 @@ bill/                          o produto: o motor, as declarações e a UI
     ├── spelling.pt_BR.txt     o que o corretor precisa ignorar em português
     └── spelling.en_US.txt     o mesmo, em inglês
 
-bill_deploy/                   o SEGUNDO artefato: o §7 inteiro — o ambiente, a virada entre
+at_deploy/                   o SEGUNDO artefato: o §7 inteiro — o ambiente, a virada entre
 │                              os dois caminhos e a única elevação do produto (§3, item 27).
-│                              Ele importa o núcleo do `bill`, e o `bill` não importa nada dele
+│                              Ele importa o núcleo do `at`, e o `at` não importa nada dele
 ├── cli.py                     a linha de comando dele: as palavras `services`, e só
 ├── tree.py                    as palavras que ele oferece — ajuda e despacho leem uma lista só
 ├── environment.py             o manifesto das imagens fixadas, os serviços e a orquestração
@@ -87,11 +87,11 @@ docs/                          os documentos
     └── backlog.md             o documento de trabalho, só em inglês: o que vem a seguir, e o que conta como pronto
 ```
 
-Os dois specs — `bill.spec` e `bill-deploy.spec` — são o único lugar que diz o que viaja dentro de cada artefato, e são à mão de propósito: os conteúdos — `bill/i18n`, `bill/data/defaults`, o tarball do Caddy em `bill/vendor/caddy/` e os `assets`, `dist` e `vendor` do WebApp — são invisíveis a um grafo de importação, e `bill/ui/webapp/` também guarda `node_modules/` e `src/`, que são a derivação e não podem viajar. Um conteúdo deixado de fora falha em silêncio no WebApp (404 e um 500) e em voz alta em todo o resto, porque `tr()` levanta na primeira mensagem de cada comando. O spec do deploy é o curto de propósito: ele não carrega o WebApp, o interpretador nem o Caddy, porque não alcança nenhum deles.
+Os dois specs — `at.spec` e `at-deploy.spec` — são o único lugar que diz o que viaja dentro de cada artefato, e são à mão de propósito: os conteúdos — `at/i18n`, `at/data/defaults`, o tarball do Caddy em `at/vendor/caddy/` e os `assets`, `dist` e `vendor` do WebApp — são invisíveis a um grafo de importação, e `at/ui/webapp/` também guarda `node_modules/` e `src/`, que são a derivação e não podem viajar. Um conteúdo deixado de fora falha em silêncio no WebApp (404 e um 500) e em voz alta em todo o resto, porque `tr()` levanta na primeira mensagem de cada comando. O spec do deploy é o curto de propósito: ele não carrega o WebApp, o interpretador nem o Caddy, porque não alcança nenhum deles.
 
 ## 2. A Pasta de Trabalho
 
-A pasta em que o binário foi aberto é a pasta do binário, e essa pasta é a Pasta de Trabalho (§3). Na primeira execução o Bill descreve a pasta e pergunta antes de escrever qualquer coisa; `App/settings.json` é o que faz uma pasta ser uma pasta configurada.
+A pasta em que o binário foi aberto é a pasta do binário, e essa pasta é a Pasta de Trabalho (§3). Na primeira execução o AT descreve a pasta e pergunta antes de escrever qualquer coisa; `App/settings.json` é o que faz uma pasta ser uma pasta configurada.
 
 **O nome no disco é a face; a máquina lê o nome interno.** Cada pasta tem um nome interno — `app`, `data`, `prose`, `projects`, `shared` e `harness` —, e é ele que o motor usa e que as declarações citam. O nome que a pessoa lê vem do idioma ativo, e a tabela de `paths.py` é a única que o conhece: `Tabelas/`, `Arquivos/`, `Projetos/` e `Compartilhada/` em `pt_BR`; `Tables/`, `Files/`, `Projects/` e `Shared/` em `en_US`. Duas pastas são a exceção, e as duas são deliberadas: a pasta da instância não segue o idioma, porque o idioma mora dentro dela — `App/` nos dois —, e a `Harness/` não segue porque o `pt_BR` tomou a palavra inteira, então os dois idiomas a escrevem igual.
 
@@ -115,18 +115,18 @@ Harness/                  o que governa quem trabalha na pasta — nomeada, aind
 
 A listagem acima é aquilo com que a pasta nasce. Uma pasta chega depois, e só se a
 pessoa pedir: `App/caddy/` — o Caddy extraído de dentro do binário, o carimbo que
-diz para que plataforma ele serve, o Caddyfile que o Bill gera e o armazenamento do
+diz para que plataforma ele serve, o Caddyfile que o AT gera e o armazenamento do
 próprio Caddy, a autoridade local dele entre o resto. Ela é escrita por
-`bill webapp --include-caddy` e por mais nada (§6, §12), e mora em `App/` pelo
+`at webapp --include-caddy` e por mais nada (§6, §12), e mora em `App/` pelo
 motivo que o §3 dá: o que foi extraído para rodar é da pasta, então uma pasta
 copiada volta com o Caddy e os certificados que ela tinha.
 
 A outra pasta que só chega quando se pede é `App/services/`, o estado dos serviços
-do caminho container (§7a). Quem escreve nela é `bill-deploy services up`: `images.json`
+do caminho container (§7a). Quem escreve nela é `at-deploy services up`: `images.json`
 guarda o pino em que ESTA pasta está, por serviço, e a pasta de cada serviço
 carrega o que ele lê — `dnsmasq/dnsmasq.conf`, os nomes de acesso, e
-`caddy/Caddyfile`, o Caddyfile que o Bill gera, com o armazenamento do lado de
-dentro do container. Nada sobe sem o Podman: o Bill verifica se ele existe e, não
+`caddy/Caddyfile`, o Caddyfile que o AT gera, com o armazenamento do lado de
+dentro do container. Nada sobe sem o Podman: o AT verifica se ele existe e, não
 existindo, oferece as duas saídas — instalar, ou seguir no caminho hospedado. As
 imagens são fixadas em versão e hashing, como o §3 exige, então o pino da pasta e o
 do binário são comparados a cada subida — e uma instância À FRENTE do pino do
@@ -139,38 +139,38 @@ nota cujo nome anda com a tradução é uma nota que um modelo deixa de achar �
 enquanto o texto segue. Ela é escrita uma vez, como a nota de boas-vindas, e uma
 pasta que já existia a ganha por migração.
 
-**A migração.** Atualizar o Bill é trocar o binário dentro da pasta, então toda versão que muda a estrutura da pasta traz a migração dela e ela roda na primeira subida depois da troca (§3). O carimbo é `App/migrations`, e ele mora com o resto do que o Bill escreve, nunca na declaração publicada. As migrações são, hoje, oito: `.bill/` → `app/`, `app/` → `App/`, as pastas da pessoa para o idioma ativo, o `AGENT.md` com que a pasta se apresenta, a `Harness/`, as declarações das tabelas que a versão introduz, e o papel do administrador alcançando as permissões que uma versão acrescentou ao catálogo — duas vezes, porque o catálogo cresceu duas vezes e migração publicada nunca se edita. A terceira pergunta antes, porque renomear quebra o que aponta para elas de fora do Bill; quem recusa mantém o nome que tinha, e a resolução lê as duas grafias. As outras sete mexem só no que o Bill escreve, e nenhuma delas sobrescreve nada — a sexta nomeia as tabelas que aquela versão traz, e não o diretório inteiro, para não trazer de volta a declaração que uma pessoa apagou, e as duas últimas entregam só o que a pasta nunca teve a CHANCE de carregar.
+**A migração.** Atualizar o AT é trocar o binário dentro da pasta, então toda versão que muda a estrutura da pasta traz a migração dela e ela roda na primeira subida depois da troca (§3). O carimbo é `App/migrations`, e ele mora com o resto do que o AT escreve, nunca na declaração publicada. As migrações são, hoje, oito: `.bill/` → `app/`, `app/` → `App/`, as pastas da pessoa para o idioma ativo, o `AGENT.md` com que a pasta se apresenta, a `Harness/`, as declarações das tabelas que a versão introduz, e o papel do administrador alcançando as permissões que uma versão acrescentou ao catálogo — duas vezes, porque o catálogo cresceu duas vezes e migração publicada nunca se edita. A terceira pergunta antes, porque renomear quebra o que aponta para elas de fora do AT; quem recusa mantém o nome que tinha, e a resolução lê as duas grafias. As outras sete mexem só no que o AT escreve, e nenhuma delas sobrescreve nada — a sexta nomeia as tabelas que aquela versão traz, e não o diretório inteiro, para não trazer de volta a declaração que uma pessoa apagou, e as duas últimas entregam só o que a pasta nunca teve a CHANCE de carregar.
 
 Uma pasta que ainda não migrou **é encontrada pelo nome velho**: `paths.instance_dir()` lê o que está no disco antes de decidir, para que uma pasta com `.bill/` não seja lida como pasta nova — que era o defeito que a migração número um existia para fechar.
 
 Duas recusas são deliberadas:
 
-- **Sem terminal para perguntar, não há pasta criada.** Uma decisão que ninguém pôde responder não é uma decisão; o Bill para com código `1` em vez de assumir.
-- **Recusar não cria nada.** O Bill diz onde mover o binário e sai sem erro, porque recusar não é erro.
+- **Sem terminal para perguntar, não há pasta criada.** Uma decisão que ninguém pôde responder não é uma decisão; o AT para com código `1` em vez de assumir.
+- **Recusar não cria nada.** O AT diz onde mover o binário e sai sem erro, porque recusar não é erro.
 
-`BILL_ROOT` aponta o motor para outra pasta. Ele existe para os testes e para rodar a partir do checkout, e é a única variável de ambiente que decide onde o Bill escreve.
+`AT_ROOT` aponta o motor para outra pasta. Ele existe para os testes e para rodar a partir do checkout, e é a única variável de ambiente que decide onde o AT escreve.
 
 Enquanto se desenvolve, este checkout *é* a Pasta de Trabalho: as pastas nascem onde devem nascer, na grafia do idioma ativo, e todas as grafias são ignoradas pelo git.
 
 ## 3. Operação
 
 ```sh
-python3 -m bill help                         # as palavras
-python3 -m bill task create --set text="escrever o README" --set priority=high
-python3 -m bill task list                    # o corte padrão da tabela; `--all` mostra tudo
-python3 -m bill task view 3                  # ou TASK-3, ou tarefa-3
-python3 -m bill task edit 3 --set status=done
-python3 -m bill admin                        # o primeiro administrador: nome, e a credencial sem eco
-python3 -m bill pedir "cria uma tarefa pra sexta"   # a proposta, e a resposta
-python3 -m bill webapp run                   # laço local, porta 12345; `--port N` muda
-python3 -m bill webapp --include-caddy       # exposto, com o TLS do Caddy na `--port`
+python3 -m at help                         # as palavras
+python3 -m at task create --set text="escrever o README" --set priority=high
+python3 -m at task list                    # o corte padrão da tabela; `--all` mostra tudo
+python3 -m at task view 3                  # ou TASK-3, ou tarefa-3
+python3 -m at task edit 3 --set status=done
+python3 -m at admin                        # o primeiro administrador: nome, e a credencial sem eco
+python3 -m at pedir "cria uma tarefa pra sexta"   # a proposta, e a resposta
+python3 -m at webapp run                   # laço local, porta 12345; `--port N` muda
+python3 -m at webapp --include-caddy       # exposto, com o TLS do Caddy na `--port`
                                              # e o `--host` dizendo o endereço em que atende
-python3 -m bill_deploy services up           # o caminho container: os serviços no pino
-python3 -m bill_deploy services status       # o que está de pé, e em que imagem
-python3 -m bill_deploy services down         # abaixo; a pasta fica
-python3 -m bill_deploy services notify       # um alerta pelo notificador, provando a entrega
-python3 -m bill_deploy services phone        # o token de leitura do celular: sorteado, e impresso uma vez
-python3 -m bill_deploy services credential <nome>   # a credencial que o portão prova, e o provedor reiniciado
+python3 -m at_deploy services up           # o caminho container: os serviços no pino
+python3 -m at_deploy services status       # o que está de pé, e em que imagem
+python3 -m at_deploy services down         # abaixo; a pasta fica
+python3 -m at_deploy services notify       # um alerta pelo notificador, provando a entrega
+python3 -m at_deploy services phone        # o token de leitura do celular: sorteado, e impresso uma vez
+python3 -m at_deploy services credential <nome>   # a credencial que o portão prova, e o provedor reiniciado
 .venv/bin/python -m unittest discover -t .   # as duas suítes (o venv traz o corretor)
 ```
 
@@ -180,21 +180,21 @@ Superfícies, e o estado de cada uma hoje:
 
 | superfície | como se chega | estado |
 |---|---|---|
-| `cli` | `bill <palavra>` | `help`, `version`, `webapp`, `admin`, `lang`, `ask` e as tabelas |
-| `cli` do deploy | `bill-deploy <palavra>` | `help`, `version` e as seis palavras de `services` mais as duas do operador — `phone` e `credential`; ele não carrega WebApp, e o Wizard dele é a fatia 3 do item 27 |
-| Wizard | — | fora do ar enquanto o item 9 não chega à fatia 3: `bill` sem palavra imprime o `help` |
-| WebApp | `bill webapp run` | lê e edita as tabelas, alcança o interpretador pelo chat e pelo balão, recusa subir numa pasta sem administrador e — havendo um — pede a credencial e não responde nada da API antes de ela ser provada; e é onde o teto se MOVE: a entrada Pessoas, com as telas do ator e do papel, a lista fechada contra a qual um papel se escreve, e a credencial de máquina que o Bill mina |
+| `cli` | `at <palavra>` | `help`, `version`, `webapp`, `admin`, `lang`, `ask` e as tabelas |
+| `cli` do deploy | `at-deploy <palavra>` | `help`, `version` e as seis palavras de `services` mais as duas do operador — `phone` e `credential`; ele não carrega WebApp, e o Wizard dele é a fatia 3 do item 27 |
+| Wizard | — | fora do ar enquanto o item 9 não chega à fatia 3: `at` sem palavra imprime o `help` |
+| WebApp | `at webapp run` | lê e edita as tabelas, alcança o interpretador pelo chat e pelo balão, recusa subir numa pasta sem administrador e — havendo um — pede a credencial e não responde nada da API antes de ela ser provada; e é onde o teto se MOVE: a entrada Pessoas, com as telas do ator e do papel, a lista fechada contra a qual um papel se escreve, e a credencial de máquina que o AT mina |
 
-`bill webapp` serve em HTTP no laço local, e `--include-caddy` é a exposição para
+`at webapp` serve em HTTP no laço local, e `--include-caddy` é a exposição para
 a qual o §3 exige TLS: o Caddy que veio dentro do binário o termina, com o
-certificado do próprio Bill, e o WebApp fica em `127.0.0.1` atrás dele. O que o
+certificado do próprio AT, e o WebApp fica em `127.0.0.1` atrás dele. O que o
 `--host` nomeia muda com a bandeira — o laço que ele pode amarrar sem ela, e o
 nome para o qual o certificado é emitido com ela, porque certificado se emite
 para um nome, e `0.0.0.0` não é um.
 
 Códigos de saída: `0` sucesso · `1` recusado ou falhou · `2` erro de uso.
 
-Python 3.14.7 com **uma** dependência de runtime: `PyNaCl`, a ligação do `libsodium`, pinada em versão e hashing no `requirements.txt` (§3). A derivação do campo hasheado é a do `libsodium`, e ele não é a biblioteca padrão, então o preço está nomeado em vez de evitado. A wheel carrega o `libsodium` dentro dela, então o binário continua autossuficiente e nada é pedido da máquina que o roda. Há mais duas exceções deliberadas, as duas do lado do desenvolvimento: as fontes hospedadas do WebApp, em `bill/ui/webapp/vendor/`, com o hash que o manifesto pina; e o corretor dos documentos, que roda na suíte e por isso é ferramenta, não instalação — ele não pode exigir do outro dev nem do runner nada que não venha pinado dentro do `.venv`.
+Python 3.14.7 com **uma** dependência de runtime: `PyNaCl`, a ligação do `libsodium`, pinada em versão e hashing no `requirements.txt` (§3). A derivação do campo hasheado é a do `libsodium`, e ele não é a biblioteca padrão, então o preço está nomeado em vez de evitado. A wheel carrega o `libsodium` dentro dela, então o binário continua autossuficiente e nada é pedido da máquina que o roda. Há mais duas exceções deliberadas, as duas do lado do desenvolvimento: as fontes hospedadas do WebApp, em `at/ui/webapp/vendor/`, com o hash que o manifesto pina; e o corretor dos documentos, que roda na suíte e por isso é ferramenta, não instalação — ele não pode exigir do outro dev nem do runner nada que não venha pinado dentro do `.venv`.
 
 Essa dependência se instala primeiro, sob a mesma regra:
 
@@ -213,7 +213,7 @@ A suíte roda o gate dos documentos (§3, Internacionalização), e o corretor d
 A página é uma app **Vue 3 + TypeScript**, construída pelo Vite (§5). A construção é derivação, nunca editada:
 
 ```sh
-cd bill/ui/webapp
+cd at/ui/webapp
 npm ci && npm run build      # escreve dist/, que o servidor serve
 npm run typecheck            # vue-tsc
 ```
@@ -227,14 +227,14 @@ Dois ajustes no `vite.config.ts` não são gosto: o polyfill de modulepreload e 
 # requirements de desenvolvimento, com versão e hash (§3), porque os hooks
 # viajam separados do freezer e flutuam sozinhos
 .venv/bin/pip install --require-hashes -r requirements-dev.txt
-.venv/bin/pyinstaller --clean --noconfirm bill.spec          # escreve dist/bill
-.venv/bin/pyinstaller --clean --noconfirm bill-deploy.spec   # escreve dist/bill-deploy
+.venv/bin/pyinstaller --clean --noconfirm at.spec          # escreve dist/at
+.venv/bin/pyinstaller --clean --noconfirm at-deploy.spec   # escreve dist/at-deploy
 ```
 
-**Uma release, dois arquivos, e a divisão É o ponto.** O `bill` é a pasta e o app — as tabelas, a prosa, o interpretador, o WebApp e o Wizard —, e o `bill-deploy` é o §7 inteiro: o Podman, a VPN, o DNS, os containers do portão, a borda, a virada transacional e a única elevação do produto. É um segundo artefato e não um segundo comando do mesmo porque a promessa que o §3 faz se lê do que o ARQUIVO é: um `bill` que NÃO CONSEGUE pedir é uma promessa mais forte do que um `bill` que não pede. A elevação MUDOU e não se duplica, e o que separa os dois é o grafo de importação — o `bill_deploy` importa o `bill`, e o `bill` não importa nada do deploy —, que a suíte afirma a partir das fontes. O núcleo compartilhado (`paths`, `i18n`, `files`, o motor de tabelas) viaja nos dois, colhido dos mesmos arquivos: uma fonte e não duas.
+**Uma release, dois arquivos, e a divisão É o ponto.** O `at` é a pasta e o app — as tabelas, a prosa, o interpretador, o WebApp e o Wizard —, e o `at-deploy` é o §7 inteiro: o Podman, a VPN, o DNS, os containers do portão, a borda, a virada transacional e a única elevação do produto. É um segundo artefato e não um segundo comando do mesmo porque a promessa que o §3 faz se lê do que o ARQUIVO é: um `at` que NÃO CONSEGUE pedir é uma promessa mais forte do que um `at` que não pede. A elevação MUDOU e não se duplica, e o que separa os dois é o grafo de importação — o `at_deploy` importa o `at`, e o `at` não importa nada do deploy —, que a suíte afirma a partir das fontes. O núcleo compartilhado (`paths`, `i18n`, `files`, o motor de tabelas) viaja nos dois, colhido dos mesmos arquivos: uma fonte e não duas.
 
-Cada binário é um arquivo só porque é o que o documento fundador promete (§3), e o preço é que todo o conteúdo — Tcl/Tk incluído — é re-extraído a cada execução, então o arranque a frio é mais lento do que seria numa construção em diretório. O deploy não carrega Tcl/Tk nem WebApp: o conteúdo dele são os blocos de `i18n` e as declarações das tabelas, porque ele confirma a Pasta de Trabalho exatamente como o `bill` e precisa conseguir criar uma.
+Cada binário é um arquivo só porque é o que o documento fundador promete (§3), e o preço é que todo o conteúdo — Tcl/Tk incluído — é re-extraído a cada execução, então o arranque a frio é mais lento do que seria numa construção em diretório. O deploy não carrega Tcl/Tk nem WebApp: o conteúdo dele são os blocos de `i18n` e as declarações das tabelas, porque ele confirma a Pasta de Trabalho exatamente como o `at` e precisa conseguir criar uma.
 
-**Ele constrói só no Linux.** O PyInstaller não é um compilador cruzado e não pode ser: ele congela executando código do interpretador *alvo* em tempo de construção. Então binários de Windows e macOS precisam das suas próprias construções, nos seus próprios runners (§9), e os dois specs são escritos para serem os arquivos que os três compartilham — `bill-deploy.spec` não é um segundo alvo do `bill.spec`, porque um spec É um artefato e os dois diferem no ponto de entrada, nos conteúdos e nas exclusões.
+**Ele constrói só no Linux.** O PyInstaller não é um compilador cruzado e não pode ser: ele congela executando código do interpretador *alvo* em tempo de construção. Então binários de Windows e macOS precisam das suas próprias construções, nos seus próprios runners (§9), e os dois specs são escritos para serem os arquivos que os três compartilham — `at-deploy.spec` não é um segundo alvo do `at.spec`, porque um spec É um artefato e os dois diferem no ponto de entrada, nos conteúdos e nas exclusões.
 
-A Pasta de Trabalho não depende dessa escolha: `paths.working_folder()` resolve a partir de `sys.executable`, que é o binário lançado também sob `--onedir`, então a pasta em que o binário está é a pasta em que ele trabalha dos dois jeitos. Rode de qualquer lugar e ele continua trabalhando na pasta dele. Repare que `bill` sem palavra imprime o `help` — o Wizard do Tkinter está fora do ar até a fatia 3 do item 9 —, então uma verificação sem tela quer `bill <palavra>`. Os dois artefatos dividem o ESTADO da pasta e não uma API, então `bill-deploy services up` trabalha na mesma pasta que o `bill` serve, e o `bill` continua servindo com o deploy ausente.
+A Pasta de Trabalho não depende dessa escolha: `paths.working_folder()` resolve a partir de `sys.executable`, que é o binário lançado também sob `--onedir`, então a pasta em que o binário está é a pasta em que ele trabalha dos dois jeitos. Rode de qualquer lugar e ele continua trabalhando na pasta dele. Repare que `at` sem palavra imprime o `help` — o Wizard do Tkinter está fora do ar até a fatia 3 do item 9 —, então uma verificação sem tela quer `at <palavra>`. Os dois artefatos dividem o ESTADO da pasta e não uma API, então `at-deploy services up` trabalha na mesma pasta que o `at` serve, e o `at` continua servindo com o deploy ausente.

@@ -1,6 +1,6 @@
-# Bill
+# AT
 
-Bill is a deterministic task engine. It runs **inside a folder**, and that folder becomes its **Working Folder**. This repository is the **product to publish** — the engine, the default declarations, the infrastructure that travels inside and the two binaries — `bill`, which is the folder and the app, and `bill-deploy`, which builds the environment of §7. It carries no personal data: no path of anyone's machine, no host, no id.
+AT is a deterministic task engine. It runs **inside a folder**, and that folder becomes its **Working Folder**. This repository is the **product to publish** — the engine, the default declarations, the infrastructure that travels inside and the two binaries — `at`, which is the folder and the app, and `at-deploy`, which builds the environment of §7. It carries no personal data: no path of anyone's machine, no host, no id.
 
 ## 0. Agent protocol
 
@@ -18,7 +18,7 @@ Bill is a deterministic task engine. It runs **inside a folder**, and that folde
 
 - Finally, the founding document will be modified over time. So understand that the logic of reading it and deriving the rest is constant.
 
-- The rest of the files, be at ease. Including `FAQ.md`. It is your responsibility. It must be written as a sequence of common questions. I approve the question and the answer you suggest, just tell me when you understand it is worth filling in. And the `FAQ.md` has to be ordered in the order of use of the tool. More beginner questions at the start, like "what does this file do on my machine", to more advanced ones like "how do I modify Bill to my liking". It is in the FAQ that the explanation of what is underneath lives: which screen is yours and which is a third party's.
+- The rest of the files, be at ease. Including `FAQ.md`. It is your responsibility. It must be written as a sequence of common questions. I approve the question and the answer you suggest, just tell me when you understand it is worth filling in. And the `FAQ.md` has to be ordered in the order of use of the tool. More beginner questions at the start, like "what does this file do on my machine", to more advanced ones like "how do I modify AT to my liking". It is in the FAQ that the explanation of what is underneath lives: which screen is yours and which is a third party's.
 
 ### Working method
 
@@ -34,39 +34,37 @@ Bill is a deterministic task engine. It runs **inside a folder**, and that folde
 
 ### Introduction
 
-Bill is software written entirely by an LLM. The first version of this document was written by me — it is in the git history, which is where the Manifesto lives, the seed of this repository — and from then on whoever modified it was the LLM, as it found contradictions or as we decided new things; every change passed through my approval (§0). The _ghostwriter_ of the PoC is Claude Code + DeepSeek Flash version 4, and from the start of the final development of the project, version 4.1. The choice is deliberate: first, the price. Second, if my data is going to be used for training, let it be for something that comes back as open weights to the community. I think the math is simple. It is also an attempt to prove that we already have enough LLM. Maybe then they will stop once and for all this endless race for an AGI.
+AT is software written entirely by an LLM. The first version of this document was written by me — it is in the git history, which is where the Manifesto lives, the seed of this repository — and from then on whoever modified it was the LLM, as it found contradictions or as we decided new things; every change passed through my approval (§0). The _ghostwriter_ of the PoC is Claude Code + DeepSeek Flash version 4, and from the start of the final development of the project, version 4.1. The choice is deliberate: first, the price. Second, if my data is going to be used for training, let it be for something that comes back as open weights to the community. I think the math is simple. It is also an attempt to prove that we already have enough LLM. Maybe then they will stop once and for all this endless race for an AGI.
 
-Bill is software thought out for me. The fruit of a few weeks of near-burnout focus on LLMs and the attempt to control the uncontrollable. Between studies of harnesses aimed at security, I tested architectural views of software or themes based on old social networks directly in a program I nicknamed `Bill`.
+AT is software thought out for me. The fruit of a few weeks of near-burnout focus on LLMs and the attempt to control the uncontrollable. Between studies of harnesses aimed at security, I tested architectural views of software or themes based on old social networks directly in a program I nicknamed `AT`.
 
-This document aims to be an attempt to make the LLM agent understand the conceptual origin of Bill, avoiding the Poisoned Tree Fruit Theory, where errors pile up and the harness that was created no longer makes any sense after a few billion tokens.
+This document aims to be an attempt to make the LLM agent understand the conceptual origin of AT, avoiding the Poisoned Tree Fruit Theory, where errors pile up and the harness that was created no longer makes any sense after a few billion tokens.
 
 Beyond that, it aims to be extremely architectural. If you understand that the "harnesses" of this architecture are not good enough, maybe I lack knowledge. Post an issue, I will be glad to learn!
 
 ### The name
 
-Bill is a name that appears in my head when I read the word bootstrap. The exact reason, I cannot say. But I like the word bootstrap very much.
+AT is the acronym of what I am after: **Technological Autonomy**, which §2 declares. And it is a name that appears in my head when I read the word bootstrap — the exact reason, I cannot say, but I like the word bootstrap very much.
 
-The history is far too interesting. "To pull oneself up by one's bootstraps" is an English phrase from the early 19th century, initially treated as a sarcastic joke because of the impossibility of lifting oneself (from the air or from the water, for example) by one's own bootstraps. Ironically, that is what our devices do (the famous _boot_). Computers and smartphones have a standard piece of code executed when the device is turned on. It is what loads the operating system you know (Windows or Linux). Bill has this purpose of being a _bootstrap_ for what it sets out to be. Right now I am doing that bootstrap. Bill was born in a chaos while I was studying LLM harnesses and thought I had solved all the problems of the world. Now I am migrating what I developed in a rush into the format to be published. Very much in the mold of [Linux From Scratch](https://www.linuxfromscratch.org/) (which I strongly recommend for learning Linux).
-
-Besides that, a person I know once said that it seems every waiter in western films is called Bill. We laughed a lot, but I believe there is no statistical basis for it. Either way, I like to think I am saying "Hey, Bill. Fill my glass.". With a country accent, or just a Belo Horizonte one.
+The history is far too interesting. "To pull oneself up by one's bootstraps" is an English phrase from the early 19th century, initially treated as a sarcastic joke because of the impossibility of lifting oneself (from the air or from the water, for example) by one's own bootstraps. Ironically, that is what our devices do (the famous _boot_). Computers and smartphones have a standard piece of code executed when the device is turned on. It is what loads the operating system you know (Windows or Linux). AT has this purpose of being a _bootstrap_ for what it sets out to be. Right now I am doing that bootstrap. AT was born in a chaos while I was studying LLM harnesses and thought I had solved all the problems of the world. Now I am migrating what I developed in a rush into the format to be published. Very much in the mold of [Linux From Scratch](https://www.linuxfromscratch.org/) (which I strongly recommend for learning Linux).
 
 ## 2. Purposes and limits [context]
 
 ### What it sets out to do
 
-The idea of Bill is to be a deterministic task engine, usable by a person, by a program or by an LLM. I like machines doing boring things for me. I like ease of access with security. I like Technological Autonomy. And I do not want to spend time developing this. And I like spending very little money. Here I accept spending money in pursuit of that goal, aiming at not needing the massive LLMs again down the line.
+The idea of AT is to be a deterministic task engine, usable by a person, by a program or by an LLM. I like machines doing boring things for me. I like ease of access with security. I like Technological Autonomy. And I do not want to spend time developing this. And I like spending very little money. Here I accept spending money in pursuit of that goal, aiming at not needing the massive LLMs again down the line.
 
-But beyond that, Bill is a minimalist working environment — minimum to be **functional**, not minimum to be **aesthetic**; the [themes](interfaces.md#design-system-and-themes) are here for that. "I do not need much to be productive in a technological environment". That is a manifesto in itself: it is possible to be productive with a binary and a folder. The support — the supporting infrastructure (§7) — stays outside the minimum: it comes in when I want it, and its absence takes no functionality away from Bill. Several extensions of Bill will live as something of mine, initially. Sending my library of finished games to rawg using the Steam and Heroic bases does not fit in the default part of Bill. And opening the possibility of community extensions, without curation, with all the risk of Supply Chain attacks, is complicated. That is why Bill is born as it is, analyzing functionality by functionality whether it fits here.
+But beyond that, AT is a minimalist working environment — minimum to be **functional**, not minimum to be **aesthetic**; the [themes](interfaces.md#design-system-and-themes) are here for that. "I do not need much to be productive in a technological environment". That is a manifesto in itself: it is possible to be productive with a binary and a folder. The support — the supporting infrastructure (§7) — stays outside the minimum: it comes in when I want it, and its absence takes no functionality away from AT. Several extensions of AT will live as something of mine, initially. Sending my library of finished games to rawg using the Steam and Heroic bases does not fit in the default part of AT. And opening the possibility of community extensions, without curation, with all the risk of Supply Chain attacks, is complicated. That is why AT is born as it is, analyzing functionality by functionality whether it fits here.
 
-### Does Bill reinvent the wheel?
+### Does AT reinvent the wheel?
 
-Yes, it does. There are many more advanced applications for specific parts of Bill. If you understand that your Project cannot be managed here, and that you need far more functions, I understand you, and unfortunately Bill is not for you. But for me it is more than enough. At first I had defined that tasks were not deleted. They had to be cancelled, to keep history. I find that valid, and the function exists. But if I want to delete, I can. More details on [tables](architecture.md#tables) below. There are tools like Obsidian and AnyType for files and structured data. Those tools are fantastic and I do not want to replace them.
+Yes, it does. There are many more advanced applications for specific parts of AT. If you understand that your Project cannot be managed here, and that you need far more functions, I understand you, and unfortunately AT is not for you. But for me it is more than enough. At first I had defined that tasks were not deleted. They had to be cancelled, to keep history. I find that valid, and the function exists. But if I want to delete, I can. More details on [tables](architecture.md#tables) below. There are tools like Obsidian and AnyType for files and structured data. Those tools are fantastic and I do not want to replace them.
 
-### Where to run Bill
+### Where to run AT
 
-The idea is for Bill to run on a machine. A Turing-compatible one. It can be your desktop, your notebook, your NAS, a VPS. I would like it to be light — light in what the binary demands from the machine, not in the size of the artifact, which carries the interpreter and the libraries packed in. But I am not in the mood to learn Go or Rust. So Python it is. "Everybody" knows Python. And if an ESP32 runs Micropython, it is because I can aim far here.
+The idea is for AT to run on a machine. A Turing-compatible one. It can be your desktop, your notebook, your NAS, a VPS. I would like it to be light — light in what the binary demands from the machine, not in the size of the artifact, which carries the interpreter and the libraries packed in. But I am not in the mood to learn Go or Rust. So Python it is. "Everybody" knows Python. And if an ESP32 runs Micropython, it is because I can aim far here.
 
-Bill has two paths of use, and both are supported: the **hosted** one, where it is the binary and the folder, and the **container** one, where it builds an environment of services. The choice belongs to the person, and they can change their mind later; what each path guarantees, and what it does not, is in [§6](paths.md).
+AT has two paths of use, and both are supported: the **hosted** one, where it is the binary and the folder, and the **container** one, where it builds an environment of services. The choice belongs to the person, and they can change their mind later; what each path guarantees, and what it does not, is in [§6](paths.md).
 
 ## Index
 
@@ -75,7 +73,7 @@ Bill has two paths of use, and both are supported: the **hosted** one, where it 
 | § | what it is | where it lives |
 |---|---|---|
 | §0 | the agent protocol: how to read and how to change this repository | here |
-| §1 | the origin: where Bill came from and why that name | here |
+| §1 | the origin: where AT came from and why that name | here |
 | §2 | the purposes and the limits: what it is and what it refuses to be | here |
 | §3 | the rules: security, code and delivery, external dependency | [`rules.md`](rules.md) |
 | §4 | the architecture: the layers, the tables and the secrets | [`architecture.md`](architecture.md) |
@@ -95,4 +93,4 @@ Three debts were born from the decisions of this session, and all three are name
 
 - **The code.** Nothing that was decided here is built: the actor, the audit, the demand filter, the posture, the interpreter, the plugins. Every one of them has an item in `docs/en_US/backlog.md`.
 - **The checker's list.** It was born large — 220 words in Portuguese and 141 in English — and the reason is written in its header: the checker's dictionary comes from subtitle frequencies and gets the formal register wrong, where "seção", "deleção" and "registrar" do not appear. If that list grows on its own, the gate became decoration, and the diff is where one notices.
-- **The `FAQ.md`.** It does not exist yet, and it now has work waiting: saying what is underneath — which screen is Bill's and which is a third party's — and that writing well is the best remedy against a misunderstanding of the interpreter.
+- **The `FAQ.md`.** It does not exist yet, and it now has work waiting: saying what is underneath — which screen is AT's and which is a third party's — and that writing well is the best remedy against a misunderstanding of the interpreter.

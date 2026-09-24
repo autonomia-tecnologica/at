@@ -16,7 +16,7 @@ A primeira funcionalidade com mais de um jeito de ser usada. O serviço é o `no
 |---|---|---|
 | desligada | nada é instalado, e não há notificação nenhuma | `S` |
 | instalado | o container do `ntfy` existe e roda | `S` |
-| como serviço | o Bill o tem configurado | `S` |
+| como serviço | o AT o tem configurado | `S` |
 | token só de leitura | o token só lê | `S` |
 | token de leitura e escrita, sem segundo fator | o token lê e escreve, e nada além dele confirma quem o usa | `A` |
 | idem, com o serviço de token (TOTP) | o segundo fator fecha o token | `S` |

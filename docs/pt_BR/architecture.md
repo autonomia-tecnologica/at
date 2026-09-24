@@ -2,13 +2,13 @@
 
 ### Separação de camadas
 
-- O Bill é estruturado em camadas. O `core` trata todas as regras da aplicação. Não é um bloco monolítico: é quebrado em módulos e arquivos conforme o assunto. Mas tudo passa por ele. Nenhuma camada fora do `core` resolve um caminho por conta própria.
+- O AT é estruturado em camadas. O `core` trata todas as regras da aplicação. Não é um bloco monolítico: é quebrado em módulos e arquivos conforme o assunto. Mas tudo passa por ele. Nenhuma camada fora do `core` resolve um caminho por conta própria.
 
-- A `ui` é uma forma de camada, mas tem mais. O Bill já nasce com três superfícies: `cli`, WebApp e Wizard. Todas só são formas diferentes de interagir com o `core`. Nem tudo feito pelo `cli` está disponível no WebApp. Mas tudo no `WebApp + Wizard` está disponível no cli.
+- A `ui` é uma forma de camada, mas tem mais. O AT já nasce com três superfícies: `cli`, WebApp e Wizard. Todas só são formas diferentes de interagir com o `core`. Nem tudo feito pelo `cli` está disponível no WebApp. Mas tudo no `WebApp + Wizard` está disponível no cli.
 
 - Outra camada muito importante é `data`. Essa camada fica responsável por acessar as tabelas. Dados estruturados salvos em `.jsonl` dentro da pasta `./data`. A pasta `./data` é criada automaticamente na primeira execução, com as tabelas de sistema vigentes.
 
-- O Bill também suporta gerenciar arquivos diversos. É a camada `prose`. Qualquer arquivo que não for estruturado fica a cargo dessa camada. A pasta `./prose`, também criada na primeira execução, vem com um arquivo de boas-vindas gerado pelo `i18n` no idioma ativo escolhido na primeira execução (`Bem-vindo.md` em `pt_BR`, `Welcome.md` em `en_US`), para facilitar os próximos passos.
+- O AT também suporta gerenciar arquivos diversos. É a camada `prose`. Qualquer arquivo que não for estruturado fica a cargo dessa camada. A pasta `./prose`, também criada na primeira execução, vem com um arquivo de boas-vindas gerado pelo `i18n` no idioma ativo escolhido na primeira execução (`Bem-vindo.md` em `pt_BR`, `Welcome.md` em `en_US`), para facilitar os próximos passos.
 
 - Os serviços externos são tratados pela camada `services`. Aqui é para que a camada seja o máximo agnóstica a ferramenta possível: o **serviço** tem nome canônico e a **ferramenta** que o cumpre é trocável. É nesta camada que mora a parte de serviços do produto — cada serviço configurado mora aqui, com o seu estado na pasta.
 
@@ -20,7 +20,7 @@
 
 ### Tabelas
 
-- O Bill possui um motor próprio de gestão de dados estruturados. Aqui é usado o termo Tabela, ou `table` internamente. A identidade da tabela é um id, e o id é singular (`task`, `project`, `reminder`, `secret`, `actor`, `role`, `audit`): é ele que nomeia a tabela em todo lugar, inclusive no comando (`bill task list`) e no esquema. O arquivo de linhas é que vai no plural. Logo `data/tasks.jsonl` é a tabela em si e `data/schema/task.json` o esquema dela.
+- O AT possui um motor próprio de gestão de dados estruturados. Aqui é usado o termo Tabela, ou `table` internamente. A identidade da tabela é um id, e o id é singular (`task`, `project`, `reminder`, `secret`, `actor`, `role`, `audit`): é ele que nomeia a tabela em todo lugar, inclusive no comando (`at task list`) e no esquema. O arquivo de linhas é que vai no plural. Logo `data/tasks.jsonl` é a tabela em si e `data/schema/task.json` o esquema dela.
 
 - As tabelas `task`, `project`, `reminder`, `secret`, `actor`, `role` e `audit` são padrão do sistema. Servem para entregar uma funcionalidade inerente. Tabelas de sistema não são deletáveis, e **a deletabilidade de uma linha é declarada no esquema da tabela**: o `audit` declara que nenhuma linha sua se apaga.
 
@@ -34,29 +34,29 @@
   - **dia** — um dia do calendário, sem hora e sem fuso, resolvido pela localidade de quem escreve. "Hoje" é o seu hoje.
   - Os tipos comuns — texto, número, data, referência, enumeração — como sempre foram.
 
-- **O que se prova se guarda hasheado; o que o Bill usa se guarda criptografado.** A `secret` é da segunda espécie, o `actor` é da primeira.
+- **O que se prova se guarda hasheado; o que o AT usa se guarda criptografado.** A `secret` é da segunda espécie, o `actor` é da primeira.
 
-- **Quem age é um ator**, e todo ator é uma linha da tabela `actor`, com o campo `tipo` valendo `pessoa`, `motor` ou `agente`. A linha carrega a identidade, o papel e a credencial no campo hasheado. O motor age no que é do motor; o `agente` é quem usa o Bill sem ser pessoa, e é ele que tem teto próprio — quem digita uma frase é a pessoa, e a via é `nlu`.
+- **Quem age é um ator**, e todo ator é uma linha da tabela `actor`, com o campo `tipo` valendo `pessoa`, `motor` ou `agente`. A linha carrega a identidade, o papel e a credencial no campo hasheado. O motor age no que é do motor; o `agente` é quem usa o AT sem ser pessoa, e é ele que tem teto próprio — quem digita uma frase é a pessoa, e a via é `nlu`.
 
-- O catálogo de permissões é declarado no código, e não é dado solto: a permissão tem a forma `objeto:ação`, os objetos e as ações são uma lista fechada, e os rótulos de exibição saem do `i18n` como todo o resto. Os objetos vão além das tabelas: as configurações, os serviços, os plugins e o vocabulário do interpretador também são objetos, com permissões próprias. Um papel é uma linha da tabela `role` com um conjunto de permissões, e a tabela `actor` aponta para o papel. Papel que nomeia permissão inexistente não derruba o Bill: ele avisa, e o aviso é o que se lê.
+- O catálogo de permissões é declarado no código, e não é dado solto: a permissão tem a forma `objeto:ação`, os objetos e as ações são uma lista fechada, e os rótulos de exibição saem do `i18n` como todo o resto. Os objetos vão além das tabelas: as configurações, os serviços, os plugins e o vocabulário do interpretador também são objetos, com permissões próprias. Um papel é uma linha da tabela `role` com um conjunto de permissões, e a tabela `actor` aponta para o papel. Papel que nomeia permissão inexistente não derruba o AT: ele avisa, e o aviso é o que se lê.
 
 ### Gestão de segredos
 
-- Para executar certas ações, como acessar APIs de serviços externos, o Bill precisa ter acesso a segredos. Todo segredo que o Bill **guarda** é escrito na tabela `secret` — segredo que só se confere, como a credencial de um ator, mora hasheado na própria linha (§4, Tabelas). Lá estão metadados e o segredo em si, salvo de forma criptografada.
+- Para executar certas ações, como acessar APIs de serviços externos, o AT precisa ter acesso a segredos. Todo segredo que o AT **guarda** é escrito na tabela `secret` — segredo que só se confere, como a credencial de um ator, mora hasheado na própria linha (§4, Tabelas). Lá estão metadados e o segredo em si, salvo de forma criptografada.
 
-- A criptografia do Bill parte de uma **Frase de Acesso**, que é o que a pessoa sabe e digita: no mínimo 16 caracteres, e é uma frase. "Mariazinha comeu todo o pudim", em minúsculas e sem espaços, é mais seguro que `Mariazinha@123`. Dela se deriva a **Chave do Bill**, e dela as **chaves derivadas**, uma por serviço ou finalidade. A Chave do Bill recupera qualquer chave derivada perdida.
+- A criptografia do AT parte de uma **Frase de Acesso**, que é o que a pessoa sabe e digita: no mínimo 16 caracteres, e é uma frase. "Mariazinha comeu todo o pudim", em minúsculas e sem espaços, é mais seguro que `Mariazinha@123`. Dela se deriva a **Chave do Cofre**, e dela as **chaves derivadas**, uma por serviço ou finalidade. A Chave do Cofre recupera qualquer chave derivada perdida.
 
 - É recomendado guardar a Frase de Acesso fora da máquina, em um local seguro. Imprimir e armazenar em documentos pessoais de difícil acesso, por exemplo.
 
-- Em criptografia, não existe mágica. Ou você digita a Frase de Acesso toda vez que o Bill precisa de um segredo, ou digita uma vez e ela vale enquanto o Bill estiver de pé, ou o Bill guarda o que precisa para destravar sozinho. **A escolha é graduada, e a nota de segurança diz o preço de cada uma:** digitar quando o Bill sobe é `S`; guardar destravado na pasta do usuário do sistema (`~/.bill/` no Unix, `%APPDATA%` no Windows) é `A`; guardar dentro da Pasta de Trabalho é `B` — e a última é permitida, porque aí o backup da pasta leva tudo.
+- Em criptografia, não existe mágica. Ou você digita a Frase de Acesso toda vez que o AT precisa de um segredo, ou digita uma vez e ela vale enquanto o AT estiver de pé, ou o AT guarda o que precisa para destravar sozinho. **A escolha é graduada, e a nota de segurança diz o preço de cada uma:** digitar quando o AT sobe é `S`; guardar destravado na pasta do usuário do sistema (`~/.at/` no Unix, `%APPDATA%` no Windows) é `A`; guardar dentro da Pasta de Trabalho é `B` — e a última é permitida, porque aí o backup da pasta leva tudo.
 
-- O Bill roda sozinho quando precisa: job agendado não pede senha a cada execução. O que ele não faz é escolher por você onde a chave mora.
+- O AT roda sozinho quando precisa: job agendado não pede senha a cada execução. O que ele não faz é escolher por você onde a chave mora.
 
-- A verificação de uma credencial de entrada **não** depende da Frase de Acesso, e isso é de propósito: senão o Bill só sobe quando alguém digita a frase. Por isso o que se confere é hasheado, e é por isso que a credencial não mora na `secret`.
+- A verificação de uma credencial de entrada **não** depende da Frase de Acesso, e isso é de propósito: senão o AT só sobe quando alguém digita a frase. Por isso o que se confere é hasheado, e é por isso que a credencial não mora na `secret`.
 
 ### Configurações gerais
 
-- As configurações do bill moram dentro de `App/settings.json`, dentro da pasta de trabalho. Aí moram propriedades em formato chave-valor. `i18n` não mora aqui: os blocos de tradução são empacotados no binário e o idioma ativo mora em `App/i18n/active`.
+- As configurações do AT moram dentro de `App/settings.json`, dentro da pasta de trabalho. Aí moram propriedades em formato chave-valor. `i18n` não mora aqui: os blocos de tradução são empacotados no binário e o idioma ativo mora em `App/i18n/active`.
 
 - **As configurações são alcançáveis pela API do core** (`setting:read` e `setting:edit` são permissões), porque é por ali que passa tudo o que age — inclusive a leitura do **limiar de risco** que valia no instante em que uma demanda correu, que é o que a linha da auditoria registra.
 

@@ -5,7 +5,7 @@ Each name has one meaning, and names that would touch each other do not coexist.
 | term | what it is |
 |---|---|
 | **product** | the published set: this repository, the binary it generates and the declarations that travel inside |
-| **binary** | each file the product publishes: `bill`, which is the folder and the app, and `bill-deploy`, which is §7 |
+| **binary** | each file the product publishes: `at`, which is the folder and the app, and `at-deploy`, which is §7 — and each one's file is `at.bin` and `at-deploy.bin` on Linux and macOS, `at.exe` and `at-deploy.exe` on Windows |
 | **Working Folder** | the folder where the binary was opened and which becomes its own |
 | **layer** | each code folder with a single job: `core`, `data`, `prose`, `services`, `encryption`, `nlu`, `posture`, `ui`, `i18n` |
 | **surface** | each way for a person to reach the core: `cli`, WebApp and Wizard |
@@ -27,9 +27,9 @@ Each name has one meaning, and names that would touch each other do not coexist.
 | **posture** | the measured security state of the environment: the graded functions and the grade |
 | **grade** | the letter of a graded function, from `F` to `S`; the environment's is the weakest link |
 | **functionality** | a capability the person recognizes, with levels and dependencies |
-| **plugin** / **extension** | what teaches Bill something; today pure data only, with a manifest and a hash |
+| **plugin** / **extension** | what teaches AT something; today pure data only, with a manifest and a hash |
 | **review** | the acceptance of a plugin, tied to the hash, in one of three modes |
-| **Access Phrase** | what the person knows and types; from it the **Bill Key** is derived |
-| **Bill Key** | the key derived from the Access Phrase; from it the **derived keys** derive, per service |
+| **Access Phrase** | what the person knows and types; from it the **Vault Key** is derived |
+| **Vault Key** | the key derived from the Access Phrase; from it the **derived keys** derive, per service |
 | **manifesto** | the seed of this repository, visible in the git history; and `manifest.json` is just the file that has that name |
 | **pin**, **migration**, **migration framework** | stay in English, like the rest of the code: version and hashing fixation; the structure change that runs on the first start; and the set of them — what carries the stamp, the order and the rule that a published one is not edited |

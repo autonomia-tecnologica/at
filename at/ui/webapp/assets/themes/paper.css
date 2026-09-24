@@ -1,0 +1,345 @@
+/* whitepaper — black and white, and only: white paper, black ink, sans-serif.
+
+   A THEME ONLY CHANGES VARIABLES (rule, 2026-09-13): this file is part 1 of the
+   look — the TOKENS, every value that gets customised, named by ROLE. Part 2 is
+   the RULES (layout and shape), which live in `at/webapp/base.css` and are
+   served ALWAYS, after the theme (`index.html`). A new theme is this file — a
+   handful of values — and nothing more. Named by role, never by value: `--ink`
+   survives the colour swap.
+
+   This theme HAS NO COLOUR: the palette is white and black, and only. What looks
+   grey is the same black in alpha — it is what gives hover and support text
+   without leaving B&W. `blackpaper` is the mirror of this file, value by value. */
+
+:root {
+  /* --- colour: the raw palette --- */
+  --bg: #ffffff;              /* the window ground: white paper */
+  --panel: #ffffff;           /* the secondary surface: sidebar, popover */
+  --line: #000000;            /* EVERY inner line: border and dividing rule */
+  --ink: #000000;             /* the main text: black ink */
+  --dim: rgba(0, 0, 0, .55);  /* the support text: label, header, count */
+  --accent: #000000;          /* the accent: id, link, selection */
+  --danger: #000000;          /* the danger: what DESTROYS. BLACK, and not red:
+                                 this theme HAS NO COLOUR — white paper and black
+                                 ink, and only. A red here would be a different
+                                 theme wearing this one's name (2026-09-18). */
+  --hi: rgba(0, 0, 0, .07);   /* the highlight: hover of the row and the item */
+
+  /* --- colour by role: what the rules read --- */
+  --color-link: var(--accent);
+  --color-selected: var(--accent);       /* the active item of the sidebar */
+
+  /* --- typography: sans-serif — the third step of the system (serif in
+     `tipography`, monospaced in `console`, sans-serif here). The weights
+     are the serif ones (400/600/700): the sans-serif is not a race to lighter.
+     What changes is the all-caps spacing, shorter — a sans-serif upper-case takes
+     more per letter, and the serif's same spacing would spread it. */
+  --font-ui: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-size: 15px;
+  --line-height: 1.55;
+  --weight-normal: 400;
+  --weight-medium: 600;       /* column header, sidebar folder */
+  --weight-bold: 700;         /* what the title emphasises */
+  --caps-spacing: .06em;      /* the all-caps spacing */
+  --caps-transform: uppercase;
+
+  /* --- sidebar (the left column) --- */
+  --sidebar-width: 270px;
+  --sidebar-rail: 44px;             /* the width of the COLLAPSED panel (the rail) */
+  --sidebar-bg: var(--panel);
+  --sidebar-border: 1px solid var(--line);   /* the divide from the window */
+  --sidebar-pad: 16px;                        /* the side breathing room of every item */
+  --sidebar-indent: 14px;                     /* one nesting step */
+  --sidebar-title-color: var(--ink);
+  --sidebar-title-strong: var(--sidebar-title-color);   /* the brand at the top, the pair of `--header-strong` */
+  --sidebar-title-size: 15px;
+  --locale-size: 12px;            /* the corner language: support, not a title */
+  --sidebar-title-family: var(--font-ui);
+  --sidebar-title-weight: var(--weight-medium);
+  --sidebar-title-style: normal;
+  /* LATERAL ONLY: the vertical comes from the height, and the `-x` suffix
+     suffix says so — a two-number value here is the defect back again. */
+  --sidebar-title-pad-x: var(--sidebar-pad);          /* the "AT" at the top */
+  --nav-toggle-size: 20px;         /* the collapse glyph: strip target, not a label */
+  --sidebar-title-border: 1px solid var(--line);
+  /* THE DRAWN NAME (2026-09-20): black on white and nothing else — the word in the clean sans over its rule, which is this theme's whole vocabulary.
+     The drawing is a FILE (`icons/at-paper.svg`), painted by the base; the BOX
+     is stated because a drawing has no advance width of its own, and the word gives way
+     by INK (`--brand-word-ink: transparent`, which keeps the accessible name of the
+     `h1`). */
+  --brand-mark: url("icons/at-paper.svg");
+  --brand-mark-w: 1.58em;
+  --brand-mark-h: 1.4em;
+  --brand-word-ink: transparent;
+  /* THE SHAPE OF THE LANGUAGE at the top of the panel (2026-09-14): the page builds
+     all three — the raw identifier, the language in full and the flag — and the
+     theme chooses ONE; the other two stay at `none`. Paper writes it in full. */
+  --locale-raw: none;
+  --locale-name: inline;
+  --locale-flag: none;
+  --sidebar-folder-color: var(--dim);
+  --sidebar-folder-size: 11px;
+  --sidebar-folder-family: var(--font-ui);
+  --sidebar-folder-weight: var(--weight-normal);
+  --sidebar-folder-style: normal;
+  --sidebar-folder-pad: 10px var(--sidebar-pad) 6px;
+  --sidebar-folder-hover: var(--ink);
+  --sidebar-gap: 8px;
+  --sidebar-item-color: var(--ink);
+  --sidebar-item-family: var(--font-ui);
+  --sidebar-item-weight: var(--weight-normal);
+  --sidebar-item-style: normal;
+  --sidebar-item-pad: 8px var(--sidebar-pad);
+  --sidebar-item-bg-hover: var(--hi);
+  --sidebar-item-mark: 2px solid transparent; /* the bar on the left */
+  --sidebar-count-color: var(--dim);
+  --sidebar-sep-border: 1px solid var(--line);   /* the line of the bottom item */
+  --sidebar-sep-margin: 12px var(--sidebar-pad);
+  /* The triangle that says whether the folder is open. It is BIGGER
+     than the folder label on purpose: the label is an 11px upper-case,
+     and a triangle that size cannot be read — nor seen to turn
+     (2026-09-13). Colour by state: closed, open, under the pointer. */
+  --caret-size: 17px;
+  --caret-color: var(--dim);
+  --caret-open: var(--accent);
+  --caret-hover: var(--ink);
+  /* The file ICON in the tree (2026-09-14), BEFORE the name: one shape per
+     BUCKET — code, text, data, other —, and the bucket belongs to the server,
+     which is who enumerates. Here the shape is a DRAWING (2026-09-19), and that
+     is the point of it: `<>` and `{}` TYPED are two brackets and a slash whose
+     width is their font's and whose slash the typeface merely happened to carry
+     — DRAWN, they are the same shape in every theme and at every size. The
+     drawings are the SET this host serves (`/icons/`, one file per bucket) and
+     not a copy pasted here: six themes wear these four. They take the row's own
+     ink (`--icon-ink`), so they dim and highlight with the name beside them.
+     `--icon-show: none` hides them all. */
+  --icon-show: inline;
+  --icon-size: 1.05em;
+  --icon-ink: currentColor;
+  --icon-pic-code: url("icons/code.svg");
+  --icon-pic-text: url("icons/text.svg");
+  --icon-pic-data: url("icons/data.svg");
+  --icon-pic-other: url("icons/other.svg");
+
+  /* --- main window --- */
+  --main-bg: var(--bg);
+  --main-border: 1px solid var(--line);       /* the line under the header */
+  --header-color: var(--dim);
+  --header-strong: var(--ink);
+  /* LATERAL ONLY, for the same reason as the sidebar — the height of the
+     strip is a CALCULATION of the base (twice the side breathing room
+     plus the strip's tallest thing), and not a value this theme chooses. */
+  --header-pad-x: 18px;
+  /* NO breathing room at the top: `#body` is the AREA THAT SCROLLS, and the
+     table header sticks to its edge (`th { position: sticky; top: 0 }`). With a
+     single pixel of padding here, the scrolled row shows up in THAT pixel — above
+     the bar, which sits slightly loose from it (2026-09-13). Whoever needs air
+     at the top brings their own (the `dl`, the `pre`, the `.back`: each one's). */
+  --body-pad: 0;
+  /* THE BREATHING ROOM OF THE BOTTOM EDGE (2026-09-15): neither the main area nor
+     the sidebar touches the last row of the window. It is what lifts the lying
+     scrollbar off the strip that reveals the auto-hiding taskbar — and it is the
+     SAME breathing room that unsticks the foot of the panel, where Settings sit:
+     one rule, two ends. Who reads it are `main` and `nav`, as bottom padding —
+     never `#body`: the padding inside the box would land BELOW the bar, and the
+     bar would stay on the edge (`base.css`). */
+  --bottom-gap: 12px;
+  --back-color: var(--accent);
+  --back-pad: 10px 18px;
+  --empty-color: var(--dim);
+  --empty-pad: 18px;
+  --subs-border: 1px solid var(--line);   /* the line under the subproject block */
+  --sub-pad: 8px 18px;
+  --sub-gap: 10px;
+  --sub-color: var(--ink);
+  --sub-strong: var(--accent);            /* the subproject id */
+  --sub-dim: var(--dim);                  /* the status and the count */
+  --sub-bg-hover: var(--hi);
+
+  /* --- table --- */
+  --table-head-color: var(--dim);
+  --table-head-weight: var(--weight-medium);
+  --table-head-hover: var(--ink);
+  --table-line: 1px solid var(--line);        /* the line under each cell */
+  --table-row-hover: var(--hi);
+  /* THE BOX THAT CLOSES THE TABLE (2026-09-20). `--table-line` draws UNDER each
+     cell and never around: on paper the rows and the window are the same white,
+     so a table read as a list of lines floating in nothing, with no start and no
+     end. This is the line that says where it begins and ends. */
+  --table-border: 1px solid var(--line);
+  --cell-pad: 12px;       /* the side breathing room (the PAGE reads this too) */
+  --cell-pad-y: 7px;
+  --measure: 68ch;        /* the cap of a COLUMN — the PAGE caps columns with it, the dialog takes its width */
+  --id-color: var(--accent);
+  --drag-opacity: .4;                 /* the column in the air, being dragged */
+  --drop-mark: var(--accent);         /* the line where it will land */
+  --drop-mark-width: 2px;
+  --pill-color: var(--dim);           /* the "+N" pill of the hidden columns */
+  --pill-hover: var(--ink);
+
+  /* --- links and detail lists --- */
+  --link-underline: 1px dotted var(--color-link);
+  --link-underline-hover: 1px solid var(--color-link);
+  --dl-pad: 10px 18px;
+  --dt-color: var(--dim);
+  --dt-gap: 10px;
+  --dd-indent: 2px;
+
+  /* --- popover: the filter, the columns, the row menu and the value picker --- */
+  --pop-bg: var(--panel);
+  --pop-border: 1px solid var(--line);
+  --pop-pad: 6px 4px;
+  --pop-min-w: 140px;
+  --pop-max-h: 320px;
+  --pop-item-pad: 3px 10px;
+  --pop-item-bg-hover: var(--hi);
+  --funnel: 11px;                     /* the size of the filter funnel */
+  --funnel-color: var(--dim);
+  --funnel-hover: var(--ink);
+  --funnel-on: var(--accent);
+
+  /* THE VALUE PICKER (2026-09-15) — the popover's dweller in the OPEN record: the
+     value of a field the entity declares `editable`, with the field's own
+     vocabulary as the panel. The panel is the filter's (`--pop-*` above, rows
+     included); what is new is the TRIGGER, and the mark it carries is DRAWN by
+     the base (`.pick::after`) — so what lives here is the size of the mark, the
+     room between it and the value, and the two inks: the mark at rest and the
+     mark while the value is being handled (the pointer, and the panel open). */
+  --pick-gap: 6px;                   /* between the value and its caret */
+  --pick-caret: 10px;                 /* the size of the drawn caret */
+  --pick-caret-color: var(--dim);
+  --pick-caret-hover: var(--ink);
+
+  /* --- settings: the page configuring itself --- */
+  --set-gap: 10px;
+  --set-pad: 6px 10px;
+  --set-border: 1px solid var(--line);
+  --set-mark: 2px solid var(--color-selected);   /* the theme in use */
+  /* THE SWITCH — the on/off of the motion, in Settings: a TRACK and a BUTTON
+     that slides from one edge to the other, and the state is the POSITION of
+     the button, never a text. The RULE lives in the base (`base.css`); the
+     value lives here, and this is what makes the same on/off wear the look of
+     each theme. In paper, square corner: the radius of the switch follows the
+     theme's `--radius`. Off, the track is the paper with the line; on, the ink. */
+  --switch-w: 42px;
+  --switch-h: 22px;
+  --switch-knob: 16px;
+  --switch-inset: 2px;               /* the button inset: equal on both axes */
+  --switch-radius: var(--radius);    /* the theme corner, like every box */
+  --switch-border: 1px solid var(--line);
+  --switch-track: var(--panel);      /* off: the paper */
+  --switch-track-on: var(--accent);  /* on: the ink */
+  --switch-knob-color: var(--ink);
+  --switch-knob-on: #ffffff;
+  /* THE RADIO (2026-09-15) — the SINGLE choice: three options, one marked. The
+     outer ring is `--radio-border` at rest and `--radio-checked` when chosen, and
+     the dot is `--radio-mark`, clipped at the `content-box` by the base. The SHAPE
+     is round by definition — a square radio is not a radio —, and what the theme
+     decides is the SIZE, the ring and the ink. */
+  --radio-size: 14px;
+  --radio-border: 1px solid var(--line);
+  --radio-checked: 1px solid var(--ink);
+  --radio-mark: var(--ink);
+  --radio-gap: 8px;
+
+  /* THE SETTINGS GROUP (2026-09-14): the section that FOLDS — the SAME fold of
+     the sidebar folder (the triangle reuses `--caret-*`), in the clothes of the
+     PAGE: a header with the group name and the body it opens. The RULE lives in
+     the base; the value lives here. In paper, square corner and a transparent box:
+     what groups is the line, not a band. */
+  --group-gap: 10px;
+  --group-bg: transparent;              /* the group box */
+  --group-border: 1px solid var(--line);
+  --group-radius: var(--radius);        /* the theme corner, like every box */
+  --group-head-pad: 11px 18px;          /* lines up with the `dl` breathing room */
+  --group-head-color: var(--dim);       /* the group name, at rest */
+  --group-head-hover: var(--ink);       /* under the pointer */
+  --group-head-size: 12px;
+  --group-head-family: var(--font-ui);
+  --group-head-weight: var(--weight-medium);
+
+  /* --- scrollbars — the containers that scroll:
+     the sidebar, the table, the filter popover, the theme list ---
+     The drawing has TWO vocabularies, one per engine: the WebKit branch reads
+     thickness as a LENGTH and can draw radius, inset and hover; the standard
+     branch only accepts `auto | thin | none` and two colours. That is why the
+     thickness is TWO tokens — one role (AT's bar), said in both tongues.
+     The COLOURS are the same role in two weights: at rest the thumb is FAINT,
+     and turns solid with the pointer over IT. Who hears the pointer is the
+     WebKit branch, and only over the thumb — the rest of the gutter does not
+     hit-test (`base.css`); the standard branch never hovers: the thumb rests. */
+  --scrollbar-size: 16px;              /* the thickness of BOTH bars (WebKit branch) */
+  --scrollbar-width: auto;             /* the thickness in standard (auto|thin|none) */
+  --scrollbar-inset: 2px;              /* the thumb inset in the gutter (WebKit only) */
+  /* The thumb you AIM at is the box minus the inset of BOTH sides (16 − 2·2 =
+     12px, twice what it was, 2026-09-15) — and in the standard branch, where
+     the thickness takes no number, who answers for it is the `auto` (the
+     `thin` is the thin one). The two numbers are independent, and who charges
+     the RELATION between them is `test_the_thumb_is_thick_enough_to_aim_at`. */
+  --scrollbar-radius: 999px;           /* the thumb is a pill, never a hard corner */
+  --scrollbar-track: transparent;      /* the gutter is not painted: only the thumb */
+  /* The thumb has TWO weights, and is never invisible:
+     see is also not found to drag. Both are the SAME black, in alpha. */
+  --scrollbar-thumb-rest: rgba(0, 0, 0, .18);      /* at rest: faint */
+  --scrollbar-thumb: rgba(0, 0, 0, .35);   /* with the pointer ON TOP OF IT: solid */
+  --scrollbar-corner: transparent;     /* the corner where the two bars cross */
+
+  /* --- shape and motion --- */
+  /* Square corner in everything: a document has no rounded corner. The scrollbar
+     thumb does NOT come in here — it has its own radius, which is a pill. */
+  --radius: 0;
+  --shadow-pop: 0 6px 18px rgba(0, 0, 0, .22);
+  /* THE DRAWN EDGE (2026-09-20), and here it is not decoration: on paper every
+     surface IS the window — `--panel` is the same white as `--bg` —, so a box
+     without a line is a box nobody sees. The markdown, the field the text is
+     written in, the open record and every control carry the line, which is the
+     same ink as every other line of this theme (there is one). */
+  --surface-border: 1px solid var(--line);
+  /* THE ROW KEEPS THE PROMISE: "square corner in everything" is what this theme
+     is, and the hovered row was wearing the 8px that every OTHER theme falls back
+     to. The base says the row's radius is its own role — and the role here is the
+     theme's corner, which is zero (2026-09-20). */
+  --table-row-radius: 0;
+  --pick-border: 1px solid var(--line);
+  --pick-pad: 3px 7px;               /* the box needs air inside, or the line hugs the word */
+  /* THE MOTION: the duration and the curve of EVERY transition in the AT. The
+     time belongs to the THEME — it is what says whether the AT is dry or smooth
+     belongs to the base (the system preference and the person's choice, in Settings). */
+  --speed: .16s;
+  /* HOW MUCH THE PANEL RISES ON ARRIVAL (the page entrance,
+     `base.css` section 4): zero is the ink arriving still, which is
+     what a paper theme wants — the glass rises from further away. */
+  --enter-shift: 0;
+  --ease: ease-out;
+  /* The hooks this theme does not use and a modern theme does: the sheen veil of
+     the title strips, the sidebar glass, the table-header background (which
+     sticks to the edge and scrolls over the rows) and the rounding of the panel
+     rows. Named by ROLE; here, the value is the "off" — paper does not shine. */
+  --sheen: none;
+  --panel-blur: none;
+  --table-head-bg: var(--bg);
+  --item-radius: 0;
+  --sidebar-item-bg-on: transparent;
+  /* The lateral INSET of the row: at zero the row touches the edge, which is
+     what the themes that already existed do; a card theme pushes it away. */
+  /* THE FADE IS NOT PAPER'S (2026-09-22). Every divider in this file was falling
+     back to the base's gradient — the line dissolving at both ends — and that is
+     the idiom of a floating web panel, not of a sheet. Paper's line is INK: it
+     begins and it ends, and nothing about it dissolves. `none` is the documented
+     escape hatch, and it takes the three dividers back to the plain `border` of
+     each strip: one solid hairline, two ends, exactly what this theme already
+     declares for `--sidebar-border` and `--main-border`. */
+  --divider-side: none;
+  --divider-title: none;
+  --divider-head: none;
+  /* THE FRAME OF THE THEME LIST (2026-09-22). This is one of the few themes where
+     a BORDER is what separates — every row here is a box, and the frame around the
+     list is the same line doing the same job one level up. Without it a scroll
+     leaves a row sliced against nothing. */
+  --list-border: 1px solid var(--line);
+  /* and the inset that keeps the frame off its own first row: the gap the
+     rows already keep between themselves, one level up. */
+  --list-pad: var(--set-gap);
+}
+
+

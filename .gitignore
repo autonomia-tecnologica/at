@@ -1,4 +1,4 @@
-# Bill — shared ignore rules.
+# AT — shared ignore rules.
 # The stack the README defines: Python as the core, delivered as a single binary,
 # with the WebApp in TypeScript/Vue/Vite. Two groups are specific to this repo:
 # the local agent harness (development only) and the runtime state a Working
