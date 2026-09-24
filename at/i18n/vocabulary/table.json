@@ -7,7 +7,8 @@
       "lembrete": "reminder",
       "ator": "actor",
       "papel": "role",
-      "segredo": "secret"
+      "segredo": "secret",
+      "auditoria": "audit"
     }
   },
   "en_US": {
@@ -18,7 +19,8 @@
       "reminder": "reminder",
       "actor": "actor",
       "role": "role",
-      "secret": "secret"
+      "secret": "secret",
+      "audit": "audit"
     }
   }
 }

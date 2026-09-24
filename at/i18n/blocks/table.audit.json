@@ -1,0 +1,38 @@
+{
+  "pt_BR": {
+    "name.one": "Auditoria",
+    "name.many": "Auditorias",
+    "field.what": "O que",
+    "field.table": "Tabela",
+    "field.when": "Quando",
+    "field.actor": "Ator",
+    "field.via": "Via",
+    "field.status": "Desfecho",
+    "field.reason": "Motivo",
+    "field.via.cli": "Terminal",
+    "field.via.webapp": "WebApp",
+    "field.via.nlu": "Interpretador",
+    "field.via.engine": "Motor",
+    "field.via.wizard": "Wizard",
+    "field.status.ok": "Feito",
+    "field.status.refused": "Recusado"
+  },
+  "en_US": {
+    "name.one": "Audit",
+    "name.many": "Audit",
+    "field.what": "What",
+    "field.table": "Table",
+    "field.when": "When",
+    "field.actor": "Actor",
+    "field.via": "Via",
+    "field.status": "Outcome",
+    "field.reason": "Reason",
+    "field.via.cli": "Terminal",
+    "field.via.webapp": "WebApp",
+    "field.via.nlu": "Interpreter",
+    "field.via.engine": "Engine",
+    "field.via.wizard": "Wizard",
+    "field.status.ok": "Done",
+    "field.status.refused": "Refused"
+  }
+}

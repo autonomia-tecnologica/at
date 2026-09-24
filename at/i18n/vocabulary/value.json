@@ -36,7 +36,14 @@
       "uma vez": "once",
       "pessoa": "person",
       "motor": "engine",
-      "agente": "agent"
+      "agente": "agent",
+      "cli": "cli",
+      "webapp": "webapp",
+      "nlu": "nlu",
+      "wizard": "wizard",
+      "ok": "ok",
+      "recusado": "refused",
+      "recusada": "refused"
     }
   },
   "en_US": {
@@ -67,7 +74,13 @@
       "once": "once",
       "person": "person",
       "engine": "engine",
-      "agent": "agent"
+      "agent": "agent",
+      "cli": "cli",
+      "webapp": "webapp",
+      "nlu": "nlu",
+      "wizard": "wizard",
+      "ok": "ok",
+      "refused": "refused"
     }
   }
 }

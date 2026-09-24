@@ -9,7 +9,9 @@ and the reason goes where the table keeps its story — and every part of that c
 from the `lifecycle` the table declares. A table that declares none says so
 instead of inventing a closing. `delete` takes the row out and refuses while
 anything NAMES it; what names a row is read off the declarations (`ref`), never
-off a scan of the folder.
+off a scan of the folder. And a table may declare that NO row of its own is
+erased (`deletable`), which is the one refusal that comes before the row is
+looked for — the `audit` is that table (§4).
 
 What this module knows lives in the declaration, never in a list of names: the
 fields, their types, their closed vocabularies, their ceilings, their defaults,
@@ -885,6 +887,18 @@ def _write_reason(
     row[into] = f"{old}\n\n{line}" if old else line
 
 
+def deletable(table: str) -> bool:
+    """Whether a row of this table may be taken out — declared, never assumed.
+
+    §4 makes the deletability of a ROW a property the table declares in its own
+    schema, and `audit` declares that no row of its own is erased: it is a log,
+    and a log with holes is not one. A table that declares nothing is deletable,
+    which is what every table was before the key existed.
+    """
+    declared = schema.of(table) or {}
+    return declared.get("deletable", True) is not False
+
+
 def referrers(table: str, number: int) -> list[tuple[str, str, int]]:
     """`(table, field, row id)` of every row that NAMES row `number` of `table`.
 
@@ -939,7 +953,14 @@ def delete(table: str, pid: object) -> dict:
     The refusal is read off the declarations, and the number stays SPENT: the
     notes and the commits that carry it go on naming the row that was there, so
     the next `create` may not hand it to a second one.
+
+    **A table that declares no row of its own is erased refuses FIRST**, before
+    the row is even looked for: the wall is the TABLE's and not the number's, so
+    which id was typed cannot change the answer — and a log is exactly the table
+    whose holes would be the thing worth hiding.
     """
+    if not deletable(table):
+        raise TableError("error.not_deletable", table=table_name(table))
     row = find(table, pid)
     number = store.number_of(row)
     blockers = referrers(table, number)

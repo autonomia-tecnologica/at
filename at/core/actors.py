@@ -154,6 +154,22 @@ def admins() -> list[dict]:
     return [row for row in people() if row.get("credential")]
 
 
+def first_admin() -> dict | None:
+    """The person the folder was born with — the actor of an act through the `cli`.
+
+    §5 makes the `cli` local by construction, and §3 says the first admin is born
+    "with a terminal in front": whoever is at the terminal is the folder's owner.
+    So an act typed there is attributed to the FIRST row carrying a credential —
+    the one `at-cli admin` made — and no environment variable names an identity:
+    `$AT_ROOT` aims the engine, and nothing aims who you are.
+
+    A folder that never made one has nobody to name, and `audit.actor_of` answers
+    that with the engine's own row rather than with a guess.
+    """
+    found = admins()
+    return found[0] if found else None
+
+
 def entries() -> list[dict]:
     """The rows that may enter: the people with a credential, and the machines.
 

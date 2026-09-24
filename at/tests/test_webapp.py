@@ -24,7 +24,17 @@ from pathlib import Path
 from unittest import mock
 
 from at import i18n
-from at.core import actors, boot, paths, permissions, projects, secrets, settings, tables
+from at.core import (
+    actors,
+    audit,
+    boot,
+    paths,
+    permissions,
+    projects,
+    secrets,
+    settings,
+    tables,
+)
 from at.data import schema, store
 from at.services import caddy
 from at.tests import drawn_gate
@@ -159,9 +169,9 @@ class TheState(ServerCase):
         # The order is the schema's, and the system tables arrive with the
         # product: `actor` and `role` are declared beside the three that carry
         # the daily work (§4), and `secret` — what AT uses and nobody reads —
-        # closes the list with them.
+        # and `audit` — the log of acts — close the list with them.
         self.assertEqual(
-            keys, ["task", "project", "reminder", "actor", "role", "secret"]
+            keys, ["task", "project", "reminder", "actor", "role", "secret", "audit"]
         )
         self.assertEqual(next(t for t in state["tables"] if t["key"] == "task")["count"], 1)
 
@@ -1852,6 +1862,124 @@ class ThePort(unittest.TestCase):
             holder.close()
         self.assertEqual(code, 1)
         self.assertIn(i18n.tr("webapp.port_taken", port=port), output.getvalue())
+
+
+class TheAuditRoute(ServerCase):
+    """The page's half of the log (§3, item 15).
+
+    The page walks the SAME door the `cli` and the interpreter walk, so a write
+    made here leaves the same kind of line — with `webapp` as its VIA and the
+    session's actor as its WHO — and the route reads it through the ceiling the
+    catalogue declares, `audit:read`.
+    """
+
+    ADMIN = "Rafael"
+    ADMIN_CREDENTIAL = "uma-frase-bem-longa"
+
+    def setUp(self):
+        super().setUp()
+        self.admin = actors.create_admin(self.ADMIN, self.ADMIN_CREDENTIAL)
+
+    def cookie(self, name: str | None = None, credential: str | None = None) -> dict:
+        status, headers, _ = self.post_full(
+            "/api/session",
+            {"name": name or self.ADMIN,
+             "credential": credential or self.ADMIN_CREDENTIAL},
+        )
+        self.assertEqual(status, 200)
+        return {"Cookie": headers["Set-Cookie"].split(";")[0]}
+
+    def lines(self) -> list[dict]:
+        return store.load("audit")
+
+    def test_a_write_through_the_page_leaves_one_line_with_the_page_s_via(self):
+        status, _ = self.post(
+            "/api/table/task",
+            {"action": "create", "set": {"text": "do painel"}},
+            headers=self.cookie(),
+        )
+        self.assertEqual(status, 200)
+        line = self.lines()[0]
+        self.assertEqual(line[audit.WHAT], "task:create")
+        self.assertEqual(line[audit.VIA], audit.WEBAPP)
+        self.assertEqual(line[audit.STATUS], audit.OK)
+        self.assertEqual(line[audit.ACTOR], store.number_of(self.admin))
+
+    def test_the_administrator_reads_the_log(self):
+        # The route reads the permission from the CATALOGUE and does not compose
+        # `audit:list`, which the catalogue does not name: the table narrows
+        # itself to `read`, and a composed name would fail CLOSED on the very
+        # person the catalogue says reads it.
+        self.assertEqual(self.status("/api/table/audit", headers=self.cookie()), 200)
+
+    def test_the_page_cannot_write_a_line_of_its_own(self):
+        # `audit` answers `read` and nothing else, so there is no `audit:create`
+        # for anybody to carry — and the attempt is itself a line: the refusal of
+        # the ceiling.
+        status, _ = self.post(
+            "/api/table/audit",
+            {"action": "create", "set": {"what": "task:create"}},
+            headers=self.cookie(),
+        )
+        self.assertEqual(status, 403)
+        self.assertEqual([line[audit.STATUS] for line in self.lines()], [audit.REFUSED])
+        self.assertEqual(self.lines()[0][audit.REASON], audit.DENIED)
+
+    def test_a_write_the_ceiling_refused_is_a_line(self):
+        role = tables.create("role", {"name": "leitor", "permissions": "task:list"})
+        tables.create(
+            "actor",
+            {"name": "Leitor", "type": "person",
+             "role": str(store.number_of(role)), "credential": "outra-frase-bem-longa"},
+        )
+        cookie = self.cookie("Leitor", "outra-frase-bem-longa")
+        status, _ = self.post(
+            "/api/table/task", {"action": "create", "set": {"text": "x"}}, headers=cookie
+        )
+        self.assertEqual(status, 403)
+        line = self.lines()[0]
+        self.assertEqual(line[audit.STATUS], audit.REFUSED)
+        self.assertEqual(line[audit.REASON], audit.DENIED)
+        self.assertEqual(line[audit.WHAT], "task:create")
+        self.assertEqual(line[audit.VIA], audit.WEBAPP)
+
+    def test_a_person_without_the_permission_is_refused_by_name(self):
+        role = tables.create("role", {"name": "leitor", "permissions": "task:list"})
+        tables.create(
+            "actor",
+            {"name": "Leitor", "type": "person",
+             "role": str(store.number_of(role)), "credential": "outra-frase-bem-longa"},
+        )
+        status, _, body = self.get(
+            "/api/table/audit",
+            headers=self.cookie("Leitor", "outra-frase-bem-longa"),
+        )
+        self.assertEqual(status, 403)
+        self.assertEqual(
+            json.loads(body)["error"],
+            i18n.tr("permission.denied", permission=permissions.label("audit:read")),
+        )
+
+    def test_a_machine_is_refused_the_log_by_name(self):
+        # §3: a machine that could read its own refusals would learn where the
+        # wall is. The token proves the row and the row wears a role — and that
+        # role names no `audit:read`.
+        role = tables.create("role", {"name": "runner", "permissions": "task:create"})
+        _, token = actors.mint_agent("runner", str(store.number_of(role)))
+        status, _, body = self.get(
+            "/api/table/audit", headers={"Authorization": "Bearer " + token}
+        )
+        self.assertEqual(status, 403)
+        self.assertEqual(
+            json.loads(body)["error"],
+            i18n.tr("permission.denied", permission=permissions.label("audit:read")),
+        )
+
+    def test_a_read_through_the_page_leaves_nothing(self):
+        cookie = self.cookie()
+        self.get("/api/table/task", headers=cookie)
+        self.get("/api/state", headers=cookie)
+        self.assertEqual(self.lines(), [])
 
 
 class TheReadOnlySwitch(ServerCase):

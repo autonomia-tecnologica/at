@@ -42,7 +42,8 @@
     "error.no_reason_field": "O lifecycle manda o motivo para {field}, que esta tabela não declara.",
     "error.reason_required": "O fechamento desta tabela exige o motivo: use --set reason=\"…\".",
     "error.already_closed": "{id} já está {status}.",
-    "error.named_by": "{id} é nomeado por {n} registro(s): {where}."
+    "error.named_by": "{id} é nomeado por {n} registro(s): {where}.",
+    "error.not_deletable": "Nada se apaga de {table}: o registro fica, e a tabela declara que não aceita."
   },
   "en_US": {
     "field.id": "ID",
@@ -87,6 +88,7 @@
     "error.no_reason_field": "The lifecycle sends the reason into {field}, which this table does not declare.",
     "error.reason_required": "Closing a row of this table needs a reason: use --set reason=\"…\".",
     "error.already_closed": "{id} is already {status}.",
-    "error.named_by": "{id} is named by {n} record(s): {where}."
+    "error.named_by": "{id} is named by {n} record(s): {where}.",
+    "error.not_deletable": "Nothing is erased from {table}: the record stays, and the table declares that it accepts none."
   }
 }

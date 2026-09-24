@@ -1,0 +1,79 @@
+{
+  "id": "audit",
+  "order": 10,
+  "name": {
+    "one": "table.audit.name.one",
+    "many": "table.audit.name.many"
+  },
+  "store": "data/audits.jsonl",
+  "type": "audit",
+  "primary": "what",
+  "columns": [
+    "when",
+    "actor",
+    "via",
+    "what",
+    "status"
+  ],
+  "permissions": {
+    "read": [
+      "list",
+      "view"
+    ]
+  },
+  "deletable": false,
+  "desc": "the log of acts: what was done, where, when, who, through which via and with what outcome — with the reason KEY of a refusal, and no value",
+  "fields": {
+    "id": {
+      "label": "table.field.id",
+      "filterable": true,
+      "searchable": true
+    },
+    "what": {
+      "label": "table.audit.field.what",
+      "filterable": true,
+      "searchable": true,
+      "required": true
+    },
+    "table": {
+      "label": "table.audit.field.table",
+      "filterable": true,
+      "searchable": true
+    },
+    "when": {
+      "label": "table.audit.field.when",
+      "type": "instant",
+      "filterable": true,
+      "required": true
+    },
+    "actor": {
+      "label": "table.audit.field.actor",
+      "filterable": true
+    },
+    "via": {
+      "label": "table.audit.field.via",
+      "filterable": true,
+      "required": true,
+      "enum": {
+        "cli": "table.audit.field.via.cli",
+        "webapp": "table.audit.field.via.webapp",
+        "nlu": "table.audit.field.via.nlu",
+        "engine": "table.audit.field.via.engine",
+        "wizard": "table.audit.field.via.wizard"
+      }
+    },
+    "status": {
+      "label": "table.audit.field.status",
+      "filterable": true,
+      "required": true,
+      "enum": {
+        "ok": "table.audit.field.status.ok",
+        "refused": "table.audit.field.status.refused"
+      }
+    },
+    "reason": {
+      "label": "table.audit.field.reason",
+      "searchable": true
+    }
+  }
+}

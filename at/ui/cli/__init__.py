@@ -14,7 +14,7 @@ import sys
 from collections.abc import Callable, Sequence
 
 from at import __version__, i18n
-from at.core import actors, boot, files, install, migrations, paths, tables
+from at.core import actors, audit, boot, files, install, migrations, paths, tables
 from at.data import schema
 from at.i18n import tr
 from at.ui import ask as door
@@ -302,7 +302,11 @@ def _ask(rest: list[str]) -> int:
     args = rest[1:] if rest[:1] == ["pedir"] else rest
     if len(args) != 1:
         return _reject("ask")
-    result = door.ask(args[0])
+    # The ACTOR of an act typed at the terminal is the first admin (§3, item 15):
+    # the `cli` is local by construction and whoever is in front of it is the
+    # folder's owner. A folder that never made one asks with nobody, which is
+    # what it always did.
+    result = door.ask(args[0], actor=actors.first_admin())
     # A question and a refusal have no proposal to check — nothing was proposed
     # and nothing was written — and they are the one sentence the result carries.
     if result.proposal:
@@ -320,7 +324,13 @@ def _table(table: str, rest: list[str]) -> int:
         print(tr("table.error.unknown_action", action=action))
         return USAGE
     try:
-        code, answer = door.run(table, action, args)
+        # The actor of an act typed here is the first admin, and the via is the
+        # terminal's: what the door records is WHO and HOW, and the `cli` is the
+        # one surface where both are facts of the folder rather than of a request
+        # (§3, item 15).
+        code, answer, _ = door.run(
+            table, action, args, actor=actors.first_admin(), via=audit.CLI
+        )
     except tables.TableError as error:
         print(error)
         return REFUSED

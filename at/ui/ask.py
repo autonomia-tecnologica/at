@@ -16,6 +16,16 @@ given the `cli`: `table.created`, `table.edited`, or the refusal it raised.
 `run` is the same door for ONE table action, from the words of a surface or from a
 proposal: there is one engine, and a second path into it would be a second one.
 
+**It is also where the LINE is born, and that is the same argument one floor
+down.** §3 makes every action that enters the core one line of the `audit`, and
+the one who knows the ACTOR and the VIA is a door — so `run` takes both, records
+the act or the refusal it raised, and versions it (§4, item 30, which took this
+very road for this very reason). The writes the engine makes on AT's own behalf —
+the migrations, the engine's row, a credential — do not pass here and do not
+leave a line: they have no actor and no via to name, and `at/core/audit.py` says
+what that costs. The page's table route walks this door too, so the `cli`, the
+interpreter and the WebApp all leave the same kind of trail.
+
 **The door carries the ceiling, and it is the same one for every surface.** §5 is
 explicit — "o que ela pode propor é o que ela já pode fazer" — and the sentence is
 about the interpreter, not about the WebApp's route: a surface that demanded the
@@ -43,7 +53,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from at import nlu
-from at.core import actors, files, permissions, tables, versioning
+from at.core import actors, audit, files, permissions, tables, versioning
 from at.data import schema
 from at.i18n import tr
 
@@ -105,16 +115,23 @@ def ask(
     # not a crash of the request, like every other one this door gives.
     missing = ceiling(actor, proposed)
     if missing is not None:
-        return Result(
-            "refused",
-            None,
-            tr("permission.denied", permission=permissions.label(missing)),
-            REFUSED,
+        saying = tr("permission.denied", permission=permissions.label(missing))
+        # A wall an actor found is a line (§3): it is the one the sight of a
+        # machine's own refusal would teach where the wall is, which is why only
+        # the admin carries `audit:read`.
+        denied(
+            proposed.table,
+            proposed.action,
+            actor=actor,
+            via=audit.NLU,
+            reason=audit.DENIED,
+            saying=saying,
         )
+        return Result("refused", None, saying, REFUSED)
 
     written = proposed_text(proposed)
     try:
-        code, answer = execute(proposed)
+        code, answer, _ = execute(proposed, actor=actor)
     except tables.TableError as error:
         return Result("answer", written, str(error), REFUSED)
     except files.ReadOnly as error:
@@ -168,14 +185,25 @@ def proposed_text(proposal: nlu.Proposal) -> str:
     )
 
 
-def execute(proposal: nlu.Proposal) -> tuple[int, str]:
+def execute(
+    proposal: nlu.Proposal, *, actor: dict | None = None
+) -> tuple[int, str, dict | None]:
     """Run the proposal through the table engine, and answer with its words.
 
     The row a person named is spelled the way `run` already reads one: `list` and
-    `view` take it among the arguments, and the rest as the leftover.
+    `view` take it among the arguments, and the rest as the leftover. The VIA is
+    the interpreter's and not the surface's: the box in the WebApp and the word
+    in the terminal reach the same answering layer, and §4 named the road `nlu`.
     """
     args = [] if proposal.row is None else [str(proposal.row)]
-    return run(proposal.table, proposal.action, args, (proposal.values, args))
+    return run(
+        proposal.table,
+        proposal.action,
+        args,
+        (proposal.values, args),
+        actor=actor,
+        via=audit.NLU,
+    )
 
 
 def run(
@@ -183,31 +211,100 @@ def run(
     action: str,
     args: list[str],
     given: tuple[dict, list[str]] | None = None,
-) -> tuple[int, str]:
+    *,
+    actor: dict | None = None,
+    via: str = audit.ENGINE,
+) -> tuple[int, str, dict | None]:
     """One table action, from the words of a surface or from a proposal.
 
-    **Every action that changes the folder ends in a version** (§4, item 30),
-    and this is where that happens: `run` is the ONE door the `cli`, the WebApp
-    and the interpreter reach the engine by, so a commit here covers the three
-    surfaces at once and a fourth one gains it by using the same door. The
-    version is named by the ANSWER — the engine's own sentence, the very one the
-    surface prints — so `git log` reads like the table's own story and no second
-    wording of the act is written.
+    **Every action that changes the folder ends in a version** (§4, item 30), and
+    **every write act — and every refusal — leaves exactly one line** (§3, item
+    15). This is where both happen: `run` is the ONE door the `cli`, the WebApp
+    and the interpreter reach the engine by, so a commit and a line here cover
+    the three surfaces at once and a fourth one gains them by using the same
+    door. The version is named by the ANSWER — the engine's own sentence, the
+    very one the surface prints — so `git log` reads like the table's own story
+    and no second wording of the act is written.
+
+    **A refusal takes the same road**: it is recorded, versioned, and then
+    RE-RAISED, because what the engine refused is the surface's to answer (the
+    `cli` prints it, the page draws it) and the log's to keep. The reason stored
+    is the refusal's own `i18n` KEY, never its words and never the value that
+    caused it (§3).
 
     `given` is the `(values, leftovers)` a proposal already carries — the
     interpreter read them out of the sentence, and only the road by which the
     values arrived differs.
 
     The ANSWER comes back as text, never printed: where it goes is the surface's,
-    and the words are the engine's in both. What the engine refuses — a missing
-    required field, a closed row, a read-only folder — is raised as it always was,
-    and whoever asked is the one that catches it. A refusal writes nothing, so
-    there is nothing to version and nothing is left behind.
+    and the words are the engine's in both. The ROW comes back beside it because
+    the page's route answers with the RECORD it just wrote — a read, and a word
+    the arguments were rejected for, answer `None`.
     """
-    code, answer = _acted(table, action, args, given)
-    if code == OK and action in tables.WRITES:
-        versioning.commit(answer)
-    return code, answer
+    try:
+        code, answer, row = _acted(table, action, args, given)
+    except tables.TableError as error:
+        _line(
+            table, action, actor, via, audit.REFUSED,
+            f"table.{error.key}", str(error),
+        )
+        raise
+    except files.ReadOnly as error:
+        _line(
+            table, action, actor, via, audit.REFUSED, "cli.error.read_only",
+            tr("cli.error.read_only", where=error.where),
+        )
+        raise
+    if action in tables.WRITES:
+        if code == OK:
+            _line(table, action, actor, via, audit.OK, None, answer)
+        else:
+            # The word was given the wrong arguments: it never reached the
+            # engine, and the attempt is a line like any other (§3).
+            _line(
+                table, action, actor, via, audit.REFUSED,
+                "cli.error.rejected_arguments", answer,
+            )
+    return code, answer, row
+
+
+def denied(
+    table: str,
+    action: str,
+    *,
+    actor: dict | None = None,
+    via: str = audit.ENGINE,
+    reason: str,
+    saying: str,
+) -> None:
+    """A refusal the CEILING made, recorded — the line a wall owes (§3).
+
+    It is called where an act is refused BEFORE the engine sees it — the
+    interpreter's ceiling, and the page's route — because the engine's own
+    refusals are recorded by `run`, which is where they are raised. `saying` is
+    the sentence the surface printed, so the version the line ends in is named by
+    the words the person read.
+    """
+    _line(table, action, actor, via, audit.REFUSED, reason, saying)
+
+
+def _line(
+    table: str,
+    action: str,
+    actor: dict | None,
+    via: str,
+    status: str,
+    reason: str | None,
+    saying: str,
+) -> None:
+    """The line, and the version it ends in — the two halves of one write.
+
+    They belong together because a line nothing versions is a folder left dirty
+    (§4, item 30), and the version is named by the sentence the surface printed:
+    one wording for the person, the log and `git log`.
+    """
+    audit.log(table, action, actor=actor, via=via, status=status, reason=reason)
+    versioning.commit(saying)
 
 
 def _acted(
@@ -215,25 +312,29 @@ def _acted(
     action: str,
     args: list[str],
     given: tuple[dict, list[str]] | None = None,
-) -> tuple[int, str]:
-    """The action itself — what `run` does before it versions the result.
+) -> tuple[int, str, dict | None]:
+    """The action itself — what `run` does before it records and versions.
 
     Private on purpose: `run` is the door, and a caller that reached the engine
-    around it would be a second road that versions nothing.
+    around it would be a second road that leaves no line and no version. The
+    third element is the ROW the act wrote, which the page's route answers with;
+    a read, and a word whose arguments were rejected, answer `None`.
     """
     if action == "list":
-        return _listing(table, args)
+        code, answer = _listing(table, args)
+        return code, answer, None
     if action == "view":
-        return _viewing(table, args)
+        code, answer = _viewing(table, args)
+        return code, answer, None
     values, leftovers = given if given is not None else _sets(args)
     if action == "create":
         if leftovers:
-            return USAGE, rejected(action)
+            return USAGE, rejected(action), None
         row = tables.create(table, values)
-        return OK, tr("table.created", id=tables.format_id(table, row["id"]))
+        return OK, tr("table.created", id=tables.format_id(table, row["id"])), row
     if action == "cancel":
         if len(leftovers) != 1:
-            return USAGE, rejected(action)
+            return USAGE, rejected(action), None
         # The reason is the argument the CLOSING owns, and it is read outside the
         # field coercion: a table does not have to declare a field for it. When
         # one does declare a field of that name, the field wins — the engine sets
@@ -242,17 +343,17 @@ def _acted(
         if not schema.field(table, "reason"):
             values.pop("reason", None)
         row = tables.cancel(table, leftovers[0], reason, values)
-        return OK, tr("table.cancelled", id=tables.format_id(table, row["id"]))
+        return OK, tr("table.cancelled", id=tables.format_id(table, row["id"])), row
     if action == "delete":
         if len(leftovers) != 1 or values:
-            return USAGE, rejected(action)
+            return USAGE, rejected(action), None
         row = tables.delete(table, leftovers[0])
-        return OK, tr("table.deleted", id=tables.format_id(table, row["id"]))
+        return OK, tr("table.deleted", id=tables.format_id(table, row["id"])), row
     # edit
     if len(leftovers) != 1:
-        return USAGE, rejected(action)
+        return USAGE, rejected(action), None
     row = tables.edit(table, leftovers[0], values)
-    return OK, tr("table.edited", id=tables.format_id(table, row["id"]))
+    return OK, tr("table.edited", id=tables.format_id(table, row["id"])), row
 
 
 def _listing(table: str, args: list[str]) -> tuple[int, str]:

@@ -110,11 +110,13 @@ import os
 import secrets
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from typing import Callable
 from urllib.parse import parse_qs, urlparse
 
 from at import i18n, nlu
 from at.core import (
     actors,
+    audit,
     files,
     gate,
     permissions,
@@ -918,7 +920,9 @@ class Handler(BaseHTTPRequestHandler):
         self._json({"error": i18n.tr("webapp.session_needed")}, 401, self._challenge())
         return False
 
-    def _may(self, permission: str) -> bool:
+    def _may(
+        self, permission: str, *, owing: Callable[[], None] | None = None
+    ) -> bool:
         """Whether the actor this request proved carries `permission` — and the
         refusal, when it does not.
 
@@ -944,6 +948,12 @@ class Handler(BaseHTTPRequestHandler):
         The folder that asks nobody has no session to read and keeps answering as
         it always did (§3) — which is what `_asks` says, and the reason this is
         not a gate over the whole server.
+
+        **`owing` is what the refusal owes before it is answered**: the table
+        write's line (§3, item 15), which its route hands in because `_may` is
+        the moment the wall is found. It runs BEFORE the response goes out — a
+        line written after the answer is a line a crash can lose, and a refusal
+        that was answered and not recorded is exactly the one worth having.
         """
         held = self._in()
         if not self._asks() or held is None:
@@ -951,6 +961,8 @@ class Handler(BaseHTTPRequestHandler):
         row = self._actor()
         if row is not None and actors.may(row, permission):
             return True
+        if owing is not None:
+            owing()
         self._json(
             {
                 "error": i18n.tr(
@@ -1213,7 +1225,13 @@ class Handler(BaseHTTPRequestHandler):
                 # row exists to be denied.
                 self._json({"error": f"unknown table: {table}"}, 404)
                 return
-            if not self._may(f"{table}:list"):
+            # The permission is the ACTION's, read from the catalogue like the
+            # write route's: a table may narrow itself (`secret` answers `read`
+            # for a listing, `audit` answers nothing else), and a route composing
+            # `table:list` would demand a permission the catalogue does not have
+            # — which fails CLOSED, and would refuse the administrator the very
+            # table the catalogue says is theirs.
+            if not self._may(permissions.needed(table, "list")):
                 return
             self._json(table_payload(table, show_all="all" in query))
             return
@@ -1360,15 +1378,45 @@ class Handler(BaseHTTPRequestHandler):
         # (`secret`), and a route that wrote `table:action` would refuse a write
         # the role carries — or worse, demand a permission the catalogue does
         # not have.
-        if not self._may(permissions.needed(table, action)):
+        needed = permissions.needed(table, action)
+        actor = self._actor()
+        if not self._may(
+            needed,
+            # The CEILING refused an act, and a wall an actor found is a line
+            # (§3): the machine that could read its own refusals would learn
+            # where the wall is, which is why only the admin carries `audit:read`.
+            # It is handed in as what the refusal OWES, so the line is in the
+            # store before the 403 leaves the server.
+            owing=lambda: door.denied(
+                table,
+                action,
+                actor=actor,
+                via=audit.WEBAPP,
+                reason=audit.DENIED,
+                saying=i18n.tr(
+                    "permission.denied", permission=permissions.label(needed)
+                ),
+            ),
+        ):
             return
         values = payload.get("set")
         values = {str(k): str(v) for k, v in values.items()} if isinstance(values, dict) else {}
+        # The row the action names, written the way the door reads one: the
+        # leftover for `edit`, and none for `create` — which is why the two
+        # agree on `rest` and the pair travels beside it.
+        rest = [] if action == "create" else [str(payload.get("id"))]
         try:
-            if action == "create":
-                row = tables.create(table, values)
-            else:
-                row = tables.edit(table, payload.get("id"), values)
+            # The page walks the SAME door the `cli` and the interpreter walk
+            # (`at.ui.ask.run`): one engine, one version and one line per act,
+            # and the record it answers with is the page's own wording of it.
+            _, _, row = door.run(
+                table,
+                action,
+                rest,
+                (values, rest),
+                actor=actor,
+                via=audit.WEBAPP,
+            )
         except tables.TableError as error:
             self._json({"error": str(error)}, 400)
             return

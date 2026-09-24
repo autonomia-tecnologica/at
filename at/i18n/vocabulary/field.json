@@ -38,7 +38,13 @@
       "serviço": "service",
       "valor": "value",
       "credencial": "credential",
-      "permissões": "permissions"
+      "permissões": "permissions",
+      "o que": "what",
+      "tabela": "table",
+      "quando": "when",
+      "via": "via",
+      "motivo": "reason",
+      "razão": "reason"
     }
   },
   "en_US": {
@@ -82,7 +88,13 @@
       "service": "service",
       "value": "value",
       "credential": "credential",
-      "permissions": "permissions"
+      "permissions": "permissions",
+      "what": "what",
+      "table": "table",
+      "when": "when",
+      "via": "via",
+      "reason": "reason",
+      "why": "reason"
     }
   }
 }

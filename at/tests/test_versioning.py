@@ -147,7 +147,7 @@ class TheRepository(ScratchCase):
     def test_an_action_ends_in_a_version_named_by_the_engine_s_own_sentence(self):
         self.born()
         with redirect_stdout(io.StringIO()):
-            _, answer = door.run("task", "create", ["--set", "text=comprar pão"])
+            _, answer, _ = door.run("task", "create", ["--set", "text=comprar pão"])
         # The very sentence the surface printed, and not a second wording of it:
         # `git log` reads like the table's own story (§4).
         self.assertEqual(self.versions()[0], answer)
@@ -182,15 +182,24 @@ class TheRepository(ScratchCase):
             door.run("task", "view", ["1"])
         self.assertEqual(self.versions(), before)
 
-    def test_a_refused_action_is_not_a_version_and_writes_nothing(self):
+    def test_a_refused_action_leaves_the_line_and_no_row(self):
         self.born()
         before = len(self.versions())
-        # A refusal is raised BEFORE anything is written (the engine coerces and
-        # requires first), so there is nothing to version and nothing is left
-        # behind for the next action to carry.
+        # The engine coerces and requires BEFORE it writes, so the ROW is never
+        # written and the table is untouched. What the refusal leaves is the
+        # AUDIT line (§3, item 15) — a refusal is a line like an act — and the
+        # version that carries it is named by the refusal itself, so the folder
+        # is not left dirty by an act that was turned down.
         with self.assertRaises(Exception):
             door.run("task", "create", ["--set", "nowhere=x"])
-        self.assertEqual(len(self.versions()), before)
+        self.assertEqual(len(self.versions()), before + 1)
+        self.assertEqual(
+            self.versions()[0],
+            i18n.tr("table.error.unknown_field", table="task", field="nowhere"),
+        )
+        self.assertEqual(
+            [row["status"] for row in store.load("audit")], ["refused"]
+        )
         self.assertFalse(versioning.pending())
 
     def test_a_file_of_the_person_s_ends_in_a_version_named_by_its_path(self):
