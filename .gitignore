@@ -13,6 +13,12 @@
 # in it looks first — which, from a checkout, is this repository's root.
 /AGENT.md
 
+# The instance's own file, and the person's: it says what the real Working Folder
+# is, what a session owes it, and what is still missing there. It is never part
+# of the product, so it is never committed — the repository is the product and it
+# does not name anyone's instance (§0).
+/INSTANCE.md
+
 # The folders a person reads follow the person's language (§3), so the checkout
 # creates them under whichever spelling is active. Both are ignored, always:
 # which one exists depends on nothing a repository should carry.

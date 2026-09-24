@@ -54,12 +54,19 @@ SKIP = {
 # The door at the root is the only markdown outside a language folder.
 DOOR = ROOT / "README.md"
 
-# And the one markdown that is not ours to place: the note `boot` writes at the
-# root of every Working Folder. From a checkout this root IS the Working Folder,
-# so the note lands here — in the ACTIVE LANGUAGE, which is why it cannot sit in
-# a language folder, and by a NAME that does not move with the language, which is
+# And the markdown that is not ours to place: the note `boot` writes at the root
+# of every Working Folder. From a checkout this root IS the Working Folder, so
+# the note lands here — in the ACTIVE LANGUAGE, which is why it cannot sit in a
+# language folder, and by a NAME that does not move with the language, which is
 # the whole point of it. It is state, like the folders above, and not a document.
-RUNTIME = {ROOT / "AGENT.md"}
+#
+# `INSTANCE.md` is the second one, and it is not `boot`'s: it is the PERSON's
+# file — the real Working Folder, what a session owes it and what is still
+# missing there —, it sits at the root of the checkout and the git ignore rules
+# keep it out. The root `README.md` says it MAY exist and never what is inside it
+# (§0), so the gate has to let it sit beside the door: a file the repository does
+# not carry cannot be checked for a pair, and the suite may not depend on it.
+RUNTIME = {ROOT / "AGENT.md", ROOT / "INSTANCE.md"}
 
 # Documents of the WORK, not for the reader: they have a language and no pair.
 WORKING = {"backlog"}
