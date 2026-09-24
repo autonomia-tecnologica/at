@@ -21,8 +21,9 @@ bill/                          the product: the engine, the declarations and the
 │                              generates and the process that terminates the TLS (§3, §6)
 ├── vendor/caddy/              the Caddy release tarball, byte for byte as the vendor
 │                              ships it, which is what travels inside the binary (§3, §6)
-├── encryption/                secrets: the Access Phrase, the Bill Key and the derived keys,
-│                              and `password`, the derivation the hashed field stores
+├── encryption/                secrets: the Access Phrase, the Bill Key and the values it
+│                              protects (`vault`), and `password`, the derivation the hashed
+│                              field stores
 ├── nlu/                       interpretation: the vocabulary, the matcher and the action proposal
 ├── posture/                   the posture: the graded functions, the grades and the weakest link
 ├── ui/

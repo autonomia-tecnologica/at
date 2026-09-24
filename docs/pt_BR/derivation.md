@@ -21,8 +21,9 @@ bill/                          o produto: o motor, as declarações e a UI
 │                              processo que termina o TLS (§3, §6)
 ├── vendor/caddy/              o tarball de release do Caddy, byte a byte como o fornecedor
 │                              o publica, e é ele que viaja dentro do binário (§3, §6)
-├── encryption/                segredos: a Frase de Acesso, a Chave do Bill e as chaves derivadas,
-│                              e `password`, a derivação que o campo hasheado guarda
+├── encryption/                segredos: a Frase de Acesso, a Chave do Bill e os valores que ela
+│                              protege (`vault`), e `password`, a derivação que o campo hasheado
+│                              guarda
 ├── nlu/                       a interpretação: o vocabulário, o casador e a proposta de ação
 ├── posture/                   a postura: as funções graduadas, as notas e o elo mais fraco
 ├── ui/

@@ -4,7 +4,9 @@ The hashed field stores a derivation, and deriving is not the standard library's
 to give: this is the product's first runtime dependency. The module holds the two
 halves together — the primitive's contract, and the pin — and the pin's half is
 the one that fails the day `requirements.txt` and `pyproject.toml` stop naming
-the same version.
+the same version. It also holds the closed list of files that speak to
+`libsodium`, which item 14's first slice grew to two (`password` and `vault`):
+the door into the library is a list somebody extends on purpose.
 
 Nothing here touches a folder: the comparison reads its two arguments and
 nothing else, which is exactly what makes a credential verifiable while the
@@ -34,10 +36,13 @@ MEMLIMIT = 64 * 1024 * 1024
 # version and `p` libsodium's parallelism, neither of them the method's choice.
 ANSWER = re.compile(r"^\$argon2id\$v=\d+\$m=(\d+),t=(\d+),p=\d+\$")
 
-# `libsodium` has one door into the product, and this is the sentence that keeps
-# it one: the day a second file imports `nacl`, the module that fixes the price
-# stops being the only place the price can be changed.
+# `libsodium` has one door into the product, and the whole of it is the closed
+# list below: `password` derives what is compared, and `vault` derives the Bill
+# Key and seals what Bill uses. The day a third file imports `nacl`, the cost of
+# a derivation gains a place it can be changed from — and that is a decision,
+# never an accident.
 SPEAKS = re.compile(r"^\s*(?:import|from)\s+nacl\b", re.MULTILINE)
+SPEAKERS = ("bill/encryption/password.py", "bill/encryption/vault.py")
 
 PIN = ROOT / "requirements.txt"
 METADATA = ROOT / "pyproject.toml"
@@ -172,13 +177,15 @@ class ThePin(unittest.TestCase):
         # libsodium through, and `--require-hashes` wants every one of them here.
         self.assertLessEqual({"PyNaCl", "cffi", "pycparser"}, set(pinned()))
 
-    def test_only_one_file_speaks_to_libsodium(self):
-        speakers = [
+    def test_the_files_that_speak_to_libsodium_are_the_closed_list(self):
+        # Sorted, because the filesystem hands the files over in an order of its
+        # own and the list below is the declaration, not a directory listing.
+        speakers = sorted(
             path.relative_to(ROOT).as_posix()
             for path in (ROOT / "bill").rglob("*.py")
             if "tests" not in path.parts and SPEAKS.search(path.read_text(encoding="utf-8"))
-        ]
-        self.assertEqual(speakers, ["bill/encryption/password.py"])
+        )
+        self.assertEqual(speakers, sorted(SPEAKERS))
 
 
 if __name__ == "__main__":

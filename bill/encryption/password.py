@@ -1,4 +1,4 @@
-"""The password derivation — the one file in the product that speaks to `libsodium`.
+"""The password derivation — the file that fixes the price of a derivation.
 
 The hashed field (§4) stores a derivation, and only ever compares it: what is
 PROVED goes hashed, what Bill USES goes encrypted. The method is not a schema
@@ -8,9 +8,11 @@ below are its price.
 
 **The price is fixed here and reachable from nowhere else.** `OPSLIMIT` and
 `MEMLIMIT` are module constants: no declaration names them (the closed list
-refuses the keys), no `settings.json` holds them (§4: no secret lives there) and
-no environment variable reaches them. A knob that changed how a credential is
-derived would be "no choice per field" with a hole in it.
+refuses the keys), no `settings.json` holds them (§4: no secret lives there),
+and no environment variable reaches them. The vault imports them instead of
+naming a second price — a credential and a Bill Key are both derived from
+something a person types, and they cost the same. A knob that changed how a
+credential is derived would be "no choice per field" with a hole in it.
 
 **A derivation draws its own salt and carries it in its own answer**, so two
 equal credentials already produce two unequal rows — which is what the item
