@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from at import __version__
 from at.i18n import tr
-from at.ui.words import Node, section, width
+from at.ui.words import Node, completion_words, section, width
 
 
 WORDS: tuple[Node, ...] = (
@@ -41,6 +41,12 @@ WORDS: tuple[Node, ...] = (
             Node("credential", "deploy.services.credential.about"),
         ),
     ),
+    # The second artifact puts ITSELF where commands are found, and it does not
+    # install the first one: §3's cut is the same sentence here — whoever stays
+    # on the hosted path never needs this binary, and whoever installs this one
+    # has it for §7 alone.
+    Node("install", "deploy.install.about"),
+    Node("uninstall", "deploy.uninstall.about"),
     Node("help", "deploy.help.about"),
     Node("version", "deploy.version.about"),
 )
@@ -52,6 +58,11 @@ def roots() -> tuple[Node, ...]:
 
 def find(name: str) -> Node | None:
     return next((node for node in roots() if node.name == name), None)
+
+
+def completion() -> tuple[tuple[str, tuple[str, ...]], ...]:
+    """Every word the completion offers — which is every word the help does."""
+    return completion_words(roots())
 
 
 def as_text() -> str:

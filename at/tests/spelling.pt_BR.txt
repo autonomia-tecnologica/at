@@ -14,6 +14,7 @@
 acessar
 acl
 admin
+agendador
 alpha
 anytype
 apis
@@ -58,6 +59,7 @@ comita
 commit
 commitada
 commitado
+completion
 conceitual
 conflitando
 container
@@ -102,6 +104,7 @@ framework
 frameworks
 from
 frontend
+functions
 garçons
 gate
 gerenciado
@@ -127,6 +130,7 @@ i
 id
 ids
 inline
+install
 interiorano
 issue
 javascript
@@ -218,6 +222,7 @@ subprojetos
 subárvore
 supply
 suíte
+symlink
 system
 tailscale
 tarball

@@ -123,6 +123,7 @@ subcommand
 subproject
 subprojects
 subtree
+symlink
 tabelas
 tailscale
 tarball

@@ -14,7 +14,7 @@ import sys
 from collections.abc import Callable, Sequence
 
 from at import __version__, i18n
-from at.core import actors, boot, files, migrations, tables
+from at.core import actors, boot, files, install, migrations, paths, tables
 from at.data import schema
 from at.i18n import tr
 from at.ui import ask as door
@@ -30,9 +30,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     """The process's whole life. Returns the exit code; `__main__` raises it."""
     words = list(sys.argv[1:] if argv is None else argv)
 
-    # Every invocation confirms the Working Folder first — including `help` and
-    # `--version`. The folder belongs to the binary, not to the word, so there
-    # is no word that could run before the folder is AT's.
+    # `install` and `uninstall` run BEFORE the Working Folder is confirmed, and
+    # they are the only words that do. Every other word is ABOUT the folder —
+    # what it holds, how it is spoken — and the folder belongs to the binary, so
+    # no word could run before the folder is AT's. These two are about the FILE
+    # and where it is found, and the folder is only where the file happens to
+    # be: confirming one, or worse, creating one so the install has somewhere to
+    # write, is exactly what §3's first run asks before and never assumes.
+    if words[:1] in (["install"], ["uninstall"]):
+        return _installed(words[0], words[1:])
+
     if not boot.ensure_working_folder():
         return REFUSED
 
@@ -241,6 +248,40 @@ def _lang(rest: list[str], ask: Ask | None = None) -> int:
     migrations.offer_language(ask if ask is not None else _readers()[0],
                              include_folders=include_folders)
     return OK
+
+
+# -------------------------------------------------------------- the install ---
+
+def _installed(word: str, rest: list[str]) -> int:
+    """`at install` and `at uninstall` — the file, where commands are found.
+
+    What the word takes is `--bin <directory>`, and that is the whole of it:
+    the artifact is not fetched and not copied, and a new one arrives by the
+    file in the folder being replaced, which the link follows (§3).
+
+    Both artifacts answer through the same core (`core/install.py`), because
+    where a command is found is one rule and not one per artifact — and the two
+    are two installs all the same: neither installs the other, which is the
+    same cut §3 makes between `at` and `at-deploy`.
+
+    A `uninstall` that found nothing to take back is not a failure: what the
+    person asked for is the state, and the state is already it.
+    """
+    flag, ok = install.parse(rest)
+    if not ok:
+        return _reject(word)
+    try:
+        if word == "install":
+            outcome = install.act(paths.ARTIFACT, paths.artifact_file(),
+                                  tree.completion(), bin_flag=flag)
+            return OK if outcome in (install.DONE, install.ALREADY) else REFUSED
+        outcome = install.undo(paths.ARTIFACT, paths.artifact_file(), bin_flag=flag)
+        return OK if outcome in (install.REMOVED, install.NOTHING) else REFUSED
+    except files.ReadOnly as error:
+        # The link and the record are both writes, and the read-only switch is
+        # the one writer's rule — the same answer every engine gives (§3).
+        print(tr("cli.error.read_only", where=error.where))
+        return REFUSED
 
 
 # ---------------------------------------------------------- the interpreter ---

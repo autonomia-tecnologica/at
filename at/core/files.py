@@ -57,6 +57,19 @@ def readonly() -> bool:
     return os.environ.get(ENV_READONLY, "").strip().lower() in _TRUE_WORDS
 
 
+def guard(where: object) -> None:
+    """Refuse a write the switch forbids, for the writes that are not text.
+
+    The switch belongs to the write and not to the command's name, and a
+    writer that skipped it would be the one hole in the rule. This is the
+    second door: `atomic_write_text` is for content, and this is for what has
+    no content to write through it — a symlink, a directory, a removal. Both
+    read the same switch.
+    """
+    if readonly():
+        raise ReadOnly(where)
+
+
 def atomic_write_text(path: Path, text: str, mode: int | None = None) -> None:
     """Write `text` to `path`, atomically, or refuse under the read-only switch.
 
@@ -72,8 +85,7 @@ def atomic_write_text(path: Path, text: str, mode: int | None = None) -> None:
     """
     global _writes
 
-    if readonly():
-        raise ReadOnly(path)
+    guard(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(path.name + ".tmp")
     # `newline="\n"` because text mode turns every LF into CRLF on Windows, and

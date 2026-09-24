@@ -21,7 +21,7 @@ from at import __version__, nlu
 from at.core import tables
 from at.data import schema
 from at.i18n import tr
-from at.ui.words import Node, section, width
+from at.ui.words import Node, completion_words, section, width
 
 
 WORDS: tuple[Node, ...] = (
@@ -31,6 +31,12 @@ WORDS: tuple[Node, ...] = (
     # (item 27), whose own tree carries it. `at` keeps the folder and the app.
     Node("admin", "cli.admin.about"),
     Node("lang", "cli.lang.about"),
+    # The pair that puts the file where commands are found (§3, item 28). They
+    # are words like the others here and unlike the others in `cli/main`, which
+    # runs them BEFORE the Working Folder is confirmed: what they are about is
+    # the file and where it sits, not the folder.
+    Node("install", "cli.install.about"),
+    Node("uninstall", "cli.uninstall.about"),
     Node("help", "cli.help.about"),
     Node("version", "cli.version.about"),
 )
@@ -82,6 +88,11 @@ def roots() -> tuple[Node, ...]:
 
 def find(name: str) -> Node | None:
     return next((node for node in roots() if node.name == name), None)
+
+
+def completion() -> tuple[tuple[str, tuple[str, ...]], ...]:
+    """Every word the completion offers — which is every word the help does."""
+    return completion_words(roots())
 
 
 def as_text() -> str:

@@ -22,7 +22,7 @@ import sys
 from collections.abc import Callable, Sequence
 
 from at import __version__
-from at.core import actors, boot, files, tables
+from at.core import actors, boot, files, install, paths, tables
 from at.i18n import tr
 
 from at_deploy import environment, tree
@@ -54,6 +54,12 @@ USAGE = 2
 def main(argv: Sequence[str] | None = None) -> int:
     """The process's whole life. Returns the exit code; `__main__` raises it."""
     words = list(sys.argv[1:] if argv is None else argv)
+
+    # The same two words run before the folder is confirmed here, and for the
+    # same reason `at` gives them: they are about the FILE and where it is
+    # found, and not about the folder the file happens to sit in.
+    if words[:1] in (["install"], ["uninstall"]):
+        return _installed(words[0], words[1:])
 
     if not boot.ensure_working_folder():
         return REFUSED
@@ -92,6 +98,33 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(tr("deploy.error.unknown_word", word=word))
     print(tr("deploy.error.usage"))
     return USAGE
+
+
+def _installed(word: str, rest: list[str]) -> int:
+    """`at-deploy install` and `at-deploy uninstall` — the second artifact, put
+    where commands are found.
+
+    The same word as `at`'s and the same core (`core/install.py`), because
+    where a command is found is one rule (§3, item 28) — and a different
+    artifact all the same: this one installs itself and never the other, which
+    is §3's cut read from the side of §7. Whoever stays on the hosted path never
+    needs this binary, and installing it is the act of whoever does not.
+    """
+    flag, ok = install.parse(rest)
+    if not ok:
+        return _reject(word)
+    try:
+        if word == "install":
+            outcome = install.act(paths.DEPLOY, paths.deploy_file(),
+                                  tree.completion(), bin_flag=flag)
+            return OK if outcome in (install.DONE, install.ALREADY) else REFUSED
+        outcome = install.undo(paths.DEPLOY, paths.deploy_file(), bin_flag=flag)
+        return OK if outcome in (install.REMOVED, install.NOTHING) else REFUSED
+    except files.ReadOnly as error:
+        # Both the link and the record are writes, and the read-only switch is
+        # the one writer's rule — the same answer every engine gives (§3).
+        print(tr("deploy.error.read_only", where=error.where))
+        return REFUSED
 
 
 def services(

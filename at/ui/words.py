@@ -30,6 +30,20 @@ class Node:
     children: tuple["Node", ...] = ()
 
 
+def completion_words(nodes: tuple[Node, ...]) -> tuple[tuple[str, tuple[str, ...]], ...]:
+    """The words a shell completion offers, read off the tree the help reads.
+
+    One level down and no further, which is as deep as the vocabulary goes
+    (§5): the word, and the words under it. Plain tuples and not `Node`s
+    because the consumer is `core/install.py`, which must know nothing of a
+    tree's shape — the declaration stays here and only its shape travels.
+    """
+    return tuple(
+        (node.name, tuple(child.name for child in node.children))
+        for node in nodes
+    )
+
+
 def width(nodes: tuple[Node, ...]) -> int:
     """The column the descriptions start at: the longest word there is."""
     return max((len(node.name) for node in nodes), default=0)
