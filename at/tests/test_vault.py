@@ -2,10 +2,12 @@
 
 Item 14 is bigger than a session and was cut in two. This is the half that has no
 screen: the primitive — the Vault Key the Access Phrase derives, `libsodium`
-sealing and opening a value, and the round-trip through `data/secrets.jsonl`,
-which is the store the sealed value actually lives in. The other half is the
-`secret` table itself: `secret.json` in `data/schema/`, the wrapper that puts the
-sealed value in the row, and the intermediate key scoped to one service.
+sealing and opening a value, the derived key of one service or purpose, and the
+round-trip through `data/secrets.jsonl`, which is the store the sealed value
+actually lives in. The other half — the `secret` table, and the door that puts
+the sealed value in the row — landed after this one, and `test_secret.py` is
+where it is measured; what this file said about the cut is said the other way
+round in `TheCaller`.
 
 Three things are measured here, and each is a sentence of §4 held to the code:
 
@@ -24,10 +26,9 @@ The entry is measured here too, and it is the reason the vault exists apart from
 it: a credential is PROVED with the Access Phrase untyped, because hashed is what
 is compared and `authenticate` reaches no vault (§4, item 8).
 
-The product ships no `secret` declaration yet — that is item 14b — so the
-round-trip is proved on a declaration of the instance's own, exactly as the
-hashed type was before the `actor` table arrived. Every test aims AT at a
-throwaway folder with `AT_ROOT`; none of them touches a network or a model.
+Every test aims AT at a throwaway folder with `AT_ROOT`, so a vault is opened in
+a folder of its own and never in the checkout's; none of them touches a network
+or a model, and none of them writes a key or a phrase to disk.
 """
 
 from __future__ import annotations
@@ -67,24 +68,6 @@ UNDER = "x" * 15
 # A key of the right size that is not the Vault Key: an envelope has to refuse it
 # without any derivation running.
 FOREIGN = b"\x00" * 32
-
-# A declaration of the instance's own, so `store.path("secret")` resolves and the
-# sealed value can round-trip through `data/secrets.jsonl` before item 14b ships
-# the product's own `secret.json`. Its `store` is the one the item names, and the
-# labels are keys the product already carries.
-SECRET = {
-    "id": "secret",
-    "order": 99,
-    "name": {"one": "table.task.name.one", "many": "table.task.name.many"},
-    "store": "data/secrets.jsonl",
-    "primary": "name",
-    "columns": ["name", "value"],
-    "fields": {
-        "id": {"label": "table.field.id"},
-        "name": {"label": "table.task.field.text"},
-        "value": {"label": "table.task.field.desc"},
-    },
-}
 
 
 class ThePhrase(unittest.TestCase):
@@ -227,6 +210,63 @@ class TheEnvelope(unittest.TestCase):
                     vault.seal(VALUE, key)
 
 
+class TheDerivedKey(unittest.TestCase):
+    """The key of one service or purpose, out of the Vault Key alone (§4)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.master = vault.vault_key(PHRASE)
+
+    def test_the_same_scope_derives_the_same_key(self):
+        self.assertEqual(
+            vault.derived_key(self.master, "notifier"),
+            vault.derived_key(self.master, "notifier"),
+        )
+
+    def test_two_scopes_derive_two_keys(self):
+        self.assertNotEqual(
+            vault.derived_key(self.master, "notifier"),
+            vault.derived_key(self.master, "spelling-checker"),
+        )
+
+    def test_a_name_a_character_apart_is_another_key(self):
+        # Nothing here fixes a spelling: what separates two derived keys is the
+        # name, and one that differs is another key. What the door REFUSES is
+        # the name that is not one — the stray space nobody meant to type.
+        self.assertNotEqual(
+            vault.derived_key(self.master, "notifier"),
+            vault.derived_key(self.master, "notifierr"),
+        )
+        for wrong in ("", "   ", " notifier", "notifier ", None, 7):
+            with self.subTest(scope=wrong):
+                with self.assertRaises(vault.ScopeRefused):
+                    vault.derived_key(self.master, wrong)
+
+    def test_a_derived_key_is_not_the_vault_key(self):
+        self.assertNotEqual(vault.derived_key(self.master, "notifier"), self.master)
+
+    def test_a_key_that_is_not_one_is_refused(self):
+        for wrong in (None, b"", b"curta", 3):
+            with self.subTest(key=wrong):
+                with self.assertRaises(vault.KeyRefused):
+                    vault.derived_key(wrong, "notifier")
+
+    def test_a_derived_key_opens_what_it_sealed_and_not_its_neighbour(self):
+        mine = vault.derived_key(self.master, "notifier")
+        sealed = vault.seal(VALUE, mine)
+        self.assertEqual(vault.unseal(sealed, mine), VALUE)
+        self.assertIsNone(
+            vault.unseal(sealed, vault.derived_key(self.master, "spelling-checker"))
+        )
+        self.assertIsNone(vault.unseal(sealed, self.master))
+
+    def test_no_caller_names_the_price(self):
+        self.assertEqual(
+            list(inspect.signature(vault.derived_key).parameters),
+            ["vault_key", "scope"],
+        )
+
+
 class VaultCase(unittest.TestCase):
     """A Working Folder of its own, born by this release."""
 
@@ -251,20 +291,17 @@ class VaultCase(unittest.TestCase):
         store.reset()
         self.scratch.cleanup()
 
-    def declare(self, table: dict) -> None:
-        where = paths.data_dir() / schema.SCHEMA_DIR / f"{table['id']}.json"
-        where.write_text(
-            json.dumps(table, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-        )
-        schema.reset()
-
 
 class TheRoundTrip(VaultCase):
-    """The sealed value, through `data/secrets.jsonl` and back."""
+    """The sealed value, through `data/secrets.jsonl` and back.
+
+    The declaration is the product's now (item 14b landed it), so the store the
+    envelope lives in is the one the shipped table names — and the row is still
+    written by hand, because what this measures is the PRIMITIVE round-tripping
+    through the store and not the door that seals (`test_secret.py`)."""
 
     def setUp(self):
         super().setUp()
-        self.declare(SECRET)
         self.key = vault.vault_key(PHRASE)
 
     def store_row(self) -> dict:
@@ -306,26 +343,27 @@ class TheRoundTrip(VaultCase):
         self.assertTrue(row["value"].startswith(f"{vault.SEALED}:"))
 
 
-class TheCut(VaultCase):
-    """Where this slice stops, said out loud.
+class TheCaller(VaultCase):
+    """The cut this file drew, crossed by the slice that landed the table.
 
-    The product ships no `secret` declaration and nothing calls the vault: both
-    are item 14b's — `secret.json` in `data/schema/`, the wrapper that puts the
-    sealed value in the row. A session that lands them deletes these two tests,
-    which is the point: crossing the cut is a decision, not a drift.
+    Item 14a landed the vault with no `secret.json` and no caller anywhere, and
+    said so in two tests — `store.path("secret")` answered `None`, and nothing
+    in the product reached the primitive. Item 14b is the slice that landed
+    them, so what those two tests asserted is asserted the other way round here:
+    crossing the cut is a decision, and this is where it is read.
     """
 
-    def test_the_product_ships_no_secret_declaration(self):
-        self.assertIsNone(store.path("secret"))
-        self.assertFalse((paths.data_dir() / schema.SCHEMA_DIR / "secret.json").exists())
+    def test_the_product_ships_the_secret_declaration(self):
+        self.assertEqual(store.path("secret"), paths.data_dir() / "secrets.jsonl")
+        self.assertTrue((paths.data_dir() / schema.SCHEMA_DIR / "secret.json").is_file())
 
-    def test_nothing_calls_the_vault_yet(self):
-        callers = []
-        for root in (ROOT / "at", ROOT / "at_deploy"):
-            for path in root.rglob("*.py"):
-                if "tests" not in path.parts and reaches_vault(path):
-                    callers.append(path.relative_to(ROOT).as_posix())
-        self.assertEqual(callers, [])
+    def test_the_vault_has_a_caller(self):
+        callers = [
+            path.relative_to(ROOT).as_posix()
+            for path in (ROOT / "at").rglob("*.py")
+            if "tests" not in path.parts and reaches_vault(path)
+        ]
+        self.assertIn("at/core/secrets.py", callers)
 
 
 def reaches_vault(path: Path) -> bool:

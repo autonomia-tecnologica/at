@@ -18,7 +18,7 @@ product (item 27).
 from __future__ import annotations
 
 from at import __version__, nlu
-from at.core import tables
+from at.core import permissions
 from at.data import schema
 from at.i18n import tr
 from at.ui.words import Node, completion_words, section, width
@@ -69,14 +69,20 @@ def ask_words() -> tuple[str, ...]:
 def table_nodes() -> tuple[Node, ...]:
     """One root per declared table, each carrying the actions it answers.
 
-    The action list is the engine's (`tables.ACTIONS`), not a second copy here:
-    a word that dispatches is a word the help offers.
+    The action list is the engine's (`tables.ACTIONS`), read through the
+    catalogue (`permissions.actions`) and not copied here: a word that
+    dispatches is a word the help offers, and a table that narrows itself — one
+    that answers `read` and `edit` and not the six — offers the narrowed list in
+    the help and in the dispatch at once, from the one declaration.
     """
     return tuple(
         Node(
             str(declared["id"]),
             schema.name_key(str(declared["id"]), many=True) or str(declared["id"]),
-            tuple(Node(action, f"table.action.{action}") for action in tables.ACTIONS),
+            tuple(
+                Node(action, f"table.action.{action}")
+                for action in permissions.actions(str(declared["id"]))
+            ),
         )
         for declared in schema.declared()
     )

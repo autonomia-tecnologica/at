@@ -10,7 +10,8 @@ Cada nó com o seu trabalho, e nenhum resolve um caminho por conta própria alé
 at/                          o produto: o motor, as declarações e a UI
 ├── core/                      as regras — a Pasta de Trabalho, os ajustes, a primeira execução,
 │                              o escritor único, o motor de tabelas, o escopo de projeto,
-│                              o catálogo de permissões e os atores
+│                              o catálogo de permissões, os atores e a porta do Cofre para
+│                              a tabela `secret`
 ├── data/                      as tabelas: `data/<tabela>.jsonl` para as linhas e
 │   │                          `data/schema/<tabela>.json` para o esquema
 │   └── defaults/              as declarações que o produto entrega, escritas na pasta na primeira execução
@@ -21,9 +22,9 @@ at/                          o produto: o motor, as declarações e a UI
 │                              processo que termina o TLS (§3, §6)
 ├── vendor/caddy/              o tarball de release do Caddy, byte a byte como o fornecedor
 │                              o publica, e é ele que viaja dentro do binário (§3, §6)
-├── encryption/                segredos: a Frase de Acesso, a Chave do Cofre e os valores que ela
-│                              protege (`vault`), e `password`, a derivação que o campo hasheado
-│                              guarda
+├── encryption/                segredos: a Frase de Acesso, a Chave do Cofre, as chaves derivadas
+│                              e os valores que ela protege (`vault`), e `password`, a derivação
+│                              que o campo hasheado guarda
 ├── nlu/                       a interpretação: o vocabulário, o casador e a proposta de ação
 ├── posture/                   a postura: as funções graduadas, as notas e o elo mais fraco
 ├── ui/

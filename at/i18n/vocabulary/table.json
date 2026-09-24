@@ -6,7 +6,8 @@
       "projeto": "project",
       "lembrete": "reminder",
       "ator": "actor",
-      "papel": "role"
+      "papel": "role",
+      "segredo": "secret"
     }
   },
   "en_US": {
@@ -16,7 +17,8 @@
       "project": "project",
       "reminder": "reminder",
       "actor": "actor",
-      "role": "role"
+      "role": "role",
+      "secret": "secret"
     }
   }
 }

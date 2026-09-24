@@ -22,6 +22,14 @@ what makes it one. What is not a table — the settings, today, and the services
 the plugins and the interpreter's vocabulary with item 11 — is declared HERE,
 because there is no other place where it exists.
 
+**A table may narrow itself, and it does it in its own declaration.** The six
+are the engine's, and a table whose rows are not CRUD'd has no business offering
+all six as permissions: `secret` declares `read` and `edit`, its listing is
+`secret:read` and its write is `secret:edit`, and a closing and a deletion are
+not permissions it has. What the narrowing is FOR is that the ceiling is read
+from one place — `needed` is what the route, the interpreter and the role all
+ask — so a table cannot declare itself narrow for the help and wide for a route.
+
 The labels are `i18n` keys like everything else (§3): this module writes no
 sentence, and a permission without a label of its own is composed out of the
 object's and the action's.
@@ -32,6 +40,21 @@ from __future__ import annotations
 from at.core import tables
 from at.data import schema
 from at.i18n import tr
+
+# The key a declaration narrows itself with, and the whole of what it may say:
+# the permission `object:permission` the table answers, and the engine actions
+# that reach it. A table that declares none answers the engine's six
+# (`tables.ACTIONS`) under their own names — `task:list`, `task:edit`. A table
+# that declares one answers exactly what it names and nothing else: `secret`
+# answers `read` and `edit`, so its listing is `secret:read` and its write is
+# `secret:edit`, and the two actions the table does not answer — a closing and a
+# deletion — are not permissions it has.
+#
+# The actions are held to `tables.ACTIONS` both ways, and that is the point of
+# reading them here: a name the ENGINE does not have is not a permission that
+# exists (§4), and an action the declaration forgot is one the table does not
+# answer any more.
+DECLARED = "permissions"
 
 # The objects that are not a table, and the actions each one accepts. §4 names
 # the settings with all the letters; the other two are what the WebApp's routes
@@ -113,13 +136,68 @@ def risk(permission: str) -> float:
     return RISK_BY_ACTION.get(action, RISK_READ)
 
 
+def narrowed(table: str) -> dict[str, tuple[str, ...]]:
+    """The permissions a table's declaration narrows it to, or `{}`.
+
+    It is read the way every other declaration is, and answered the way every
+    other read of a declaration answers: what is not there, or is not shaped the
+    way the declaration is, is nothing — a hand-edited file is a table the
+    catalogue answers for with the engine's six, never a read that raises.
+    """
+    declared = schema.of(table) or {}
+    stated = declared.get(DECLARED)
+    if not isinstance(stated, dict):
+        return {}
+    found: dict[str, tuple[str, ...]] = {}
+    for permission, actions in stated.items():
+        if not isinstance(permission, str) or not isinstance(actions, list):
+            continue
+        kept = tuple(action for action in tables.ACTIONS if action in actions)
+        if kept:
+            found[permission] = kept
+    return found
+
+
+def actions(table: str) -> tuple[str, ...]:
+    """The engine actions this table answers, in the engine's own order.
+
+    It is what the help offers and what the dispatch accepts (`tree`), so a word
+    the table does not answer is a word no surface spells — and the order is the
+    engine's and not the declaration's, because the six are the engine's and a
+    table does not reorder them.
+    """
+    found = narrowed(table)
+    if not found:
+        return tables.ACTIONS
+    return tuple(
+        action
+        for action in tables.ACTIONS
+        if any(action in actions for actions in found.values())
+    )
+
+
+def needed(table: str, action: str) -> str:
+    """The permission an engine action demands of `table`.
+
+    A table that declares nothing demands the action's own name, which is what
+    every table did before a declaration could narrow it; one that declares a
+    permission over the action demands THAT, so the route, the interpreter's
+    ceiling and the role are all reading the same name.
+    """
+    for permission, actions in narrowed(table).items():
+        if action in actions:
+            return f"{table}:{permission}"
+    return f"{table}:{action}"
+
+
 def catalogue() -> dict[str, tuple[str, ...]]:
-    """Every object and the actions it accepts, in the catalogue's order."""
-    found: dict[str, tuple[str, ...]] = {
-        str(declared["id"]): tables.ACTIONS
-        for declared in schema.declared()
-        if isinstance(declared.get("id"), str)
-    }
+    """Every object and the permissions it accepts, in the catalogue's order."""
+    found: dict[str, tuple[str, ...]] = {}
+    for declared in schema.declared():
+        table = declared.get("id")
+        if not isinstance(table, str):
+            continue
+        found[table] = tuple(narrowed(table)) or tables.ACTIONS
     found.update(EXTRA)
     return found
 

@@ -33,11 +33,15 @@ none of them is an exception that takes down the read that found it. And the
 sealed value comes back in clear through THIS door and no other: `unseal` is the
 only reader, and it hands back text only when the key opens it.
 
-**A derived key is a key like any other here.** What seals an envelope is what
-opens it, and `seal` is handed its key — so the intermediate key §4 derives per
-service, recovered from the Vault Key alone, opens what it sealed and is refused
-by what its own scope does not cover. Nothing in this module needs a second
-secret for that to hold.
+**A derived key is a key like any other here, and there is a door that makes
+one.** §4 says the derived keys come from the Vault Key, one per service or
+purpose, and that the Vault Key recovers any of them lost — which is
+`derived_key`, and it is a derivation and not a stored thing, exactly as
+`vault_key` is. It is KEYED by the Vault Key and reads the scope as its message,
+so the name of a service tells nobody its key, and two names a character apart
+are two keys. What seals an envelope is what opens it, and `seal` is handed its
+key — so a derived key opens what it sealed and is refused by what its own scope
+does not cover, and nothing in this module needs a second secret for that.
 
 The layer points inward (§4): this module reaches `libsodium`, the standard
 library and `password`, and never `core` or `data`. The store the envelope lives
@@ -92,6 +96,25 @@ class PhraseRefused(ValueError):
         super().__init__(f"the Access Phrase needs at least {MINIMUM} characters")
 
 
+class ScopeRefused(ValueError):
+    """The scope is not a name, so no key was derived from it.
+
+    A derived key is scoped by the canonical name of a service or a purpose
+    (§4), and the names a person and a machine write are the ones with a typo in
+    them: an empty one, or one carrying its own whitespace, is refused HERE so
+    that `notifier` and `notifier ` cannot become two keys in silence. The
+    refusal is not a catalogue — the list of the services is §7's and the
+    plugins' and lives where they do — it is the shape of a name, and it says
+    nothing about which names exist.
+
+    The text is English because this layer reaches no `i18n` (§4, layers), like
+    `PhraseRefused`'s.
+    """
+
+    def __init__(self) -> None:
+        super().__init__("a scope is a canonical name: text, not empty, with no whitespace around it")
+
+
 class KeyRefused(ValueError):
     """There is no key to seal with — no phrase was typed, or what arrived is
     not a Vault Key.
@@ -126,6 +149,39 @@ def vault_key(phrase: str) -> bytes:
         salt,
         opslimit=password.OPSLIMIT,
         memlimit=password.MEMLIMIT,
+    )
+
+
+def derived_key(vault_key: bytes, scope: str) -> bytes:
+    """The key of ONE service or purpose, out of the Vault Key and nothing else.
+
+    §4: "from it the **derived keys**, one per service or purpose", and "the
+    Vault Key recovers any lost derived key". Both sentences are this door. It is
+    a derivation and not a stored thing — nothing here remembers a derived key
+    either — so calling it again is how a key that was lost comes back, and the
+    same scope over the same Vault Key is the same key on any machine.
+
+    The scope is the MESSAGE and the Vault Key is the key of the hash, which is
+    what tells the two apart: knowing the name of a service tells nobody its key,
+    and `notifier` and `spelling-checker` are two keys that open each other's
+    nothing. The scope is a canonical NAME — the one thing this door refuses is a
+    scope that is not one, so a stray space cannot become a second key in
+    silence. `KeyRefused` here is `seal`'s: a Vault Key that is not one is not
+    the offer this door can fail to make.
+    """
+    if not isinstance(scope, str) or not scope.strip() or scope != scope.strip():
+        raise ScopeRefused()
+    # The size is checked HERE and not left to the library: `blake2b` takes a key
+    # of any length up to its own ceiling, so a value that is not a Vault Key
+    # would otherwise derive something that looks like a derived key. `KEY_SIZE`
+    # is what a Vault Key IS, and `seal` is refused by the same fact.
+    if not isinstance(vault_key, bytes) or len(vault_key) != KEY_SIZE:
+        raise KeyRefused()
+    return nacl.hash.blake2b(
+        scope.encode("utf-8"),
+        digest_size=KEY_SIZE,
+        key=vault_key,
+        encoder=nacl.encoding.RawEncoder,
     )
 
 

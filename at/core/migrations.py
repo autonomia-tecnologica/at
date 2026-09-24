@@ -570,6 +570,44 @@ def _versioning(ask: Ask | None) -> list[Report]:
     return []
 
 
+# The table THIS release introduces — what migration eleven names — and the
+# permissions it answers. Both lists are explicit for the reason `INTRODUCED` is
+# one: a published migration is never edited, so the next release that brings a
+# system table brings its own step and its own names.
+#
+# The two permissions are the table's OWN and not the engine's six: `secret`
+# declares `read` and `edit` in its declaration (`permissions.DECLARED`), so its
+# listing is `secret:read` and its write is `secret:edit`. A role born before
+# this swap carries neither — it was built from the catalogue of its own day —
+# and the administrator's is the one that must, exactly as migrations seven and
+# eight handed over theirs.
+SECRETS = ("secret",)
+SECRET_PERMISSIONS = ("secret:read", "secret:edit")
+
+
+def _secrets(ask: Ask | None) -> list[Report]:
+    """Migration eleven: the `secret` table, and the ceiling over it.
+
+    A folder that already exists is the one this is for: the table that carries
+    what AT USES has to arrive in it before anything can be sealed, and the
+    declaration is written the way migration six writes one — only where it is
+    ABSENT, so a `secret.json` a person edited stays theirs and a deletion stays
+    a deletion that was meant.
+
+    It does not ask: a declaration of the product's own, and the role is AT's
+    (`_hand_over`) — and the box the rows live in, `data/secrets.jsonl`, is born
+    when the first secret is sealed and not here: an empty file that names
+    nothing is a store a person would read as a table that exists elsewhere.
+    """
+    written = schema.seed(paths.data_dir() / schema.SCHEMA_DIR, only=SECRETS)
+    report: list[Report] = []
+    if written:
+        report.append(
+            ("boot.migration.declarations.written", {"names": ", ".join(sorted(written))})
+        )
+    return report + _hand_over(SECRET_PERMISSIONS)
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, _legacy_instance),
     Migration(2, _capitalized_instance),
@@ -581,6 +619,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(8, _objects),
     Migration(9, _declarations_extended),
     Migration(10, _versioning),
+    Migration(11, _secrets),
 )
 
 

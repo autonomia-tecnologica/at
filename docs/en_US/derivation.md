@@ -10,7 +10,8 @@ Each node with its job, and none resolves a path of its own beyond `core` (§4).
 at/                          the product: the engine, the declarations and the UI
 ├── core/                      the rules — the Working Folder, the settings, the first run,
 │                              the single writer, the table engine, the project scope,
-│                              the permission catalogue and the actors
+│                              the permission catalogue, the actors and the Vault's door
+│                              into the `secret` table
 ├── data/                      the tables: `data/<table>.jsonl` for the rows and
 │   │                          `data/schema/<table>.json` for the schema
 │   └── defaults/              the declarations the product delivers, written into the folder on the first run
@@ -21,9 +22,9 @@ at/                          the product: the engine, the declarations and the U
 │                              generates and the process that terminates the TLS (§3, §6)
 ├── vendor/caddy/              the Caddy release tarball, byte for byte as the vendor
 │                              ships it, which is what travels inside the binary (§3, §6)
-├── encryption/                secrets: the Access Phrase, the Vault Key and the values it
-│                              protects (`vault`), and `password`, the derivation the hashed
-│                              field stores
+├── encryption/                secrets: the Access Phrase, the Vault Key, the derived keys
+│                              and the values it protects (`vault`), and `password`, the
+│                              derivation the hashed field stores
 ├── nlu/                       interpretation: the vocabulary, the matcher and the action proposal
 ├── posture/                   the posture: the graded functions, the grades and the weakest link
 ├── ui/

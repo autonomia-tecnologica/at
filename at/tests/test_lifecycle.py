@@ -26,7 +26,7 @@ from pathlib import Path
 from unittest import mock
 
 from at import i18n
-from at.core import boot, paths, tables
+from at.core import boot, paths, permissions, tables
 from at.data import schema, store
 from at.ui.cli import main, tree
 
@@ -460,13 +460,20 @@ class TheDoor(Closing):
         self.assertEqual(code, 1)
         self.assertIn("lifecycle", text)
 
-    def test_the_help_offers_the_two_words_under_every_table(self):
+    def test_the_help_offers_the_two_words_under_every_table_that_answers_them(self):
+        # Item 6 made the closing and the deletion words of every table, and a
+        # table may still declare that it answers fewer of the engine's six
+        # (item 14b's `secret` is the first). So what the help offers is what the
+        # table ANSWERS, and a table that declares nothing answers all six.
         code, text = self.words("help")
         self.assertEqual(code, 0)
         for node in tree.table_nodes():
             with self.subTest(table=node.name):
-                for action in ("cancel", "delete"):
-                    self.assertIn(action, [child.name for child in node.children])
+                offered = [child.name for child in node.children]
+                self.assertEqual(offered, list(permissions.actions(node.name)))
+                if "permissions" not in (schema.of(node.name) or {}):
+                    for action in ("cancel", "delete"):
+                        self.assertIn(action, offered)
                 self.assertIn(f"{node.name}", text)
 
     def test_a_field_of_the_tables_own_named_reason_is_not_taken_from_it(self):

@@ -24,10 +24,29 @@ from datetime import date, datetime, timezone
 from typing import Any
 
 from at.data import schema, store
-from at.encryption import password
+from at.encryption import password, vault
 from at.i18n import tr
 
 ACTIONS = ("list", "view", "create", "edit", "cancel", "delete")
+
+# The two types whose value does not come out of a row. They are told apart by
+# WHY: a `hashed` value is only ever compared, and a `sealed` one is only ever
+# opened with the key — and to whoever reads a line they are one thing, a word
+# where the value would be. What the word says is which of the two it is
+# (`table.word.hashed`, `table.word.sealed`), so the reader knows whether the
+# something behind it can ever be theirs.
+OPAQUE = ("hashed", "sealed")
+
+# The two types whose declaration is held to a closed list of keys — and the
+# list of each. `hashed` and `sealed` fix a METHOD, and a method is not a
+# schema author's choice: what the declaration says is what it says about any
+# other field. `default` is absent from both on purpose: a default is a value
+# the declaration WRITES, and the declaration is published — a credential or a
+# sealed value with a default would be one in the repository.
+LISTED_KEYS: dict[str, tuple[str, ...]] = {
+    "hashed": ("type", "label", "required", "max_length", "hide"),
+    "sealed": ("type", "label", "required", "hide"),
+}
 
 # The two that only READ, and the rest — the actions that change the folder, and
 # the ones a version has to carry (§4, item 30). It is derived from the six above
@@ -98,16 +117,17 @@ def title(table: str, row: dict) -> str:
     """What a person reads as the row's name: the field the table declares as
     `primary`, and then the id. Never a field guessed here.
 
-    A table that declares a HASHED field as its principal is refused: a title is
-    read, and this field is not. An identity a surface has to spell out is not a
-    credential's job, and the declaration is where that is caught — before any
-    row can carry one.
+    A table that declares one of the two unreadable types as its principal is
+    refused: a title is read, and neither a derivation nor a sealed value is. An
+    identity a surface has to spell out is not a credential's job, and the
+    declaration is where that is caught — before any row can carry one.
     """
     _checked(table)
     declared = schema.primary(table)
-    if declared and hashed(table, declared):
+    kind = opaque(table, declared) if declared else None
+    if kind is not None:
         raise TableError(
-            "error.hashed_primary",
+            f"error.{kind}_primary",
             table=table_name(table),
             field=label(table, declared),
         )
@@ -221,13 +241,14 @@ def text_of(table: str, field: str, value: Any) -> str:
     declared = schema.field(table, field)
     if value is None:
         return tr("table.word.none")
-    if declared.get("type") == "hashed":
-        # The mask, and never the derivation. The display does not refuse — a
-        # listing that crashed on the very field it is meant to hide would be a
-        # worse answer than the one that says there is something here you do not
-        # read. A value that is not there, which is what a clearing leaves,
-        # reads as nothing and never as a hidden something.
-        return tr("table.word.hashed") if value else tr("table.word.none")
+    kind = opaque(table, field)
+    if kind is not None:
+        # The mask, and never the value. The display does not refuse — a listing
+        # that crashed on the very field it is meant to hide would be a worse
+        # answer than the one that says there is something here you do not read.
+        # A value that is not there, which is what a clearing leaves, reads as
+        # nothing and never as a hidden something.
+        return tr(f"table.word.{kind}") if value else tr("table.word.none")
     written = _locale_writer(declared)
     if written is not None:
         return written(value)
@@ -387,24 +408,25 @@ def _literal(value: Any) -> Any:
     return value
 
 
-# ------------------------------------------------------------ the hashed ---
+# ----------------------------------------------------- what is not read ---
 
-# The keys a declaration of a `hashed` field may name, and the whole of them.
-# §4 fixes the method — `libsodium`'s password derivation, the same for every
-# hashed field of every table — so there is nothing here for a declaration to
-# CHOOSE: what it says is what it says about any other field. The refusal is
-# read off this list, so `method`, `algorithm`, `opslimit`, `memlimit` and
-# whatever key somebody invents next are all refused BY NAME without this module
-# having to predict them.
-#
-# `default` is out on purpose, and it is the one absence worth naming: a default
-# is a value the declaration WRITES, and the declaration is published — a
-# credential with a default would be a credential in the repository.
-HASHED_KEYS = ("type", "label", "required", "max_length", "hide")
+
+def opaque(table: str, field: str) -> str | None:
+    """The type of `field` when it is one whose value does not come out, or
+    `None` — the one read of `OPAQUE`, so every door of the engine agrees on
+    which fields are which.
+
+    It is public because the WebApp asks it before it builds a record: a page
+    carries what a cell may draw, and the value of one of these is drawn as the
+    mask and handed over by nobody.
+    """
+    kind = schema.field(table, field).get("type")
+    return kind if kind in OPAQUE else None
 
 
 def _checked(table: str) -> dict:
-    """The table's declaration, with its hashed fields held to the closed list.
+    """The table's declaration, with its `hashed` and `sealed` fields held to the
+    closed list of the keys their type takes.
 
     The check runs HERE — at the point of use, where the engine reads a
     declaration to act on a field — and never where the registry loads the
@@ -417,19 +439,29 @@ def _checked(table: str) -> dict:
     fields = declared.get("fields")
     if isinstance(fields, dict):
         for name, field in fields.items():
-            if isinstance(field, dict) and field.get("type") == "hashed":
-                _refuse_unlisted_keys(table, name, field)
+            if not isinstance(field, dict):
+                continue
+            kind = field.get("type")
+            # The refusal is read off the list, so `method`, `algorithm`,
+            # `opslimit`, `memlimit` and whatever key somebody invents next are
+            # all refused BY NAME without this module having to predict them.
+            allowed = LISTED_KEYS.get(kind) if isinstance(kind, str) else None
+            if allowed is not None:
+                _refuse_unlisted_keys(table, name, field, allowed)
     return declared
 
 
-def _refuse_unlisted_keys(table: str, name: str, field: dict) -> None:
-    """Refuse a hashed declaration that names a key the closed list lacks."""
+def _refuse_unlisted_keys(
+    table: str, name: str, field: dict, allowed: tuple[str, ...]
+) -> None:
+    """Refuse a declaration of one of the two types that names a key its closed
+    list lacks — by the name of the key, and of the type that lacks it."""
     for key in field:
-        if key not in HASHED_KEYS:
+        if key not in allowed:
             # `named` and not `key`: the refusal's own reason is already called
             # `key`, and the sentence is about the KEY OF THE DECLARATION.
             raise TableError(
-                "error.hashed_key", field=label(table, name), named=key
+                f"error.{field['type']}_key", field=label(table, name), named=key
             )
 
 
@@ -438,17 +470,24 @@ def hashed(table: str, field: str) -> bool:
     return schema.field(table, field).get("type") == "hashed"
 
 
+def sealed(table: str, field: str) -> bool:
+    """Whether the field is of the type that carries a sealed value (§4)."""
+    return schema.field(table, field).get("type") == "sealed"
+
+
 def raw_of(table: str, field: str, value: Any) -> Any:
     """A value as the store keeps it — for whoever starts from the truth.
 
     A form opens on what a row already carries, and a cell that shows the stored
-    value asks here. The hashed field is the one the engine does NOT hand over:
-    what it holds is a derivation, a derivation is only ever compared, and
-    whoever asks gets the refusal BY NAME instead of the value.
+    value asks here. The two types that do not read are the ones the engine does
+    NOT hand over: a derivation is only ever compared, a sealed value is only
+    ever opened with the key, and whoever asks gets the refusal BY NAME — the
+    name of the field, and of what the field is — instead of the value.
     """
     _checked(table)
-    if hashed(table, field):
-        raise TableError("error.hashed_value", field=label(table, field))
+    kind = opaque(table, field)
+    if kind is not None:
+        raise TableError(f"error.{kind}_value", field=label(table, field))
     return value
 
 
@@ -576,6 +615,30 @@ def _hashed(table: str, name: str, field: dict, raw: Any) -> str:
     return password.derive(text)
 
 
+def _sealed(table: str, name: str, raw: Any) -> str:
+    """The envelope that was handed in, and never anything else (§4).
+
+    The engine does NOT seal: sealing needs the Vault Key, and no module holds a
+    key while AT is up (§4, the three grades are a surface's choice). What the
+    type does is the other half, and it is the half a table can do alone — it
+    refuses what is not an envelope, so a cleartext typed into a sealed field is
+    a refusal and not a secret written into a file a person copies and commits.
+    The envelope seals the value by ITSELF (`vault.SEALED` ahead of it and the
+    nonce inside the payload), so the field carries no second spelling of the
+    algorithm and needs nothing beside it.
+
+    Nothing typed is nothing stored, like the hashed field: an empty sealed field
+    is what a clearing leaves, and it reads as nothing.
+    """
+    text = raw.strip() if isinstance(raw, str) else ""
+    if not text:
+        return ""
+    header, _, payload = text.partition(":")
+    if header != vault.SEALED or not payload:
+        raise TableError("error.not_sealed", field=label(table, name))
+    return text
+
+
 def _value(table: str, name: str, field: dict, raw: Any) -> Any:
     kind = field.get("type")
     if kind == "day":
@@ -584,6 +647,8 @@ def _value(table: str, name: str, field: dict, raw: Any) -> Any:
         return _instant(table, name, raw)
     if kind == "hashed":
         return _hashed(table, name, field, raw)
+    if kind == "sealed":
+        return _sealed(table, name, raw)
     if not isinstance(raw, str):
         return raw
     if kind == "list":

@@ -554,17 +554,15 @@ def _stored(table: str, name: str, value: object) -> object:
     """The stored value a form starts from — and NOTHING for the field the engine
     does not hand over.
 
-    `tables.raw_of` refuses the hashed field by name, and that refusal is the
-    answer: a cell draws the mask and a form asks for a new credential, so what
-    the page carries is what it may draw. Every OTHER refusal keeps travelling —
-    this is the page obeying the engine's rule, not a second rule of its own.
+    It asks the ENGINE which fields those are (`tables.opaque`) and not a list of
+    types of its own: a credential is only ever compared and a sealed value is
+    only ever opened with the key, and the page carries neither — a cell draws
+    the mask and a form asks for a new credential. Any other field is handed over
+    as it is stored, and the engine's own door is what says so (`raw_of`).
     """
-    try:
-        return tables.raw_of(table, name, value)
-    except tables.TableError as refused:
-        if refused.key != "error.hashed_value":
-            raise
+    if tables.opaque(table, name) is not None:
         return None
+    return tables.raw_of(table, name, value)
 
 
 def _record(table: str, row: dict) -> dict:
@@ -1357,9 +1355,12 @@ class Handler(BaseHTTPRequestHandler):
             # not offered by this route yet).
             self._json({"error": f"unknown action: {action}"}, 400)
             return
-        # The permission is the ACTION's, and it is asked here because this is
-        # where the action exists: the route is one, and what it does is two.
-        if not self._may(f"{table}:{action}"):
+        # The permission is the action's, read from the CATALOGUE and not
+        # composed here: a table may narrow itself to `read` and `edit`
+        # (`secret`), and a route that wrote `table:action` would refuse a write
+        # the role carries — or worse, demand a permission the catalogue does
+        # not have.
+        if not self._may(permissions.needed(table, action)):
             return
         values = payload.get("set")
         values = {str(k): str(v) for k, v in values.items()} if isinstance(values, dict) else {}

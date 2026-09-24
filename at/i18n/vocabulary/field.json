@@ -35,6 +35,8 @@
       "horários": "at",
       "antecedência": "warn_days",
       "tipo": "type",
+      "serviço": "service",
+      "valor": "value",
       "credencial": "credential",
       "permissões": "permissions"
     }
@@ -77,6 +79,8 @@
       "warn days": "warn_days",
       "lead time": "warn_days",
       "type": "type",
+      "service": "service",
+      "value": "value",
       "credential": "credential",
       "permissions": "permissions"
     }

@@ -136,10 +136,15 @@ def ceiling(actor: dict | None, proposal: nlu.Proposal) -> str | None:
     A sentence the interpreter did not read never gets here — there is no proposal
     to ask about — and neither does a folder asking nobody: no actor is no ceiling,
     and the door keeps answering as it always did.
+
+    The permission is `permissions.needed` and not the action's own name written
+    out here: a table may narrow itself (`secret` answers `read` and `edit`), and
+    a ceiling that composed the name its own way would refuse an act the role
+    carries.
     """
     if actor is None:
         return None
-    needed = f"{proposal.table}:{proposal.action}"
+    needed = permissions.needed(proposal.table, proposal.action)
     return None if actors.may(actor, needed) else needed
 
 

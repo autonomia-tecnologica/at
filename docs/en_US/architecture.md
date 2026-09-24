@@ -30,6 +30,7 @@
 
 - The schema declares **field types**, and each type has a fixed rule, with no choice per field:
   - **hashed** — stores the result of a secure derivation, made with `libsodium`; the value does not come back on a read, it is only compared.
+  - **sealed** — carries a value AT **uses**, sealed with the key of its own service or purpose; it does not come back on a read, and it is the key that opens it and not the engine.
   - **instant** — a point in time: ISO, always UTC, always with milliseconds (`2026-09-22T13:04:07.123Z`). Locality is detected on display, never stored.
   - **day** — a calendar day, with no time and no timezone, resolved by the locality of whoever writes. "Today" is your today.
   - The common types — text, number, date, reference, enumeration — as they always were.
@@ -45,6 +46,8 @@
 - To perform certain actions, such as accessing external service APIs, AT needs access to secrets. Every secret AT **stores** is written into the `secret` table — a secret that is only compared, such as an actor's credential, lives hashed in its own row (§4, Tables). There are the metadata and the secret itself, saved in encrypted form.
 
 - AT's encryption starts from an **Access Phrase**, which is what the person knows and types: at least 16 characters, and it is a phrase. "Mariazinha comeu todo o pudim", in lowercase and without spaces, is safer than `Mariazinha@123`. From it the **Vault Key** is derived, and from it the **derived keys**, one per service or purpose. The Vault Key recovers any lost derived key.
+
+- A derived key is scoped by a **name** — the canonical name of a service, or a purpose written as one — and the Vault keeps no catalogue of names: the services are §7's and the plugins', and a list here would be the Vault naming a world it does not own. What it refuses is a scope that is not a name, and what it holds is that two names a character apart are two keys.
 
 - It is recommended to keep the Access Phrase outside the machine, in a safe place. Printing it and storing it among personal documents that are hard to reach, for example.
 

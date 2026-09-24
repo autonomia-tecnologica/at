@@ -24,7 +24,7 @@ from pathlib import Path
 from unittest import mock
 
 from at import i18n
-from at.core import actors, boot, paths, permissions, projects, settings, tables
+from at.core import actors, boot, paths, permissions, projects, secrets, settings, tables
 from at.data import schema, store
 from at.services import caddy
 from at.tests import drawn_gate
@@ -158,8 +158,11 @@ class TheState(ServerCase):
         keys = [table["key"] for table in state["tables"]]
         # The order is the schema's, and the system tables arrive with the
         # product: `actor` and `role` are declared beside the three that carry
-        # the daily work (§4).
-        self.assertEqual(keys, ["task", "project", "reminder", "actor", "role"])
+        # the daily work (§4), and `secret` — what AT uses and nobody reads —
+        # closes the list with them.
+        self.assertEqual(
+            keys, ["task", "project", "reminder", "actor", "role", "secret"]
+        )
         self.assertEqual(next(t for t in state["tables"] if t["key"] == "task")["count"], 1)
 
     def test_it_carries_the_brand(self):
@@ -301,6 +304,43 @@ class TheHashedField(ServerCase):
                 status, _, body = self.get(path)
                 self.assertEqual(status, 400)
                 self.assertEqual(json.loads(body)["error"], expected)
+
+
+class TheSealedField(ServerCase):
+    """The field whose value never reaches the page either (§4, item 14).
+
+    The product ships this one — `secret` is a system table — so the page is
+    asked about the table itself, with no declaration of the instance's own in
+    the way: the envelope stays in the folder, the cell draws the mask, and
+    `raw` carries nothing.
+    """
+
+    PHRASE = "mariazinha comeu todo o pudim"
+    VALUE = "credencial-de-exemplo"
+
+    def setUp(self):
+        super().setUp()
+        self.row = secrets.seal("credencial", "notifier", self.VALUE, self.PHRASE)
+
+    def cell(self, name: str) -> dict:
+        _, _, body = self.get("/api/table/secret")
+        record = json.loads(body)["records"][0]
+        return next(field for field in record["fields"] if field["name"] == name)
+
+    def test_the_cell_shows_the_mask(self):
+        self.assertEqual(self.cell("value")["value"], i18n.tr("table.word.sealed"))
+
+    def test_the_payload_carries_neither_the_value_nor_the_envelope(self):
+        # The answer is read as bytes, because that is what leaves the process —
+        # and the phrase that opens neither travels nor is anywhere in it.
+        _, _, body = self.get("/api/table/secret")
+        self.assertNotIn(self.VALUE.encode("utf-8"), body)
+        self.assertNotIn(self.row["value"].encode("utf-8"), body)
+        self.assertNotIn(self.PHRASE.encode("utf-8"), body)
+        self.assertIsNone(self.cell("value")["raw"])
+
+    def test_every_other_field_still_carries_what_is_stored(self):
+        self.assertEqual(self.cell("service")["raw"], "notifier")
 
 
 class TheLook(ServerCase):

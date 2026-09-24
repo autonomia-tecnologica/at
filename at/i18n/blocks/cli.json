@@ -1,7 +1,7 @@
 {
   "pt_BR": {
     "help.title": "AT {version}",
-    "help.usage": "at <palavra>",
+    "help.usage": "at-cli <palavra>",
     "help.tables": "Tabelas",
     "help.words": "Palavras",
     "help.no_args": "Sem palavra, o AT imprime esta ajuda.",
@@ -30,7 +30,7 @@
   },
   "en_US": {
     "help.title": "AT {version}",
-    "help.usage": "at <word>",
+    "help.usage": "at-cli <word>",
     "help.tables": "Tables",
     "help.words": "Words",
     "help.no_args": "With no word, AT prints this help.",

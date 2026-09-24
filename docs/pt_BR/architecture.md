@@ -30,6 +30,7 @@
 
 - O esquema declara **tipos de campo**, e cada tipo tem regra fixa, sem escolha por campo:
   - **hasheado** — guarda o resultado de uma derivação segura, feita com `libsodium`; o valor não volta na leitura, só se confere.
+  - **selado** — carrega um valor que o AT **usa**, selado com a chave do próprio serviço ou propósito; ele não volta na leitura, e quem o abre é a chave, não o motor.
   - **instante** — um ponto no tempo: ISO, sempre UTC, sempre com milissegundos (`2026-09-22T13:04:07.123Z`). A localidade é detectada na exibição, nunca guardada.
   - **dia** — um dia do calendário, sem hora e sem fuso, resolvido pela localidade de quem escreve. "Hoje" é o seu hoje.
   - Os tipos comuns — texto, número, data, referência, enumeração — como sempre foram.
@@ -45,6 +46,8 @@
 - Para executar certas ações, como acessar APIs de serviços externos, o AT precisa ter acesso a segredos. Todo segredo que o AT **guarda** é escrito na tabela `secret` — segredo que só se confere, como a credencial de um ator, mora hasheado na própria linha (§4, Tabelas). Lá estão metadados e o segredo em si, salvo de forma criptografada.
 
 - A criptografia do AT parte de uma **Frase de Acesso**, que é o que a pessoa sabe e digita: no mínimo 16 caracteres, e é uma frase. "Mariazinha comeu todo o pudim", em minúsculas e sem espaços, é mais seguro que `Mariazinha@123`. Dela se deriva a **Chave do Cofre**, e dela as **chaves derivadas**, uma por serviço ou finalidade. A Chave do Cofre recupera qualquer chave derivada perdida.
+
+- O escopo de uma chave derivada é um **nome** — o nome canônico de um serviço, ou uma finalidade escrita como um —, e o Cofre não guarda catálogo de nomes: os serviços são do §7 e dos plugins, e uma lista aqui seria o Cofre nomeando um mundo que não é dele. O que ele recusa é escopo que não é nome, e o que ele sustenta é que dois nomes que diferem numa letra são duas chaves.
 
 - É recomendado guardar a Frase de Acesso fora da máquina, em um local seguro. Imprimir e armazenar em documentos pessoais de difícil acesso, por exemplo.
 

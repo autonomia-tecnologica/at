@@ -385,10 +385,15 @@ class TheInterpreter(HashedCase):
         # The declaration's own words name the table and the field, and the
         # phrase that names the field is residue: what was typed goes where the
         # primary field goes, and never into the credential.
-        proposal = nlu.propose("cria um keeper com credential segredo")
+        #
+        # The word a person types here is a PLACEHOLDER and not the credential
+        # the sentence is about, and it is spelled so on purpose: item 14b's
+        # `secret` table took `segredo` into the vocabulary, and a fixture that
+        # kept it would be a sentence naming two tables.
+        proposal = nlu.propose("cria um keeper com credential abracadabra")
         self.assertIsInstance(proposal, nlu.Proposal)
         self.assertNotIn("credential", proposal.values)
-        self.assertEqual(proposal.values.get("name"), "segredo")
+        self.assertEqual(proposal.values.get("name"), "abracadabra")
 
 
 class TheTypesThatAlreadyShip(HashedCase):
