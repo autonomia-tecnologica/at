@@ -10,9 +10,17 @@ from `permissions.risk` and never declared twice), each argument may raise it �
 a table's field in its own declaration, a settings key in `core.settings` — and
 the demand is the HIGHEST among them and nothing else.
 
-What is NOT here is the filter itself: nothing waits yet, and the job that holds
-a demand at or above the threshold is the next slice. `demand` is the door the
-core measures by, and the filter is what will call it.
+**The ninth slice adds the last of it, and it is the one the two documents
+promised**: the risk of each action is ADJUSTABLE in the folder's own
+`settings.json` (§5). The map is the folder's override of the catalogue's number,
+the catalogue's is what governs every entry the folder did not write, and a
+strange declaration is read as that floor — never as a refusal, and never as a
+way to take a demand down.
+
+The filter is the fourth slice's, and the marks are the ruler's: `demand` is what
+the door measures by, `waits` is the boundary the filter compares at, and `marks`
+is what the page draws — the three read one number, which is this file's whole
+argument.
 """
 
 from __future__ import annotations
@@ -107,21 +115,21 @@ class TheBoundary(RiskCase):
         self.assertTrue(risk.waits(0.8))
 
 
-class TheDeclared(RiskCase):
-    """The marks the ruler draws: one per catalogue entry, and the four numbers
-    item 15 closed (§4)."""
+class TheMarks(RiskCase):
+    """The marks the ruler draws: one per catalogue entry, carrying the number
+    that governs it in this folder, and the four numbers item 15 closed (§4)."""
 
     def test_one_mark_per_catalogue_entry(self):
         # One entry per PERMISSION, in the catalogue's own order: the page draws
         # the list it was handed and sorts nothing.
         self.assertEqual(
-            [mark["key"] for mark in risk.declared()], permissions.all_permissions()
+            [mark["key"] for mark in risk.marks()], permissions.all_permissions()
         )
 
-    def test_every_mark_carries_what_the_catalogue_declares(self):
-        for mark in risk.declared():
+    def test_every_mark_carries_the_number_the_entry_is_measured_at(self):
+        for mark in risk.marks():
             with self.subTest(permission=mark["key"]):
-                self.assertEqual(mark["risk"], permissions.risk(mark["key"]))
+                self.assertEqual(mark["risk"], risk.adjusted(mark["key"]))
 
     def test_the_four_numbers_are_the_ones_the_product_declares(self):
         # §4, item 15: `0` a read, `0.2` creating or editing, `0.5` overwriting or
@@ -147,7 +155,14 @@ class TheDeclared(RiskCase):
 
     def test_the_product_declares_nothing_at_the_top_of_the_ruler(self):
         # §4: the top of the scale is a demand nobody leaves to an automatic act.
-        self.assertTrue(all(mark["risk"] < risk.CEILING for mark in risk.declared()))
+        # It is the PRODUCT's declaration that says so — the folder may write a
+        # `1` of its own, and that is the folder's (TheAdjustment).
+        self.assertTrue(
+            all(
+                permissions.risk(name) < risk.CEILING
+                for name in permissions.all_permissions()
+            )
+        )
 
     def test_a_permission_the_catalogue_does_not_name_declares_nothing(self):
         # A hand-edited role is READ, never crashed on: the number it gets is the
@@ -167,7 +182,7 @@ class TheDeclared(RiskCase):
         ):
             with self.subTest(argument=f"{object}.{name}"):
                 self.assertEqual(risk.raised(object, name), 0.95)
-        self.assertNotIn(0.95, [mark["risk"] for mark in risk.declared()])
+        self.assertNotIn(0.95, [mark["risk"] for mark in risk.marks()])
 
 
 class TheArgument(RiskCase):
@@ -266,6 +281,134 @@ class TheDemand(RiskCase):
         every = [
             risk.demand(object, action)
             for object in ("task", "project", "reminder", "actor", "role", "secret", "audit")
+            for action in ("list", "view", "create", "edit", "cancel", "delete")
+        ]
+        self.assertTrue(all(risk.FLOOR <= value <= risk.CEILING for value in every))
+
+
+class TheAdjustment(RiskCase):
+    """The risk of each action, adjustable in the folder's own settings — the
+    promise §4 and §5 make (§5: "O risco de cada ação é ajustável em
+    `settings.json`", item 15's ninth slice).
+
+    The map is keyed by the CATALOGUE's own name (`object:action`) and holds the
+    number the folder wants that entry to carry. Where it carries a number inside
+    the scale, that number governs; everywhere else the catalogue's declaration
+    stands, which is the floor of what the folder did not write — and a strange
+    declaration is read as that floor and never takes a demand down.
+    """
+
+    def adjust(self, written: object) -> None:
+        """Write the map the way the door and a hand both do: one key, one value."""
+        settings.save({**settings.load(), risk.BY_ACTION: written})
+
+    def test_the_folder_raises_a_catalogue_number(self):
+        self.adjust({"task:create": 0.6})
+        self.assertEqual(risk.adjusted("task:create"), 0.6)
+        self.assertEqual(risk.demand("task", "create"), 0.6)
+        self.assertTrue(risk.waits(risk.demand("task", "create")))
+
+    def test_the_folder_lowers_a_catalogue_number(self):
+        # "The bar does not lower itself" is §4's rule about the THRESHOLD — the
+        # wall itself, which is what an automatic act could otherwise walk under.
+        # This is the folder tuning the price of ONE action under its own hand,
+        # and §5 calls it adjustable without qualifying the direction.
+        self.adjust({"task:delete": 0.1})
+        self.assertEqual(risk.adjusted("task:delete"), 0.1)
+        self.assertEqual(risk.demand("task", "delete"), 0.1)
+        self.assertFalse(risk.waits(risk.demand("task", "delete")))
+
+    def test_what_the_folder_never_wrote_is_the_catalogue_s(self):
+        self.adjust({"task:delete": 0.1})
+        self.assertEqual(risk.adjusted("task:create"), permissions.risk("task:create"))
+        self.assertEqual(risk.adjusted("setting:edit"), permissions.risk("setting:edit"))
+
+    def test_a_folder_that_wrote_nothing_measures_the_catalogue(self):
+        for name in permissions.all_permissions():
+            with self.subTest(permission=name):
+                self.assertEqual(risk.adjusted(name), permissions.risk(name))
+
+    def test_the_key_is_the_catalogue_s_permission_and_not_the_engine_s_word(self):
+        # A narrowed object answers a PERMISSION and not the engine's word — a
+        # `secret` listing is `secret:read` — so the entry the map may adjust is
+        # the permission, and a word the catalogue does not carry adjusts nothing.
+        self.adjust({"secret:list": 0.9, "secret:read": 0.6})
+        self.assertEqual(risk.demand("secret", "list"), 0.6)
+        self.assertEqual(risk.demand("secret", "view"), 0.6)
+        self.assertEqual(risk.adjusted("secret:list"), permissions.risk("secret:list"))
+
+    def test_a_name_the_catalogue_does_not_carry_adjusts_nothing(self):
+        self.adjust({"task:fly": 0.9})
+        self.assertEqual(risk.adjusted("task:fly"), permissions.risk("task:fly"))
+        self.assertEqual(risk.adjusted("task:fly"), risk.FLOOR)
+        self.assertFalse(permissions.is_known("task:fly"))
+
+    def test_a_value_that_is_not_a_number_is_read_as_the_floor(self):
+        # A boolean is not a number here either: in this language `true` is an
+        # integer, and a switch read as the top of the scale would be the defect
+        # the guard exists for — the mirror of a word read as a free action.
+        for strange in ("alto", None, True, [0.9], {"task:delete": 0.1}):
+            with self.subTest(value=strange):
+                self.adjust({"task:delete": strange})
+                self.assertEqual(
+                    risk.adjusted("task:delete"), permissions.risk("task:delete")
+                )
+
+    def test_a_number_off_the_scale_is_read_as_the_floor(self):
+        # Off the ruler the drawing has no mark to put it on, and the rule every
+        # strange declaration gets is the floor — NOT the clamp the threshold and
+        # an argument get, because here a clamp would be a number taken DOWN by a
+        # value nobody meant as one.
+        for off in (1.5, -1, 2):
+            with self.subTest(value=off):
+                self.adjust({"task:delete": off})
+                self.assertEqual(
+                    risk.adjusted("task:delete"), permissions.risk("task:delete")
+                )
+
+    def test_a_strange_value_never_takes_a_demand_down(self):
+        # The defect it would be is a garbage value silently defanging an action:
+        # a demand for the thing the ceiling is made of cannot be walked under by
+        # a typo in the file.
+        for strange in ("alto", None, True, 1.5, -1, [0.1]):
+            with self.subTest(value=strange):
+                self.adjust({"setting:edit": strange, "actor:edit": strange})
+                self.assertEqual(risk.demand("setting", "edit"), 0.8)
+                self.assertEqual(risk.demand("actor", "edit", ["name"]), 0.8)
+
+    def test_a_map_that_is_not_a_map_adjusts_nothing(self):
+        for strange in ("0.5", 3, [0.5], None, True):
+            with self.subTest(value=strange):
+                self.adjust(strange)
+                self.assertEqual(
+                    risk.adjusted("task:delete"), permissions.risk("task:delete")
+                )
+
+    def test_the_ruler_draws_the_adjusted_number(self):
+        # The screen and the engine read ONE number: the mark is the number the
+        # demand is measured at, and it is drawn on the side of the line that
+        # number falls on.
+        self.adjust({"task:delete": 0.9, "task:list": 0.3})
+        drawn = {mark["key"]: mark["risk"] for mark in risk.marks()}
+        self.assertEqual(drawn["task:delete"], 0.9)
+        self.assertEqual(drawn["task:list"], 0.3)
+        self.assertEqual(risk.demand("task", "delete"), drawn["task:delete"])
+        self.assertEqual(risk.demand("task", "list"), drawn["task:list"])
+        self.assertTrue(risk.waits(drawn["task:delete"]))
+        self.assertFalse(risk.waits(drawn["task:list"]))
+
+    def test_an_argument_still_raises_over_the_adjusted_action(self):
+        # The adjustment is the ACTION's: an argument that raises still raises
+        # over it, and the highest is still the whole of the rule.
+        self.adjust({"actor:edit": 0.1})
+        self.assertEqual(risk.demand("actor", "edit", ["name"]), 0.1)
+        self.assertEqual(risk.demand("actor", "edit", ["role"]), 0.95)
+
+    def test_a_demand_measured_from_the_map_still_never_leaves_the_scale(self):
+        self.adjust({"task:delete": 0.4, "setting:edit": 0.9})
+        every = [
+            risk.demand(object, action)
+            for object in ("task", "project", "actor", "role", "secret", "audit")
             for action in ("list", "view", "create", "edit", "cancel", "delete")
         ]
         self.assertTrue(all(risk.FLOOR <= value <= risk.CEILING for value in every))

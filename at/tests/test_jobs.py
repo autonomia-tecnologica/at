@@ -127,6 +127,10 @@ class JobCase(unittest.TestCase):
     def bar(self, value: object) -> None:
         settings.save({**settings.load(), risk.KEY: value})
 
+    def adjust(self, written: dict) -> None:
+        """The per-action adjustment §5 promises, written the way the door does."""
+        settings.save({**settings.load(), risk.BY_ACTION: written})
+
 
 class TheDeclaration(JobCase):
     """What the product ships, and the names the module holds it to."""
@@ -271,9 +275,9 @@ class TheCatalogue(JobCase):
         self.assertEqual(permissions.risk("job:refuse"), permissions.RISK_ALLOW)
         # And the two are priced TOGETHER: a cheaper refusal would be a way of
         # learning about a dearer approval.
-        for mark in risk.declared():
-            with self.subTest(mark=mark["key"]):
-                self.assertLess(mark["risk"], risk.CEILING)
+        for name in permissions.all_permissions():
+            with self.subTest(permission=name):
+                self.assertLess(permissions.risk(name), risk.CEILING)
 
 
 class TheFilter(JobCase):
@@ -367,6 +371,40 @@ class TheFilter(JobCase):
         result = door.ask("cria uma tarefa pra amanhã", actor=self.person())
         self.assertEqual(result.text, tr("table.created", id="TASK-1"))
         self.assertEqual(len(self.held()), 1)
+
+    def test_the_folder_s_adjustment_is_what_the_demand_is_measured_against(self):
+        # §5: "O risco de cada ação é ajustável em `settings.json`". The demand of
+        # a machine is measured against the FOLDER's number and not the
+        # catalogue's, so an action the catalogue prices at `0.2` waits once the
+        # map lifts it over the bar — and the bar itself never moved.
+        machine = self.machine()
+        self.adjust({"task:create": 0.9})
+        code, answer, row = door.run(
+            "task", "create", ["--set", "text=do agente"],
+            actor=machine, via=audit.WEBAPP,
+        )
+        self.assertEqual(code, 0)
+        self.assertIsNone(row)
+        self.assertEqual(answer, tr("job.waits", id="JOB-1"))
+        self.assertEqual(len(self.held()), 1)
+
+    def test_an_action_the_folder_prices_under_the_bar_runs(self):
+        # The other direction, and the one §4's "the bar does not lower itself"
+        # does NOT govern: that rule is about the THRESHOLD, which is the wall
+        # itself, and this is the folder pricing ONE action under its own hand.
+        # A delete is `0.5` and the bar sits at `0.5`, so the machine's delete
+        # waits; the map walks it under, and it runs.
+        machine = self.machine("task:delete")
+        with redirect_stdout(StringIO()):
+            tables.create("task", {"text": "para deletar"})
+        self.adjust({"task:delete": 0.1})
+        with redirect_stdout(StringIO()):
+            code, answer, _ = door.run(
+                "task", "delete", ["1"], actor=machine, via=audit.WEBAPP
+            )
+        self.assertEqual(code, 0)
+        self.assertEqual(self.held(), [])
+        self.assertIsNone(store.find("task", 1))
 
     def test_a_read_never_waits(self):
         # §3: reading is not doing, and there is no line for one either. The

@@ -161,6 +161,23 @@ class TheDoor(SettingsCase):
         self.assertEqual(settings.raised(risk.KEY), 0.95)
         self.assertIsNone(settings.raised("basic_auth"))
 
+    def test_the_per_action_adjustment_is_a_key_the_product_reads(self):
+        # §5's promise needs a home, and it is the file the person edits: the map
+        # of `object:action` → number sits beside the bar, and the door hands it
+        # over with every other key the product reads.
+        self.assertEqual(risk.BY_ACTION, "risk_by_action")
+        self.assertIn(risk.BY_ACTION, settings.KNOWN)
+        self.assertIn(risk.BY_ACTION, settings.keys())
+
+    def test_the_map_that_moves_the_wall_is_priced_with_the_bar(self):
+        # An edit of the map writes which number each action carries, so it walks
+        # an entry under the bar without touching the bar at all: it is the same
+        # act as moving the line, and §4's reason prices it the same.
+        self.assertEqual(settings.raised(risk.BY_ACTION), 0.95)
+        self.assertEqual(
+            risk.demand(permissions.SETTING, "edit", [risk.BY_ACTION]), 0.95
+        )
+
 
 class TheCatalogue(SettingsCase):
     """The object in the catalogue: two permissions, and three words."""
@@ -247,6 +264,35 @@ class TheWords(SettingsCase):
         self.assertTrue(webapp.basic_allowed())
         self.assertIn(tr("setting.edited", setting="basic_auth", value="true"), text)
 
+    def test_edit_writes_the_map_and_answers_with_what_the_file_holds(self):
+        # The adjustment is written through the door like any other key, and the
+        # value is the CORE's reading of what was typed (`settings.literal`): the
+        # JSON object the person types is the object the file holds, and it is the
+        # one the demand filter reads.
+        code, text = self.words(
+            "setting", "edit", risk.BY_ACTION, '{"task:delete": 0.1}'
+        )
+        self.assertEqual(code, 0)
+        self.assertEqual(settings.get(risk.BY_ACTION), {"task:delete": 0.1})
+        self.assertEqual(risk.demand("task", "delete"), 0.1)
+        self.assertIn(
+            tr(
+                "setting.edited",
+                setting=risk.BY_ACTION,
+                value='{"task:delete": 0.1}',
+            ),
+            text,
+        )
+
+    def test_a_map_a_hand_wrote_is_read_the_same_way(self):
+        # The door is where the act is recorded, and it is not the only way in:
+        # the file is the person's, and the reading is the core's either way.
+        settings.save({**settings.load(), risk.BY_ACTION: {"setting:edit": 0.9}})
+        code, text = self.words("setting", "view", risk.BY_ACTION)
+        self.assertEqual(code, 0)
+        self.assertIn('{"setting:edit": 0.9}', text)
+        self.assertEqual(risk.demand(permissions.SETTING, "edit"), 0.9)
+
     def test_a_word_the_object_does_not_answer_is_a_usage_error(self):
         code, text = self.words("setting", "delete", "risk_threshold")
         self.assertEqual(code, 2)
@@ -286,6 +332,23 @@ class TheLine(SettingsCase):
         self.assertEqual(row[audit.STATUS], audit.OK)
         self.assertEqual(row[audit.VIA], audit.CLI)
         self.assertEqual(row[audit.THRESHOLD], risk.DEFAULT)
+
+    def test_the_adjustment_edit_leaves_one_line_and_one_version(self):
+        # §5's adjustment is an act like any other: it goes through `setting:edit`,
+        # so the line names the actor and the via, carries the bar the demand
+        # faced, and ends in one version named by the sentence the person read.
+        with mock.patch.object(versioning, "commit") as committed:
+            code, text = self.words(
+                "setting", "edit", risk.BY_ACTION, '{"task:delete": 0.1}'
+            )
+        self.assertEqual(code, 0)
+        committed.assert_called_once_with(text.strip())
+        rows = self.lines()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0][audit.WHAT], "setting:edit")
+        self.assertEqual(rows[0][audit.TABLE], permissions.SETTING)
+        self.assertEqual(rows[0][audit.STATUS], audit.OK)
+        self.assertEqual(rows[0][audit.THRESHOLD], risk.DEFAULT)
 
     def test_the_actor_is_the_first_admin(self):
         admin = actors.create_admin("Rafael", "uma-frase-bem-longa")

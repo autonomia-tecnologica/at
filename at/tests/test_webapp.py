@@ -31,6 +31,7 @@ from at.core import (
     paths,
     permissions,
     projects,
+    risk,
     secrets,
     settings,
     tables,
@@ -161,6 +162,21 @@ class TheState(ServerCase):
         self.assertEqual(
             next(mark for mark in risk["marks"] if mark["key"] == "role:edit")["risk"], 0.8
         )
+
+    def test_the_marks_carry_the_number_the_folder_adjusted(self):
+        # §5's per-action adjustment reaches the ruler through the ONE number the
+        # engine measures with: a mark is what its entry is measured at, so a
+        # folder that lifts `task:delete` draws the mark over the line and the
+        # filter holds the demand at the same spot — with no line changing in the
+        # page, because the page draws what it is handed.
+        settings.save({**settings.load(), risk.BY_ACTION: {"task:delete": 0.9}})
+        _, _, body = self.get("/api/state")
+        marks = {mark["key"]: mark["risk"] for mark in json.loads(body)["risk"]["marks"]}
+        self.assertEqual(marks["task:delete"], 0.9)
+        self.assertTrue(risk.waits(marks["task:delete"]))
+        # And an entry the folder did not write keeps the catalogue's number.
+        self.assertEqual(marks["setting:edit"], permissions.risk("setting:edit"))
+        self.assertEqual(marks["task:create"], permissions.risk("task:create"))
 
     def test_it_names_the_declared_tables_with_their_counts(self):
         _, _, body = self.get("/api/state")

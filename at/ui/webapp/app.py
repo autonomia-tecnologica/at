@@ -436,11 +436,12 @@ def state_payload() -> dict:
         # the page reads it to know what to draw: off, there is no box, no balloon
         # and no chat — the whole function is gone, and nothing else is.
         "interpreter": nlu.enabled(),
-        # THE RULER'S NUMBERS. The threshold is the one the demand filter will
-        # honour (§4); the marks are the risks the product DECLARES, and today
-        # there are none — the permission catalogue is item 11. The page draws
-        # what it is handed and invents no risk.
-        "risk": {"threshold": risk.threshold(), "marks": risk.declared()},
+        # THE RULER'S NUMBERS. The threshold is the one the demand filter honours
+        # (§4); the marks are one per catalogue entry, each carrying the number
+        # the demand is measured at — the catalogue's, adjusted by what this
+        # folder wrote (`risk.marks`). The page draws what it is handed and
+        # invents no number, so the mark and the engine say the same thing.
+        "risk": {"threshold": risk.threshold(), "marks": risk.marks()},
         # `None` is the answer for a folder under versioning, and it is not the
         # same as absent: the page tells "nothing to say" from "not here yet"
         # exactly the way it does with a session.

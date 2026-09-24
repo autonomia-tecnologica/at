@@ -47,7 +47,7 @@ const pieces = computed(() => {
     if (ref.at < at) continue;
     if (ref.at > at) out.push({ text: body.slice(at, ref.at) });
     out.push({ ref });
-    at-cli = ref.at + ref.shown.length;
+    at = ref.at + ref.shown.length;
   }
   if (at < body.length) out.push({ text: body.slice(at) });
   return out;

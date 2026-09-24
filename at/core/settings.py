@@ -32,6 +32,14 @@ exist. Nothing is written here that would be a line without them.
 demand is the highest among the action and the arguments it carries, and the
 settings are not a table — there is no declaration file for a key's number to
 live in, so it lives here, beside the key (`RAISED`).
+
+**And the folder adjusts the catalogue's numbers here too.** §5: "o risco de cada
+ação é ajustável em `settings.json`". The catalogue declares each entry's number
+(`permissions.risk`) and the settings carry the folder's OVERRIDE of it, under one
+key of their own (`BY_ACTION`) — a map of `object:action` → number. The key is
+named here because the door's list and the raise table both spell it, and what the
+override means — when it governs, and what a strange one is read as — is
+`at.core.risk`'s, which is where a demand is measured.
 """
 
 from __future__ import annotations
@@ -48,6 +56,14 @@ from at.i18n import tr
 # are applied (§3).
 SCHEMA = 1
 
+# The two keys of the RISK model, named once, because the door's list and the
+# raise table both spell them and a second spelling would be the one that drifts
+# (§4, item 15). They are the two halves of what the folder owns of a demand's
+# price: `THRESHOLD` is the bar a demand is measured against, and `BY_ACTION` is
+# the map of `object:action` → number that adjusts the catalogue's own numbers.
+THRESHOLD = "risk_threshold"
+BY_ACTION = "risk_by_action"
+
 # The keys the product READS, in the order the door hands them over. A key the
 # folder carries and this tuple does not name is still shown — the file is the
 # person's — and it comes after these, by name.
@@ -59,7 +75,8 @@ SCHEMA = 1
 KNOWN = (
     "interpreter",
     "basic_auth",
-    "risk_threshold",
+    THRESHOLD,
+    BY_ACTION,
     "authenticator",
     "folders",
     "schema",
@@ -76,7 +93,13 @@ RESERVED = ("schema",)
 # declared here, beside the keys it belongs to — and `risk_threshold` is the one
 # §4 names: whichever demand moves the bar is priced for it, because whoever can
 # lower the wall learns where it is.
-RAISED = {"risk_threshold": 0.95}
+#
+# **The map is the second key that moves the wall, and it is priced with the
+# bar.** §4's reason is exactly this one: an edit of `BY_ACTION` writes which
+# number each action of the catalogue carries, so it can walk an entry under the
+# bar without touching the bar at all — a demand that moves the numbers a demand
+# is measured by is the same act as moving the line, and it is priced the same.
+RAISED = {THRESHOLD: 0.95, BY_ACTION: 0.95}
 
 
 def exists() -> bool:

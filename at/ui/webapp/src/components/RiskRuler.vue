@@ -1,15 +1,15 @@
 <script setup lang="ts">
-// RiskRuler — the demand filter's scale, drawn over what the product DECLARES.
+// RiskRuler — the demand filter's scale, drawn over the numbers that GOVERN.
 //
-// From `0` to `1`, the line of the threshold, and a mark for every declared risk.
-// The engine's rule (§4) is what the drawing says: a demand BELOW the line runs,
-// and one AT or above it waits — the boundary is the waiting side.
+// From `0` to `1`, the line of the threshold, and a mark for every catalogue
+// entry. The engine's rule (§4) is what the drawing says: a demand BELOW the line
+// runs, and one AT or above it waits — the boundary is the waiting side.
 //
-// The ruler invents no risk. It draws the marks the server hands it, and the
-// server hands it what the product declares; today there are none, because the
-// permission catalogue is item 11 and neither an action nor a field carries a
-// number yet. Then the ruler says exactly that, and the day the catalogue lands
-// the marks appear with no line changing here.
+// The ruler invents no number. It draws the marks the server hands it, and the
+// server hands it what each entry is measured at: the catalogue's own risk,
+// adjusted by what the folder wrote in `settings.json` (§5's per-action
+// adjustment). It reads the SAME number the demand filter compares against, so
+// the mark and the engine cannot disagree about what runs and what waits.
 //
 // THE MARK IS DRAWN TO THE RIGHT OF ITS OWN VALUE, never centred on it: a mark
 // exactly ON the line then falls on the waiting side, which is the side the engine

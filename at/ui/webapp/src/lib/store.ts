@@ -25,9 +25,9 @@ export interface ThemeRow {
   desc: { light?: string; dark?: string } | null;
 }
 
-// A risk the product DECLARES, and the number it carries (§4). Today the list is
-// empty — the permission catalogue is item 11 — and the ruler draws what it is
-// handed rather than inventing one.
+// A mark of the risk ruler: one catalogue entry and the number it is MEASURED
+// at (§4/§5) — the catalogue's own risk, adjusted by what the folder wrote. The
+// ruler draws what it is handed rather than inventing a number.
 export interface RiskMark {
   key: string;
   risk: number;
