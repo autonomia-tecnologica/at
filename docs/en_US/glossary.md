@@ -5,7 +5,7 @@ Each name has one meaning, and names that would touch each other do not coexist.
 | term | what it is |
 |---|---|
 | **product** | the published set: this repository, the binary it generates and the declarations that travel inside |
-| **binary** | the single file the product publishes |
+| **binary** | each file the product publishes: `bill`, which is the folder and the app, and `bill-deploy`, which is §7 |
 | **Working Folder** | the folder where the binary was opened and which becomes its own |
 | **layer** | each code folder with a single job: `core`, `data`, `prose`, `services`, `encryption`, `nlu`, `posture`, `ui`, `i18n` |
 | **surface** | each way for a person to reach the core: `cli`, WebApp and Wizard |

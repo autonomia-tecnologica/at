@@ -9,31 +9,28 @@ sentence is the person's. The table words are not written here at all — they c
 from `data/schema/`, which is what makes a table a table (§4). Add a
 declaration and the word appears, with its actions, in the help and in the
 dispatch at once.
+
+The SHAPE of the help — the node, the column, the block — is `bill/ui/words.py`,
+shared with the deploy's tree, which is the other command line of the same
+product (item 27).
 """
 
 from __future__ import annotations
-
-from dataclasses import dataclass
 
 from bill import __version__, nlu
 from bill.core import tables
 from bill.data import schema
 from bill.i18n import tr
-
-
-@dataclass(frozen=True)
-class Node:
-    name: str
-    """The machine word — English, canonical, never translated (§3)."""
-
-    about: str
-    """The i18n key of the one-line description."""
-
-    children: tuple["Node", ...] = ()
+from bill.ui.words import Node, section, width
 
 
 WORDS: tuple[Node, ...] = (
     Node("webapp", "cli.webapp.about", (Node("run", "cli.webapp.run.about"),)),
+    # The `services` word is NOT here, and its absence is the artifact boundary:
+    # the environment of §7 left this binary whole and became `bill-deploy`
+    # (item 27), whose own tree carries it. `bill` keeps the folder and the app.
+    Node("admin", "cli.admin.about"),
+    Node("lang", "cli.lang.about"),
     Node("help", "cli.help.about"),
     Node("version", "cli.version.about"),
 )
@@ -90,7 +87,7 @@ def find(name: str) -> Node | None:
 def as_text() -> str:
     """The help, in the active language."""
     declared = table_nodes()
-    width = max((len(node.name) for node in roots()), default=0)
+    column = width(roots())
 
     lines = [
         tr("cli.help.title", version=__version__),
@@ -98,19 +95,7 @@ def as_text() -> str:
         tr("cli.help.usage"),
     ]
     if declared:
-        lines += _section(declared, width, "cli.help.tables")
-    lines += _section(words(), width, "cli.help.words")
+        lines += section(declared, column, "cli.help.tables")
+    lines += section(words(), column, "cli.help.words")
     lines += ["", tr("cli.help.no_args")]
     return "\n".join(lines)
-
-
-def _section(nodes: tuple[Node, ...], width: int, title_key: str) -> list[str]:
-    """One block of the help: the word, what it is, and the words under it."""
-    described = [(node, tr(node.about)) for node in nodes]
-    about = max((len(text) for _, text in described), default=0)
-    lines = ["", tr(title_key)]
-    for node, text in described:
-        under = ", ".join(child.name for child in node.children)
-        tail = f"   · {under}" if under else ""
-        lines.append(f"  {node.name.ljust(width)}  {text.ljust(about)}{tail}".rstrip())
-    return lines

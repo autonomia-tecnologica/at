@@ -18,7 +18,9 @@ alpha
 anytype
 apis
 app
+argv
 artefato
+artefatos
 asset
 audit
 auditados
@@ -71,6 +73,7 @@ deletar
 deletáveis
 deleção
 delivery
+deploy
 derivation
 desenvolvedores
 desktop
@@ -79,6 +82,7 @@ detectada
 detectado
 dev
 diff
+dns
 docker
 ei
 end
@@ -87,6 +91,7 @@ estadunidense
 f
 faq
 favicon
+flag
 forms
 forward
 framework
@@ -123,6 +128,7 @@ issue
 javascript
 job
 json
+kernel
 languagetool
 linka
 llm
@@ -147,6 +153,7 @@ oidc
 one
 oneself
 party
+paths
 pin
 pinada
 pinadas
@@ -178,8 +185,8 @@ registrar
 registro
 release
 releia
-rename
 relying
+rename
 rest
 review
 root
@@ -197,6 +204,8 @@ seções
 sha
 smartphones
 sonarr
+spec
+specs
 steam
 subagente
 subcomandos
@@ -207,6 +216,7 @@ supply
 suíte
 system
 tailscale
+tarball
 tcl
 templates
 tk

@@ -1,0 +1,54 @@
+{
+  "id": "actor",
+  "order": 7,
+  "name": {
+    "one": "table.actor.name.one",
+    "many": "table.actor.name.many"
+  },
+  "store": "data/actors.jsonl",
+  "type": "actor",
+  "primary": "name",
+  "columns": [
+    "type",
+    "role",
+    "name"
+  ],
+  "desc": "who acts; person, engine or agent, with the role that caps it and the credential that proves it",
+  "fields": {
+    "id": {
+      "label": "table.field.id",
+      "filterable": true,
+      "searchable": true
+    },
+    "name": {
+      "label": "table.actor.field.name",
+      "filterable": true,
+      "searchable": true,
+      "required": true
+    },
+    "type": {
+      "label": "table.actor.field.type",
+      "filterable": true,
+      "searchable": true,
+      "enum": {
+        "person": "table.actor.field.type.person",
+        "engine": "table.actor.field.type.engine",
+        "agent": "table.actor.field.type.agent"
+      },
+      "default": "person"
+    },
+    "role": {
+      "label": "table.actor.field.role",
+      "filterable": true,
+      "searchable": true,
+      "ref": [
+        "role"
+      ],
+      "default": null
+    },
+    "credential": {
+      "label": "table.actor.field.credential",
+      "type": "hashed"
+    }
+  }
+}

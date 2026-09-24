@@ -1,0 +1,39 @@
+{
+  "id": "role",
+  "order": 8,
+  "name": {
+    "one": "table.role.name.one",
+    "many": "table.role.name.many"
+  },
+  "store": "data/roles.jsonl",
+  "type": "role",
+  "primary": "name",
+  "columns": [
+    "name"
+  ],
+  "desc": "the ceiling of an actor: a set of permissions, each one `object:action`",
+  "fields": {
+    "id": {
+      "label": "table.field.id",
+      "filterable": true,
+      "searchable": true
+    },
+    "name": {
+      "label": "table.role.field.name",
+      "filterable": true,
+      "searchable": true,
+      "required": true
+    },
+    "permissions": {
+      "label": "table.role.field.permissions",
+      "type": "list",
+      "searchable": true,
+      "default": []
+    },
+    "desc": {
+      "label": "table.role.field.desc",
+      "type": "markdown",
+      "searchable": true
+    }
+  }
+}

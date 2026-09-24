@@ -16,6 +16,22 @@ given the `cli`: `table.created`, `table.edited`, or the refusal it raised.
 `run` is the same door for ONE table action, from the words of a surface or from a
 proposal: there is one engine, and a second path into it would be a second one.
 
+**The door carries the ceiling, and it is the same one for every surface.** §5 is
+explicit — "o que ela pode propor é o que ela já pode fazer" — and the sentence is
+about the interpreter, not about the WebApp's route: a surface that demanded the
+proposal's permission for itself would be a second ceiling, and the two would
+disagree the moment a third surface reached the door. So `ask` takes the ACTOR
+that is asking, the proposal answers the action and the table, and what the actor's
+role does not carry is refused HERE — before the proposal is shown and before
+anything runs. The `balloon`, the `chat` and `bill ask` read this one door.
+
+**No actor is no ceiling, and that is not a hole.** The `cli` asks with nobody
+proved (there is no entrance in a terminal, and item 10's brief leaves the `cli`'s
+ceiling to its own item), and a WebApp in a folder with no credential to prove has
+no actor either (§3: "sem nenhuma forma de autenticação configurada, o Bill escuta
+apenas 127.0.0.1"). Both are the folder that asks nobody, which is exactly where
+the routes answer as they always did — and where this door does too.
+
 The sentences about a WORD — the word took no argument, the folder is read-only —
 are the `cli` block's, and they are read here rather than copied into a second
 home: the same sentence would otherwise live twice, and the two would drift.
@@ -27,7 +43,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from bill import nlu
-from bill.core import files, tables
+from bill.core import actors, files, permissions, tables
 from bill.data import schema
 from bill.i18n import tr
 
@@ -59,12 +75,19 @@ class Result:
     code: int = OK
 
 
-def ask(text: str, *, language: str | None = None, now: datetime | None = None) -> Result:
+def ask(
+    text: str,
+    *,
+    language: str | None = None,
+    now: datetime | None = None,
+    actor: dict | None = None,
+) -> Result:
     """One sentence, read and — when it is a write — run.
 
     A question and a refusal are ANSWERS and not failures: they come back in the
     result, with the words the person reads, and `code` says what a process would
-    have exited with.
+    have exited with. `actor` is the row of whoever is asking, and `None` is the
+    folder that asks nobody (`ceiling`).
     """
     try:
         proposed = nlu.propose(text, language=language, now=now)
@@ -77,6 +100,18 @@ def ask(text: str, *, language: str | None = None, now: datetime | None = None) 
         # active language without knowing which one the phrase was written in.
         return Result("question", None, tr(proposed.key, text=proposed.text), REFUSED)
 
+    # The ceiling, before the proposal is shown and before anything runs: what the
+    # actor may propose is what it may already do (§5). A refusal is an ANSWER and
+    # not a crash of the request, like every other one this door gives.
+    missing = ceiling(actor, proposed)
+    if missing is not None:
+        return Result(
+            "refused",
+            None,
+            tr("permission.denied", permission=permissions.label(missing)),
+            REFUSED,
+        )
+
     written = proposed_text(proposed)
     try:
         code, answer = execute(proposed)
@@ -85,6 +120,27 @@ def ask(text: str, *, language: str | None = None, now: datetime | None = None) 
     except files.ReadOnly as error:
         return Result("answer", written, tr("cli.error.read_only", where=error.where), REFUSED)
     return Result("answer", written, answer, code)
+
+
+def ceiling(actor: dict | None, proposal: nlu.Proposal) -> str | None:
+    """The permission this proposal needs that the actor's role does not carry, or
+    `None` when the act is the actor's to make (§5).
+
+    It is `actors.may` and no rule of its own: the actor's row points at the role,
+    the catalogue says what the role carries, and the permission asked is the one
+    the proposal NAMES — `table:action`, the same form the routes demand, because
+    the interpreter's proposal is a table action like any other. It returns the
+    NAME and not a bool so the refusal can say which permission was missing, in
+    the catalogue's own label.
+
+    A sentence the interpreter did not read never gets here — there is no proposal
+    to ask about — and neither does a folder asking nobody: no actor is no ceiling,
+    and the door keeps answering as it always did.
+    """
+    if actor is None:
+        return None
+    needed = f"{proposal.table}:{proposal.action}"
+    return None if actors.may(actor, needed) else needed
 
 
 def proposed_text(proposal: nlu.Proposal) -> str:

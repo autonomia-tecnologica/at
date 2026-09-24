@@ -28,6 +28,12 @@ export interface RecordRow {
   shown_id: string;
   title: string;
   fields: RecordField[];
+  // WHAT THE ROW HAS TO BE TOLD, over what its fields already say (item 11):
+  // a `role` carries the names it declares that the catalogue does not have —
+  // §4's saying, which is what gets read — and an `actor` carries whether a
+  // credential is stored, because the value itself never travels.
+  unknown?: string[];
+  has_credential?: boolean;
 }
 
 export interface TablePayload {

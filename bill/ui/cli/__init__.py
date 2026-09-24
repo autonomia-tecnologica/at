@@ -11,15 +11,19 @@ Exit codes: `0` success · `1` refused or failed · `2` usage error.
 from __future__ import annotations
 
 import sys
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
-from bill import __version__
-from bill.core import boot, files, tables
+from bill import __version__, i18n
+from bill.core import actors, boot, files, migrations, tables
 from bill.data import schema
 from bill.i18n import tr
 from bill.ui import ask as door
 from bill.ui.ask import OK, REFUSED, USAGE
 from bill.ui.cli import tree
+
+# What a person answers with, injected so a test can answer without a terminal —
+# the same shape `boot.ensure_working_folder` takes.
+Ask = Callable[[str], str]
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -33,9 +37,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         return REFUSED
 
     if not words:
-        from bill.ui.wizard import app as wizard
-
-        return OK if wizard.open_wizard() else REFUSED
+        # The Control Panel is a screen for whoever does not type commands, and
+        # it is not built yet: the wordless command answers with the help, which
+        # is the shape §5 already declares for it. Managing Bill stays in the
+        # `cli`, where a person and a machine reach the same door.
+        print(tree.as_text())
+        return OK
 
     word, rest = words[0], words[1:]
 
@@ -54,6 +61,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     if word == "webapp":
         return _webapp(rest)
 
+    if word == "admin":
+        return _admin(rest)
+
+    if word == "lang":
+        return _lang(rest)
+
     # The interpreter's word is read off the tree, so a switch that turns it off
     # takes it out of the dispatch and out of the help in the same breath.
     if word in tree.ask_words():
@@ -68,27 +81,166 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 def _webapp(rest: list[str]) -> int:
-    """`bill webapp` opens the app — running it is the only thing it does today.
+    """`bill webapp` opens the app, and `--include-caddy` exposes it.
 
     This is the hosted path: loopback, in HTTP, and nothing leaves it until a
-    person authenticates (§3, Acesso e exposição). The container is the other
-    path, where the WebApp runs inside one and the Caddy at the edge carries the
-    TLS and the gate (§7b, §7c). Neither the authenticator nor the Caddy exists
-    yet — the debt is named in the derived document (derivation §3).
+    person authenticates (§3, Acesso e exposição). The flag is the exception the
+    same rule makes — the Caddy that came inside the binary terminates the TLS
+    and publishes Bill, and the WebApp keeps listening on the loop behind it
+    (§6, §12). The container is the other path, where the Caddy at the edge
+    carries the TLS and the gate (§7b, §7c).
+
+    `--host` is the address Bill answers on, and it means two different things
+    with and without the flag: without it, the loop it binds and the only
+    address it accepts — anything else is refused, because exposure without TLS
+    is what §3 forbids. With it, the NAME the certificate is issued for, which
+    is why the one address a name cannot be is refused there.
+
+    The WebApp's own authenticator is up (item 10): Forms asks for the
+    credential at the entrance, Basic carries the same one in an
+    `Authorization` header while `settings.json` permits it, and the machine
+    credential proves itself with its Bearer token. The fourth way in is the
+    gate's (item 13): the identity provider asserts the name through the Caddy,
+    and Bill takes it only with the gate secret beside it (`core/gate.py`, §7b).
     """
     from bill.ui.webapp import app as webapp
 
     args = rest[1:] if rest[:1] == ["run"] else rest
     port = webapp.DEFAULT_PORT
-    if args:
-        if len(args) != 2 or args[0] not in ("--port", "--porta"):
+    host = None
+    include_caddy = False
+
+    while args:
+        flag, args = args[0], args[1:]
+        if flag == "--include-caddy":
+            include_caddy = True
+            continue
+        if flag not in ("--port", "--porta", "--host") or not args:
             return _reject("webapp")
-        if not args[1].isdigit():
+        value, args = args[0], args[1:]
+        if flag == "--host":
+            if not value or value.startswith("-"):
+                return _reject("webapp")
+            host = value
+            continue
+        if not value.isdigit():
             return _reject("webapp")
-        port = int(args[1])
+        port = int(value)
         if not 0 < port < 65536:
             return _reject("webapp")
-    return webapp.run(port)
+
+    return webapp.run(port, host=host, include_caddy=include_caddy)
+
+
+# ------------------------------------------------------------ the first admin ---
+
+def _admin(
+    rest: list[str],
+    ask: Ask | None = None,
+    secret: Ask | None = None,
+) -> int:
+    """`bill admin` — the first administrator, asked for and never seeded.
+
+    The credential is read WITHOUT ECHO (`getpass`): it does not travel through
+    the command line, so it stays out of the shell's history and out of anybody's
+    `ps`. It is read twice because a credential is not recovered — there is no
+    "forgot the password" in a folder on your own disk.
+
+    The two readers are injectable, the way `boot.ensure_working_folder` takes
+    its `ask`: a test covers both the refusal without a terminal and the whole
+    conversation without one.
+    """
+    if rest:
+        return _reject("admin")
+    if ask is None and secret is None:
+        ask, secret = _readers()
+    if ask is None or secret is None:
+        # The same refusal the first run makes (`boot`): a credential typed
+        # where nobody could answer is not a credential.
+        print(tr("admin.no_tty"))
+        return REFUSED
+
+    try:
+        existing = actors.admins()
+        if existing:
+            raise actors.AdminError(
+                "exists", name=tables.title("actor", existing[0])
+            )
+        name = ask(tr("admin.name")).strip()
+        credential = secret(tr("admin.credential"))
+        if credential != secret(tr("admin.credential.again")):
+            raise actors.AdminError("error.mismatch")
+        row = actors.create_admin(name, credential)
+    except (actors.AdminError, tables.TableError) as refused:
+        print(refused)
+        return REFUSED
+
+    print(tr("admin.created", name=tables.title("actor", row)))
+    return OK
+
+
+def _readers() -> tuple[Ask | None, Ask | None]:
+    """A line reader and a no-echo reader, when there is a terminal to use."""
+    if not sys.stdin.isatty():
+        return None, None
+    import getpass
+
+    return (lambda question: input(question), getpass.getpass)
+
+
+# ------------------------------------------------------------ the language ---
+
+def _lang(rest: list[str], ask: Ask | None = None) -> int:
+    """`bill lang` — the language Bill speaks, and the choice of it.
+
+    With no argument it SHOWS the active code and where it came from, which the
+    resolution already knows (`i18n.active_origin`): a person who sees the wrong
+    language reads why it is that one before choosing another.
+
+    With a code it CHOOSES: the file the folder keeps is written, and every
+    surface answers in it from then on — this process at once, the WebApp on the
+    next request — because neither the `cli` nor the server holds a language of
+    its own. The folders are offered the rename in the SAME run, and the reason
+    is that this is the one place the question can be asked: it needs a
+    terminal, and whoever just chose the language is sitting in front of one.
+
+    **`--include-app-folders` answers that question before it is asked**: the
+    rename runs in this same run with nobody to ask, which is what makes the
+    command usable where there is no terminal. It decorates a CHOICE — the flag
+    without a code is a usage error, because there is no language for the folders
+    to take the names of.
+
+    The `ask` is injectable the way `boot.ensure_working_folder` takes its own,
+    so a test covers the offer without a terminal.
+    """
+    words = list(rest)
+    include_folders = "--include-app-folders" in words
+    if include_folders:
+        words.remove("--include-app-folders")
+    if len(words) > 1:
+        return _reject("lang")
+    if not words:
+        if include_folders:
+            return _reject("lang")
+        print(tr(
+            "cli.lang.line",
+            code=i18n.active_code(),
+            origin=tr(f"cli.lang.origin.{i18n.active_origin()}"),
+        ))
+        return OK
+
+    code = words[0]
+    if code not in i18n.SUPPORTED:
+        # Refused, never ignored: a code nobody speaks would otherwise write the
+        # file and change nothing, which is the answer that teaches nobody.
+        print(tr("cli.lang.error.unsupported", code=code, codes=", ".join(i18n.SUPPORTED)))
+        return USAGE
+
+    i18n.write_active(code)
+    print(tr("cli.lang.chosen", code=code))
+    migrations.offer_language(ask if ask is not None else _readers()[0],
+                             include_folders=include_folders)
+    return OK
 
 
 # ---------------------------------------------------------- the interpreter ---

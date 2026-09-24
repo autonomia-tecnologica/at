@@ -1,0 +1,16 @@
+{
+  "pt_BR": {
+    "name.one": "Papel",
+    "name.many": "Papéis",
+    "field.name": "Nome",
+    "field.permissions": "Permissões",
+    "field.desc": "Descrição"
+  },
+  "en_US": {
+    "name.one": "Role",
+    "name.many": "Roles",
+    "field.name": "Name",
+    "field.permissions": "Permissions",
+    "field.desc": "Description"
+  }
+}

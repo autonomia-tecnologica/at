@@ -5,7 +5,9 @@ from what is read here — so a second reading of the same setting, or a boundar
 drawn on the wrong side, is the defect this file exists to catch.
 
 What is NOT here is the filter itself: the demand that waits, the job that holds
-it and the catalogue of permissions are item 15's slices 2 and 3 and item 11.
+it and the number a FIELD raises a demand to are item 15's second and third
+slices. The entry's own risk landed with the catalogue (item 11's second slice),
+and it is read from there — never declared twice.
 """
 
 from __future__ import annotations
@@ -18,7 +20,7 @@ from contextlib import redirect_stdout
 from unittest import mock
 
 from bill import i18n
-from bill.core import boot, risk, settings
+from bill.core import boot, permissions, risk, settings
 
 
 class RiskCase(unittest.TestCase):
@@ -88,11 +90,52 @@ class TheBoundary(RiskCase):
 
 
 class TheDeclared(RiskCase):
-    def test_nothing_is_declared_yet_and_it_says_so(self):
-        # The permission catalogue is item 11: neither an action nor a field
-        # carries a number today. The ruler draws what the product DECLARES, and
-        # an empty list is the truth — never a guess dressed as a mark.
-        self.assertEqual(risk.declared(), [])
+    """The marks the ruler draws: one per catalogue entry, and the four numbers
+    item 15 closed (§4)."""
+
+    def test_one_mark_per_catalogue_entry(self):
+        # One entry per PERMISSION, in the catalogue's own order: the page draws
+        # the list it was handed and sorts nothing.
+        self.assertEqual(
+            [mark["key"] for mark in risk.declared()], permissions.all_permissions()
+        )
+
+    def test_every_mark_carries_what_the_catalogue_declares(self):
+        for mark in risk.declared():
+            with self.subTest(permission=mark["key"]):
+                self.assertEqual(mark["risk"], permissions.risk(mark["key"]))
+
+    def test_the_four_numbers_are_the_ones_the_product_declares(self):
+        # §4, item 15: `0` a read, `0.2` creating or editing, `0.5` overwriting or
+        # removing what existed, `0.8` changing what the system allows.
+        self.assertEqual(permissions.risk("task:list"), 0.0)
+        self.assertEqual(permissions.risk("task:view"), 0.0)
+        self.assertEqual(permissions.risk("prose:read"), 0.0)
+        self.assertEqual(permissions.risk("task:create"), 0.2)
+        self.assertEqual(permissions.risk("task:edit"), 0.2)
+        self.assertEqual(permissions.risk("task:delete"), 0.5)
+        self.assertEqual(permissions.risk("task:cancel"), 0.5)
+        # "The bar does not lower itself": `setting:edit` is named by the item, and
+        # the ceiling's own objects come with it.
+        self.assertEqual(permissions.risk("setting:edit"), 0.8)
+        self.assertEqual(permissions.risk("role:edit"), 0.8)
+        self.assertEqual(permissions.risk("actor:create"), 0.8)
+        self.assertEqual(permissions.risk("actor:create"), permissions.risk("actor:delete"))
+
+    def test_reading_the_ceiling_is_not_moving_it(self):
+        for name in ("role:list", "actor:view", "setting:read"):
+            with self.subTest(permission=name):
+                self.assertEqual(permissions.risk(name), 0.0)
+
+    def test_the_product_declares_nothing_at_the_top_of_the_ruler(self):
+        # §4: the top of the scale is a demand nobody leaves to an automatic act.
+        self.assertTrue(all(mark["risk"] < risk.CEILING for mark in risk.declared()))
+
+    def test_a_permission_the_catalogue_does_not_name_declares_nothing(self):
+        # A hand-edited role is READ, never crashed on: the number it gets is the
+        # floor, and `is_known` is what says the name does not exist.
+        self.assertEqual(permissions.risk("task:fly"), risk.FLOOR)
+        self.assertFalse(permissions.is_known("task:fly"))
 
 
 if __name__ == "__main__":

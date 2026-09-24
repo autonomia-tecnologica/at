@@ -1,6 +1,6 @@
 # Bill
 
-Bill é um motor de tarefas determinístico. Ele roda **dentro de uma pasta**, e essa pasta vira a **Pasta de Trabalho** dele. Este repositório é o **produto a publicar** — o motor, as declarações padrão, a infraestrutura que vai embarcada e o binário único. Ele não carrega dado pessoal nenhum: nenhum caminho de máquina de ninguém, nenhum host, nenhum id.
+Bill é um motor de tarefas determinístico. Ele roda **dentro de uma pasta**, e essa pasta vira a **Pasta de Trabalho** dele. Este repositório é o **produto a publicar** — o motor, as declarações padrão, a infraestrutura que vai embarcada e os dois binários — `bill`, que é a pasta e o app, e `bill-deploy`, que monta o ambiente do §7. Ele não carrega dado pessoal nenhum: nenhum caminho de máquina de ninguém, nenhum host, nenhum id.
 
 ## 0. Protocolo de agente
 

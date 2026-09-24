@@ -76,6 +76,13 @@ export function applyTheme(): ThemeRow | null {
   const node = link();
   themeState.dark = darkOn();
   themeState.id = row ? row.id : null;
+  // THE ANSWER IS ONLY WRITTEN WHEN WHOEVER KNOWS IT HAS ARRIVED. What the boot
+  // reads is below, and it can only be answered against the vocabulary the
+  // server sends — so a call with `store.themes` still empty (the entrance,
+  // which is drawn before `/api/state` is ever asked) answers `light` for every
+  // theme, and writing that down would corrupt the preference in silence and
+  // paint the wrong side on the NEXT load.
+  if (!row || !node) return row;
   // WHAT THE BOOT READS. `js/boot.js` runs BEFORE the first paint, and by then
   // the page has no vocabulary to look a theme up in, so it cannot answer "which
   // side does this theme wear?". The answer is written down HERE, where it
@@ -85,7 +92,6 @@ export function applyTheme(): ThemeRow | null {
     const side = themeState.dark ? "dark" : "light";
     if (loadPrefs(DARK_KEY).side !== side) savePrefs(DARK_KEY, { state: "theme", side });
   }
-  if (!row || !node) return row;
   const params: string[] = [];
   if (savedTheme()) params.push("theme=" + encodeURIComponent(row.id));
   if (darkOn()) params.push("dark");

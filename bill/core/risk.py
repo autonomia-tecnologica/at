@@ -6,20 +6,21 @@ the threshold is read, so that the ruler on the page and the filter that will
 honour it (item 15, slice 3) read one number — a second reading of the same
 setting is the one that drifts.
 
-**What is not here yet, and it is not an accident.** The declared risks belong to
-the permission catalogue: each entry declares its own and each field the number it
-RAISES the demand to (§4), and the catalogue is item 11. `declared()` therefore
-answers empty, and the ruler on the page says so instead of drawing a mark nobody
-declared — the ruler draws what the product DECLARES, never a guess. It answers a
-LIST rather than `None` so that the day the catalogue lands, the page draws it
-with no line changing there.
+**What is here and what is still owed.** The declared risks belong to the
+permission catalogue: each entry declares its own, and `permissions.risk` is where
+that number lives — the catalogue is what knows its entries, and reading it from
+a second home is how the two would drift. What item 15 still owes is the OTHER
+half of the sentence: a FIELD of a table may declare the number it RAISES the
+demand to, and the demand's risk is the highest among the action and the arguments
+it carries. Nothing of that is here yet, and the marks `declared()` draws are the
+floor each entry starts from — which is what the ruler on the page shows.
 """
 
 from __future__ import annotations
 
 import math
 
-from bill.core import settings
+from bill.core import permissions, settings
 
 # The key of the threshold in `app/settings.json`, and the value of a folder that
 # never chose (§4).
@@ -59,9 +60,16 @@ def waits(risk: float) -> bool:
 
 
 def declared() -> list[dict]:
-    """The risks the product declares today, one entry per catalogue entry.
+    """The risks the product declares, one entry per catalogue entry — the marks
+    the ruler draws (§4, item 15).
 
-    Empty, and it means it: the permission catalogue is item 11, and neither an
-    action nor a field carries a number yet.
+    It is one entry per PERMISSION and not per number: two entries that declare
+    the same risk are two marks on the same spot, and the page says which
+    permission is which. `key` is the permission's own name, machine word like
+    every other canonical (§3), and `risk` the number the catalogue declares.
+
+    The order is the catalogue's, so the marks arrive in a stable order and the
+    page draws a list it did not sort — a surface that sorted them would be
+    deciding something the catalogue already decided.
     """
-    return []
+    return [{"key": name, "risk": permissions.risk(name)} for name in permissions.all_permissions()]

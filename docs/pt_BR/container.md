@@ -6,7 +6,9 @@
 
 #### a. Criar ambiente container (obrigatório)
 
-- Aqui é a virada principal do ambiente. A pessoa precisa ter o Podman instalado. O Bill verifica se ele existe e, se não existir, oferece as duas saídas: instalar o Podman, ou seguir no caminho hospedado. Ele não instala o Podman sozinho. A partir daí, o Bill orquestra o ambiente e os serviços, que sobem como containers de imagens fixadas.
+- Aqui é a virada principal do ambiente. A pessoa precisa ter o Podman instalado. O **`bill-deploy`** verifica se ele existe e, se não existir, oferece as duas saídas: instalar o Podman, ou seguir no caminho hospedado. Ele não instala o Podman sozinho. A partir daí, o **`bill-deploy` orquestra o ambiente e os serviços**, que sobem como containers de imagens fixadas.
+
+- **O ambiente é um segundo artefato.** O §7 inteiro — o Podman, a VPN, o DNS, os containers do portão, o Caddy da borda, a virada entre os dois caminhos e a única elevação do produto — mora no `bill-deploy`, e o `bill` fica com a pasta e com o app: ele lê a mesma Pasta de Trabalho e a serve com a ferramenta de deploy ausente, recusando o Forms no caminho container e fechando quando o portão cai. A fronteira entre os dois é o **estado** da pasta e não uma API — os dois a leem, e a ferramenta de deploy é a que escreve o estado do ambiente (`App/services/`, os pinos, o segredo do portão) —, e o núcleo compartilhado (paths, `i18n`, files, o motor de tabelas) é uma fonte só e não duas. É por isso que o `bill` pode prometer, pelo que ele é, que nunca pede permissão de administração: o código que pede não está nele.
 
 - É uma função complexa com muita possibilidade de erro e de falha de segurança. As decisões de segurança que a cercam estão em [Segurança](rules.md#segurança).
 
@@ -24,7 +26,7 @@
 
 - Aqui não há autenticação com a cara do Bill. O portal é do Authelia, e o que o Bill faz é pedir que ele seja o mais neutro possível, para não parecer o que não é (§5).
 
-- O que o Bill exige de quem chega com identidade é o **segredo do portão**: um valor sorteado pelo Bill na instalação, escrito no Caddyfile que ele mesmo gera, colado pelo Caddy em todo pedido que carrega identidade, e recusado por quem não o traz. É o M2M entre o Caddy e o WebApp do Bill, e o Authelia nunca o vê.
+- O que o Bill exige de quem chega com identidade é o **segredo do portão**: um valor sorteado pelo `bill-deploy` na instalação, escrito no Caddyfile que ele mesmo gera, colado pelo Caddy em todo pedido que carrega identidade, e recusado por quem não o traz. É o M2M entre o Caddy e o WebApp do Bill, e o Authelia nunca o vê. O arquivo é estado da pasta, então o `bill` também o lê — no caminho container é ele que faz de uma identidade uma identidade, e a ferramenta de deploy é só quem o sorteou.
 
 #### c. Instalar WebApp como container (obrigatório)
 
@@ -44,4 +46,8 @@
 
 - Com tudo configurado, a cereja do bolo é o `ntfy`, hoje a ferramenta que cumpre o serviço `notifier` (§4). Os lembretes configurados podem ser notificados diretamente como um Push Notification, e é por ele que chega a aprovação de uma demanda que passou do limiar de risco.
 
-- É aqui que entra a primeira funcionalidade graduada: os níveis dela e o que cada um custa vivem em [funcionalidades](functionalities.md).
+- **O notificador é o único serviço desta seção que não fica atrás do portão**, e isso é uma medição e não uma preferência: o portão autentica por redirecionamento e por cookie de sessão, então um app de celular sem interface toma o 302 e nunca conecta — medido, `subscribers=0` atrás do Authelia e `101` sem ele. A autenticação dele é a ACL por tópico de [o caminho container](paths.md#caminho-container). A decisão está registrada em [Segurança](rules.md#segurança).
+
+- **O Bill publica nele com uma credencial própria, delimitada ao tópico.** O escopo que §3 exige de quem alcança o Bill vale aqui na forma espelhada, e é medido: com a conta com `write-only` no tópico, o token publica com `200`, recusa qualquer outro tópico com `403`, e também não lê o próprio de volta, com outro `403`. O Bill a cria quando o ambiente sobe — a conta, o escopo e o token, pela própria `cli` do notificador dentro do container, com a senha na entrada do comando e o token na saída dele, nunca no argv — e a guarda num arquivo `0600` junto do estado desse serviço, até a tabela `secret` assumir. O token do celular é da pessoa, e é a outra ponta da mesma ACL.
+
+- É aqui que entra a primeira funcionalidade graduada: os níveis dela e o que cada um custa vivem em [funcionalidades](funcionalidades.md).

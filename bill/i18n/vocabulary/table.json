@@ -4,7 +4,9 @@
     "expressions": {
       "tarefa": "task",
       "projeto": "project",
-      "lembrete": "reminder"
+      "lembrete": "reminder",
+      "ator": "actor",
+      "papel": "role"
     }
   },
   "en_US": {
@@ -12,7 +14,9 @@
     "expressions": {
       "task": "task",
       "project": "project",
-      "reminder": "reminder"
+      "reminder": "reminder",
+      "actor": "actor",
+      "role": "role"
     }
   }
 }

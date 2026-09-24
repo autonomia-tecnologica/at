@@ -1,0 +1,18 @@
+{
+  "pt_BR": {
+    "file.header": "Escrito pelo Bill: o TLS do caminho exposto é do Caddy, e o Bill reescreve este arquivo a cada subida.",
+    "outside_loopback": "Sem `--include-caddy` o Bill serve em HTTP e só em laço local: expor exige TLS, e o TLS é do Caddy que vem dentro do binário. Use `bill webapp --include-caddy`, ou escute em 127.0.0.1.",
+    "address_needs_name": "`{host}` é todos os endereços, e o certificado é emitido para um nome. Diga o endereço por onde você vai chegar — `--host 192.168.1.10`, ou o nome da máquina.",
+    "unpacking": "Extraindo o Caddy para {where}…",
+    "no_payload": "Este binário não carrega um Caddy para {platform}, e expor precisa dele. Rode a partir de um binário da sua plataforma.",
+    "serving": "Bill exposto com TLS em {url} — o certificado é do Bill, e o navegador vai avisar disso."
+  },
+  "en_US": {
+    "file.header": "Written by Bill: the TLS of the exposed path is Caddy's, and Bill rewrites this file on every start.",
+    "outside_loopback": "Without `--include-caddy` Bill serves HTTP on the local loop only: exposing demands TLS, and the TLS is the Caddy that comes inside the binary. Use `bill webapp --include-caddy`, or listen on 127.0.0.1.",
+    "address_needs_name": "`{host}` is every address, and the certificate is issued for a name. Name the address you will reach it by — `--host 192.168.1.10`, or the machine's name.",
+    "unpacking": "Unpacking the Caddy into {where}…",
+    "no_payload": "This binary carries no Caddy for {platform}, and exposing needs it. Run a binary built for your platform.",
+    "serving": "Bill exposed with TLS at {url} — the certificate is Bill's own, and the browser will tell you so."
+  }
+}

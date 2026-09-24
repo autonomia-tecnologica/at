@@ -55,7 +55,7 @@ def bundled() -> dict[str, dict]:
     return found
 
 
-def seed(where: Path) -> list[str]:
+def seed(where: Path, only: tuple[str, ...] | None = None) -> list[str]:
     """Write the bundled declarations into `where`, the ones that are absent.
 
     Only the absent ones: a declaration a person edited is theirs, and the
@@ -63,15 +63,28 @@ def seed(where: Path) -> list[str]:
     person can own. A system table that was deleted is not silently recreated
     either — "not deletable" belongs to the door that would delete it, not to a
     repair that happens behind the person's back.
+
+    `only` is that promise at work, and the migration is why it exists: a release
+    that introduces a table names the tables IT introduces, and never the whole
+    directory — a migration that seeded everything would bring back, on the first
+    start after the swap, the declaration somebody deleted on purpose.
     """
     written: list[str] = []
     for table, declared in bundled().items():
+        if only is not None and table not in only:
+            continue
         target = where / f"{table}{SUFFIX}"
         if target.exists():
             continue
         body = json.dumps(declared, ensure_ascii=False, indent=2) + "\n"
         files.atomic_write_text(target, body)
         written.append(table)
+    if written:
+        # A table that was just born is a table the registry has to learn: the
+        # cache above was filled before the file existed, and whoever seeds and
+        # then writes — the first run, and the migration — would be told the
+        # table declares no field.
+        reset()
     return written
 
 

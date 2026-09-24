@@ -39,7 +39,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-from bill.core import files, paths, settings
+from bill.core import actors, files, paths, permissions, settings, tables
+from bill.data import schema, store
 from bill.i18n import tr
 
 # The stamp, inside the instance folder: the ids this folder has already run.
@@ -155,7 +156,7 @@ def _capitalized_instance(ask: Ask | None) -> list[Report]:
     return [("boot.migration.capital.moved", {})]
 
 
-def _folders_in_the_language(ask: Ask | None) -> list[Report]:
+def _folders_in_the_language(ask: Ask | None, said_so: bool = False) -> list[Report]:
     """`data/` → `Tabelas/`, `prose/` → `Arquivos/` — and the birth of the two
     that are named here and filled later.
 
@@ -165,13 +166,27 @@ def _folders_in_the_language(ask: Ask | None) -> list[Report]:
     before and not after, and whoever declines keeps the name they had; the
     resolution finds it under every spelling, and the cost is that the folder
     speaks a language the screen does not.
+
+    **`said_so` is the person answering BEFORE being asked**, and it is the one
+    thing that turns the question off: `bill lang <code> --include-app-folders`
+    is a person typing the decision, which is what the offer exists to collect.
+    It is still not automatic — nothing here moves without either an answer or a
+    typed flag — and what it buys is a run with no terminal to answer in.
+
+    **The move set is complete because the OFFER is what runs again.** This is
+    migration three's step AND the engine of `offer_language`, which runs on
+    every language change — so every folder that follows the language is in
+    `_moves`, and not only the two that existed when migration three was
+    published. For a folder that has NOT run it the change is nil: a folder that
+    old carries neither `Projects/` nor `Compartilhada/` under any spelling, and
+    `_birth` is what names them.
     """
     moves, collisions = _moves()
     report: list[Report] = []
     if collisions:
         report.append(("boot.migration.folders.collision", {"names": _spelled(collisions)}))
     elif moves:
-        if _confirm(ask, moves):
+        if said_so or _confirm(ask, moves):
             for internal, current, target in moves:
                 current.rename(target)
             report.append(("boot.migration.folders.moved", {"names": _spelled(moves)}))
@@ -184,12 +199,23 @@ def _folders_in_the_language(ask: Ask | None) -> list[Report]:
 
 
 def _moves() -> tuple[list[tuple[str, Path, Path]], list[str]]:
-    """What has to move, and what cannot be moved because two spellings exist."""
+    """What has to move, and what cannot be moved because two spellings exist.
+
+    EVERY folder whose name follows the language, and not only the two that hold
+    the person's material today. `Projetos/` and `Compartilhada/` are named by
+    the language as well, and a folder that changed language without them kept
+    one spelling while an empty twin was born in the other — and `paths.folder`
+    reads the active language's name first, so the twin is the folder Bill would
+    use and the one the person has is the one it stops reading. `Harness/` is
+    NOT here, and it is the only one: its name is the same word in both
+    languages, so `paths.candidates` spells it twice and `_moves` would report a
+    collision with itself.
+    """
     root = paths.working_folder()
     language = paths.active_language()
     moves: list[tuple[str, Path, Path]] = []
     collisions: list[str] = []
-    for internal in ("data", "prose"):
+    for internal in ("data", "prose", "projects", "shared"):
         target = root / paths.NAMES[internal][language]
         found = [root / name for name in paths.candidates(internal) if (root / name).is_dir()]
         if len(found) > 1:
@@ -209,15 +235,22 @@ def _birth() -> list[Path]:
     comes after. `Projetos/` is where what belongs to a project goes — also a
     later session's, and both are born so the folder is whole on its own from
     the first run on.
+
+    Born only where the folder carries NEITHER spelling. A folder that kept the
+    old name — because it declined the rename, or because it was written before
+    this name existed — must not gain an empty twin beside it: `paths.folder`
+    answers with the active language's name first, so the twin would be read in
+    place of the folder the person still has.
     """
     root = paths.working_folder()
     language = paths.active_language()
     born: list[Path] = []
     for internal in ("projects", "shared"):
+        if any((root / name).is_dir() for name in paths.candidates(internal)):
+            continue
         target = root / paths.NAMES[internal][language]
-        if not target.exists():
-            target.mkdir(parents=True, exist_ok=True)
-            born.append(target)
+        target.mkdir(parents=True, exist_ok=True)
+        born.append(target)
     return born
 
 
@@ -289,12 +322,133 @@ def _harness_folder(ask: Ask | None) -> list[Report]:
     return [("boot.migration.folders.born", {"names": target.name})]
 
 
+# The tables THIS release introduces — what migration six names. A published
+# migration is never edited, so the next release that brings a system table
+# brings its own step and its own list, and this one goes on meaning what it
+# meant on the day it shipped.
+INTRODUCED = ("actor", "role")
+
+
+def _declarations(ask: Ask | None) -> list[Report]:
+    """The declarations of this release — the tables THIS swap introduced.
+
+    It is the EASY half of item 5: the declaration that is ABSENT. `schema.seed`
+    writes only what is missing, so a folder that already carried them gains
+    nothing — and that is deliberate, because a system table a person deleted
+    is a deletion that was meant, which is why the migration runs ONCE and the
+    seed does not come back on every start.
+
+    The list is EXPLICIT, and that is the same promise from the other side: the
+    migration is a dated fact — what changed in that one binary swap — and one
+    that seeded the whole directory would bring back, on the first start after
+    the swap, a declaration somebody had deleted. The hard half stays item 5's:
+    a NEW field inside a file that is already there, which has to meet a
+    person's edit without overwriting it.
+
+    It does not ask: a declaration of the product's own, and nothing outside the
+    folder points at it (§3, migration). The engine's row comes along, because
+    the folder that gains the `actor` table is the folder that starts having who
+    acts in it — and `seed_engine` leaves a folder that already had it alone.
+    """
+    written = schema.seed(paths.data_dir() / schema.SCHEMA_DIR, only=INTRODUCED)
+    actors.seed_engine()
+    if written:
+        return [
+            ("boot.migration.declarations.written", {"names": ", ".join(sorted(written))})
+        ]
+    return [("boot.migration.declarations.kept", {})]
+
+
+# The catalogue entries item 11's FIRST slice introduced — what migration seven
+# grants. It is a list for the same reason `INTRODUCED` is one: a published
+# migration is never edited, so the next release that grows the catalogue brings
+# its own step and its own names, and this one goes on meaning what it meant on
+# the day it shipped.
+ADDED = ("prose:read", "prose:edit", "nlu:ask")
+
+# And the entries the SECOND slice grew it by. They are a migration of their own
+# and not three more names in the list above, and that is the rule earning its
+# keep in the smallest possible case: seven had ALREADY RUN on folders when this
+# slice landed — this checkout's own instance among them — and a permission added
+# to a published migration is a permission those folders would never be handed.
+#
+# What the objects are is §4's: "the settings, the services, the plugins and the
+# interpreter's vocabulary are also objects" — and the services, the plugins and
+# the vocabulary are what no route reaches YET (items 13, 15 and 16 own the
+# screens that will). They are handed over all the same, for the reason seven
+# handed over the prose layer: they are entries the folder never had the CHANCE
+# to carry, and the administrator's role is the one that must.
+GROWN = (
+    "service:read",
+    "service:edit",
+    "plugin:read",
+    "plugin:edit",
+    "vocabulary:read",
+    "vocabulary:edit",
+)
+
+
+def _hand_over(names: tuple[str, ...]) -> list[Report]:
+    """The administrator's role catches up with the catalogue this swap grew.
+
+    Item 9 promised that role "exactly the permissions needed to administer,
+    which item 11 defines" — and a folder born before a swap carries a role born
+    from the catalogue of THAT day. The catalogue is bigger now: the prose layer
+    and the interpreter's door are objects the routes demand, and the services,
+    the plugins and the vocabulary are objects §4 names. A folder that upgraded
+    without this would be refused its own files by the very ceiling item 11 put
+    in, and would carry a role narrower than the one a folder born today wears.
+
+    **Only what `names` names, and never the whole catalogue.** The difference is
+    the whole of the care taken here: a permission the person took OUT of a role
+    before the swap was taken out on purpose, and a migration that re-granted
+    everything would be Bill overwriting a decision it never made. What this
+    hands over is what the folder never had the CHANCE to carry, because it did
+    not exist on the day the role was born.
+
+    It does not ask: the row is Bill's own — the first administrator's role —
+    the change only ever ADDS, and every entry is one the catalogue names. A
+    folder with no `admin` role has nothing to catch up, and says nothing: a
+    folder that never had an administrator has no role to fix.
+    """
+    role = actors.admin_role()
+    number = store.number_of(role) if role is not None else None
+    if number is None:
+        return []
+    held = permissions.carried(role)
+    granted = [permission for permission in names if permission not in held]
+    if not granted:
+        return [("boot.migration.catalogue.kept", {"role": actors.ADMIN_ROLE})]
+    tables.edit(
+        "role", number, {"permissions": ",".join([*held, *granted])}
+    )
+    return [
+        (
+            "boot.migration.catalogue.granted",
+            {"role": actors.ADMIN_ROLE, "names": ", ".join(granted)},
+        )
+    ]
+
+
+def _catalogue(ask: Ask | None) -> list[Report]:
+    """Migration seven: the entries item 11's first slice introduced."""
+    return _hand_over(ADDED)
+
+
+def _objects(ask: Ask | None) -> list[Report]:
+    """Migration eight: the objects §4 names that no route reaches yet."""
+    return _hand_over(GROWN)
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, _legacy_instance),
     Migration(2, _capitalized_instance),
     Migration(3, _folders_in_the_language),
     Migration(4, _agent_note),
     Migration(5, _harness_folder),
+    Migration(6, _declarations),
+    Migration(7, _catalogue),
+    Migration(8, _objects),
 )
 
 
@@ -332,7 +486,7 @@ def run(ask: Ask | None = None) -> list[Report]:
 DECISION = "folders"
 
 
-def offer_language(ask: Ask | None) -> list[Report]:
+def offer_language(ask: Ask | None, include_folders: bool = False) -> list[Report]:
     """The folders take the active language's names — offered, never automatic.
 
     Not a migration: a migration runs once, and the language can change again
@@ -341,17 +495,26 @@ def offer_language(ask: Ask | None) -> list[Report]:
 
     It is offered only for the language the FOLDER chose. An override in the
     environment is not the folder's, and renaming the person's folders to follow
-    something as temporary as `$BILL_LANG` would be the opposite of the promise.
+    something as temporary as `$BILL_LANG` would be the opposite of the promise —
+    the flag does not remove that guard, because the names have to match the
+    language the screen is actually speaking.
+
+    **`include_folders` is `bill lang <code> --include-app-folders`**, and what it
+    turns off is the QUESTION and not the rule: the person typed the decision, so
+    there is nothing left to ask, no terminal needed, and the memory of a past
+    decline does not hold a second one back. The renames the engine already knew
+    are what runs; a collision between two spellings of one folder is still the
+    person's to resolve, and it is still reported instead of chosen.
     """
     from bill import i18n
 
     language = paths.active_language()
-    if settings.get(DECISION) == language:
+    if settings.get(DECISION) == language and not include_folders:
         return []
     if i18n.active_origin() != "folder":
         return []
 
-    said = _folders_in_the_language(ask)
+    said = _folders_in_the_language(ask, said_so=include_folders)
     for report in said:
         _say(report)
     settings.save({**settings.load(), DECISION: language})

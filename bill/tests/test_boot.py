@@ -22,7 +22,8 @@ from pathlib import Path
 from unittest import mock
 
 from bill import i18n
-from bill.core import boot, migrations, settings
+from bill.core import actors, boot, migrations, settings
+from bill.data import store
 
 
 class _NoTerminal:
@@ -61,6 +62,17 @@ class FirstRun(unittest.TestCase):
         self.assertTrue((self.root / "Tabelas").is_dir())
         self.assertTrue((self.root / "Arquivos").is_dir())
         self.assertEqual(settings.load()["schema"], settings.SCHEMA)
+
+    def test_the_folder_is_born_with_the_engines_row_and_no_person(self):
+        """Every act of the engine needs a row to be named in the `audit` (item
+        15) — and the FIRST ADMIN does not: it is asked for, because a seeded
+        credential is a published password (§3, item 9).
+        """
+        self.confirm()
+        rows = store.load("actor")
+        self.assertEqual([row.get("type") for row in rows], ["engine"])
+        self.assertEqual(actors.people(), [])
+        self.assertFalse(actors.can_expose())
 
     def test_the_folders_that_are_only_named_are_born_empty(self):
         self.confirm()

@@ -4,8 +4,8 @@ Cada nome tem um só significado, e nomes que se encostariam não convivem. Semp
 
 | termo | o que é |
 |---|---|
-| **produto** | o conjunto publicado: este repositório, o binário que ele gera e as declarações que viajam dentro |
-| **binário** | o arquivo único que o produto publica |
+| **produto** | o conjunto publicado: este repositório, os binários que ele gera e as declarações que viajam dentro |
+| **binário** | cada arquivo que o produto publica: `bill`, que é a pasta e o app, e `bill-deploy`, que é o §7 |
 | **Pasta de Trabalho** | a pasta onde o binário foi aberto e que passa a ser dele |
 | **camada** | cada pasta do código com um trabalho só: `core`, `data`, `prose`, `services`, `encryption`, `nlu`, `posture`, `ui`, `i18n` |
 | **superfície** | cada forma de uma pessoa alcançar o core: `cli`, WebApp e Wizard |

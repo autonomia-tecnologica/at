@@ -995,6 +995,13 @@
             animation: dialog-in var(--speed) var(--ease); }
   .dialog h2 { margin: 0; font-weight: var(--weight-medium); }
   .dialog p { margin: 0; color: var(--dim); }
+  /* THE REFUSAL IS NOT SUPPORT TEXT. What `.dialog p` gives is `--dim`, which is
+     right for a sentence read past on the way to the form; the entrance's answer
+     is the one the person is waiting for, so it wears the theme's own
+     `--danger` — the ink a control that DESTROYS already wears. Nothing new is
+     declared: the token is one every theme carries (`base.css` reads it for
+     `.btn.danger` without a fallback). */
+  .dialog .refused { color: var(--danger); }
   .dialog-actions { display: flex; justify-content: flex-end; gap: var(--set-gap); }
   /* WHAT GOES WITH IT is a list of labelled counts — `dt`/`dd` is the shape the
      bill already uses for a label and its value, and `--dt-gap` the distance it
@@ -1422,6 +1429,65 @@
                    background-image: radial-gradient(circle,
                        var(--radio-mark) calc(var(--radio-size) / 4),
                        transparent calc(var(--radio-size) / 4)); }
+  /* THE CHECK (2026-09-23) — the MANY choice, the radio's sibling and the
+     control the role screen is made of (item 11: a role is a SET of permissions,
+     and a set is checked, not chosen one by one). It is the NATIVE
+     `<input type="checkbox">` for the same reason the radio is native: the
+     behaviour is the browser's — the space bar, the indeterminate state, the
+     reader announcing "checked" — and a button wearing `role="checkbox"` would
+     reimplement all three. It shares every token with the radio, because it is
+     the same question asked of many at once: the ring is the theme's, the words
+     beside it are the theme's ink, and the row paints itself when chosen. */
+  .checks { display: flex; flex-wrap: wrap; gap: var(--radio-gap); }
+  .check-row { display: inline-flex; align-items: center; gap: var(--radio-gap);
+               cursor: pointer; color: var(--ink);
+               transition: color var(--speed) var(--ease); }
+  .check-row.on { color: var(--color-selected); }
+  /* The ring is SQUARE BY DEFINITION — a round checkbox is a radio —, and the
+     chosen state FILLS it: the tick would have to be DRAWN, and a pseudo-element
+     on an `<input>` is rendered by no browser; the `data:` URL that would replace
+     it is refused by the page's own policy (`CSP`, `default-src 'self'`). */
+  .check { appearance: none; flex: none;
+           width: var(--radio-size); height: var(--radio-size);
+           margin: 0; padding: 0; background: none;
+           border: var(--radio-border); border-radius: var(--check-radius, 3px);
+           cursor: pointer; vertical-align: middle;
+           transition: border-color var(--speed) var(--ease); }
+  .check:hover:not(:checked) { border-color: var(--radio-mark); }
+  .check:checked { border: var(--radio-checked); background: var(--radio-mark); }
+  /* THE FORM OF A PAGE — the role and the machine are the first screens that
+     WRITE a row, and they are not a modal: they cannot borrow `.dialog`'s
+     clothes, and what they borrow is the field's RULE. The same border, the same
+     `--set-pad`, the same native control, because a second look for a text box
+     is a second look for the same thing. The label sits above the control at the
+     distance the bill already keeps between a label and its value. */
+  .form { display: flex; flex-direction: column; gap: var(--set-gap); }
+  .form label { display: flex; flex-direction: column; gap: var(--dt-gap); }
+  .form label > span { color: var(--dim); }
+  .form input, .form textarea, .form select {
+      padding: var(--set-pad); background: none;
+      border: var(--set-border); border-radius: var(--radius);
+      color: var(--ink); font: inherit; }
+  .form input:focus-visible, .form textarea:focus-visible, .form select:focus-visible {
+      outline: 2px solid var(--accent); outline-offset: 1px; }
+  .form textarea { min-height: 4em; resize: vertical; }
+  /* A BLOCK OF A PAGE'S FORM — the heading, the checks it groups, the warning it
+     carries — with the distance the bill already keeps between things. The
+     heading is a WORD and not a size: nothing in this page shouts, and a heading
+     that grew the type would be a theme deciding how loud a screen is. */
+  .form-block { display: flex; flex-direction: column; gap: var(--dt-gap);
+                margin-top: var(--set-gap); }
+  .form-block h2, .form-block h3 { margin: 0; font-size: 1em;
+                                   font-weight: var(--weight-medium); color: var(--dim); }
+  .form-block > h2 { color: var(--ink); }
+  /* WHAT THE CATALOGUE DOES NOT KNOW (§4): the role names a permission that does
+     not exist, Bill does not fall over, and the SAYING is what gets read. It
+     wears the ink of what destroys — this is a warning and not support text. */
+  .unknown { display: flex; flex-direction: column; gap: var(--dt-gap);
+             padding: var(--set-pad); border: var(--set-border);
+             border-radius: var(--radius); }
+  .unknown h3 { margin: 0; font-weight: var(--weight-medium); color: var(--danger); }
+  .unknown p { margin: 0; color: var(--dim); }
   /* THE SETTINGS GROUP (2026-09-14): a SECTION that folds. It is the SAME fold of
      the sidebar folder — the triangle, the animated opening and the "born closed"
      (`.fold-head`/`.foldable`, above) —, in the clothes of the PAGE: the `--group-*`

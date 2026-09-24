@@ -16,6 +16,22 @@ export function offTheAir(err: unknown): NetTrouble {
   return trouble;
 }
 
+// WHAT A 401 MEANS. A refused request is not an error the page has to invent a
+// word for — it says the session is gone, and the one way it goes is the server
+// restarting under a page that is still open. Whoever listens puts the entrance
+// back. It is a REGISTRATION and not an import: `api` is the floor, and the
+// session is a floor above it.
+let refusal: (() => void) | null = null;
+
+export function whenRefused(handler: () => void): void {
+  refusal = handler;
+}
+
+// The one place a refused answer is noticed, so that both doors hear it.
+function refused(status: number): void {
+  if (status === 401 && refusal) refusal();
+}
+
 export async function api<T = unknown>(path: string): Promise<T> {
   let response: Response;
   try {
@@ -23,7 +39,14 @@ export async function api<T = unknown>(path: string): Promise<T> {
   } catch (err) {
     throw offTheAir(err);
   }
-  if (!response.ok) throw new Error(response.status + " " + response.statusText);
+  if (!response.ok) {
+    refused(response.status);
+    // The SERVER's message when it sent one, the same way the write door reads
+    // it: a route refused by the ceiling says WHICH permission is missing (item
+    // 11), and the page invents no word of its own (§3).
+    const data = await response.json().catch(() => null);
+    throw new Error((data && data.error) || response.status + " " + response.statusText);
+  }
   return (await response.json()) as T;
 }
 
@@ -45,6 +68,7 @@ export async function post<T = unknown>(path: string, body: unknown): Promise<T>
   }
   const data = await response.json().catch(() => null);
   if (!response.ok) {
+    refused(response.status);
     throw new Error((data && data.error) || response.status + " " + response.statusText);
   }
   return data as T;

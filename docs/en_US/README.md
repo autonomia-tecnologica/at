@@ -1,6 +1,6 @@
 # Bill
 
-Bill is a deterministic task engine. It runs **inside a folder**, and that folder becomes its **Working Folder**. This repository is the **product to publish** — the engine, the default declarations, the infrastructure that travels inside and the single binary. It carries no personal data: no path of anyone's machine, no host, no id.
+Bill is a deterministic task engine. It runs **inside a folder**, and that folder becomes its **Working Folder**. This repository is the **product to publish** — the engine, the default declarations, the infrastructure that travels inside and the two binaries — `bill`, which is the folder and the app, and `bill-deploy`, which builds the environment of §7. It carries no personal data: no path of anyone's machine, no host, no id.
 
 ## 0. Agent protocol
 

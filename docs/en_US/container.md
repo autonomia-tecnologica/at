@@ -6,7 +6,9 @@
 
 #### a. Create the container environment (required)
 
-- This is the main switch of the environment. The person needs Podman installed. Bill checks whether it exists and, if it does not, offers the two ways out: install Podman, or continue on the hosted path. It does not install Podman on its own. From there on, Bill orchestrates the environment and the services, which come up as containers from pinned images.
+- This is the main switch of the environment. The person needs Podman installed. **`bill-deploy`** checks whether it exists and, if it does not, offers the two ways out: install Podman, or continue on the hosted path. It does not install Podman on its own. From there on, **`bill-deploy` orchestrates the environment and the services**, which come up as containers from pinned images.
+
+- **The environment is a second artifact.** The whole of §7 — Podman, the VPN, the DNS, the gate's containers, the edge's Caddy, the switch between the two paths and the only elevation in the product — lives in `bill-deploy`, and `bill` keeps the folder and the app: it reads the same Working Folder and serves it with the deploy tool absent, refusing the Forms on the container path and closing when the gate falls. The boundary between the two is the folder's **state** and not an API — both read it, and the deploy tool is the one that writes the environment's (`App/services/`, the pins, the gate secret) — and the shared core (paths, `i18n`, files, the table engine) is one source and not two. It is why `bill` can promise, by what it is, that it never asks for administration permissions: the code that asks is not in it.
 
 - It is a complex function with a lot of room for error and for a security failure. The security decisions around it are in [Security](rules.md#security).
 
@@ -24,7 +26,7 @@
 
 - Here there is no authentication with Bill's face. The portal is Authelia's, and what Bill does is ask it to be as neutral as possible, so as not to look like what it is not (§5).
 
-- What Bill demands from whoever arrives with an identity is the **gate secret**: a value drawn by Bill at installation, written into the Caddyfile it generates itself, attached by Caddy to every request carrying an identity, and refused to whoever does not bring it. It is the M2M between Caddy and Bill's WebApp, and Authelia never sees it.
+- What Bill demands from whoever arrives with an identity is the **gate secret**: a value drawn by `bill-deploy` at installation, written into the Caddyfile it generates itself, attached by Caddy to every request carrying an identity, and refused to whoever does not bring it. It is the M2M between Caddy and Bill's WebApp, and Authelia never sees it. The file is the folder's state, so `bill` reads it too — on the container path it is what makes an identity an identity, and the deploy tool is only what drew it.
 
 #### c. Install the WebApp as a container (required)
 
@@ -43,5 +45,9 @@
 #### f. Install the notifier as a container (optional)
 
 - With everything configured, the cherry on the cake is `ntfy`, today the tool that fulfils the `notifier` service (§4). The configured reminders can be notified directly as a Push Notification, and it is through it that the approval of a demand that passed the risk threshold arrives.
+
+- **The notifier is the one service of this section that does not go behind the gate**, and that is a measurement and not a preference: the gate authenticates by redirect and by session cookie, so a headless phone app takes the 302 and never connects — measured, `subscribers=0` behind Authelia and `101` without it. Its authentication is the per-topic token ACL of [the container path](paths.md#container-path). The decision is recorded in [Security](rules.md#security).
+
+- **Bill publishes to it with a credential of its own, delimited to the topic.** The scope §3 asks of whoever reaches Bill applies here in its mirrored form, and it is measured: with the account granted `write-only` on the topic, the token publishes with a `200`, refuses any other topic with a `403`, and cannot read its own back either, with another `403`. Bill makes it when the environment comes up — the account, the scope and the token, through the notifier's own `cli` inside the container, with the password on the command's input and the token out of its output, never in the argv — and keeps it in a `0600` file beside the state of that service until the `secret` table takes it over. The phone's token is the person's, and it is the other end of the same ACL.
 
 - This is where the first graded functionality comes in: its levels and what each one costs live in [functionalities](functionalities.md).

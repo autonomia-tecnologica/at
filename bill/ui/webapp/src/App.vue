@@ -11,8 +11,9 @@
 // on the same origin. Here they are REASSERTED by their owner, and that is what
 // guarantees the class and the preference do not drift after a click.
 
-import { computed, onMounted } from "vue";
-import { api } from "./lib/api";
+import { computed, onMounted, watch } from "vue";
+import { api, whenRefused } from "./lib/api";
+import { enter, lost, session, signedIn } from "./lib/session";
 import { store, applyState, word } from "./lib/store";
 import { nav, ui, isKind, viewFor, open, markPage, poke, resumePath, CHAT_KEY } from "./lib/views";
 import { applyTheme, watchSystem } from "./lib/theme";
@@ -27,6 +28,7 @@ import Sidebar from "./components/Sidebar.vue";
 import Popover from "./components/Popover.vue";
 import Balloon from "./components/Balloon.vue";
 import KindView from "./views/KindView.vue";
+import LoginView from "./views/LoginView.vue";
 
 // WHEN THE BALLOON FLIES. The first two are not the page's to decide: the CORE's
 // switch is on (`store.interpreter` — off, there is no function at all), and this
@@ -141,6 +143,32 @@ function toggle(): void {
   toggleNav();
 }
 
+// THE BOOT, AND IT IS ONE PATH. Whoever has just proved a credential walks
+// exactly what a reload walks: the state, the theme and the entry page — so the
+// shell ends in the same place either way and there is no second boot.
+async function load(): Promise<void> {
+  try {
+    applyState(await api<Record<string, unknown>>("/api/state"));
+    applyTheme();
+    showSaved();
+  } catch (err) {
+    ui.title = word("error") + " " + (err as Error).message;
+  }
+}
+
+// WHATEVER LETS THE PAGE DRAW WAKES THE BOOT, and it is a WATCH and not an event
+// from the entrance. The difference is not style: the entrance is UNMOUNTED the
+// moment the session exists — the shell takes its place — so an event emitted
+// after the awaited sign-in is an event from a component that is already gone,
+// and Vue drops it. Here nobody has to survive anything: the answer changes, and
+// the shell boots.
+//
+// `immediate` is what covers the folder that asks NOBODY: no session ever comes,
+// and the page is allowed to draw from the first answer.
+watch(signedIn, allowed => {
+  if (allowed) void load();
+}, { immediate: true });
+
 onMounted(async () => {
   // The browser's menu stays OFF on the whole page: a row that is not a target
   // opens nothing — not the native menu either.
@@ -163,11 +191,24 @@ onMounted(async () => {
   });
   watchNarrow();
 
+  // A 401 under a running page is the session gone — the server was restarted
+  // under it — and what it costs is the ENTRANCE coming back, never a page
+  // full of "401 Unauthorized". Wired here, and not as a side effect of a
+  // module, so the two floors meet in one place.
+  whenRefused(lost);
+
+  // WHO IS IN, before anything else: `/api/state` is refused to whoever is not,
+  // and the words the entrance draws with arrive in this same answer.
   try {
-    applyState(await api<Record<string, unknown>>("/api/state"));
-    applyTheme();
-    showSaved();
+    await enter();
   } catch (err) {
+    // A server that did not answer has no entrance to draw and no words to draw
+    // it with: the page falls back to the shell it drew before there was an
+    // entrance, and the head carries what happened. (The boot below runs from
+    // this too — `ready` is what lets the page draw — and it will fail the same
+    // way, which is the state that was already true.)
+    session.auth = false;
+    session.ready = true;
     ui.title = word("error") + " " + (err as Error).message;
   }
 });
@@ -177,36 +218,46 @@ defineExpose({ refresh });
 </script>
 
 <template>
-  <nav>
-    <h1 id="brand">
-      <span class="brand">{{ word("brand") }}</span>
-    </h1>
-    <Sidebar />
-  </nav>
-  <main>
-    <header id="head">
-      <span id="head-title">
-        <template v-if="ui.count"><b>{{ ui.count.shown }} {{ word("records") }}</b><span
-          v-if="ui.count.hidden"> · {{ ui.count.hidden }} {{ word("hidden") }}</span></template>
-        <template v-else-if="ui.bold"><b>{{ ui.bold }}</b><span>{{ ui.rest }}</span></template>
-        <template v-else>{{ ui.title }}</template>
-      </span>
-      <span id="head-right">
-        <span class="loc">
-          <span class="raw">{{ store.lang }}</span>
-          <span class="name">{{ word("language_name") }}</span>
-          <span class="flag">{{ word("language_flag") }}</span>
+  <!-- NOTHING until the server has said who is in. `session.ready` false is a
+       state of its own — the answer is on its way and the page does not know it
+       yet — and drawing the shell there would flash the entrance on every
+       reload, one screen before the one `js/boot.js` already guards.
+       THE WHOLE SHELL IS UNDER THE GATE, the balloon included: with no session
+       the interpreter's switch is still its default, and a balloon flying over
+       the entrance would be a box talking to nobody. -->
+  <template v-if="signedIn">
+    <nav>
+      <h1 id="brand">
+        <span class="brand">{{ word("brand") }}</span>
+      </h1>
+      <Sidebar />
+    </nav>
+    <main>
+      <header id="head">
+        <span id="head-title">
+          <template v-if="ui.count"><b>{{ ui.count.shown }} {{ word("records") }}</b><span
+            v-if="ui.count.hidden"> · {{ ui.count.hidden }} {{ word("hidden") }}</span></template>
+          <template v-else-if="ui.bold"><b>{{ ui.bold }}</b><span>{{ ui.rest }}</span></template>
+          <template v-else>{{ ui.title }}</template>
         </span>
-      </span>
-    </header>
-    <div id="body">
-      <component :is="frame.component" v-if="frame" v-bind="frame.props" :key="frame.key" />
-    </div>
-  </main>
-  <div id="scrim" class="scrim" @click="toggle"></div>
-  <Popover />
-  <!-- The balloon is a LAYER OF ITS OWN, and not the pop's: the pop keeps ONE
-       open panel, and a balloon that lived in that slot would close every time a
-       column's filter opened (`pop.ts`). -->
-  <Balloon v-if="balloon" />
+        <span id="head-right">
+          <span class="loc">
+            <span class="raw">{{ store.lang }}</span>
+            <span class="name">{{ word("language_name") }}</span>
+            <span class="flag">{{ word("language_flag") }}</span>
+          </span>
+        </span>
+      </header>
+      <div id="body">
+        <component :is="frame.component" v-if="frame" v-bind="frame.props" :key="frame.key" />
+      </div>
+    </main>
+    <div id="scrim" class="scrim" @click="toggle"></div>
+    <Popover />
+    <!-- The balloon is a LAYER OF ITS OWN, and not the pop's: the pop keeps ONE
+         open panel, and a balloon that lived in that slot would close every time
+         a column's filter opened (`pop.ts`). -->
+    <Balloon v-if="balloon" />
+  </template>
+  <LoginView v-else-if="session.ready" />
 </template>

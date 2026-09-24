@@ -12,16 +12,22 @@ requires-python = ">=3.14.7"
 # `requirements.txt`, with the hashing; a test fails when the two drift.
 dependencies = ["PyNaCl==1.6.2"]
 
+# Two artifacts and two entry points (§3, item 27): `bill` is the folder and the
+# app, and `bill-deploy` is §7 whole — the environment, the switch and the only
+# elevation in the product. `bill` imports nothing of `bill_deploy`, and the
+# suite affirms it.
 [project.scripts]
 bill = "bill.ui.cli:main"
+bill-deploy = "bill_deploy.cli:main"
 
-# The version has one home: `bill.__version__`.
+# The version has one home: `bill.__version__`, and both artifacts wear it.
+# There is one release, and it publishes both files.
 [tool.setuptools.dynamic]
 version = { attr = "bill.__version__" }
 
 [tool.setuptools.packages.find]
 include = ["bill*"]
-exclude = ["bill.tests*"]
+exclude = ["bill.tests*", "bill_deploy.tests*"]
 
 # Three payloads are data, not code, and all of them are invisible to an import
 # graph: without them the built artifact ships no `blocks/*.json` (every surface

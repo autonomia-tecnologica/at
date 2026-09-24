@@ -33,7 +33,10 @@
       "data": "on_date",
       "horário": "at",
       "horários": "at",
-      "antecedência": "warn_days"
+      "antecedência": "warn_days",
+      "tipo": "type",
+      "credencial": "credential",
+      "permissões": "permissions"
     }
   },
   "en_US": {
@@ -72,7 +75,10 @@
       "time": "at",
       "times": "at",
       "warn days": "warn_days",
-      "lead time": "warn_days"
+      "lead time": "warn_days",
+      "type": "type",
+      "credential": "credential",
+      "permissions": "permissions"
     }
   }
 }

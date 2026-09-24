@@ -368,12 +368,48 @@ class TheLanguageOffer(FolderCase):
         self.born("pt_BR")
         self.changed_to("en_US")
         first = self.silent("n")
-        self.assertIn(i18n.tr("boot.migration.folders.declined", names="Tabelas → Tables, Arquivos → Files"), first)
+        # All four folders follow the language, and the cost is said for each of
+        # them: whoever declines keeps the names and hears what that costs.
+        self.assertIn(
+            i18n.tr(
+                "boot.migration.folders.declined",
+                names="Tabelas → Tables, Arquivos → Files, "
+                      "Projetos → Projects, Compartilhada → Shared",
+            ),
+            first,
+        )
         self.assertTrue((self.root / "Tabelas").is_dir())
         # The decision is recorded, so the next start is silent about it.
         second = self.silent("n")
         self.assertEqual(second, "")
         self.assertEqual(settings.get("folders"), "en_US")
+
+    def test_the_named_folders_follow_the_language_too(self):
+        # `Projetos/` and `Compartilhada/` are spelled by the language like the
+        # other two, and a folder that changed language carries all four — it
+        # does not keep one spelling and gain a twin in the other.
+        self.born("pt_BR")
+        self.changed_to("en_US")
+        self.silent("s")
+        for name in ("Tables", "Files", "Projects", "Shared"):
+            with self.subTest(folder=name):
+                self.assertTrue((self.root / name).is_dir(), name)
+        for name in ("Tabelas", "Arquivos", "Projetos", "Compartilhada"):
+            with self.subTest(folder=name):
+                self.assertFalse((self.root / name).exists(), name)
+
+    def test_a_declined_folder_gains_no_empty_twin(self):
+        # The refusal is the person's, and the folder they kept is the one Bill
+        # reads: `paths` answers with the active language's name first, so a
+        # twin born empty beside it would take the old one's place — which is
+        # the contents of the folder they refused to move, gone from view.
+        self.born("pt_BR")
+        self.changed_to("en_US")
+        self.silent("n")
+        self.assertTrue((self.root / "Projetos").is_dir())
+        self.assertFalse((self.root / "Projects").exists())
+        self.assertEqual(paths.projects_dir(), self.root / "Projetos")
+        self.assertEqual(paths.shared_dir(), self.root / "Compartilhada")
 
     def test_the_environment_never_moves_the_folders(self):
         # `$BILL_LANG` is not the folder's decision, and renaming the person's

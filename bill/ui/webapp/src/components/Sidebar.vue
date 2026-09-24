@@ -25,6 +25,11 @@ import ProjectsTree from "./ProjectsTree.vue";
 import FileTree from "./FileTree.vue";
 
 const SETTINGS_KEY = "settings";
+// THE PEOPLE ENTRY (§5): the actors and the roles, together, behind one line —
+// "who may act, with which ceiling". It is a door of its own and not a table
+// name, which is why it sits in the foot beside Settings: what it opens is a
+// screen, and the screen is where the moving is done.
+const PEOPLE_KEY = "people";
 
 const hasProjects = computed(() => Boolean(store.types.project && store.types.task));
 
@@ -39,6 +44,10 @@ function openKind(key: string): void {
 
 function openSettings(): void {
   open(SETTINGS_KEY, null);
+}
+
+function openPeople(): void {
+  open(PEOPLE_KEY, null);
 }
 
 function openChat(): void {
@@ -80,6 +89,10 @@ function openChat(): void {
     <button v-if="store.interpreter" type="button" class="file" :data-view="CHAT_KEY"
             :class="{ on: isCurrent(CHAT_KEY) }" @click="openChat">
       <span>{{ word("chat") }}</span>
+    </button>
+    <button type="button" class="file" :data-view="PEOPLE_KEY"
+            :class="{ on: isCurrent(PEOPLE_KEY) }" @click="openPeople">
+      <span>{{ word("people") }}</span>
     </button>
     <button type="button" class="file" :data-view="SETTINGS_KEY"
             :class="{ on: isCurrent(SETTINGS_KEY) }" @click="openSettings">

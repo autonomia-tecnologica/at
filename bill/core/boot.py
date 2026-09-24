@@ -26,7 +26,7 @@ from __future__ import annotations
 import sys
 from typing import Callable
 
-from bill.core import files, migrations, paths, settings
+from bill.core import actors, files, migrations, paths, settings
 from bill.data import schema
 from bill.i18n import active_code, tr, write_active
 
@@ -68,6 +68,10 @@ def ensure_working_folder(ask: Ask | None = None) -> bool:
 
     create_working_folder()
     print(tr("boot.first_run.created", folder=folder))
+    # The folder is born without an administrator ON PURPOSE, and the person is
+    # told where the first one comes from: seeding one would be a published
+    # credential, and the door that creates it lives in the `cli` (§3, item 9).
+    print(tr("boot.first_run.admin_needed"))
     return True
 
 
@@ -108,6 +112,11 @@ def create_working_folder() -> None:
     # The system tables arrive with the product and land in the folder here, so
     # that the folder is whole on its own from the first run on (§4).
     schema.seed(paths.data_dir() / schema.SCHEMA_DIR)
+
+    # The engine's row is born with the folder, because every act of the engine
+    # needs a row to be named in the `audit` (item 15). The first ADMIN is not:
+    # it is asked for, and `bill admin` is the door (§3, item 9).
+    actors.seed_engine()
 
     settings.save({"schema": settings.SCHEMA})
 

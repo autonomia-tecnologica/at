@@ -10,6 +10,8 @@
 
 - The Wizard is a screen that allows more critical configurations of Bill that I did not want to leave available on the network. It has roles that do not move: the **first start**, where the Working Folder is confirmed and the first admin is created; the **installation of services**, and only it installs; the **return to Forms mode**, when the authentication gate falls; and the management of the main keys in advanced mode.
 
+- While the Control Panel is not built, the first start happens in the `cli`: `bill admin` asks for the name and reads the credential with no echo, and `bill` with no word prints the `help`. The Wizard does not lose the role — the first admin's screen is its own — and the door is the same one: the rule of this section is that everything of the `Wizard` is reachable from the `cli`.
+
 - The `cli` runs only locally, except when it is communicating with external APIs for the due configuration. And it is it, or the Wizard, that returns Bill to Forms mode: both are local surfaces, and that is why the return exists.
 
 - Role and permission are **not** the Wizard's business: that is a WebApp screen, and the friction of doing admin there does not pay off. The Wizard keeps what only it can do.
@@ -54,6 +56,14 @@ The panel has the entries:
 - **The drawings and the typefaces are served BY NAME**, through `/icons/<name>` and `/vendor/<key>`. Nothing is embedded as `data:` — the page runs under `default-src 'self'`, and an embedded drawing would simply never paint.
 - **The hosted dependencies are pinned**: `vendor/manifest.json` names the package, the version and the sha256 of every file, and the server checks the hash against what was installed (§3, External dependency).
 - **The theme is a LOOKUP, never a path**: an id that names no theme falls back to the default, so a query string can never reach a file the registry does not name.
+
+#### People: where the ceiling is moved
+
+The **People** entry holds the two system tables of the access ceiling, each row opening its own screen. Nothing here is free text: the permission is `objeto:ação` over a **closed list**, and what a person picks is picked from it.
+
+- **The `role` screen draws the closed list as checks** — the objects, and the actions each one accepts — and writes the set back through the table route the `cli` already walks. A role that names a permission the catalogue does not have **does not take Bill down**: §4's saying is drawn on the screen, beside the role, until somebody takes it out.
+- **The `actor` screen is where a machine's credential is minted.** A token is not something a person types, so Bill draws it, the row keeps the derivation and the token is shown **once** — it is never read back. The same screen gives a machine a new token, which is what a lost or leaked one costs, and **revokes** it: the row stays, because an actor is the name the audit will carry, and the door simply stops opening.
+- **None of it is a second rule.** The screens are reachable by whoever carries the permission — the administrator's role carries the whole catalogue by construction — and everyone else is refused by the server, in the server's words.
 
 #### Design System and themes
 

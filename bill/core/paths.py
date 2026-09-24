@@ -146,6 +146,20 @@ def i18n_dir() -> Path:
     return app_dir() / "i18n"
 
 
+def services_dir() -> Path:
+    """`App/services/` — the state of the SERVICES of the container path (§7).
+
+    Inside `App/` and not a folder of its own at the root: it is what Bill
+    wrote to run, like the Caddy it unpacks and the language it chose, and §7
+    puts every service's persistent state under it — `App/services/<serviço>`,
+    so a service that does not fit its state here is a service that does not
+    enter. The name does not move with the language for the same reason `App/`
+    does not: what a person opens is `App/`, and the services inside it are the
+    machine's words.
+    """
+    return app_dir() / "services"
+
+
 def active_language_file() -> Path:
     """`App/i18n/active` — the only translation artifact the folder keeps
     (§4): the catalogs themselves are packed into the binary."""

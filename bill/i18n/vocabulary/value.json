@@ -33,7 +33,10 @@
       "semanal": "weekly",
       "mensal": "monthly",
       "anual": "yearly",
-      "uma vez": "once"
+      "uma vez": "once",
+      "pessoa": "person",
+      "motor": "engine",
+      "agente": "agent"
     }
   },
   "en_US": {
@@ -61,7 +64,10 @@
       "weekly": "weekly",
       "monthly": "monthly",
       "yearly": "yearly",
-      "once": "once"
+      "once": "once",
+      "person": "person",
+      "engine": "engine",
+      "agent": "agent"
     }
   }
 }

@@ -1,0 +1,42 @@
+{
+  "pt_BR": {
+    "help.title": "bill-deploy {version}",
+    "help.usage": "bill-deploy <palavra>",
+    "help.words": "Palavras",
+    "help.no_args": "Sem palavra, o bill-deploy imprime esta ajuda.",
+    "help.about": "Mostra esta ajuda.",
+    "version.about": "Mostra a versão do bill-deploy.",
+    "version.line": "bill-deploy {version}",
+    "services.about": "O ambiente container, e a virada entre os dois caminhos",
+    "services.up.about": "Sobe o ambiente e os serviços, nas imagens fixadas",
+    "services.down.about": "Abaixa o ambiente: os containers do Bill saem, a pasta fica",
+    "services.status.about": "Mostra o caminho da pasta e o que está de pé.",
+    "services.switch.about": "A virada para o caminho container, transacional",
+    "services.forms.about": "Volta o Bill ao modo Forms: o ambiente abaixo, e o Forms na porta",
+    "services.notify.about": "Manda um alerta pelo notificador, provando a entrega de ponta a ponta",
+    "error.unknown_word": "Palavra desconhecida: {word}.",
+    "error.usage": "Use `bill-deploy help` para ver as palavras.",
+    "error.rejected_arguments": "A palavra {word} não aceita argumento nesta versão.",
+    "error.read_only": "Modo somente leitura: nada foi escrito em {where}."
+  },
+  "en_US": {
+    "help.title": "bill-deploy {version}",
+    "help.usage": "bill-deploy <word>",
+    "help.words": "Words",
+    "help.no_args": "With no word, bill-deploy prints this help.",
+    "help.about": "Shows this help.",
+    "version.about": "Shows bill-deploy's version.",
+    "version.line": "bill-deploy {version}",
+    "services.about": "The container environment, and the switch between the two paths",
+    "services.up.about": "Brings the environment and the services up, at the pinned images",
+    "services.down.about": "Takes the environment down: Bill's containers leave, the folder stays",
+    "services.status.about": "Shows the folder's path and what is standing.",
+    "services.switch.about": "The switch to the container path, transactional",
+    "services.forms.about": "Returns Bill to Forms mode: the environment down, and the Forms at the door",
+    "services.notify.about": "Sends one alert through the notifier, proving the delivery end to end",
+    "error.unknown_word": "Unknown word: {word}.",
+    "error.usage": "Use `bill-deploy help` to see the words.",
+    "error.rejected_arguments": "The word {word} takes no argument in this version.",
+    "error.read_only": "Read-only mode: nothing was written to {where}."
+  }
+}

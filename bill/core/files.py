@@ -38,12 +38,18 @@ def readonly() -> bool:
     return os.environ.get(ENV_READONLY, "").strip().lower() in _TRUE_WORDS
 
 
-def atomic_write_text(path: Path, text: str) -> None:
+def atomic_write_text(path: Path, text: str, mode: int | None = None) -> None:
     """Write `text` to `path`, atomically, or refuse under the read-only switch.
 
     The temporary file is written BESIDE the target and renamed onto it: `os.replace`
     on one filesystem is atomic, so a half-written store never exists under the
     name anything reads.
+
+    `mode` is for the files whose CONTENT is a credential, and it exists because
+    the default is the umask's — right for everything a person reads, wrong for a
+    secret. The permission goes on the TEMPORARY file and `os.replace` carries it
+    onto the target: a `chmod` afterwards would leave a window in which the value
+    is written and the world can still read it.
     """
     if readonly():
         raise ReadOnly(path)
@@ -52,6 +58,8 @@ def atomic_write_text(path: Path, text: str) -> None:
     # `newline="\n"` because text mode turns every LF into CRLF on Windows, and
     # the data is POSIX on every host (§3, Portabilidade).
     temporary.write_text(text, encoding="utf-8", newline="\n")
+    if mode is not None:
+        os.chmod(temporary, mode)
     os.replace(temporary, path)
 
 

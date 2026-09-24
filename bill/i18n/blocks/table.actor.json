@@ -1,0 +1,24 @@
+{
+  "pt_BR": {
+    "name.one": "Ator",
+    "name.many": "Atores",
+    "field.name": "Nome",
+    "field.type": "Tipo",
+    "field.type.person": "Pessoa",
+    "field.type.engine": "Motor",
+    "field.type.agent": "Agente",
+    "field.role": "Papel",
+    "field.credential": "Credencial"
+  },
+  "en_US": {
+    "name.one": "Actor",
+    "name.many": "Actors",
+    "field.name": "Name",
+    "field.type": "Type",
+    "field.type.person": "Person",
+    "field.type.engine": "Engine",
+    "field.type.agent": "Agent",
+    "field.role": "Role",
+    "field.credential": "Credential"
+  }
+}

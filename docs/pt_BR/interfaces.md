@@ -10,6 +10,8 @@
 
 - O Wizard é uma tela que permite realizar configurações mais críticas do Bill que eu não queria deixar disponível na rede. Ele tem papéis que não se mudam de lugar: a **primeira subida**, em que a Pasta de Trabalho é confirmada e o primeiro admin é criado; a **instalação de serviços**, e só ele instala; a **volta ao modo Forms**, quando o portão de autenticação cai; e a gestão das chaves principais no modo avançado.
 
+- Enquanto o Painel de Controle não estiver construído, a primeira subida acontece na `cli`: `bill admin` pergunta o nome e lê a credencial sem eco, e `bill` sem palavra imprime o `help`. O Wizard não perde o papel — a tela do primeiro admin é dele —, e a porta é a mesma: a regra desta seção é que tudo do `Wizard` seja alcançável pela `cli`.
+
 - O `cli` executa apenas localmente, em exceção quando está comunicando com APIs externas para devida configuração. E é ele, ou o Wizard, que devolve o Bill ao modo Forms: as duas são superfícies locais, e é por isso que a volta existe.
 
 - Papel e permissão **não** são assunto do Wizard: isso é tela do WebApp, e o atrito de fazer admin por lá não se paga. O Wizard fica com o que só ele pode fazer.
@@ -54,6 +56,14 @@ O painel tem as entradas:
 - **Os desenhos e as fontes são servidos POR NOME**, por `/icons/<nome>` e `/vendor/<chave>`. Nada é embutido como `data:` — a página roda sob `default-src 'self'`, e um desenho embutido simplesmente nunca apareceria.
 - **As dependências hospedadas são pinadas**: `vendor/manifest.json` nomeia o pacote, a versão e o sha256 de cada arquivo, e o servidor confere o hash contra o que foi instalado (§3, Dependência externa).
 - **O tema é uma CONSULTA, nunca um caminho**: um id que não nomeia tema nenhum cai no padrão, então uma query string nunca alcança um arquivo que o registro não nomeia.
+
+#### Pessoas: onde o teto se move
+
+A entrada **Pessoas** guarda as duas tabelas de sistema do teto de acesso, e cada linha abre a tela dela. Nada aqui é texto livre: a permissão é `objeto:ação` sobre uma **lista fechada**, e o que a pessoa marca é marcado a partir dela.
+
+- **A tela do `role` desenha a lista fechada como marcações** — os objetos, e as ações que cada um aceita — e escreve o conjunto de volta pela rota de tabela que a `cli` já percorre. Um papel que nomeia uma permissão que o catálogo não tem **não derruba o Bill**: o dizer do §4 é desenhado na tela, ao lado do papel, até que alguém a tire de lá.
+- **A tela do `actor` é onde a credencial de máquina é minada.** Um token não é algo que uma pessoa digita, então o Bill o sorteia, a linha guarda a derivação e o token aparece **uma vez** — ele nunca é lido de volta. A mesma tela dá à máquina um token novo, que é o preço de um perdido ou vazado, e o **revoga**: a linha fica, porque um ator é o nome que a auditoria vai carregar, e a porta simplesmente para de abrir.
+- **Nada disso é uma segunda regra.** As telas são alcançáveis por quem carrega a permissão — o papel do administrador carrega o catálogo inteiro por construção — e todo o resto é recusado pelo servidor, nas palavras dele.
 
 #### Design System e temas
 

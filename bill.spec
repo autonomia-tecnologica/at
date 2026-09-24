@@ -1,9 +1,18 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""The build that derives `dist/bill` — the single binary (§3).
+"""The build that derives `dist/bill` — the app's artifact (§3, item 27).
 
 Build it from the repository root, with the PyInstaller version the README pins:
 
     .venv/bin/pyinstaller --clean --noconfirm bill.spec
+
+**There are two artifacts and two specs**, and this is the one that carries the
+folder and the app: the tables, the prose, the interpreter, the WebApp and the
+Wizard. The environment of §7 — Podman, the VPN, the containers, the switch and
+the only elevation in the product — left this file and is built by
+`bill-deploy.spec`, and what keeps it out is the import graph and not a list:
+`bill` imports nothing of `bill_deploy`, so PyInstaller never reaches it. The
+`excludes` below says so out loud, because the boundary is a decision and not an
+accident.
 
 The product carries payloads that no import graph can see, so the list below is
 written by hand rather than collected: this file is the one place that says what
@@ -37,6 +46,14 @@ DATAS = [
     ("bill/i18n/blocks", "bill/i18n/blocks"),
     ("bill/i18n/vocabulary", "bill/i18n/vocabulary"),
     ("bill/data/defaults", "bill/data/defaults"),
+    # The Caddy the folder runs when it exposes itself (§3, §6). It travels as
+    # the vendor's own tarball and not as the unpacked binary: the artifact that
+    # goes inside is the byte-identical release, with its LICENSE beside the
+    # binary — and the platform's tarball is the only one this build carries,
+    # because a binary frozen for one system runs on that one (§9). Whoever runs
+    # from a checkout gets the same payload, unpacked by `services/caddy.py` on
+    # demand, so both paths extract from one place.
+    ("bill/vendor/caddy", "bill/vendor/caddy"),
     ("bill/ui/webapp/assets", "bill/ui/webapp/assets"),
     ("bill/ui/webapp/dist", "bill/ui/webapp/dist"),
     ("bill/ui/webapp/vendor", "bill/ui/webapp/vendor"),
@@ -62,8 +79,10 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     # The suite reads the TypeScript sources and is excluded from the wheel
-    # (`pyproject.toml`); it has no business inside the binary either.
-    excludes=["bill.tests"],
+    # (`pyproject.toml`); it has no business inside the binary either. And the
+    # deploy is excluded for the reason above — nothing here imports it, and a
+    # build that started carrying §7 again would be `bill` asking for elevation.
+    excludes=["bill.tests", "bill_deploy", "bill_deploy.tests"],
     noarchive=False,
     optimize=0,
 )

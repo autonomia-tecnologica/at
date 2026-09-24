@@ -1,0 +1,12 @@
+{
+  "pt_BR": {
+    "error.role_unknown": "Não existe o papel {role}.",
+    "error.not_agent": "O ator {id} não é uma máquina; a credencial dele não se move por aqui.",
+    "error.not_credential": "Esta máquina não tem credencial para revogar."
+  },
+  "en_US": {
+    "error.role_unknown": "There is no role {role}.",
+    "error.not_agent": "Actor {id} is not a machine; its credential is not moved here.",
+    "error.not_credential": "This machine has no credential to revoke."
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "pt_BR": {
+    "line": "{object}: {action}",
+    "denied": "O papel do seu ator não carrega {permission}.",
+    "object.setting": "Configurações",
+    "object.prose": "Arquivos",
+    "object.nlu": "Interpretador",
+    "object.service": "Serviços",
+    "object.plugin": "Plugins",
+    "object.vocabulary": "Vocabulário",
+    "action.read": "Ler",
+    "action.edit": "Editar",
+    "action.ask": "Perguntar"
+  },
+  "en_US": {
+    "line": "{object}: {action}",
+    "denied": "Your actor's role does not carry {permission}.",
+    "object.setting": "Settings",
+    "object.prose": "Files",
+    "object.nlu": "Interpreter",
+    "object.service": "Services",
+    "object.plugin": "Plugins",
+    "object.vocabulary": "Vocabulary",
+    "action.read": "Read",
+    "action.edit": "Edit",
+    "action.ask": "Ask"
+  }
+}
