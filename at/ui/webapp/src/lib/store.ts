@@ -65,6 +65,11 @@ export const store = reactive({
   fields: [] as FieldSpec[], // the schema of the table ON SCREEN
   interpreter: true, // the CORE's switch: off, there is no box, balloon or chat
   risk: { threshold: 0.5, marks: [] } as Risk, // the ruler's numbers
+  // WHAT THE FOLDER IS, VERSIONING-WISE (§4, item 30), already written out in
+  // every language: a sentence when AT does not version the folder, and `null`
+  // when it does — there is nothing to warn about, and a band with no words is
+  // no band.
+  versioning: null as Labels | null,
 });
 
 export function applyState(state: Partial<typeof store>): void {
@@ -79,6 +84,7 @@ export function applyState(state: Partial<typeof store>): void {
   // does not carry it leaves the interpreter where it was.
   if (typeof state.interpreter === "boolean") store.interpreter = state.interpreter;
   if (state.risk) store.risk = state.risk as Risk;
+  store.versioning = (state.versioning as Labels | null) ?? null;
 }
 
 // The display name of a thing in the active language.

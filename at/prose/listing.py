@@ -19,7 +19,7 @@ import hashlib
 import threading
 from pathlib import Path
 
-from at.core import files, paths
+from at.core import files, paths, versioning
 
 # The ceiling, in bytes, for a file a person edits in the page. It binds the
 # reader and the writer alike: a file over it is not text anybody edits here.
@@ -204,4 +204,11 @@ def write(rel: str, text: str, base: str) -> tuple[int, dict]:
             return 500, {"error": str(error)}
         # The revision is read BACK from the disk, never computed from what was
         # sent: what the page must compare against next time is the file.
-        return 200, {"path": rel, "rev": digest(where.read_bytes())}
+        answer = {"path": rel, "rev": digest(where.read_bytes())}
+
+    # The version, and OUTSIDE the lock: saving a document is one of the actions
+    # that change the folder (§4, item 30), and no other writer of this file
+    # should wait on a subprocess for it. The name is the path — what whoever
+    # reads `git log` would look for.
+    versioning.commit_file(rel)
+    return 200, answer

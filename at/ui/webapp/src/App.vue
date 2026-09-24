@@ -14,7 +14,7 @@
 import { computed, onMounted, watch } from "vue";
 import { api, whenRefused } from "./lib/api";
 import { enter, lost, session, signedIn } from "./lib/session";
-import { store, applyState, word } from "./lib/store";
+import { store, applyState, label, word } from "./lib/store";
 import { nav, ui, isKind, viewFor, open, markPage, poke, resumePath, CHAT_KEY } from "./lib/views";
 import { applyTheme, watchSystem } from "./lib/theme";
 import { applyMotion } from "./lib/motion";
@@ -248,6 +248,13 @@ defineExpose({ refresh });
           </span>
         </span>
       </header>
+      <!-- THE FOLDER'S VERSIONING, when there is something to say about it (§4,
+           item 30). AT drives git, and a folder AT does not version is a folder
+           whose history nothing keeps — a thing to say out loud, once per page,
+           and not a state to leave quiet. The sentence is the SERVER's, written
+           out in every language like a theme's description; the page picks the
+           one on screen and invents none. No sentence, no strip. -->
+      <p v-if="store.versioning" id="versioning">{{ label(store.versioning) }}</p>
       <div id="body">
         <component :is="frame.component" v-if="frame" v-bind="frame.props" :key="frame.key" />
       </div>

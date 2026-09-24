@@ -122,6 +122,7 @@ from at.core import (
     risk,
     settings,
     tables,
+    versioning,
 )
 from at.data import schema, store
 from at.prose import listing as prose
@@ -419,6 +420,12 @@ def entry_payload(open_session: session.Session | None) -> dict:
 
 def state_payload() -> dict:
     row = active_theme(None)
+    # The folder's versioning, when there is something to say about it (§4, item
+    # 30). It travels written out in every language, like the themes' own
+    # description: the page draws the sentence the server hands it, and a folder
+    # AT versions hands NOTHING — the band has no words because there is nothing
+    # wrong to name.
+    unversioned = versioning.phrase()
     return {
         "lang": i18n.active_code(),
         "origin": i18n.active_origin(),
@@ -432,6 +439,10 @@ def state_payload() -> dict:
         # there are none — the permission catalogue is item 11. The page draws
         # what it is handed and invents no risk.
         "risk": {"threshold": risk.threshold(), "marks": risk.declared()},
+        # `None` is the answer for a folder under versioning, and it is not the
+        # same as absent: the page tells "nothing to say" from "not here yet"
+        # exactly the way it does with a session.
+        "versioning": i18n.labels(unversioned) if unversioned else None,
         "theme": row.get("id") if row else None,
         "themes": [
             {"id": theme.get("id"), "label": theme_label(theme),

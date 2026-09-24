@@ -29,6 +29,13 @@ from at.i18n import tr
 
 ACTIONS = ("list", "view", "create", "edit", "cancel", "delete")
 
+# The two that only READ, and the rest — the actions that change the folder, and
+# the ones a version has to carry (§4, item 30). It is derived from the six above
+# and not written a second time: who writes is the ENGINE's to say, and a list
+# beside this one would drift the day a seventh action arrives.
+READS = ("list", "view")
+WRITES = tuple(action for action in ACTIONS if action not in READS)
+
 # The words a declared default may use instead of a literal: the engine resolves
 # them when the row is born, because only then is "today" a day. They resolve to
 # ISO TEXT, never to a datetime object — the store is JSON, and a date a person

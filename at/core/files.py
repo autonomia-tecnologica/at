@@ -1,15 +1,19 @@
 """The single writer, and the read-only switch.
 
-Every file AT rewrites goes through `atomic_write_text`. Two properties come
+Every file AT rewrites goes through `atomic_write_text`. Three properties come
 from that one place:
 
 - a crash mid-write leaves the previous content intact, never half a file;
 - `$AT_READONLY` refuses **before anything is touched**, so a verification run
-  cannot mutate the Working Folder through any engine.
+  cannot mutate the Working Folder through any engine;
+- every write is **counted**, and the count is what the versioning reads
+  (`versioning.pending`): how much this process wrote since the last commit.
 
 The switch belongs to the write, not to the command's name. A list of "words
 that mutate" is a list somebody forgets to extend; guarding the one writer covers
-every engine at once, including the ones not written yet.
+every engine at once, including the ones not written yet. The COUNT is the same
+argument from the other side: an action that writes and does not commit leaves
+the count where it was, and that is a thing a test can see.
 """
 
 from __future__ import annotations
@@ -20,6 +24,21 @@ from pathlib import Path
 ENV_READONLY = "AT_READONLY"
 
 _TRUE_WORDS = ("1", "true", "yes", "on")
+
+# How many writes this process has made. Module state on purpose: the count is
+# about a RUN — one command, one request — and a fresh process starts at zero.
+_writes = 0
+
+
+def writes() -> int:
+    """How many times this process wrote, every one of them through here."""
+    return _writes
+
+
+def reset_writes() -> None:
+    """Forget the count. The tests' door, and nothing in the product calls it."""
+    global _writes
+    _writes = 0
 
 
 class ReadOnly(Exception):
@@ -51,6 +70,8 @@ def atomic_write_text(path: Path, text: str, mode: int | None = None) -> None:
     onto the target: a `chmod` afterwards would leave a window in which the value
     is written and the world can still read it.
     """
+    global _writes
+
     if readonly():
         raise ReadOnly(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -61,6 +82,9 @@ def atomic_write_text(path: Path, text: str, mode: int | None = None) -> None:
     if mode is not None:
         os.chmod(temporary, mode)
     os.replace(temporary, path)
+    # Counted AFTER the replace, and only then: what this counts is content that
+    # is on disk, which is exactly what a version has to carry.
+    _writes += 1
 
 
 def read_json(path: Path, default: object = None) -> object:

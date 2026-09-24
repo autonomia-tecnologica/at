@@ -43,7 +43,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from at import nlu
-from at.core import actors, files, permissions, tables
+from at.core import actors, files, permissions, tables, versioning
 from at.data import schema
 from at.i18n import tr
 
@@ -181,6 +181,14 @@ def run(
 ) -> tuple[int, str]:
     """One table action, from the words of a surface or from a proposal.
 
+    **Every action that changes the folder ends in a version** (§4, item 30),
+    and this is where that happens: `run` is the ONE door the `cli`, the WebApp
+    and the interpreter reach the engine by, so a commit here covers the three
+    surfaces at once and a fourth one gains it by using the same door. The
+    version is named by the ANSWER — the engine's own sentence, the very one the
+    surface prints — so `git log` reads like the table's own story and no second
+    wording of the act is written.
+
     `given` is the `(values, leftovers)` a proposal already carries — the
     interpreter read them out of the sentence, and only the road by which the
     values arrived differs.
@@ -188,7 +196,25 @@ def run(
     The ANSWER comes back as text, never printed: where it goes is the surface's,
     and the words are the engine's in both. What the engine refuses — a missing
     required field, a closed row, a read-only folder — is raised as it always was,
-    and whoever asked is the one that catches it.
+    and whoever asked is the one that catches it. A refusal writes nothing, so
+    there is nothing to version and nothing is left behind.
+    """
+    code, answer = _acted(table, action, args, given)
+    if code == OK and action in tables.WRITES:
+        versioning.commit(answer)
+    return code, answer
+
+
+def _acted(
+    table: str,
+    action: str,
+    args: list[str],
+    given: tuple[dict, list[str]] | None = None,
+) -> tuple[int, str]:
+    """The action itself — what `run` does before it versions the result.
+
+    Private on purpose: `run` is the door, and a caller that reached the engine
+    around it would be a second road that versions nothing.
     """
     if action == "list":
         return _listing(table, args)

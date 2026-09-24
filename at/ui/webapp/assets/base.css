@@ -939,6 +939,15 @@
      being more specific. */
   header > * { font-size: var(--font-size); }
   header b { color: var(--header-strong); font-weight: var(--weight-bold); }
+  /* THE FOLDER'S VERSIONING (§4, item 30). A strip of its own between the bar and
+     the body — the bar's own boxes hold every word of the strip above, so this
+     one is a SIBLING of it and not a fourth thing inside it. It is drawn only
+     when the server hands a sentence (a folder AT versions draws nothing), and
+     it speaks in the voice the `.unknown` block already uses: the fact, and not
+     a colour the design system would have to invent. */
+  #versioning { margin: 0; padding: 6px var(--header-pad-x);
+                border-bottom: var(--main-border); color: var(--dim);
+                font-size: var(--locale-size); }
   /* The column's filter is a FUNNEL the theme draws — the page names it, the
      theme shows it. Drawn rather than typed: a glyph would depend on the font.
      Dim at rest, ink on hover, accent while the column is actually filtered. */

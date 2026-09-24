@@ -39,7 +39,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-from at.core import actors, files, paths, permissions, settings, tables
+from at.core import (
+    actors,
+    files,
+    paths,
+    permissions,
+    settings,
+    tables,
+    versioning,
+)
 from at.data import schema, store
 from at.i18n import tr
 
@@ -544,6 +552,24 @@ def _declarations_extended(ask: Ask | None) -> list[Report]:
     return report
 
 
+def _versioning(ask: Ask | None) -> list[Report]:
+    """Migration ten: the folder gains the repository AT drives (§3, item 30).
+
+    A folder that already exists when versioning arrives is exactly the folder
+    this machinery is for: the person's whole life is in it and none of it has a
+    yesterday, so the repository is born here, on the first start after the
+    swap.
+
+    It answers with NO report, and that is not an omission: `versioning` is what
+    says what happened — the born sentence, or the two ways out when git is not
+    on the machine — and a report composed here would be the second wording of
+    the same fact. What belongs to the migration is the moment, and it is this
+    one.
+    """
+    versioning.start(ask)
+    return []
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, _legacy_instance),
     Migration(2, _capitalized_instance),
@@ -554,6 +580,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(7, _catalogue),
     Migration(8, _objects),
     Migration(9, _declarations_extended),
+    Migration(10, _versioning),
 )
 
 
@@ -576,6 +603,7 @@ def run(ask: Ask | None = None) -> list[Report]:
         return []
     done = applied()
     said: list[Report] = []
+    ran: list[int] = []
     for migration in MIGRATIONS:
         if migration.ident in done:
             continue
@@ -583,6 +611,16 @@ def run(ask: Ask | None = None) -> list[Report]:
             _say(report)
             said.append(report)
         _mark(migration.ident)
+        ran.append(migration.ident)
+    if ran:
+        # The catch-up is a thing that changed the folder, and an action that
+        # changes the folder ends in a version (§4, item 30). It is named by the
+        # steps that ran, because that IS what changed. The step that gives the
+        # folder its repository commits on its own — the stamp it leaves after
+        # is what this one carries.
+        versioning.commit(
+            tr("versioning.commit.migrated", ids=", ".join(str(ident) for ident in ran))
+        )
     return said
 
 

@@ -1,0 +1,30 @@
+{
+  "pt_BR": {
+    "ignore.body": "# Escrito pelo AT. Fica de fora o que é derivado ou se regenera sozinho —\nnunca o que você escreveu.\n\n# Os binários do AT e do at-deploy: atualizar é trocá-los na pasta.\n{artifacts}\n\n# O que o AT extraiu para rodar, e o que um serviço reconstrói.\nApp/caddy/\nApp/services/\n\n# Caches, e o que o escritor deixa quando um processo morre no meio.\n__pycache__/\n*.py[cod]\n*.tmp\n",
+    "born": "A pasta nasceu sob versionamento: o histórico mora em `.git/` e viaja com a cópia da pasta.",
+    "foreign": "Esta pasta carrega um repositório que não é do AT — o AT não versiona nela, e o histórico é de quem o criou.",
+    "missing": "O git não está nesta máquina: sem ele a pasta não tem histórico, e é só a última escrita.",
+    "no_git.ask": "Instalar o git (você instala; o AT não instala), ou seguir sem versionamento? [s/N] ",
+    "no_git.install": "Instale o git e rode de novo — no Linux, pelo gerenciador de pacotes da sua distribuição. O AT não instala o git sozinho.",
+    "no_git.without": "Seguindo sem versionamento: o AT e a pasta, e nada guardando o histórico. Nada mudou.",
+    "no_git.no_tty": "Sem terminal onde perguntar, nenhuma das duas saídas foi tomada. Instale o git e rode de novo, ou siga sem versionamento — a pasta não deixa de funcionar por isso.",
+    "ignore.kept": "Esta pasta já tinha um `.gitignore`: o AT não o sobrescreveu, e o que fica de fora da versão é o que já estava lá.",
+    "commit.started": "O AT pôs a pasta sob versionamento.",
+    "commit.migrated": "As migrações do AT: {ids}.",
+    "commit.file": "{path} escrito."
+  },
+  "en_US": {
+    "ignore.body": "# Written by AT. What is derived or regenerates on its own stays out —\nnever what you wrote.\n\n# AT's binary and at-deploy's: updating is replacing them in the folder.\n{artifacts}\n\n# What AT extracted to run, and what a service rebuilds.\nApp/caddy/\nApp/services/\n\n# Caches, and what the writer leaves when a process dies mid-way.\n__pycache__/\n*.py[cod]\n*.tmp\n",
+    "born": "The folder was born under versioning: the history lives in `.git/` and travels with the folder's copy.",
+    "foreign": "This folder carries a repository that is not AT's — AT does not version in it, and the history is its owner's.",
+    "missing": "Git is not on this machine: without it the folder has no history, and it is only ever the last write.",
+    "no_git.ask": "Install git (you install it; AT does not), or continue without versioning? [y/N] ",
+    "no_git.install": "Install git and run again — on Linux, from your distribution's package manager. AT does not install git on its own.",
+    "no_git.without": "Continuing without versioning: AT and the folder, with nothing keeping the history. Nothing changed.",
+    "no_git.no_tty": "With no terminal to ask in, neither way out was taken. Install git and run again, or continue without versioning — the folder does not stop working for it.",
+    "ignore.kept": "This folder already had a `.gitignore`: AT did not overwrite it, and what stays out of the version is what was already there.",
+    "commit.started": "AT put the folder under versioning.",
+    "commit.migrated": "AT's migrations: {ids}.",
+    "commit.file": "{path} written."
+  }
+}

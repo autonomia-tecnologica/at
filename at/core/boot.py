@@ -26,7 +26,7 @@ from __future__ import annotations
 import sys
 from typing import Callable
 
-from at.core import actors, files, migrations, paths, settings
+from at.core import actors, files, migrations, paths, settings, versioning
 from at.data import schema
 from at.i18n import active_code, tr, write_active
 
@@ -66,7 +66,7 @@ def ensure_working_folder(ask: Ask | None = None) -> bool:
         print(tr("boot.first_run.cancelled"))
         return False
 
-    create_working_folder()
+    create_working_folder(ask)
     print(tr("boot.first_run.created", folder=folder))
     # The folder is born without an administrator ON PURPOSE, and the person is
     # told where the first one comes from: seeding one would be a published
@@ -86,9 +86,13 @@ def catch_up(ask: Ask | None = None) -> None:
     """
     migrations.run(ask)
     migrations.offer_language(ask)
+    # The folder's versioning, on every start: the repository is born here when
+    # it could not be born before, and a folder that is not under versioning
+    # says so — rather than waiting quietly for a state nobody named.
+    versioning.notice()
 
 
-def create_working_folder() -> None:
+def create_working_folder(ask: Ask | None = None) -> None:
     """Lay down what a Working Folder is born with (§4).
 
     `exist_ok` everywhere: running AT from a checkout means the folders may
@@ -130,6 +134,11 @@ def create_working_folder() -> None:
     # exists so the FIRST start of an old folder differs from the first start of
     # a new one, and this is that difference.
     migrations.record()
+
+    # LAST, and deliberately: versioning is the folder's own repository, and it
+    # is born over a folder that is already whole — so the first commit carries
+    # a Working Folder and not the pieces it was being assembled from.
+    versioning.start(ask)
 
 
 def _write_welcome() -> None:
