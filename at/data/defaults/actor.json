@@ -44,7 +44,8 @@
       "ref": [
         "role"
       ],
-      "default": null
+      "default": null,
+      "risk": 0.95
     },
     "credential": {
       "label": "table.actor.field.credential",

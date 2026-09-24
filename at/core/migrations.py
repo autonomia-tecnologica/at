@@ -499,26 +499,32 @@ EXTENDED: dict[str, dict] = {
 }
 
 
-def _declarations_extended(ask: Ask | None) -> list[Report]:
-    """Migration nine: the declaration keys earlier swaps added in silence.
+def _extend(additions: dict[str, dict]) -> list[Report]:
+    """Grow every declaration `additions` names, and report what happened.
 
-    It is the HARD half of item 5, and the rule it exists to serve is §3's: a
-    migration never overwrites what is already there — it adds what is missing
-    and reports what it skipped. What is hard about it is that the declaration
-    is a file a PERSON edits, so every addition meets whatever they wrote there:
-    the `type` a field was missing, the `enum` of a closed vocabulary, an entry
-    of a list, a whole block a table never had.
+    It is the body the additive migrations share — nine, and thirteen — and the
+    rule it exists to serve is §3's: a migration never overwrites what is already
+    there — it adds what is missing and reports what it skipped. What is hard
+    about it is that the declaration is a file a PERSON edits, so every addition
+    meets whatever they wrote there: the `type` a field was missing, the `enum`
+    of a closed vocabulary, an entry of a list, a whole block a table never had.
 
     A collision — the path already carrying something else — is the person's
     edit winning, and it is SAID, by the name of the path it happened at, so
-    whoever reads can open the file and find it. AT does not choose between
-    its declaration and the person's: it says what it found, which is the same
-    choice it makes about the image pin (§3).
+    whoever reads can open the file and find it. AT does not choose between its
+    declaration and the person's: it says what it found, which is the same choice
+    it makes about the image pin (§3).
 
     Two other things about the folder have a report of their own, and neither is
     touched: a declaration that is not there — a deletion that was meant, and
-    `seed` does not bring back either — and one that does not parse, which is
-    the person's file and not AT's to rewrite.
+    `seed` does not bring back either — and one that does not parse, which is the
+    person's file and not AT's to rewrite.
+
+    **Sharing it does not edit a published migration.** What nine MEANT on the
+    day it shipped is `EXTENDED` and this promise; the loop is machinery, and a
+    folder that ran nine saw exactly what it would have seen with the loop
+    written out there. A release that adds something to a declaration still
+    brings its own step and its own dict, which is what the rule protects.
 
     It does not ask: a declaration of the product's own, and nothing outside the
     folder points at it (§3, migration).
@@ -527,8 +533,8 @@ def _declarations_extended(ask: Ask | None) -> list[Report]:
     collisions: list[str] = []
     missing: list[str] = []
     unreadable: list[str] = []
-    for table, additions in EXTENDED.items():
-        grown = schema.extend(table, additions)
+    for table, entries in additions.items():
+        grown = schema.extend(table, entries)
         if grown.state == "missing":
             missing.append(table)
             continue
@@ -550,6 +556,11 @@ def _declarations_extended(ask: Ask | None) -> list[Report]:
     if not report:
         report.append(("boot.migration.declarations.unchanged", {}))
     return report
+
+
+def _declarations_extended(ask: Ask | None) -> list[Report]:
+    """Migration nine: the declaration keys earlier swaps added in silence."""
+    return _extend(EXTENDED)
 
 
 def _versioning(ask: Ask | None) -> list[Report]:
@@ -646,6 +657,40 @@ def _audits(ask: Ask | None) -> list[Report]:
     return report + _hand_over(AUDIT_PERMISSIONS)
 
 
+# What THIS release adds to a declaration that is ALREADY on disk — migration
+# thirteen, and the same shape migration nine writes: the additions are written
+# the way a declaration writes itself, so the merge never has to be told which
+# kind of key it is holding.
+#
+# The addition is the field the audit line grew (§3, §4, item 15): the threshold
+# that was in force when a demand ran. The line is born with it — a folder born
+# by this release has it in `data/defaults/audit.json` — and a folder that is
+# already here catches up on the first start after the swap, which is what makes
+# the first act after an update carry the same line as every act after it.
+AUDIT_THRESHOLD: dict[str, dict] = {
+    "audit": {
+        "fields": {
+            "threshold": {
+                "label": "table.audit.field.threshold",
+                "filterable": True,
+                "searchable": True,
+            }
+        }
+    },
+}
+
+
+def _audit_threshold(ask: Ask | None) -> list[Report]:
+    """Migration thirteen: the threshold the audit line carries.
+
+    It does not ask: a declaration of the product's own, and nothing outside the
+    folder points at it (§3, migration). Rows written before it carry no
+    threshold and are read as they are stored — the field is not `required`, and
+    a log that pretended an old line had one would be a log inventing history.
+    """
+    return _extend(AUDIT_THRESHOLD)
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, _legacy_instance),
     Migration(2, _capitalized_instance),
@@ -659,6 +704,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(10, _versioning),
     Migration(11, _secrets),
     Migration(12, _audits),
+    Migration(13, _audit_threshold),
 )
 
 

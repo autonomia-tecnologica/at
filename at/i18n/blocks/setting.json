@@ -1,0 +1,22 @@
+{
+  "pt_BR": {
+    "about": "Lê e escreve as configurações.",
+    "unset": "não escolhido",
+    "unset.line": "O ajuste {setting} não foi escolhido nesta pasta.",
+    "line": "{setting}: {value}",
+    "edited": "O ajuste {setting} agora vale {value}.",
+    "error.key": "Um ajuste sem nome não ajusta nada.",
+    "error.reserved": "O ajuste {setting} é do AT, e a mão não o move.",
+    "error.arguments": "Use `setting list`, `setting view <chave>` ou `setting edit <chave> <valor>`."
+  },
+  "en_US": {
+    "about": "Reads and writes the settings.",
+    "unset": "not chosen",
+    "unset.line": "The setting {setting} was not chosen in this folder.",
+    "line": "{setting}: {value}",
+    "edited": "The setting {setting} is now {value}.",
+    "error.key": "A setting with no name adjusts nothing.",
+    "error.reserved": "The setting {setting} is AT's, and a hand does not move it.",
+    "error.arguments": "Use `setting list`, `setting view <key>` or `setting edit <key> <value>`."
+  }
+}

@@ -57,7 +57,7 @@
 
 ### The audit
 
-- Every action that enters through the core becomes **one line** in the `audit` table: what was changed (`object:action`), where (the table), when (the instant), who (the actor), through which via, and the outcome. The "why" only exists in a refusal, where it is the reason, stored as an `i18n` key; outside of it, the line does not pretend to have an intention. Cost does not enter.
+- Every action that enters through the core becomes **one line** in the `audit` table: what was changed (`object:action`), where (the table), when (the instant), who (the actor), through which via, the outcome, and the **risk threshold** that was in force when the demand ran. The "why" only exists in a refusal, where it is the reason, stored as an `i18n` key; outside of it, the line does not pretend to have an intention. Cost does not enter — the threshold is not the price of the action but the ruler it was measured against; the demand's risk and the value that raised it stay out.
 
 - **Attempt and refusal are lines**, with the outcome saying what happened — it is the attack-audit view. **A read is not a line**: reading is not doing, and auditing reads would make the trail grow faster than the use.
 

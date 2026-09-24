@@ -61,7 +61,7 @@
 
 - AT's settings live inside `App/settings.json`, inside the working folder. There live properties in key-value format. `i18n` does not live here: the translation blocks are packed into the binary and the active language lives in `App/i18n/active`.
 
-- **The settings are reachable through the core API** (`setting:read` and `setting:edit` are permissions), because that is where everything that acts passes through — including the reading of the **risk threshold** that was in force at the instant a demand ran, which is what the audit line records.
+- **The settings are reachable through the core API** (`setting:read` and `setting:edit` are permissions), because that is where everything that acts passes through — including the reading of the **risk threshold** that was in force at the instant a demand ran, which is what the audit line records. There is one door: `list` and `view` are the read and `edit` is the write, the `cli` reaches it by `setting list|view|edit` (§5: the `cli` reaches everything), and what AT writes for itself — the shape version — the door refuses.
 
 - No secret lives in `settings.json`. It holds permission and adjustment — such as the permission for an actor to come in through Basic, or the risk threshold — never the credential itself.
 

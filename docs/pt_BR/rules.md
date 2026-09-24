@@ -57,7 +57,7 @@
 
 ### A auditoria
 
-- Toda ação que entra pelo core vira **uma linha** na tabela `audit`: o que foi alterado (`objeto:ação`), onde (a tabela), quando (o instante), quem (o ator), por qual via, e o desfecho. O "porquê" só existe na recusa, onde ele é o motivo, guardado como chave de `i18n`; fora dela, a linha não finge ter intenção. Custo não entra.
+- Toda ação que entra pelo core vira **uma linha** na tabela `audit`: o que foi alterado (`objeto:ação`), onde (a tabela), quando (o instante), quem (o ator), por qual via, o desfecho, e o **limiar de risco** que valia quando a demanda correu. O "porquê" só existe na recusa, onde ele é o motivo, guardado como chave de `i18n`; fora dela, a linha não finge ter intenção. Custo não entra — o limiar não é o preço da ação, e sim a régua contra a qual ela foi medida; o risco da demanda e o valor que a levantou ficam de fora.
 
 - **Tentativa e recusa são linhas**, com o desfecho dizendo o que aconteceu — é a visão de auditoria de ataques. **Leitura não é linha**: ler não é fazer, e auditar leitura faria o rastro crescer mais rápido do que o uso.
 

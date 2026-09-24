@@ -14,7 +14,17 @@ import sys
 from collections.abc import Callable, Sequence
 
 from at import __version__, i18n
-from at.core import actors, audit, boot, files, install, migrations, paths, tables
+from at.core import (
+    actors,
+    audit,
+    boot,
+    files,
+    install,
+    migrations,
+    paths,
+    permissions,
+    tables,
+)
 from at.data import schema
 from at.i18n import tr
 from at.ui import ask as door
@@ -73,6 +83,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if word == "lang":
         return _lang(rest)
+
+    if word == permissions.SETTING:
+        return _setting(rest)
 
     # The interpreter's word is read off the tree, so a switch that turns it off
     # takes it out of the dispatch and out of the help in the same breath.
@@ -282,6 +295,32 @@ def _installed(word: str, rest: list[str]) -> int:
         # the one writer's rule — the same answer every engine gives (§3).
         print(tr("cli.error.read_only", where=error.where))
         return REFUSED
+
+
+# --------------------------------------------------------------- settings ---
+
+def _setting(rest: list[str]) -> int:
+    """`at-cli setting list|view|edit` — the settings through the core (§4).
+
+    §5 says the `cli` reaches everything, and the settings are reachable by one
+    road only: the three words are the object's own actions, read from the
+    catalogue the way a table's are, and the door is `at.ui.ask.setting`, which
+    owns the line and the version. The actor of an act typed here is the first
+    admin and the via is the terminal's — the same pair every other word of this
+    surface records, and a fact of the folder rather than of a request (§3).
+
+    The action list is `permissions.actions` and not a tuple written here: the
+    word the help offers and the word the dispatch accepts are the same list,
+    which is what keeps a spelling from dispatching without being offered.
+    """
+    action = rest[0] if rest else "list"
+    args = rest[1:] if rest else []
+    if action not in permissions.actions(permissions.SETTING):
+        print(tr("table.error.unknown_action", action=action))
+        return USAGE
+    code, answer = door.setting(action, args, actor=actors.first_admin(), via=audit.CLI)
+    print(answer)
+    return code
 
 
 # ---------------------------------------------------------- the interpreter ---

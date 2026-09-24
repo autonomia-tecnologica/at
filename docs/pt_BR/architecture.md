@@ -61,7 +61,7 @@
 
 - As configurações do AT moram dentro de `App/settings.json`, dentro da pasta de trabalho. Aí moram propriedades em formato chave-valor. `i18n` não mora aqui: os blocos de tradução são empacotados no binário e o idioma ativo mora em `App/i18n/active`.
 
-- **As configurações são alcançáveis pela API do core** (`setting:read` e `setting:edit` são permissões), porque é por ali que passa tudo o que age — inclusive a leitura do **limiar de risco** que valia no instante em que uma demanda correu, que é o que a linha da auditoria registra.
+- **As configurações são alcançáveis pela API do core** (`setting:read` e `setting:edit` são permissões), porque é por ali que passa tudo o que age — inclusive a leitura do **limiar de risco** que valia no instante em que uma demanda correu, que é o que a linha da auditoria registra. A porta é uma só: `list` e `view` são a leitura e `edit` é a escrita, a `cli` a alcança por `setting list|view|edit` (§5: a `cli` alcança tudo), e o que o AT escreve para si — a versão da forma — a porta recusa.
 
 - Nenhum segredo mora no `settings.json`. Ele guarda permissão e ajuste — como a permissão de um ator entrar por Basic, ou o limiar de risco —, nunca a credencial em si.
 

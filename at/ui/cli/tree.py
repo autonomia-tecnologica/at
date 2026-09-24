@@ -8,7 +8,10 @@ else.
 sentence is the person's. The table words are not written here at all — they come
 from `data/schema/`, which is what makes a table a table (§4). Add a
 declaration and the word appears, with its actions, in the help and in the
-dispatch at once.
+dispatch at once. The SETTINGS are the exception, and it is what the exception
+proves: they are an object of the catalogue and not a table, so the word is
+declared here (`SETTING`) and the actions it answers are still read from the
+catalogue, never listed twice.
 
 The SHAPE of the help — the node, the column, the block — is `at/ui/words.py`,
 shared with the deploy's tree, which is the other command line of the same
@@ -24,6 +27,21 @@ from at.i18n import tr
 from at.ui.words import Node, completion_words, section, width
 
 
+# The settings' word. The object is NOT a table — there is no schema to generate
+# the word from — so it is declared here, beside `lang` and `admin`, which are
+# the other words about the folder itself. What it ANSWERS is not written here:
+# `list`, `view` and `edit` are read off the catalogue (`permissions.actions`),
+# which is where an object that is not a table declares its narrowing, so the
+# help and the dispatch offer the same three words the door takes.
+SETTING = Node(
+    permissions.SETTING,
+    "setting.about",
+    tuple(
+        Node(action, f"table.action.{action}")
+        for action in permissions.actions(permissions.SETTING)
+    ),
+)
+
 WORDS: tuple[Node, ...] = (
     Node("webapp", "cli.webapp.about", (Node("run", "cli.webapp.run.about"),)),
     # The `services` word is NOT here, and its absence is the artifact boundary:
@@ -31,6 +49,7 @@ WORDS: tuple[Node, ...] = (
     # (item 27), whose own tree carries it. `at-cli` keeps the folder and the app.
     Node("admin", "cli.admin.about"),
     Node("lang", "cli.lang.about"),
+    SETTING,
     # The pair that puts the file where commands are found (§3, item 28). They
     # are words like the others here and unlike the others in `cli/main`, which
     # runs them BEFORE the Working Folder is confirmed: what they are about is

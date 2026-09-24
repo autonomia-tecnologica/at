@@ -22,13 +22,16 @@ what makes it one. What is not a table — the settings, today, and the services
 the plugins and the interpreter's vocabulary with item 11 — is declared HERE,
 because there is no other place where it exists.
 
-**A table may narrow itself, and it does it in its own declaration.** The six
+**An object may narrow itself, and it does it in its own declaration.** The six
 are the engine's, and a table whose rows are not CRUD'd has no business offering
 all six as permissions: `secret` declares `read` and `edit`, its listing is
 `secret:read` and its write is `secret:edit`, and a closing and a deletion are
-not permissions it has. What the narrowing is FOR is that the ceiling is read
-from one place — `needed` is what the route, the interpreter and the role all
-ask — so a table cannot declare itself narrow for the help and wide for a route.
+not permissions it has. An object that is not a table declares the same thing in
+the same shape, one shelf up (`NARROWED`), because it has no schema to write it
+in — the settings answer `read` and `edit` there, and their `list` and `view` are
+the one read. What the narrowing is FOR is that the ceiling is read from one
+place — `needed` is what the route, the interpreter and the role all ask — so an
+object cannot declare itself narrow for the help and wide for a route.
 
 The labels are `i18n` keys like everything else (§3): this module writes no
 sentence, and a permission without a label of its own is composed out of the
@@ -56,6 +59,24 @@ from at.i18n import tr
 # answer any more.
 DECLARED = "permissions"
 
+# The name of the settings OBJECT. It is not a table — the word names what
+# `setting:read` and `setting:edit` are about — and it is here, once, because
+# the catalogue, the tree and the risk all spell it.
+SETTING = "setting"
+
+# The objects that ARE not a table narrow themselves HERE, in the same shape a
+# table writes in its own declaration — permission → the engine actions it
+# answers — because there is no schema for the narrowing to live in. The
+# settings are the only one today: `list` and `view` are the one read, `edit` is
+# the one write, and the three are the words the `cli` offers under `setting`.
+#
+# They are read by the SAME door as a table's (`narrowed`), so the help, the
+# route and the role cannot disagree about what the object answers: a second
+# mapping beside this one would be the second home this module refuses.
+NARROWED: dict[str, dict[str, tuple[str, ...]]] = {
+    SETTING: {"read": ("list", "view"), "edit": ("edit",)},
+}
+
 # The objects that are not a table, and the actions each one accepts. §4 names
 # the settings with all the letters; the other two are what the WebApp's routes
 # reach and no table answers for — `prose` is the layer that manages every file
@@ -73,7 +94,7 @@ DECLARED = "permissions"
 # difference is the whole of `is_known`. Leaving them out would have the screens
 # arrive into a catalogue that has to grow under a live role.
 EXTRA: dict[str, tuple[str, ...]] = {
-    "setting": ("read", "edit"),
+    SETTING: ("read", "edit"),
     "prose": ("read", "edit"),
     "nlu": ("ask",),
     "service": ("read", "edit"),
@@ -137,13 +158,21 @@ def risk(permission: str) -> float:
 
 
 def narrowed(table: str) -> dict[str, tuple[str, ...]]:
-    """The permissions a table's declaration narrows it to, or `{}`.
+    """The permissions this object's declaration narrows it to, or `{}`.
+
+    The declaration is the TABLE's own (`data/schema/<table>.json`) when the
+    object is a table, and `NARROWED` when it is not — the settings are the one
+    object of the second kind, and both are read here, by the same door, so a
+    word, a route and a role never read two answers.
 
     It is read the way every other declaration is, and answered the way every
     other read of a declaration answers: what is not there, or is not shaped the
     way the declaration is, is nothing — a hand-edited file is a table the
     catalogue answers for with the engine's six, never a read that raises.
     """
+    held = NARROWED.get(table)
+    if held is not None:
+        return {permission: actions for permission, actions in held.items()}
     declared = schema.of(table) or {}
     stated = declared.get(DECLARED)
     if not isinstance(stated, dict):
@@ -159,12 +188,14 @@ def narrowed(table: str) -> dict[str, tuple[str, ...]]:
 
 
 def actions(table: str) -> tuple[str, ...]:
-    """The engine actions this table answers, in the engine's own order.
+    """The engine actions this object answers, in the engine's own order.
 
     It is what the help offers and what the dispatch accepts (`tree`), so a word
-    the table does not answer is a word no surface spells — and the order is the
+    the object does not answer is a word no surface spells — and the order is the
     engine's and not the declaration's, because the six are the engine's and a
-    table does not reorder them.
+    declaration does not reorder them. It answers for a table and for an object
+    that is not one alike, which is how the `setting` word is declared: the tree
+    reads its children from here and does not write them down.
     """
     found = narrowed(table)
     if not found:

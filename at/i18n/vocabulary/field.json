@@ -44,7 +44,8 @@
       "quando": "when",
       "via": "via",
       "motivo": "reason",
-      "razão": "reason"
+      "razão": "reason",
+      "limiar": "threshold"
     }
   },
   "en_US": {
@@ -94,7 +95,8 @@
       "when": "when",
       "via": "via",
       "reason": "reason",
-      "why": "reason"
+      "why": "reason",
+      "threshold": "threshold"
     }
   }
 }

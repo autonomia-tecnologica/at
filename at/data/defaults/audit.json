@@ -71,6 +71,11 @@
         "refused": "table.audit.field.status.refused"
       }
     },
+    "threshold": {
+      "label": "table.audit.field.threshold",
+      "filterable": true,
+      "searchable": true
+    },
     "reason": {
       "label": "table.audit.field.reason",
       "searchable": true

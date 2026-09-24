@@ -42,7 +42,18 @@ from pathlib import Path
 from unittest import mock
 
 from at import i18n
-from at.core import actors, audit, boot, files, migrations, paths, permissions, tables
+from at.core import (
+    actors,
+    audit,
+    boot,
+    files,
+    migrations,
+    paths,
+    permissions,
+    risk,
+    settings,
+    tables,
+)
 from at.data import schema, store
 from at.i18n import tr
 from at.ui import ask as door
@@ -52,8 +63,12 @@ from at.ui.cli import main, tree
 INSTANT = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$")
 
 # The fields §3 lists, and the whole of what a line may carry: the 5W2H, the
-# outcome and the reason's key — and no cost.
-FIELDS = {"id", "what", "table", "when", "actor", "via", "status", "reason"}
+# outcome, the reason's key and the bar the demand ran under — and no cost, and
+# no value of the act's.
+FIELDS = {
+    "id", "what", "table", "when", "actor", "via", "status", "reason",
+    "threshold",
+}
 
 # A fixed point in time, so the suite never reads the clock twice and disagrees
 # with itself. `moment` is the module's single clock read, and this is it frozen.
@@ -121,6 +136,7 @@ class TheDeclaration(AuditCase):
             audit.VIA,
             audit.STATUS,
             audit.REASON,
+            audit.THRESHOLD,
         ):
             with self.subTest(field=name):
                 self.assertTrue(schema.field("audit", name), name)
@@ -214,6 +230,60 @@ class TheLine(AuditCase):
             code, _ = self.words("task", "create", "--set", "text=comprar pão")
         self.assertEqual(code, 1)
         self.assertEqual(self.lines(), [])
+
+
+class TheBar(AuditCase):
+    """The threshold the demand ran under — the field §4 adds to the line (§4,
+    item 15).
+
+    "A leitura do limiar de risco que valia no instante em que uma demanda
+    correu, que é o que a linha da auditoria registra": the line says the bar the
+    folder had, and it is read when the demand ARRIVES — which matters for the
+    one act that moves the bar, and that act is the one §4 names by name.
+    """
+
+    def bar(self, value: object) -> None:
+        settings.save({**settings.load(), risk.KEY: value})
+
+    def test_the_declaration_ships_the_field(self):
+        self.assertTrue(schema.field("audit", audit.THRESHOLD))
+        self.assertNotIn("ref", schema.field("audit", audit.THRESHOLD))
+        self.assertNotIn("type", schema.field("audit", audit.THRESHOLD))
+
+    def test_the_line_carries_the_bar_the_folder_had(self):
+        self.bar(0.8)
+        self.words("task", "create", "--set", "text=comprar pão")
+        self.assertEqual(self.lines()[0][audit.THRESHOLD], 0.8)
+
+    def test_a_folder_that_never_chose_carries_the_default(self):
+        self.words("task", "create", "--set", "text=comprar pão")
+        self.assertEqual(self.lines()[0][audit.THRESHOLD], risk.DEFAULT)
+
+    def test_the_bar_is_read_when_the_demand_arrives_and_not_after(self):
+        # The one act that moves the bar is `setting:edit` on `risk_threshold`
+        # (§4), and a reading taken after the write would say the demand faced
+        # the bar it had just chosen. It faced the one that was in force.
+        self.words("setting", "edit", risk.KEY, "0.9")
+        row = self.lines()[0]
+        self.assertEqual(row[audit.WHAT], "setting:edit")
+        self.assertEqual(row[audit.THRESHOLD], risk.DEFAULT)
+
+    def test_a_refusal_carries_the_bar_too(self):
+        self.bar(0.9)
+        self.words("task", "create", "--set", "text=café", "--set", "deadline=amanhã")
+        row = self.lines()[0]
+        self.assertEqual(row[audit.STATUS], audit.REFUSED)
+        self.assertEqual(row[audit.THRESHOLD], 0.9)
+
+    def test_the_bar_is_a_number_of_the_folders(self):
+        # It is not the act's value and not a `ref`: it is the folder's own
+        # reading, written as the number it is, so a reader can compare it with
+        # a risk without parsing a sentence.
+        self.bar(0.7)
+        self.words("task", "create", "--set", "text=comprar pão")
+        row = self.lines()[0]
+        self.assertIsInstance(row[audit.THRESHOLD], float)
+        self.assertEqual(row[audit.THRESHOLD], 0.7)
 
 
 class TheInstant(AuditCase):
@@ -459,6 +529,99 @@ class TheMigration(AuditCase):
 
     def test_a_folder_born_by_this_release_has_already_run_it(self):
         self.assertIn(12, migrations.applied())
+
+
+class TheFieldMigration(AuditCase):
+    """A folder that already has the table gains the field (§3, migration 13).
+
+    A new field inside a declaration that is ALREADY on disk is the hard half of
+    item 5, and it is what migration nine's machinery is for: the addition meets
+    whatever the person wrote there, missing keys are written, and a collision is
+    THEIRS and is said out loud. Thirteen is its own step, with its own list —
+    a published migration is never edited — and nine goes on meaning what it
+    meant on the day it shipped.
+    """
+
+    def declaration(self) -> Path:
+        return paths.data_dir() / schema.SCHEMA_DIR / "audit.json"
+
+    def grown(self, update: dict | None = None) -> dict:
+        """The folder's `audit` declaration as a folder born BEFORE the field is:
+        the threshold removed (or replaced by what the person wrote), and a stamp
+        that does not name thirteen."""
+        declared = json.loads(self.declaration().read_text(encoding="utf-8"))
+        declared["fields"].pop("threshold", None)
+        if update is not None:
+            declared["fields"].update(update)
+        self.declaration().write_text(
+            json.dumps(declared, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+        migrations.stamp_file().write_text(
+            json.dumps(
+                sorted(item.ident for item in migrations.MIGRATIONS if item.ident != 13)
+            ),
+            encoding="utf-8",
+        )
+        schema.reset()
+        return declared
+
+    def test_a_folder_without_the_field_gains_it(self):
+        self.grown()
+        with redirect_stdout(StringIO()):
+            migrations.run(None)
+        self.assertIn("threshold", (schema.of("audit") or {}).get("fields") or {})
+        self.assertEqual(
+            schema.field("audit", "threshold").get("label"),
+            "table.audit.field.threshold",
+        )
+
+    def test_the_report_names_the_path_it_grew(self):
+        # A name is what a person opens the file to find: the report says WHERE
+        # the declaration grew, and not only that it did.
+        self.grown()
+        output = StringIO()
+        with redirect_stdout(output):
+            migrations.run(None)
+        self.assertIn(
+            tr("boot.migration.declarations.extended", names="audit.fields.threshold"),
+            output.getvalue(),
+        )
+
+    def test_a_field_a_person_declared_otherwise_is_the_persons(self):
+        # The collision rule of §3, on this field: the addition adds what is
+        # missing, reports what it skipped, and never chooses for the person.
+        self.grown({"threshold": {"label": "table.audit.field.reason"}})
+        output = StringIO()
+        with redirect_stdout(output):
+            migrations.run(None)
+        self.assertEqual(
+            schema.field("audit", "threshold").get("label"),
+            "table.audit.field.reason",
+        )
+        self.assertIn(
+            tr(
+                "boot.migration.declarations.collision",
+                names="audit.fields.threshold.label",
+            ),
+            output.getvalue(),
+        )
+
+    def test_a_declaration_a_person_deleted_is_not_brought_back(self):
+        self.declaration().unlink()
+        migrations.stamp_file().write_text(
+            json.dumps(
+                sorted(item.ident for item in migrations.MIGRATIONS if item.ident != 13)
+            ),
+            encoding="utf-8",
+        )
+        schema.reset()
+        with redirect_stdout(StringIO()):
+            migrations.run(None)
+        self.assertFalse(self.declaration().is_file())
+        self.assertIn(13, migrations.applied())
+
+    def test_a_folder_born_by_this_release_has_already_run_it(self):
+        self.assertIn(13, migrations.applied())
 
 
 class TheRefusalMask(AuditCase):

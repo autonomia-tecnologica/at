@@ -28,7 +28,8 @@
       "label": "table.role.field.permissions",
       "type": "list",
       "searchable": true,
-      "default": []
+      "default": [],
+      "risk": 0.95
     },
     "desc": {
       "label": "table.role.field.desc",

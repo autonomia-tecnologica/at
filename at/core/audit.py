@@ -3,8 +3,16 @@
 §3: "toda ação que entra pelo core vira uma linha". The line carries the 5W2H and
 nothing else — what (`object:action`), where (the table), when (the instant),
 who (the actor), how (the via) and the outcome — plus the reason KEY of a
-refusal, and no cost. It stores no VALUE: what it cites of a row is a raw number
-and never a `ref`, which is why the log never blocks a `delete` (§4).
+refusal, plus the **threshold that was in force** when the demand ran (§4, item
+15), and no cost. It stores no VALUE: what it cites of a row is a raw number and
+never a `ref`, which is why the log never blocks a `delete` (§4).
+
+**The threshold is not a cost, and that is why it may be here.** §3 keeps every
+price out of the log; the threshold is not the price of the act, it is the ruler
+the act was measured against — a number of the FOLDER's, not of the row's — and
+§4 names it as the one thing the line records besides the act itself. What stays
+out is the demand's own risk and the value that caused it: the log cites, it
+does not re-measure.
 
 **Where the line is born, and what that costs.** The one who knows the ACTOR and
 the VIA is a door: the engine does not know either, and a line without them would
@@ -43,7 +51,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from at.core import actors, files, tables
+from at.core import actors, files, risk, tables
 from at.data import store
 
 # The table this module is about. It is a system table like any other, and it
@@ -62,6 +70,13 @@ ACTOR = "actor"
 VIA = "via"
 STATUS = "status"
 REASON = "reason"
+
+# The bar the act ran under (§4, item 15): "a leitura do limiar de risco que
+# valia no instante em que uma demanda correu". It is not a cost OF the act — a
+# cost would be a value of the act's, and §3 keeps every value out of the log —
+# it is the ruler the demand was measured against on the day it ran, and it is
+# written down because a folder may move that ruler between two acts.
+THRESHOLD = "threshold"
 
 # The outcome: what happened. An attempt that ran is `ok`, and one the engine or
 # the ceiling refused is `refused` — §3 writes exactly two kinds of line.
@@ -118,6 +133,7 @@ def log(
     status: str = OK,
     reason: str | None = None,
     at: datetime | None = None,
+    threshold: float | None = None,
 ) -> dict | None:
     """One act, one line — or nothing at all, when the run is read-only.
 
@@ -128,6 +144,16 @@ def log(
     `reason` is the KEY of a refusal's message and never the words: §3 stores the
     "why" as an `i18n` key, so the same line reads in every language and no value
     a person typed is ever written into the log.
+
+    **The threshold is read when the DEMAND arrived, and the door hands it in.**
+    A demand is measured against the bar the folder had when it arrived — that
+    is the decision the bar is for — so the number the line carries is the one
+    the demand faced, and not the one standing after it ran. It matters for
+    exactly one act, and it is the one §4 names: `setting:edit` on
+    `risk_threshold` is a demand that MOVES the bar, and a line reading it after
+    the fact would say the demand faced the bar it had just chosen. A caller
+    that hands none — the engine, and a test — gets the folder's own reading,
+    which for every other act is the same number.
     """
     if files.readonly():
         return None
@@ -138,6 +164,7 @@ def log(
         ACTOR: actor_of(actor),
         VIA: via,
         STATUS: status,
+        THRESHOLD: risk.threshold() if threshold is None else threshold,
     }
     if reason is not None:
         values[REASON] = reason
