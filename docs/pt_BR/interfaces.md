@@ -28,7 +28,7 @@
 
 - **O teto de acesso é o que o ator pode; o limiar de risco é o que ele pode sem perguntar.** Toda demanda tem um **risco**, medido pelo core a partir do que o produto declara por ação e por argumento — nunca pelo interpretador, porque quem pede não avalia o próprio risco. O **limiar** mora nas configurações: abaixo dele a ação corre, acima dela a pessoa aprova. O risco de cada ação é ajustável em `settings.json`, e o de uma extensão é aceito no momento de instalar.
 
-- A aprovação chega por notificação, e a notificação é **campainha, não chave**: o toque abre o AT e a aprovação acontece dentro dele, com a sessão valendo. A credencial não mora na central de notificações. Um job que roda sozinho pode ser aprovado assim, e a aprovação é uma linha na auditoria, separada da demanda que esperou.
+- A aprovação chega por notificação, e a notificação é **campainha, não chave**: o toque abre o AT e a aprovação acontece dentro dele, com a sessão valendo. A credencial não mora na central de notificações. Um job que roda sozinho pode ser aprovado assim: a demanda que não pôde correr espera como uma linha da tabela `job` (§4, Tabelas), a aprovação é uma **linha própria na auditoria**, com o ator e a via por onde ela veio, separada do job que esperou — e ela é um ato com permissão própria, `job:approve` e `job:refuse`, que nenhum ator de máquina carrega.
 
 - **A função de agente é desligável**, e desligá-la é tirar o interpretador da API do core: quem não quer a camada de linguagem usa o AT sem ela e não perde mais nada além dela.
 

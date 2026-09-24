@@ -691,6 +691,49 @@ def _audit_threshold(ask: Ask | None) -> list[Report]:
     return _extend(AUDIT_THRESHOLD)
 
 
+# The table THIS release introduces — what migration fourteen names — and the
+# permissions it answers. Both lists are explicit for the reason `AUDITS` is: a
+# published migration is never edited, so the next release that brings a system
+# table brings its own step and its own names.
+#
+# The permissions are the object's OWN and not the engine's six: `job` answers a
+# read, a run and the two halves of the approval, and `permissions.NARROWED`
+# says so — a creation, an edition and a deletion are not permissions it has. A
+# role born before this swap carries none of them, and the administrator's is
+# the one that must, exactly as migrations seven, eight, eleven and twelve
+# handed over theirs.
+#
+# **`job:approve` and `job:refuse` reach the administrator and no machine**, and
+# that is the same reason §3 gives for `audit:read`: whoever can release a
+# demand learns where the bar is, and an `agent` that could release its own
+# waiting demand would have opened the door it was held behind.
+JOBS = ("job",)
+JOB_PERMISSIONS = ("job:read", "job:run", "job:approve", "job:refuse")
+
+
+def _jobs(ask: Ask | None) -> list[Report]:
+    """Migration fourteen: the `job` table, and the ceiling over it.
+
+    A folder that already exists is the one this is for: the table that holds
+    the demand that could not run has to BE there when the first demand waits,
+    and the declaration is written the way migration twelve writes one — only
+    where it is ABSENT, so a `job.json` a person edited stays theirs and a
+    deletion stays a deletion that was meant.
+
+    It does not ask: a declaration of the product's own, and the role is AT's
+    (`_hand_over`). The box the jobs live in, `data/jobs.jsonl`, is born with
+    the first demand that waits and not here — an empty file that names nothing
+    is a store a person would read as a table that exists elsewhere.
+    """
+    written = schema.seed(paths.data_dir() / schema.SCHEMA_DIR, only=JOBS)
+    report: list[Report] = []
+    if written:
+        report.append(
+            ("boot.migration.declarations.written", {"names": ", ".join(sorted(written))})
+        )
+    return report + _hand_over(JOB_PERMISSIONS)
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, _legacy_instance),
     Migration(2, _capitalized_instance),
@@ -705,6 +748,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(11, _secrets),
     Migration(12, _audits),
     Migration(13, _audit_threshold),
+    Migration(14, _jobs),
 )
 
 

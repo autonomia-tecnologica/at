@@ -32,7 +32,7 @@ from pathlib import Path
 from unittest import mock
 
 from at import i18n
-from at.core import boot, files, migrations, paths, versioning
+from at.core import audit, boot, files, migrations, paths, versioning
 from at.data import store
 from at.prose import listing as prose
 from at.ui import ask as door
@@ -44,6 +44,14 @@ from at.ui.webapp import app as webapp
 GIT = shutil.which("git")
 
 SKIP = "git is not on this machine"
+
+# The road the acts of this module come through: a person at the terminal, which
+# is what the history being tested IS — the folder's story as its owner writes it.
+# It is passed and not defaulted on purpose: `door.run`'s own default is the via
+# `engine`, the road of what acts by itself, and a demand at or above the bar
+# that comes through it WAITS as a job instead of running (§4, item 15) — which
+# is a rule about the filter, and not the subject this module is about.
+AS_A_PERSON = {"via": audit.CLI}
 
 
 def words(block: str = "versioning") -> list[str]:
@@ -85,7 +93,7 @@ class ScratchCase(unittest.TestCase):
     def wrote(self) -> None:
         """One action through the door — a row, which is a write."""
         with redirect_stdout(io.StringIO()):
-            door.run("task", "create", ["--set", "text=comprar pão"])
+            door.run("task", "create", ["--set", "text=comprar pão"], **AS_A_PERSON)
 
     def git(self, *args: str) -> str:
         return subprocess.run(
@@ -147,7 +155,9 @@ class TheRepository(ScratchCase):
     def test_an_action_ends_in_a_version_named_by_the_engine_s_own_sentence(self):
         self.born()
         with redirect_stdout(io.StringIO()):
-            _, answer, _ = door.run("task", "create", ["--set", "text=comprar pão"])
+            _, answer, _ = door.run(
+                "task", "create", ["--set", "text=comprar pão"], **AS_A_PERSON
+            )
         # The very sentence the surface printed, and not a second wording of it:
         # `git log` reads like the table's own story (§4).
         self.assertEqual(self.versions()[0], answer)
@@ -164,9 +174,9 @@ class TheRepository(ScratchCase):
         self.born()
         for value in ("primeira", "segunda"):
             with redirect_stdout(io.StringIO()):
-                door.run("task", "create", ["--set", f"text={value}"])
+                door.run("task", "create", ["--set", f"text={value}"], **AS_A_PERSON)
         with redirect_stdout(io.StringIO()):
-            door.run("task", "cancel", ["1", "--set", "reason=desisti"])
+            door.run("task", "cancel", ["1", "--set", "reason=desisti"], **AS_A_PERSON)
         self.assertEqual(
             self.versions(),
             ["TASK-1 encerrado.", "TASK-2 criado.", "TASK-1 criado.",
@@ -191,7 +201,7 @@ class TheRepository(ScratchCase):
         # version that carries it is named by the refusal itself, so the folder
         # is not left dirty by an act that was turned down.
         with self.assertRaises(Exception):
-            door.run("task", "create", ["--set", "nowhere=x"])
+            door.run("task", "create", ["--set", "nowhere=x"], **AS_A_PERSON)
         self.assertEqual(len(self.versions()), before + 1)
         self.assertEqual(
             self.versions()[0],

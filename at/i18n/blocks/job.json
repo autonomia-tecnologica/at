@@ -1,0 +1,24 @@
+{
+  "pt_BR": {
+    "about": "Os trabalhos que esperam por você: o que não pôde correr.",
+    "waits": "{id} aguarda a sua aprovação.",
+    "approved": "{id} aprovado.",
+    "refused": "{id} recusado.",
+    "error.arguments": "Use `job list`, `job view <id>`, `job run <id>`, `job approve <id>` ou `job refuse <id>`.",
+    "error.not_waiting": "O trabalho {id} não espera: ele está {status}.",
+    "error.not_approved": "O trabalho {id} não foi aprovado: ele está {status}.",
+    "error.machine": "Só quem está presente aprova: nenhum ator de máquina carrega {permission}.",
+    "error.ceiling": "O ator dono do trabalho {id} não carrega mais {permission}."
+  },
+  "en_US": {
+    "about": "The jobs that wait for you: what could not run.",
+    "waits": "{id} waits for your approval.",
+    "approved": "{id} approved.",
+    "refused": "{id} refused.",
+    "error.arguments": "Use `job list`, `job view <id>`, `job run <id>`, `job approve <id>` or `job refuse <id>`.",
+    "error.not_waiting": "The job {id} is not waiting: it is {status}.",
+    "error.not_approved": "The job {id} was not approved: it is {status}.",
+    "error.machine": "Only whoever is present approves: no machine actor carries {permission}.",
+    "error.ceiling": "The actor that owns the job {id} no longer carries {permission}."
+  }
+}

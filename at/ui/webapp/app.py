@@ -1409,7 +1409,7 @@ class Handler(BaseHTTPRequestHandler):
             # The page walks the SAME door the `cli` and the interpreter walk
             # (`at.ui.ask.run`): one engine, one version and one line per act,
             # and the record it answers with is the page's own wording of it.
-            _, _, row = door.run(
+            _, answer, row = door.run(
                 table,
                 action,
                 rest,
@@ -1422,6 +1422,16 @@ class Handler(BaseHTTPRequestHandler):
             return
         except files.ReadOnly as error:
             self._json({"error": f"read-only: {error.where}"}, 403)
+            return
+        if row is None:
+            # The demand did not run: it WAITS, and the answer names the job
+            # (§4, item 15). It is not a record and it is not an error either —
+            # the act was neither written nor refused — so what travels back is
+            # the engine's own sentence, which is what the `cli` prints and what
+            # the machine that asked it reads. A person's demand never reaches
+            # here: the act IS the approval, and this is the road of whoever
+            # cannot ask.
+            self._json({"held": True, "answer": answer})
             return
         self._json({"record": _record(table, row)})
 

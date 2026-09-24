@@ -8,7 +8,8 @@
       "ator": "actor",
       "papel": "role",
       "segredo": "secret",
-      "auditoria": "audit"
+      "auditoria": "audit",
+      "trabalho": "job"
     }
   },
   "en_US": {
@@ -20,7 +21,8 @@
       "actor": "actor",
       "role": "role",
       "secret": "secret",
-      "audit": "audit"
+      "audit": "audit",
+      "job": "job"
     }
   }
 }

@@ -20,9 +20,11 @@
 
 ### Tables
 
-- AT has an engine of its own for managing structured data. The term Table is used here, or `table` internally. The identity of the table is an id, and the id is singular (`task`, `project`, `reminder`, `secret`, `actor`, `role`, `audit`): it is what names the table everywhere, including in the command (`at-cli task list`) and in the schema. The file of rows is the one that goes in the plural. So `data/tasks.jsonl` is the table itself and `data/schema/task.json` is its schema.
+- AT has an engine of its own for managing structured data. The term Table is used here, or `table` internally. The identity of the table is an id, and the id is singular (`task`, `project`, `reminder`, `secret`, `actor`, `role`, `audit`, `job`): it is what names the table everywhere, including in the command (`at-cli task list`) and in the schema. The file of rows is the one that goes in the plural. So `data/tasks.jsonl` is the table itself and `data/schema/task.json` is its schema.
 
-- The tables `task`, `project`, `reminder`, `secret`, `actor`, `role` and `audit` are system defaults. They serve to deliver an inherent functionality. System tables are not deletable, and **the deletability of a row is declared in the table's schema**: `audit` declares that no row of its own is erased.
+- The tables `task`, `project`, `reminder`, `secret`, `actor`, `role`, `audit` and `job` are system defaults. They serve to deliver an inherent functionality. System tables are not deletable, and **the deletability of a row is declared in the table's schema**: `audit` declares that no row of its own is erased.
+
+- The `job` table holds the **demand that could not run**: the act it will perform, the arguments that act needs, the actor that owns it, the instant it arrived and the state of its life — `waiting`, `approved`, `refused` and `done`. What waits is a **job, and not a queue**: the demand that reaches the threshold becomes a row of this table, in the state that says it waits, and the answer names which. Who waits is about **presence, and not about type**: the act a person types or clicks never waits, because the act IS the approval, and what runs on its own waits at the threshold — that is why the `agente`'s demand waits and the person's does not. The job runs with the via `engine` and with the actor that owns it, so its ceiling is that actor's. The approval is a **line of its own in the audit**, with the actor and the via it came through, separate from the job that waited — and no machine actor carries `job:approve` or `job:refuse`, for the same reason §3 gives for `audit:read`.
 
 - User tables allow full CRUD of the table itself.
 
@@ -53,7 +55,7 @@
 
 - In cryptography there is no magic. Either you type the Access Phrase every time AT needs a secret, or you type it once and it holds while AT is up, or AT stores what it needs to unlock itself. **The choice is graded, and the security grade says the price of each:** typing when AT starts is `S`; keeping it unlocked in the system user's folder (`~/.at/` on Unix, `%APPDATA%` on Windows) is `A`; keeping it inside the Working Folder is `B` — and the last one is allowed, because then the folder backup carries everything.
 
-- AT runs on its own when it needs to: a scheduled job does not ask for a password on every execution. What it does not do is choose for you where the key lives.
+- AT runs on its own when it needs to: a scheduled job does not ask for a password on every execution, and its definition and its state live in the `job` table (§4, Tables). What it does not do is choose for you where the key lives.
 
 - The verification of an incoming credential does **not** depend on the Access Phrase, and that is on purpose: otherwise AT only starts when somebody types the phrase. That is why what is compared is hashed, and that is why the credential does not live in `secret`.
 

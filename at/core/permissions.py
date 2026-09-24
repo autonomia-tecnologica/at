@@ -64,17 +64,38 @@ DECLARED = "permissions"
 # the catalogue, the tree and the risk all spell it.
 SETTING = "setting"
 
-# The objects that ARE not a table narrow themselves HERE, in the same shape a
-# table writes in its own declaration — permission → the engine actions it
-# answers — because there is no schema for the narrowing to live in. The
-# settings are the only one today: `list` and `view` are the one read, `edit` is
-# the one write, and the three are the words the `cli` offers under `setting`.
+# The name of the `job` object — the table the demand that could not run becomes
+# (item 15's fourth slice). It is here for the reason `SETTING` is: the schema,
+# the tree, the risk and the door all spell it, and a second spelling would be
+# the one that drifts.
+JOB = "job"
+
+# The objects whose acts are THEIR OWN, narrowed here in the same shape a table
+# writes in its own declaration — permission → the actions it answers.
 #
-# They are read by the SAME door as a table's (`narrowed`), so the help, the
-# route and the role cannot disagree about what the object answers: a second
-# mapping beside this one would be the second home this module refuses.
+# The settings are an object that is not a table: `list` and `view` are the one
+# read, `edit` is the one write, and the three are the words the `cli` offers
+# under `setting`.
+#
+# **The `job` is a table, and it narrows itself here all the same**, because its
+# acts are not the engine's six. §4 fixes the closed list of objects and actions,
+# and the engine's six are a row's: `run` performs the act the job holds,
+# `approve` releases it and `refuse` ends it — none of the three rewrites a field
+# of the row, and none of them is a `create`, an `edit` or a `cancel`. A
+# declaration cannot name them, because `narrowed` holds a table's own
+# declaration to the engine's list and drops what the engine does not have; so
+# they are declared HERE, once, and read by the same door every other narrowing
+# is — so the help, the route, the dispatch and the role cannot disagree about
+# what the object answers: a second mapping beside this one would be the second
+# home this module refuses.
 NARROWED: dict[str, dict[str, tuple[str, ...]]] = {
     SETTING: {"read": ("list", "view"), "edit": ("edit",)},
+    JOB: {
+        "read": ("list", "view"),
+        "run": ("run",),
+        "approve": ("approve",),
+        "refuse": ("refuse",),
+    },
 }
 
 # The objects that are not a table, and the actions each one accepts. §4 names
@@ -132,8 +153,16 @@ RISK_BY_ACTION: dict[str, float] = {
     "create": RISK_WRITE,
     "edit": RISK_WRITE,
     "ask": RISK_WRITE,
+    "run": RISK_WRITE,
     "cancel": RISK_REMOVE,
     "delete": RISK_REMOVE,
+    # The two halves of the approval are ONE act with two outcomes, and they are
+    # priced together on purpose: releasing a demand the bar held is changing
+    # what the system allows, and refusing is the same word over the same demand
+    # — pricing them apart would make the cheaper one a way to learn about the
+    # dearer, which is the reason §3 keeps `audit:read` from a machine.
+    "approve": RISK_ALLOW,
+    "refuse": RISK_ALLOW,
 }
 
 # The objects whose change is "what the system allows". A read of one of them is
@@ -188,22 +217,25 @@ def narrowed(table: str) -> dict[str, tuple[str, ...]]:
 
 
 def actions(table: str) -> tuple[str, ...]:
-    """The engine actions this object answers, in the engine's own order.
+    """The words this object answers, in the order a surface offers them.
 
     It is what the help offers and what the dispatch accepts (`tree`), so a word
-    the object does not answer is a word no surface spells — and the order is the
-    engine's and not the declaration's, because the six are the engine's and a
-    declaration does not reorder them. It answers for a table and for an object
-    that is not one alike, which is how the `setting` word is declared: the tree
-    reads its children from here and does not write them down.
+    the object does not answer is a word no surface spells. The engine's six come
+    FIRST, in the engine's order, because the six are the engine's and a
+    declaration does not reorder them; what the object declares of its own — the
+    acts the engine does not have, like the `job`'s run and its two answers —
+    comes after, in the order its narrowing names them. It answers for a table
+    and for an object that is not one alike, which is how the `setting` word is
+    declared: the tree reads its children from here and does not write them
+    down.
     """
     found = narrowed(table)
     if not found:
         return tables.ACTIONS
+    declared = [action for actions in found.values() for action in actions]
+    own = [action for action in declared if action not in tables.ACTIONS]
     return tuple(
-        action
-        for action in tables.ACTIONS
-        if any(action in actions for actions in found.values())
+        [action for action in tables.ACTIONS if action in declared] + own
     )
 
 
@@ -315,10 +347,20 @@ def object_label(name: str) -> str:
     return written if written != key else name
 
 
+def action_key(name: str) -> str:
+    """The i18n key of an action's display name — the engine's own block for the
+    engine's six, and the catalogue's for the acts an object declares of itself
+    (`run`, `approve`, `refuse`).
+
+    It is public because the TREE needs the key and not the text (`Node.about` is
+    an i18n key, never the sentence), and a surface that composed the key its own
+    way would be the second home for the convention.
+    """
+    return f"table.action.{name}" if name in tables.ACTIONS else f"permission.action.{name}"
+
+
 def action_label(name: str) -> str:
     """The word for the ACTION of a permission — `Ler`, `Criar`."""
-    if name in tables.ACTIONS:
-        return tr(f"table.action.{name}")
-    key = f"permission.action.{name}"
+    key = action_key(name)
     written = tr(key)
     return written if written != key else name

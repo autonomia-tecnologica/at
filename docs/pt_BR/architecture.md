@@ -20,9 +20,11 @@
 
 ### Tabelas
 
-- O AT possui um motor próprio de gestão de dados estruturados. Aqui é usado o termo Tabela, ou `table` internamente. A identidade da tabela é um id, e o id é singular (`task`, `project`, `reminder`, `secret`, `actor`, `role`, `audit`): é ele que nomeia a tabela em todo lugar, inclusive no comando (`at-cli task list`) e no esquema. O arquivo de linhas é que vai no plural. Logo `data/tasks.jsonl` é a tabela em si e `data/schema/task.json` o esquema dela.
+- O AT possui um motor próprio de gestão de dados estruturados. Aqui é usado o termo Tabela, ou `table` internamente. A identidade da tabela é um id, e o id é singular (`task`, `project`, `reminder`, `secret`, `actor`, `role`, `audit`, `job`): é ele que nomeia a tabela em todo lugar, inclusive no comando (`at-cli task list`) e no esquema. O arquivo de linhas é que vai no plural. Logo `data/tasks.jsonl` é a tabela em si e `data/schema/task.json` o esquema dela.
 
-- As tabelas `task`, `project`, `reminder`, `secret`, `actor`, `role` e `audit` são padrão do sistema. Servem para entregar uma funcionalidade inerente. Tabelas de sistema não são deletáveis, e **a deletabilidade de uma linha é declarada no esquema da tabela**: o `audit` declara que nenhuma linha sua se apaga.
+- As tabelas `task`, `project`, `reminder`, `secret`, `actor`, `role`, `audit` e `job` são padrão do sistema. Servem para entregar uma funcionalidade inerente. Tabelas de sistema não são deletáveis, e **a deletabilidade de uma linha é declarada no esquema da tabela**: o `audit` declara que nenhuma linha sua se apaga.
+
+- A tabela `job` guarda a **demanda que não pôde correr**: o ato que ela vai cumprir, os argumentos de que ele precisa, o ator que a possui, o instante em que ela chegou e o estado da vida dela — `waiting`, `approved`, `refused` e `done`. O que espera é um **job, e não uma fila**: a demanda que chega no limiar vira uma linha dessa tabela, no estado que diz que espera, e a resposta nomeia qual. Quem espera é **presença, e não tipo**: o ato que a pessoa digita ou clica nunca espera, porque o ato É a aprovação, e o que roda sozinho espera no limiar — é por isso que a demanda do `agente` espera e a da pessoa não. O job corre com a via `engine` e com o ator que o possui, então o teto dele é o daquele ator. A aprovação é uma **linha própria na auditoria**, com o ator e a via por onde ela veio, separada do job que esperou — e nenhum ator de máquina carrega `job:approve` nem `job:refuse`, pelo mesmo motivo que o §3 dá para `audit:read`.
 
 - Tabelas de usuário permitem CRUD completa da própria tabela.
 
@@ -53,7 +55,7 @@
 
 - Em criptografia, não existe mágica. Ou você digita a Frase de Acesso toda vez que o AT precisa de um segredo, ou digita uma vez e ela vale enquanto o AT estiver de pé, ou o AT guarda o que precisa para destravar sozinho. **A escolha é graduada, e a nota de segurança diz o preço de cada uma:** digitar quando o AT sobe é `S`; guardar destravado na pasta do usuário do sistema (`~/.at/` no Unix, `%APPDATA%` no Windows) é `A`; guardar dentro da Pasta de Trabalho é `B` — e a última é permitida, porque aí o backup da pasta leva tudo.
 
-- O AT roda sozinho quando precisa: job agendado não pede senha a cada execução. O que ele não faz é escolher por você onde a chave mora.
+- O AT roda sozinho quando precisa: job agendado não pede senha a cada execução, e a definição e o estado dele moram na tabela `job` (§4, Tabelas). O que ele não faz é escolher por você onde a chave mora.
 
 - A verificação de uma credencial de entrada **não** depende da Frase de Acesso, e isso é de propósito: senão o AT só sobe quando alguém digita a frase. Por isso o que se confere é hasheado, e é por isso que a credencial não mora na `secret`.
 

@@ -462,16 +462,22 @@ class TheDoor(Closing):
 
     def test_the_help_offers_the_two_words_under_every_table_that_answers_them(self):
         # Item 6 made the closing and the deletion words of every table, and a
-        # table may still declare that it answers fewer of the engine's six
-        # (item 14b's `secret` is the first). So what the help offers is what the
-        # table ANSWERS, and a table that declares nothing answers all six.
+        # table may still narrow itself to fewer of the engine's six (item 14b's
+        # `secret` is the first, and item 15's `job` answers acts of its own
+        # besides). So what the help offers is what the table ANSWERS, and a
+        # table that narrows itself nowhere answers all six.
         code, text = self.words("help")
         self.assertEqual(code, 0)
         for node in tree.table_nodes():
             with self.subTest(table=node.name):
                 offered = [child.name for child in node.children]
                 self.assertEqual(offered, list(permissions.actions(node.name)))
-                if "permissions" not in (schema.of(node.name) or {}):
+                # The narrowing is read through the CATALOGUE's door and not off
+                # the file: an object may narrow itself in its own declaration or
+                # in `permissions.NARROWED` — the `job` does the second, because
+                # its acts are not the engine's six and no declaration can name
+                # them — and the help reads whichever one answered.
+                if not permissions.narrowed(node.name):
                     for action in ("cancel", "delete"):
                         self.assertIn(action, offered)
                 self.assertIn(f"{node.name}", text)

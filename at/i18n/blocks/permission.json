@@ -10,7 +10,10 @@
     "object.vocabulary": "Vocabulário",
     "action.read": "Ler",
     "action.edit": "Editar",
-    "action.ask": "Perguntar"
+    "action.ask": "Perguntar",
+    "action.run": "Executar",
+    "action.approve": "Aprovar",
+    "action.refuse": "Recusar"
   },
   "en_US": {
     "line": "{object}: {action}",
@@ -23,6 +26,9 @@
     "object.vocabulary": "Vocabulary",
     "action.read": "Read",
     "action.edit": "Edit",
-    "action.ask": "Ask"
+    "action.ask": "Ask",
+    "action.run": "Run",
+    "action.approve": "Approve",
+    "action.refuse": "Refuse"
   }
 }

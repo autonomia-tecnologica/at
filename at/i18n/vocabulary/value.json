@@ -43,7 +43,11 @@
       "wizard": "wizard",
       "ok": "ok",
       "recusado": "refused",
-      "recusada": "refused"
+      "recusada": "refused",
+      "esperando": "waiting",
+      "aguardando": "waiting",
+      "aprovado": "approved",
+      "aprovada": "approved"
     }
   },
   "en_US": {
@@ -80,7 +84,9 @@
       "nlu": "nlu",
       "wizard": "wizard",
       "ok": "ok",
-      "refused": "refused"
+      "refused": "refused",
+      "waiting": "waiting",
+      "approved": "approved"
     }
   }
 }

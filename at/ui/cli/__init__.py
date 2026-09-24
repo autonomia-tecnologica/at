@@ -20,6 +20,7 @@ from at.core import (
     boot,
     files,
     install,
+    jobs,
     migrations,
     paths,
     permissions,
@@ -91,6 +92,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     # takes it out of the dispatch and out of the help in the same breath.
     if word in tree.ask_words():
         return _ask(rest)
+
+    # The job's acts are not the engine's six, so the word does NOT walk the
+    # table dispatch: `run`, `approve` and `refuse` are the object's own, and the
+    # door that takes them is the one above (`door.job`). It reads its actions
+    # from the catalogue, so the help and the dispatch still offer one list.
+    if word == jobs.JOB:
+        return _job(rest)
 
     if schema.of(word) is not None:
         return _table(word, rest)
@@ -352,6 +360,44 @@ def _ask(rest: list[str]) -> int:
         print(result.proposal)
     print(result.text)
     return result.code
+
+
+# ------------------------------------------------------------------ the job ---
+
+def _job(rest: list[str]) -> int:
+    """`at-cli job list|view|run|approve|refuse` — the demand that waits (§4).
+
+    The five words are the object's OWN, read from the catalogue the way a
+    table's actions are (`permissions.actions`) and not written here, so a word
+    the help offers is a word the dispatch accepts and the other way round. What
+    they answer is `at.ui.ask.job`, which is the door: the line, the version and
+    the ceiling all live there, and this surface only chooses WHERE the words go.
+
+    The actor is the first admin and the via is the terminal's, the same pair
+    every other word of this surface records: the `cli` is local by construction,
+    and whoever is in front of it is the folder's owner (§3). The approval is
+    therefore typed by a person — which is the whole of what it means.
+    """
+    action = rest[0] if rest else "list"
+    args = rest[1:] if rest else []
+    if action not in permissions.actions(jobs.JOB):
+        print(tr("table.error.unknown_action", action=action))
+        return USAGE
+    try:
+        # The door answers its own refusals (a state the act does not answer, a
+        # machine trying the approval) as text and a code, like `setting` does;
+        # what reaches here is the engine's, raised while the job RUNS.
+        code, answer = door.job(
+            action, args, actor=actors.first_admin(), via=audit.CLI
+        )
+    except tables.TableError as error:
+        print(error)
+        return REFUSED
+    except files.ReadOnly as error:
+        print(tr("cli.error.read_only", where=error.where))
+        return REFUSED
+    print(answer)
+    return code
 
 
 # --------------------------------------------------------------- tables ---

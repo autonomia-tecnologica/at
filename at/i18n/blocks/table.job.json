@@ -1,0 +1,30 @@
+{
+  "pt_BR": {
+    "name.one": "Trabalho",
+    "name.many": "Trabalhos",
+    "field.what": "O que",
+    "field.table": "Tabela",
+    "field.arguments": "Argumentos",
+    "field.actor": "Ator",
+    "field.when": "Quando",
+    "field.status": "Estado",
+    "field.status.waiting": "Esperando",
+    "field.status.approved": "Aprovado",
+    "field.status.refused": "Recusado",
+    "field.status.done": "Feito"
+  },
+  "en_US": {
+    "name.one": "Job",
+    "name.many": "Jobs",
+    "field.what": "What",
+    "field.table": "Table",
+    "field.arguments": "Arguments",
+    "field.actor": "Actor",
+    "field.when": "When",
+    "field.status": "State",
+    "field.status.waiting": "Waiting",
+    "field.status.approved": "Approved",
+    "field.status.refused": "Refused",
+    "field.status.done": "Done"
+  }
+}

@@ -45,7 +45,9 @@
       "via": "via",
       "motivo": "reason",
       "razão": "reason",
-      "limiar": "threshold"
+      "limiar": "threshold",
+      "argumentos": "arguments",
+      "parâmetros": "arguments"
     }
   },
   "en_US": {
@@ -96,7 +98,9 @@
       "via": "via",
       "reason": "reason",
       "why": "reason",
-      "threshold": "threshold"
+      "threshold": "threshold",
+      "arguments": "arguments",
+      "parameters": "arguments"
     }
   }
 }

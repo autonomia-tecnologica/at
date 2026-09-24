@@ -168,10 +168,12 @@ class TheState(ServerCase):
         keys = [table["key"] for table in state["tables"]]
         # The order is the schema's, and the system tables arrive with the
         # product: `actor` and `role` are declared beside the three that carry
-        # the daily work (§4), and `secret` — what AT uses and nobody reads —
-        # and `audit` — the log of acts — close the list with them.
+        # the daily work (§4), and `secret` — what AT uses and nobody reads —,
+        # `audit` — the log of acts — and `job` — the demand that waits — close
+        # the list with them.
         self.assertEqual(
-            keys, ["task", "project", "reminder", "actor", "role", "secret", "audit"]
+            keys,
+            ["task", "project", "reminder", "actor", "role", "secret", "audit", "job"],
         )
         self.assertEqual(next(t for t in state["tables"] if t["key"] == "task")["count"], 1)
 
@@ -1974,6 +1976,29 @@ class TheAuditRoute(ServerCase):
             json.loads(body)["error"],
             i18n.tr("permission.denied", permission=permissions.label("audit:read")),
         )
+
+    def test_a_machine_s_demand_at_the_bar_is_answered_as_a_job(self):
+        # §4, item 15: the demand that cannot run becomes a row of `jobs`, and
+        # the answer names it. The route answers what HAPPENED instead of a
+        # record — nothing was written — and it is not an error either, because
+        # the act was neither written nor refused. A person's demand never
+        # reaches this answer: the act they type IS the approval.
+        #
+        # The demand is an `actor:edit` handing out a role, which the catalogue
+        # prices at `0.95` — the argument that raises it is the whole point of
+        # the per-argument declaration, and it is above any default bar.
+        role = tables.create("role", {"name": "runner", "permissions": "actor:edit"})
+        _, token = actors.mint_agent("runner", str(store.number_of(role)))
+        status, _, body = self.post_full(
+            "/api/table/actor",
+            {"action": "edit", "id": 1, "set": {"role": 1}},
+            headers={"Authorization": "Bearer " + token},
+        )
+        self.assertEqual(status, 200)
+        self.assertTrue(body["held"])
+        self.assertEqual(body["answer"], i18n.tr("job.waits", id="JOB-1"))
+        self.assertEqual(store.load("job")[0]["status"], "waiting")
+        self.assertEqual(self.lines(), [])
 
     def test_a_read_through_the_page_leaves_nothing(self):
         cookie = self.cookie()

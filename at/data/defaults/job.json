@@ -1,0 +1,64 @@
+{
+  "id": "job",
+  "order": 11,
+  "name": {
+    "one": "table.job.name.one",
+    "many": "table.job.name.many"
+  },
+  "store": "data/jobs.jsonl",
+  "type": "job",
+  "primary": "what",
+  "columns": [
+    "status",
+    "what",
+    "actor",
+    "when"
+  ],
+  "desc": "the demand that could not run: the act it performs, the arguments it needs, the actor that owns it and the state of its life — waiting, approved, refused or done",
+  "fields": {
+    "id": {
+      "label": "table.field.id",
+      "filterable": true,
+      "searchable": true
+    },
+    "what": {
+      "label": "table.job.field.what",
+      "filterable": true,
+      "searchable": true,
+      "required": true
+    },
+    "table": {
+      "label": "table.job.field.table",
+      "filterable": true,
+      "searchable": true,
+      "required": true
+    },
+    "arguments": {
+      "label": "table.job.field.arguments",
+      "type": "list"
+    },
+    "actor": {
+      "label": "table.job.field.actor",
+      "filterable": true
+    },
+    "when": {
+      "label": "table.job.field.when",
+      "type": "instant",
+      "filterable": true,
+      "required": true
+    },
+    "status": {
+      "label": "table.job.field.status",
+      "filterable": true,
+      "searchable": true,
+      "required": true,
+      "default": "waiting",
+      "enum": {
+        "waiting": "table.job.field.status.waiting",
+        "approved": "table.job.field.status.approved",
+        "refused": "table.job.field.status.refused",
+        "done": "table.job.field.status.done"
+      }
+    }
+  }
+}

@@ -53,6 +53,19 @@ the via is a door — so `setting` is here, beside `run`, and not inside
 value is, what a write refuses), and what this one owns is the ACT (who did it,
 by which road, and the line it owes). A read leaves nothing; an edit is a write
 like any other, and it is one line and one version.
+
+**Here is also where a demand WAITS, and it could be nowhere else.** The core
+measures the risk (`risk.demand`) — whoever asks does not assess their own — but
+the other half of the filter is a fact about presence, and presence is the
+actor and the via, which only a door has. So `holds` is the comparison, and it
+is made at the door, before the engine sees the act: the demand at or above the
+bar becomes a row of `jobs` and the answer names it.
+
+**And the job's own acts are the third door.** They are not the engine's six, so
+they do not walk `run`: `job` is here, beside `setting`, and what it owns is the
+approval as a LINE — the person's word over the demand, separate from the job
+that waited — and the run, which is the engine performing the act with the via
+`engine` and the actor that owns the job.
 """
 
 from __future__ import annotations
@@ -66,6 +79,7 @@ from at.core import (
     actors,
     audit,
     files,
+    jobs,
     permissions,
     risk,
     settings,
@@ -224,6 +238,44 @@ def execute(
     )
 
 
+def holds(measured: float, *, actor: dict | None, via: str) -> bool:
+    """Whether this demand WAITS for a person: at or above the bar, and nobody
+    present to answer (§4, item 15).
+
+    **Who waits is about presence, not about type.** An act a person types or
+    clicks never waits: the act IS the approval, and asking again would be
+    theatre. An act that runs on its own waits at or above the threshold,
+    because the one who cannot ask is the one who waits — and the two marks of
+    that absence are the via `engine`, which is AT acting by itself, and an
+    actor that is a MACHINE, which is what the `agent` of §4 is.
+
+    **A folder asking nobody is a person at the terminal**, so `None` waits for
+    nothing: §3's loopback with no credential is a person in front of the
+    machine, and the `cli` is local by construction — the same reading that
+    gives an act typed there the first admin as its actor.
+
+    It reads `risk.waits` for the number and nothing of its own: the boundary is
+    §4's (at or above it waits), the boundary the ruler draws on the page, and a
+    second comparison here would be the one that drifts.
+    """
+    return risk.waits(measured) and not present(actor, via)
+
+
+def present(actor: dict | None, via: str) -> bool:
+    """Whether a PERSON is present in this act — whoever can answer it.
+
+    The engine's via is AT acting on its own, and an actor whose `type` is not
+    `person` is the machine of §4: neither is somebody who can be asked, and
+    both are therefore what the filter holds. A row a hand edited to a type
+    nobody declares is read as a machine for the same reason every strange
+    declaration fails closed — the absence of a person is what waits, and only
+    the word `person` says one is there.
+    """
+    if via == audit.ENGINE:
+        return False
+    return actor is None or actor.get("type") == "person"
+
+
 def run(
     table: str,
     action: str,
@@ -232,6 +284,7 @@ def run(
     *,
     actor: dict | None = None,
     via: str = audit.ENGINE,
+    released: bool = False,
 ) -> tuple[int, str, dict | None]:
     """One table action, from the words of a surface or from a proposal.
 
@@ -254,14 +307,40 @@ def run(
     interpreter read them out of the sentence, and only the road by which the
     values arrived differs.
 
+    **A demand at or above the bar and with nobody present does not run**: it
+    becomes a row of `jobs`, in the state that says it waits, and the answer
+    names it. The measurement is `risk.demand` (the action and the arguments it
+    carries) read HERE, at the door, and the presence is `holds` — the core
+    measures, the door knows who is asking.
+
     The ANSWER comes back as text, never printed: where it goes is the surface's,
     and the words are the engine's in both. The ROW comes back beside it because
     the page's route answers with the RECORD it just wrote — a read, and a word
     the arguments were rejected for, answer `None`.
+
+    `released` says this demand has ALREADY faced the filter: a job that runs
+    walks this door with it (`job`, below), and the filter does not hold a
+    demand that waited and was approved a second time.
     """
     # The bar, read before anything runs: it is what this demand is measured
     # against, and the line it may leave carries it (§4, item 15).
     bar = _arrival()
+    if action in tables.WRITES and not released:
+        try:
+            values, leftovers = given if given is not None else _sets(args)
+        except tables.TableError as error:
+            # The word was given arguments it cannot read, so nothing ran and the
+            # attempt is a line — the same one the engine's own refusal would
+            # leave, written here because the parsing happens before it.
+            _line(
+                table, action, actor, via, audit.REFUSED,
+                f"table.{error.key}", str(error), threshold=bar,
+            )
+            raise
+        measured = risk.demand(table, action, values)
+        if holds(measured, actor=actor, via=via):
+            held = jobs.hold(table, action, leftovers, values, actor=actor)
+            return OK, tr("job.waits", id=tables.format_id(jobs.JOB, held["id"])), None
     try:
         code, answer, row = _acted(table, action, args, given)
     except tables.TableError as error:
@@ -345,6 +424,148 @@ def _arrival() -> float:
     bar the act left behind instead of the one that governed it.
     """
     return risk.threshold()
+
+
+# ------------------------------------------------------------------ the job ---
+
+
+def job(
+    action: str,
+    args: list[str],
+    *,
+    actor: dict | None = None,
+    via: str = audit.ENGINE,
+) -> tuple[int, str]:
+    """One act on a job — the door the `cli` reaches it by (§4, item 15).
+
+    **The reads are the engine's and leave nothing.** `list` and `view` are
+    `job:read`, §3 makes a read not an act, and the folder is not versioned for
+    one either: the job's listing is a listing, and it walks the very helpers a
+    table's does.
+
+    **The three acts are the object's own, and each leaves one line.** They are
+    not the engine's six — none of them rewrites a field of a row through the
+    surface's words — so they do not walk `run`; what they share with a table act
+    is the whole of what §3 asks (the actor, the via, the line and the version),
+    and that is written here, at the door, for the same reason it is written
+    there.
+
+    **The approval is a line of its own, and separate from the job.** §5 says it
+    with all the letters: the approval happens inside AT, with the session in
+    force, and the line carries the actor and the via it came through. It is not
+    written into the job's row — the row carries the STATE, and the trail carries
+    who decided and by which road.
+
+    A refusal is a line too, and the reason is the KEY of the sentence the person
+    read (`jobs.JobError.key`), never the words and never a value.
+    """
+    if action == "list":
+        return _listing(jobs.JOB, args)
+    if action == "view":
+        return _viewing(jobs.JOB, args)
+    if action not in jobs.ACTS or len(args) != 1:
+        return USAGE, tr("job.error.arguments")
+
+    bar = _arrival()
+    try:
+        row = jobs.find(args[0])
+    except tables.TableError as error:
+        # The id names no row of the table, and the refusal is the ENGINE's
+        # sentence — so it is a line like every other refusal (§3), with the
+        # reason's key, written here because the lookup happens before the act
+        # and the engine's own door is not the one that found it.
+        _line(
+            jobs.JOB, action, actor, via, audit.REFUSED, f"table.{error.key}",
+            str(error), threshold=bar,
+        )
+        raise
+    try:
+        if action == jobs.RUN:
+            return _ran(row)
+        _approval(action, actor)
+        settled = jobs.approve(row) if action == jobs.APPROVE else jobs.refuse(row)
+        saying = tr(
+            "job.approved" if action == jobs.APPROVE else "job.refused",
+            id=jobs.shown(settled),
+        )
+    except jobs.JobError as refused:
+        _line(
+            jobs.JOB, action, actor, via, audit.REFUSED, refused.key, str(refused),
+            threshold=bar,
+        )
+        return REFUSED, str(refused)
+    _line(jobs.JOB, action, actor, via, audit.OK, None, saying, threshold=bar)
+    return OK, saying
+
+
+def _approval(action: str, actor: dict | None) -> None:
+    """Only a person answers a waiting demand — a machine is refused by name.
+
+    §4 gives no machine actor `job:approve` or `job:refuse`, for the very reason
+    §3 gives for `audit:read`: an `agent` that could release its own waiting
+    demand would have opened the door it was held behind, and one that could read
+    its own refusals would learn where the wall is. The catalogue names the two
+    permissions and a role is what a person writes; what this door adds is the
+    one thing a role cannot say — that the word over a demand is a PRESENCE, and
+    a machine is exactly the absence of one.
+
+    A folder asking nobody keeps answering as it always did: an act typed at the
+    terminal is the owner's (§3), and `None` is the person in front of it.
+    """
+    if actor is not None and actor.get("type") != "person":
+        raise jobs.JobError(
+            "error.machine",
+            permission=permissions.label(permissions.needed(jobs.JOB, action)),
+        )
+
+
+def _ran(row: dict) -> tuple[int, str]:
+    """The job served: the engine performs the act the row holds.
+
+    **The via is `engine` and the actor is the one that OWNS the job**, so its
+    ceiling is that actor's — read here and not at the approval, because the
+    store is the truth and a role edited under a waiting job is read on the next
+    read like any other row. A job whose owner no longer carries what the act
+    demands is refused by name, and the refusal is a line — the RUN's line, with
+    the via `engine` and the owner as its actor, which is why it is written here
+    and not by the door's own handler: the refusal is not the caller's.
+
+    `released=True` is what tells `run` this demand already faced the filter: it
+    waited, a person let it through, and holding it again would be asking for the
+    same approval forever.
+
+    **The answer is the engine's** — `table.deleted`, `table.edited`, or the
+    refusal it raised — because the engine is what validated and wrote, and this
+    surface invents no second sentence for either. The row is marked `done` only
+    when the act went through: an act the engine refused leaves the job released,
+    and the refusal is its own line.
+    """
+    jobs.released(row)
+    table, action = jobs.release(row)
+    needed = permissions.needed(table, action)
+    owner = jobs.owner(row)
+    if not actors.may(owner or {}, needed):
+        refused = jobs.JobError(
+            "error.ceiling",
+            id=jobs.shown(row),
+            permission=permissions.label(needed),
+        )
+        _line(
+            jobs.JOB, jobs.RUN, owner, audit.ENGINE, audit.REFUSED,
+            refused.key, str(refused), threshold=_arrival(),
+        )
+        return REFUSED, str(refused)
+    code, answer, _ = run(
+        table,
+        action,
+        jobs.stored(row),
+        actor=owner,
+        via=audit.ENGINE,
+        released=True,
+    )
+    if code == OK:
+        jobs.done(row)
+    return code, answer
 
 
 # ------------------------------------------------------------- the settings ---

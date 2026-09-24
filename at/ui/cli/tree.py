@@ -37,7 +37,7 @@ SETTING = Node(
     permissions.SETTING,
     "setting.about",
     tuple(
-        Node(action, f"table.action.{action}")
+        Node(action, permissions.action_key(action))
         for action in permissions.actions(permissions.SETTING)
     ),
 )
@@ -88,18 +88,21 @@ def ask_words() -> tuple[str, ...]:
 def table_nodes() -> tuple[Node, ...]:
     """One root per declared table, each carrying the actions it answers.
 
-    The action list is the engine's (`tables.ACTIONS`), read through the
-    catalogue (`permissions.actions`) and not copied here: a word that
-    dispatches is a word the help offers, and a table that narrows itself — one
-    that answers `read` and `edit` and not the six — offers the narrowed list in
-    the help and in the dispatch at once, from the one declaration.
+    The action list is read through the catalogue (`permissions.actions`) and not
+    copied here: a word that dispatches is a word the help offers, and a table
+    that narrows itself — one that answers `read` and `edit` and not the six —
+    offers the narrowed list in the help and in the dispatch at once, from the
+    one declaration. The KEY of each action is `permissions.action_key` for the
+    same reason: the engine's six are named by the engine's block, and the acts
+    an object declares of its own — the `job`'s run and its two answers — by the
+    catalogue's.
     """
     return tuple(
         Node(
             str(declared["id"]),
             schema.name_key(str(declared["id"]), many=True) or str(declared["id"]),
             tuple(
-                Node(action, f"table.action.{action}")
+                Node(action, permissions.action_key(action))
                 for action in permissions.actions(str(declared["id"]))
             ),
         )

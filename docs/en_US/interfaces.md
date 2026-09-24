@@ -28,7 +28,7 @@
 
 - **The access ceiling is what the actor may do; the risk threshold is what it may do without asking.** Every demand has a **risk**, measured by the core from what the product declares per action and per argument — never by the interpreter, because whoever asks does not assess their own risk. The **threshold** lives in the settings: below it the action runs, above it the person approves. The risk of each action is adjustable in `settings.json`, and that of an extension is accepted at the moment of installing.
 
-- The approval arrives by notification, and the notification is **a doorbell, not a key**: the tap opens AT and the approval happens inside it, with the session in force. The credential does not live in the notification center. A job that runs on its own can be approved this way, and the approval is a line in the audit, separate from the demand that waited.
+- The approval arrives by notification, and the notification is **a doorbell, not a key**: the tap opens AT and the approval happens inside it, with the session in force. The credential does not live in the notification center. A job that runs on its own can be approved this way: the demand that could not run waits as a row of the `job` table (§4, Tables), the approval is a **line of its own in the audit**, with the actor and the via it came through, separate from the job that waited — and it is an act with a permission of its own, `job:approve` and `job:refuse`, which no machine actor carries.
 
 - **The agent function is switchable**, and switching it off is taking the interpreter out of the core API: whoever does not want the language layer uses AT without it and loses nothing beyond it.
 
