@@ -3,7 +3,7 @@
 Item 29 renames the product, and it decides two things no other test would
 notice:
 
-1. **the file each artifact IS** — `at` on Linux and macOS, `at.exe` on Windows,
+1. **the file each artifact IS** — `at-cli` on Linux and macOS, `at-cli.exe` on Windows,
    and the deploy wears the same pair. The rule lives in `at/core/paths.py`, the
    two specs spell it themselves (a spec runs before the package is importable)
    and §7c's WebApp container RUNS the app's file, by that name, through the
@@ -39,7 +39,7 @@ RETIRED = "B" + "ILL"
 # product), the two specs and the metadata that names the package, the entry
 # points and the payloads.
 PACKAGES = ("at", "at_deploy")
-EXTRA = ("at.spec", "at-deploy.spec", "pyproject.toml")
+EXTRA = ("at-cli.spec", "at-deploy.spec", "pyproject.toml")
 
 # The three that are not the product: the suites (their own gate reads them), the
 # vendored dependencies and the two DERIVED folders — `dist/` is what the build
@@ -82,25 +82,43 @@ def bare(line: str) -> str | None:
 
 
 class TheFileEachArtifactIs(unittest.TestCase):
-    """§3, item 29: the pair is a rule of the FILE, and the runtime depends on it."""
+    """§3, items 28 and 29: the pair is a rule of the FILE, and the runtime
+    depends on it — and the app's name is one the machine did not already have."""
 
     def test_the_two_artifacts_are_not_the_same_file(self):
         self.assertNotEqual(paths.artifact_file(), paths.deploy_file())
 
     def test_the_extension_is_the_platforms(self):
-        # `.exe` on Windows and `.bin` everywhere else, for both artifacts.
-        # `.app` was refused: on the Mac it is a BUNDLE, a folder, and the product
-        # promises ONE file (§3).
+        # `.exe` on Windows, and NO extension on Linux and macOS — where the
+        # file's name is the command and the two are the same word. `.app` was
+        # refused: on the Mac it is a BUNDLE, a folder, and the product promises
+        # ONE file (§3).
         import sys
 
-        suffix = paths.WINDOWS if sys.platform == "win32" else paths.UNIX
-        self.assertTrue(paths.artifact_file().endswith(suffix))
-        self.assertTrue(paths.deploy_file().endswith(suffix))
+        if sys.platform == "win32":
+            for name in (paths.artifact_file(), paths.deploy_file()):
+                with self.subTest(file=name):
+                    self.assertTrue(name.endswith(paths.WINDOWS))
+        else:
+            for name in (paths.artifact_file(), paths.deploy_file()):
+                with self.subTest(file=name):
+                    self.assertNotIn(".", name)
+
+    def test_the_command_is_not_a_name_a_unix_machine_already_answers(self):
+        # Item 28's whole reason, read off the declaration: `at` is the job
+        # scheduler, one package away in this very distribution, and the
+        # command is therefore NOT `at`. The gate stays a property of the SOURCE
+        # and never asks the machine's PATH — what answers there is the running
+        # machine's business, and the install is the door that reads it.
+        self.assertEqual(paths.UNIX, "")
+        self.assertNotEqual(paths.artifact_file(), "at")
+        self.assertNotEqual(paths.ARTIFACT, "at")
+        self.assertNotIn("-deploy", paths.ARTIFACT)
 
     def test_each_spec_names_the_file_of_its_artifact(self):
         # Both spellings, and not only the host's: a spec is what a release on
         # another platform runs, and that branch never executes here.
-        for name, artifact in (("at.spec", paths.ARTIFACT),
+        for name, artifact in (("at-cli.spec", paths.ARTIFACT),
                                ("at-deploy.spec", paths.DEPLOY)):
             text = (ROOT / name).read_text(encoding="utf-8")
             with self.subTest(spec=name):
@@ -128,8 +146,8 @@ class TheRetiredNameDoesNotAnswer(unittest.TestCase):
                     self.assertIsNone(
                         found,
                         f"{path.relative_to(ROOT)}:{number} names the retired "
-                        f"spelling — «{found}». `at` is the command and `AT` is the "
-                        f"brand; the only reader that stays is "
+                        f"spelling — «{found}». `at-cli` is the command and `AT` is "
+                        f"the brand; the only reader that stays is "
                         f"`paths.instance_dir()`, which finds `.bill/`, preceded by "
                         f"a dot and by nothing else",
                     )

@@ -176,7 +176,7 @@ def _folders_in_the_language(ask: Ask | None, said_so: bool = False) -> list[Rep
     speaks a language the screen does not.
 
     **`said_so` is the person answering BEFORE being asked**, and it is the one
-    thing that turns the question off: `at lang <code> --include-app-folders`
+    thing that turns the question off: `at-cli lang <code> --include-app-folders`
     is a person typing the decision, which is what the offer exists to collect.
     It is still not automatic — nothing here moves without either an answer or a
     typed flag — and what it buys is a run with no terminal to answer in.
@@ -642,7 +642,7 @@ def offer_language(ask: Ask | None, include_folders: bool = False) -> list[Repor
     the flag does not remove that guard, because the names have to match the
     language the screen is actually speaking.
 
-    **`include_folders` is `at lang <code> --include-app-folders`**, and what it
+    **`include_folders` is `at-cli lang <code> --include-app-folders`**, and what it
     turns off is the QUESTION and not the rule: the person typed the decision, so
     there is nothing left to ask, no terminal needed, and the memory of a past
     decline does not hold a second one back. The renames the engine already knew

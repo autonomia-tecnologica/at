@@ -35,7 +35,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 # The ignore lists are the suite's own data, and they live beside this module:
 # the package and the binary already keep `at.tests` out (pyproject and
-# `at.spec`), so the lists travel with the gate that reads them and with
+# `at-cli.spec`), so the lists travel with the gate that reads them and with
 # nothing else.
 HERE = Path(__file__).resolve().parent
 

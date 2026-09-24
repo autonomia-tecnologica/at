@@ -52,7 +52,7 @@ it. Putting it behind the gate is the one change here that has already been
 measured to break it.
 
 **The WebApp's image carries nothing of AT's, and that is the decision.** The
-app's own binary — `at`, never the `at-deploy` that is putting the container
+app's own binary — `at-cli`, never the `at-deploy` that is putting the container
 there — is what the container runs, reached through the folder both of them see.
 §7a's measured contract says the absolute path is a contract, and the folder is
 where the binary lives, so the Working Folder is mounted at the same path it has
@@ -363,19 +363,19 @@ class Mirror:
 
 
 def binary() -> str:
-    """The artifact the WebApp container runs — `at`, the app's own (§7c).
+    """The artifact the WebApp container runs — `at-cli`, the app's own (§7c).
 
     The binary IS the WebApp, so a container that ran another artifact would be a
     second product — and since item 27 that distinction is the whole point: what
-    runs inside is `at`, the artifact that keeps the folder and the app, and
+    runs inside is `at-cli`, the artifact that keeps the folder and the app, and
     never `at-deploy`, which is the tool that put the container there.
 
     It is reached through the folder both of them see at the same path, and the
     artifact running is NOT the one being named: `at-deploy` is what brings the
-    container up, and what goes inside it is `at` (item 27). Frozen, the app
+    container up, and what goes inside it is `at-cli` (item 27). Frozen, the app
     sits beside the deploy at the folder's root, which is where §3 puts the
-    binary and its Windows spelling. Run from a checkout, it is `dist/at.bin`,
-    which is where `at.spec` puts the artifact and which is inside the folder
+    binary and its Windows spelling. Run from a checkout, it is `dist/at-cli`,
+    which is where `at-cli.spec` puts the artifact and which is inside the folder
     too — NOT `at/`, which is the package, and a directory is not something a
     container can execute. A folder that never built the artifact names a path
     that is not there, and that is honest: the switch is what notices, by proving
@@ -383,7 +383,7 @@ def binary() -> str:
 
     **The NAME comes from `paths.artifact_file()` and is not spelled here**, and
     that is the point of it being a name at all: the same pair — `.exe` on
-    Windows, `.bin` on Linux and macOS — is what each spec writes (`at.spec`,
+    Windows, no extension on Linux and macOS — is what each spec writes (`at-cli.spec`,
     `at-deploy.spec`), and a container that guessed the spelling would be a
     container that never starts.
     """
@@ -582,7 +582,7 @@ def draw_gate() -> str:
     §7b says AT draws a secret per installation, and the installation is the
     environment's, which is the deploy tool's. The FILE it writes is still the
     Caddy's own — `App/caddy/gate`, beside the Caddyfile that is its only writer
-    — and both artifacts read it: `at` refuses the identity that arrives
+    — and both artifacts read it: `at-cli` refuses the identity that arrives
     without it, and the WebApp's check is what turns the M2M into a door.
 
     **A secret already drawn is not drawn again**, and that is the whole of the

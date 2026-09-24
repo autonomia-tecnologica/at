@@ -64,7 +64,7 @@
   /* THE SHAPE OF THE LANGUAGE at the top of the panel (2026-09-14): the page builds
      all three — the raw identifier, the language in full and the flag — and the
      the flag — and the theme chooses ONE; the other two stay at `none`.
-     A terminal speaks machine: the identifier, as `at lang` writes it. */
+     A terminal speaks machine: the identifier, as `at-cli lang` writes it. */
   --locale-raw: inline;
   --locale-name: none;
   --locale-flag: none;
@@ -118,7 +118,7 @@
      table header sticks to its edge (`th { position: sticky; top: 0 }`). With a
      single pixel of padding here, the scrolled row shows up in THAT pixel — above
      the bar, which sits slightly loose from it (2026-09-13). Whoever needs air
-     at the top brings their own (the `dl`, the `pre`, the `.back`: each one's). */
+     at-cli the top brings their own (the `dl`, the `pre`, the `.back`: each one's). */
   --body-pad: 0;
   /* THE BREATHING ROOM OF THE BOTTOM EDGE (2026-09-15): neither the main area nor
      the sidebar touches the last row of the window. It is what lifts the lying

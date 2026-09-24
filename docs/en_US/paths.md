@@ -8,7 +8,7 @@
 
 - **There is no isolation**, and AT promises none on this path: a compromise of the WebApp is a process compromise on your machine, with access to what your user has. In exchange, the default is not to leave the local loop, and leaving it demands authentication and TLS.
 
-- Leaving the local loop, here, is `at webapp --include-caddy`: the Caddy that came inside the binary terminates the TLS and publishes AT. Without the flag, the WebApp serves over HTTP and only on `127.0.0.1` — and it refuses to be asked for any other address, because exposure without TLS is what the rule above forbids. `--host` names the address AT answers on, and with the flag it has to be a name a certificate can be issued for: `0.0.0.0` is every address, and a certificate has none.
+- Leaving the local loop, here, is `at-cli webapp --include-caddy`: the Caddy that came inside the binary terminates the TLS and publishes AT. Without the flag, the WebApp serves over HTTP and only on `127.0.0.1` — and it refuses to be asked for any other address, because exposure without TLS is what the rule above forbids. `--host` names the address AT answers on, and with the flag it has to be a name a certificate can be issued for: `0.0.0.0` is every address, and a certificate has none.
 
 - The integrations (§7) can exist without a container: whoever installs the service on their own and points AT at it uses the service, knowing that the state of that service is no longer AT's business — and therefore that the folder backup does not cover it. Approving a risky demand, here, happens on the machine itself: the `notifier` service belongs to the container path.
 
@@ -22,7 +22,7 @@
 
 - The container path is what sustains the authentication gate (§7b), and it is where AT comes in as one more app behind it.
 
-- **The environment is built by a second artifact, and the folder is still served by `at`.** `at-deploy` is a `cli` and a Wizard, the way `at` is, and here the Wizard is the natural front: deploying is a SEQUENCE and not a sentence, and it walks the person through it step by step — it checks the requirements, brings one service up, moves on to the next. Every step it takes is one the `cli` takes alone, because §5's one-way rule does not bend for a second artifact. Both files are needed on this path, and `at` serves the folder with the deploy tool absent: it is `at` that reads `authenticator` and the gate secret, refuses the Forms and closes when the gate falls.
+- **The environment is built by a second artifact, and the folder is still served by `at-cli`.** `at-deploy` is a `cli` and a Wizard, the way `at-cli` is, and here the Wizard is the natural front: deploying is a SEQUENCE and not a sentence, and it walks the person through it step by step — it checks the requirements, brings one service up, moves on to the next. Every step it takes is one the `cli` takes alone, because §5's one-way rule does not bend for a second artifact. Both files are needed on this path, and `at-cli` serves the folder with the deploy tool absent: it is `at-cli` that reads `authenticator` and the gate secret, refuses the Forms and closes when the gate falls.
 
 ### The switch between paths
 

@@ -2,7 +2,7 @@
 
 Item 12 makes three promises, and this file checks each of them where it can be
 checked. The first is about the ARTIFACT: the repository carries the vendor's
-tarball byte for byte, and `at.spec` is what puts it inside the binary. The
+tarball byte for byte, and `at-cli.spec` is what puts it inside the binary. The
 second is about the FOLDER: the unpacking lands in `App/`, with the stamp that
 says which platform it serves, and it happens once — the second start writes
 nothing. The third is about what a BROWSER gets, and that one is not read off a
@@ -40,7 +40,7 @@ from at.tests import drawn_gate
 from at.ui.webapp import app as webapp
 
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = ROOT / "at.spec"
+SPEC = ROOT / "at-cli.spec"
 
 
 def free_port() -> int:
@@ -179,9 +179,9 @@ class TheSecret(FolderCase):
     """§7b's secret, on the READING side: the file the Caddy and the WebApp share.
 
     The DRAWING moved to the deploy with the rest of §7 (item 27) and is proved
-    where it lives (`at_deploy/tests/test_environment.py`): `at` is the one
+    where it lives (`at_deploy/tests/test_environment.py`): `at-cli` is the one
     that reads this file with the deploy artifact absent, and that is what is
-    written here — the state `up` leaves behind, and what `at` makes of it.
+    written here — the state `up` leaves behind, and what `at-cli` makes of it.
     """
 
     def test_the_secret_is_read_off_the_file_the_caddy_wrote(self):

@@ -145,7 +145,7 @@
   /* THE HAIRLINE THAT DISSOLVES AT THE ENDS (2026-09-15): the CHASSIS dividers do
      not end at a dry point. The vertical that separates the panel from the main
      area fades at BOTH ends; the lying one that closes the two title strips fades
-     at the two WINDOW EDGES — the near half fades on the left and stays whole on
+     at-cli the two WINDOW EDGES — the near half fades on the left and stays whole on
      the right, and the far one does the opposite, so that what you see is ONE
      line crossing the page and dissolving at the ends. It is the idiom of 2026 for
      a line nobody wants to read end to end (Linear, Vercel), and it demands the
@@ -344,7 +344,7 @@
   #kinds, .brand, .side-foot {
     transition: opacity var(--speed) var(--ease), visibility 0s; }
   /* THE TITLE STRIP: the sidebar (`nav h1`) and the main area (`header`) open
-     at the SAME height — the line the two close has to be a single one. AND THE
+     at-cli the SAME height — the line the two close has to be a single one. AND THE
      HEIGHT IS A CALCULATION, not a value the theme chooses (2026-09-15): what
      is wanted is the TOP distance to equal the LEFT one, and since what lives
      in the strip is centred, that only holds if the strip has TWICE the lateral
@@ -370,7 +370,7 @@
      `--sidebar-title-size`; `header` declared none and inherited `--font-size`, so
      the mark was silently two different lengths — `gothic` (21px title, 16px body)
      closed the sidebar at 65.60px against the bar's 63.50px, and `old-internet`
-     at 55.00 against 51.76. `paper` and `tipography` escaped only because they set
+     at-cli 55.00 against 51.76. `paper` and `tipography` escaped only because they set
      the two sizes EQUAL, which is a coincidence, not a rule. What fixes it is the
      `font-size` below: the count is computed in the title's font on both strips,
      and the bar's own words take the body's size back on the line right under the
@@ -550,7 +550,7 @@
   /* THE FILE ROW and ITS ICON (2026-09-14): every file enters the tree with a
      BUCKET — code, text, data or other —, and the bucket belongs to the SERVER,
      which is who enumerates (`data-bucket`): the page keeps no extension table
-     at all. The icon comes BEFORE the name, and who decides the SHAPE is the
+     at-cli all. The icon comes BEFORE the name, and who decides the SHAPE is the
      theme: `--icon-code|text|data|other` bring the glyph (a letter in the
      console, a graphic sign in the papers) and
      `--icon-show` says whether it appears (`inline`) or not (`none`) — a theme
@@ -1013,7 +1013,7 @@
   .dialog .refused { color: var(--danger); }
   .dialog-actions { display: flex; justify-content: flex-end; gap: var(--set-gap); }
   /* WHAT GOES WITH IT is a list of labelled counts — `dt`/`dd` is the shape the
-     at already uses for a label and its value, and `--dt-gap` the distance it
+     at-cli already uses for a label and its value, and `--dt-gap` the distance it
      already keeps between them. The gap is the pair's, in a grid of two columns:
      every label lines up with the one above it, which is what makes a list of
      counts readable at a glance instead of a sentence to be parsed. */
@@ -1330,7 +1330,7 @@
               max-height: calc(5 * 6.5em); overflow-y: auto;
               /* THE CEILING NEEDS AN EDGE TO BE A CEILING (2026-09-22). With
                  `overflow-y: auto` and nothing else, scrolling leaves a row sliced
-                 at the clip line with NO line where the slice happened — and in a
+                 at-cli the clip line with NO line where the slice happened — and in a
                  theme whose rows are BOXES (paper: `--set-border`, `--radius: 0`)
                  that reads as a rendering fault rather than as "there is more
                  above". The frame is the theme's, and `none` is the default every

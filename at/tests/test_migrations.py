@@ -259,7 +259,7 @@ class TheFoldersFollowTheLanguage(FolderCase):
         self.assertIn(i18n.tr("boot.migration.folders.no_tty"), output.getvalue())
 
     def test_a_terminal_in_front_is_asked(self):
-        # `at <word>` passes no `ask`: the door to the terminal belongs to
+        # `at-cli <word>` passes no `ask`: the door to the terminal belongs to
         # boot. Without it the migration would decline to move a folder with
         # the person sitting right in front of it.
         self.legacy("app")

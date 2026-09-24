@@ -26,7 +26,7 @@
 :root {
   /* --- colour: the raw palette --- */
   /* THE sky after the sun: deep blue at the top, indigo in the middle, dark teal
-     at the bottom — the same journey as the light `--bg`, with the light low. */
+     at-cli the bottom — the same journey as the light `--bg`, with the light low. */
   --bg: linear-gradient(168deg, #071426 0%, #0b2140 34%, #10304e 62%, #0b2c3c 100%);
   --panel: rgba(255, 255, 255, .10);   /* the surface: glass, not ink */
   --line: rgba(255, 255, 255, .16);    /* EVERY inner line: a light hairline */
@@ -109,7 +109,7 @@
   --sidebar-item-bg-hover: var(--hi);
   --sidebar-item-mark: 3px solid transparent; /* the bar on the left */
   /* The CHOSEN row is a LIT glass: in the light it was the lightest of the panel, and
-     at night it is the lightest too — a glass that caught the light, not a stroke. */
+     at-cli night it is the lightest too — a glass that caught the light, not a stroke. */
   --sidebar-item-bg-on: rgba(255, 255, 255, .20);
   --sidebar-count-color: var(--dim);
   --sidebar-sep-border: 1px solid var(--line);
@@ -152,7 +152,7 @@
      table header sticks to its edge (`th { position: sticky; top: 0 }`). With a
      single pixel of padding here, the scrolled row shows up in THAT pixel — above
      the bar, which sits slightly loose from it (2026-09-13). Whoever needs air
-     at the top brings their own (the `dl`, the `pre`, the `.back`: each one's). */
+     at-cli the top brings their own (the `dl`, the `pre`, the `.back`: each one's). */
   --body-pad: 0;
   /* THE BREATHING ROOM OF THE BOTTOM EDGE (2026-09-15): neither the main area nor
      the sidebar touches the last row of the window. It is what lifts the lying

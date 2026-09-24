@@ -28,7 +28,7 @@ WORDS: tuple[Node, ...] = (
     Node("webapp", "cli.webapp.about", (Node("run", "cli.webapp.run.about"),)),
     # The `services` word is NOT here, and its absence is the artifact boundary:
     # the environment of §7 left this binary whole and became `at-deploy`
-    # (item 27), whose own tree carries it. `at` keeps the folder and the app.
+    # (item 27), whose own tree carries it. `at-cli` keeps the folder and the app.
     Node("admin", "cli.admin.about"),
     Node("lang", "cli.lang.about"),
     # The pair that puts the file where commands are found (§3, item 28). They

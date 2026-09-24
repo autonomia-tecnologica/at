@@ -116,7 +116,7 @@ class TheRepository(ScratchCase):
         self.born()
         written = (self.root / ".gitignore").read_text(encoding="utf-8")
         self.assertEqual(written, versioning.ignore_text())
-        for derived in ("App/caddy/", "App/services/", "*.tmp", "at.bin", "at-deploy.bin"):
+        for derived in ("App/caddy/", "App/services/", "*.tmp", "at-cli", "at-deploy"):
             self.assertIn(derived, written)
         # And NEVER what the person wrote: the folders and the settings they own
         # are the history's whole point (§4).

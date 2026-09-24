@@ -91,7 +91,7 @@ registry does not name.
 
 **Exposure is the flag, and the WebApp never leaves the loop because of it.** §3
 says exposing demands authentication and TLS, that the TLS is Caddy's, and that
-Caddy travels inside this binary — so `at webapp --include-caddy` puts that
+Caddy travels inside this binary — so `at-cli webapp --include-caddy` puts that
 Caddy in front (`services/caddy.py`), and the WebApp behind it listens where it
 always did, `127.0.0.1`, on a port nobody types. What the person reaches is the
 Caddy's port, with AT's own certificate. Without the flag there is no TLS to
@@ -1283,7 +1283,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         # The ACTOR comes along: the door owns the ceiling (§5, "o que ela pode
         # propor é o que ela já pode fazer"), and it is the same door the balloon,
-        # the chat and `at ask` read — so the refusal lands on every surface at
+        # the chat and `at-cli ask` read — so the refusal lands on every surface at
         # once and none of them keeps a ceiling of its own. `None` is a folder
         # asking nobody, and there the door answers as it always did.
         result = door.ask(sentence, actor=self._actor())

@@ -88,7 +88,7 @@ docs/                          the documents
     └── backlog.md             the working document, English only: what comes next, and what counts as done
 ```
 
-The two specs — `at.spec` and `at-deploy.spec` — are the one place that says what travels inside each artifact, and they are by hand on purpose: the payloads — `at/i18n`, `at/data/defaults`, the Caddy's tarball under `at/vendor/caddy/`, and the WebApp's `assets`, `dist` and `vendor` — are invisible to an import graph, and `at/ui/webapp/` also holds `node_modules/` and `src/`, which are the derivation and must not travel. A payload left out fails silently in the WebApp (404s and a 500) and loudly everywhere else, because `tr()` raises on the first message of every command. The deploy's spec is short on purpose: it carries no WebApp, no interpreter and no Caddy, because it reaches none of them.
+The two specs — `at-cli.spec` and `at-deploy.spec` — are the one place that says what travels inside each artifact, and they are by hand on purpose: the payloads — `at/i18n`, `at/data/defaults`, the Caddy's tarball under `at/vendor/caddy/`, and the WebApp's `assets`, `dist` and `vendor` — are invisible to an import graph, and `at/ui/webapp/` also holds `node_modules/` and `src/`, which are the derivation and must not travel. A payload left out fails silently in the WebApp (404s and a 500) and loudly everywhere else, because `tr()` raises on the first message of every command. The deploy's spec is short on purpose: it carries no WebApp, no interpreter and no Caddy, because it reaches none of them.
 
 ## 2. The Working Folder
 
@@ -118,7 +118,7 @@ That listing is what a folder is born with. One folder arrives later, and only i
 the person asks for it: `App/caddy/` — the Caddy unpacked out of the binary, the
 stamp that says which platform it serves, the Caddyfile AT generates, and the
 Caddy's own storage, its local authority among the rest. It is written by
-`at webapp --include-caddy` and by nothing else (§6, §12), and it lives in
+`at-cli webapp --include-caddy` and by nothing else (§6, §12), and it lives in
 `App/` for the reason §3 gives: what was extracted to run belongs to the folder,
 so a copied folder comes back with the Caddy and the certificates it had.
 
@@ -181,12 +181,12 @@ Surfaces, and the state of each one today:
 
 | surface | how to reach it | state |
 |---|---|---|
-| `cli` | `at <word>` | `help`, `version`, `webapp`, `admin`, `lang`, `ask` and the tables |
+| `cli` | `at-cli <word>` | `help`, `version`, `webapp`, `admin`, `lang`, `ask` and the tables |
 | the deploy's `cli` | `at-deploy <word>` | `help`, `version` and the six `services` words plus the operator's two — `phone` and `credential`; it carries no WebApp, and its Wizard is item 27's third slice |
-| Wizard | — | down until item 9 reaches slice 3: `at` with no word prints the `help` |
-| WebApp | `at webapp run` | reads and edits the tables, reaches the interpreter through the chat and the balloon, refuses to come up in a folder with no administrator and — when there is one — asks for the credential and gives no answer of the API before it is proved; and it is where the ceiling is MOVED: the People entry, with the actor and the role screens, the closed list a role is written against, and the machine credential AT mints |
+| Wizard | — | down until item 9 reaches slice 3: `at-cli` with no word prints the `help` |
+| WebApp | `at-cli webapp run` | reads and edits the tables, reaches the interpreter through the chat and the balloon, refuses to come up in a folder with no administrator and — when there is one — asks for the credential and gives no answer of the API before it is proved; and it is where the ceiling is MOVED: the People entry, with the actor and the role screens, the closed list a role is written against, and the machine credential AT mints |
 
-`at webapp` serves HTTP on the local loop, and `--include-caddy` is the
+`at-cli webapp` serves HTTP on the local loop, and `--include-caddy` is the
 exposure §3 demands TLS for: the Caddy that came inside the binary terminates it
 with AT's own certificate, and the WebApp stays on `127.0.0.1` behind it. What
 `--host` names changes with the flag — the loop it may bind without it, and the
@@ -228,14 +228,14 @@ Two settings in `vite.config.ts` are not taste: the modulepreload polyfill and t
 # requirements, with version and hash (§3), because the hooks ship separately
 # from the freezer and float on their own
 .venv/bin/pip install --require-hashes -r requirements-dev.txt
-.venv/bin/pyinstaller --clean --noconfirm at.spec          # writes dist/at
+.venv/bin/pyinstaller --clean --noconfirm at-cli.spec          # writes dist/at
 .venv/bin/pyinstaller --clean --noconfirm at-deploy.spec   # writes dist/at-deploy
 ```
 
-**One release, two files, and the split IS the point.** `at` is the folder and the app — the tables, the prose, the interpreter, the WebApp and the Wizard — and `at-deploy` is §7 whole: the Podman, the VPN, the DNS, the gate's containers, the edge, the transactional switch and the only elevation in the product. It is a second artifact and not a second command of the same one because the promise §3 makes is read off what the FILE is: a `at` that *cannot* ask is a stronger promise than a `at` that does not. The elevation MOVED and is not duplicated, and what keeps the two apart is the import graph — `at_deploy` imports `at`, and `at` imports nothing of the deploy — which the suite affirms from the sources. The shared core (`paths`, `i18n`, `files`, the table engine) travels in both, collected from the same files: one source and not two.
+**One release, two files, and the split IS the point.** `at-cli` is the folder and the app — the tables, the prose, the interpreter, the WebApp and the Wizard — and `at-deploy` is §7 whole: the Podman, the VPN, the DNS, the gate's containers, the edge, the transactional switch and the only elevation in the product. It is a second artifact and not a second command of the same one because the promise §3 makes is read off what the FILE is: an `at-cli` that *cannot* ask is a stronger promise than an `at-cli` that does not. The elevation MOVED and is not duplicated, and what keeps the two apart is the import graph — `at_deploy` imports `at`, and `at` imports nothing of the deploy — which the suite affirms from the sources. The shared core (`paths`, `i18n`, `files`, the table engine) travels in both, collected from the same files: one source and not two.
 
-Each binary is one file because that is what the founding document promises (§3), and the price is that the whole payload — Tcl/Tk included — is re-extracted on every launch, so cold start is slower than a directory build would be. The deploy carries no Tcl/Tk and no WebApp: its payload is the `i18n` blocks and the table declarations, because it confirms the Working Folder exactly as `at` does and has to be able to make one.
+Each binary is one file because that is what the founding document promises (§3), and the price is that the whole payload — Tcl/Tk included — is re-extracted on every launch, so cold start is slower than a directory build would be. The deploy carries no Tcl/Tk and no WebApp: its payload is the `i18n` blocks and the table declarations, because it confirms the Working Folder exactly as `at-cli` does and has to be able to make one.
 
-**It builds on Linux only.** PyInstaller is not a cross-compiler and cannot be: it freezes by executing code from the *target* interpreter at build time. So Windows and macOS binaries need their own builds on their own runners (§9), and the two specs are written to be the files all three platforms share — `at-deploy.spec` is not a second target of `at.spec`, because a spec IS one artifact and the two differ in the entry point, the payloads and the exclusions.
+**It builds on Linux only.** PyInstaller is not a cross-compiler and cannot be: it freezes by executing code from the *target* interpreter at build time. So Windows and macOS binaries need their own builds on their own runners (§9), and the two specs are written to be the files all three platforms share — `at-deploy.spec` is not a second target of `at-cli.spec`, because a spec IS one artifact and the two differ in the entry point, the payloads and the exclusions.
 
-The Working Folder does not depend on that choice: `paths.working_folder()` resolves from `sys.executable`, which is the launched binary under `--onedir` too, so the folder the binary sits in is the folder it works in either way. Run it from anywhere and it still works on its own folder. Note that `at` with no word prints the help — the Tkinter Wizard is down until item 9's third slice —, so a headless check wants `at <word>`. The two artifacts share the folder's STATE and not an API, so `at-deploy services up` works on the same folder `at` serves, and `at` keeps serving it with the deploy absent.
+The Working Folder does not depend on that choice: `paths.working_folder()` resolves from `sys.executable`, which is the launched binary under `--onedir` too, so the folder the binary sits in is the folder it works in either way. Run it from anywhere and it still works on its own folder. Note that `at-cli` with no word prints the help — the Tkinter Wizard is down until item 9's third slice —, so a headless check wants `at-cli <word>`. The two artifacts share the folder's STATE and not an API, so `at-deploy services up` works on the same folder `at-cli` serves, and `at-cli` keeps serving it with the deploy absent.

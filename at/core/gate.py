@@ -3,14 +3,14 @@
 The container path's authenticator is an external identity provider in front of
 everything (§7b), and the APP's half of it is only this: knowing which
 authenticator this folder is on, and refusing to serve when a committed gate
-stops answering. **That half belongs to `at` and stays with it** — a folder on
-the container path is served by `at` with the deploy artifact absent, closing
+stops answering. **That half belongs to `at-cli` and stays with it** — a folder on
+the container path is served by `at-cli` with the deploy artifact absent, closing
 when the gate falls (item 27) — while the drawing, the containers and the
 transactional switch that COMMITS the record belong to `at-deploy`, which
 writes it and which is the only one that can.
 
 **The boundary between the two artifacts is the folder's state, not an API.** The
-deploy tool writes the record; `at` reads the same file. So the two halves of
+deploy tool writes the record; `at-cli` reads the same file. So the two halves of
 what this module is about are one home each: `mode`, `on_gate` and `remember`
 read and write `authenticator` in `App/settings.json`, and `portal` and
 `standing` ask the provider that the environment named through `AT_GATE`.

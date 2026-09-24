@@ -1,4 +1,4 @@
-"""The window `at` opens with no word: how it closes.
+"""The window `at-cli` opens with no word: how it closes.
 
 `test_cli` leaves this path alone on purpose — a suite that can pop a window is
 a suite that hangs on a build machine — and so does this one: the `tkinter`

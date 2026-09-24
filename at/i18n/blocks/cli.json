@@ -24,7 +24,7 @@
     "version.about": "Mostra a versão do AT.",
     "version.line": "AT {version}",
     "error.unknown_word": "Palavra desconhecida: {word}.",
-    "error.usage": "Use `at help` para ver as palavras.",
+    "error.usage": "Use `at-cli help` para ver as palavras.",
     "error.rejected_arguments": "A palavra {word} não recebe argumento nesta versão.",
     "error.read_only": "Modo somente leitura: nada foi escrito em {where}."
   },
@@ -53,7 +53,7 @@
     "version.about": "Shows AT's version.",
     "version.line": "AT {version}",
     "error.unknown_word": "Unknown word: {word}.",
-    "error.usage": "Use `at help` to see the words.",
+    "error.usage": "Use `at-cli help` to see the words.",
     "error.rejected_arguments": "The word {word} takes no argument in this version.",
     "error.read_only": "Read-only mode: nothing was written to {where}."
   }

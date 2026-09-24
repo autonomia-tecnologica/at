@@ -5,8 +5,8 @@ read as tests: the Forms stays on until the gate is PROVED in front of AT, a
 step that does not close takes everything back to the state before, and a folder
 that committed is a folder the APP closes the moment the portal stops answering.
 
-The last of those is `at`'s half and it is proved where it lives
-(`at/tests/test_gate.py`): what the deploy owns is the switch, and what `at`
+The last of those is `at-cli`'s half and it is proved where it lives
+(`at/tests/test_gate.py`): what the deploy owns is the switch, and what `at-cli`
 owns is reading the record it commits — with the deploy artifact absent.
 
 Nothing here touches a socket, and none of it needs one: the environment runs
@@ -316,7 +316,7 @@ class TheSwitch(FolderCase):
 
     def test_the_failed_switch_leaves_the_hosted_webapp_working(self):
         # "o que existia antes continua funcionando": with the environment gone
-        # and the Forms on, `at webapp` takes the loop exactly as it did before
+        # and the Forms on, `at-cli webapp` takes the loop exactly as it did before
         # — no gate stands in its way, and nothing of the container path remains
         # to refuse it.
         self.person()

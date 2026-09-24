@@ -1,8 +1,8 @@
 {
   "pt_BR": {
     "serving": "AT WebApp em {url}",
-    "port_taken": "A porta {port} já está em uso — quem responde nela não é este AT. Rode `at webapp --port <outra>` para escolher outra porta, ou feche o que está atendendo nela.",
-    "no_admin": "Esta pasta ainda não tem administrador, e sem ator nenhum o AT não expõe. Crie o primeiro com `at admin`.",
+    "port_taken": "A porta {port} já está em uso — quem responde nela não é este AT. Rode `at-cli webapp --port <outra>` para escolher outra porta, ou feche o que está atendendo nela.",
+    "no_admin": "Esta pasta ainda não tem administrador, e sem ator nenhum o AT não expõe. Crie o primeiro com `at-cli admin`.",
     "session_hint": "O nome e a credencial da linha do seu ator.",
     "session_name": "Nome",
     "session_credential": "Credencial",
@@ -84,8 +84,8 @@
   },
   "en_US": {
     "serving": "AT WebApp at {url}",
-    "port_taken": "Port {port} is already in use — whatever answers on it is not this AT. Run `at webapp --port <another>` to pick another port, or close whatever is serving on it.",
-    "no_admin": "This folder has no administrator yet, and with no actor at all AT does not expose. Create the first one with `at admin`.",
+    "port_taken": "Port {port} is already in use — whatever answers on it is not this AT. Run `at-cli webapp --port <another>` to pick another port, or close whatever is serving on it.",
+    "no_admin": "This folder has no administrator yet, and with no actor at all AT does not expose. Create the first one with `at-cli admin`.",
     "session_hint": "The name and the credential of your actor row.",
     "session_name": "Name",
     "session_credential": "Credential",

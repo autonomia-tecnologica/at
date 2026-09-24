@@ -159,7 +159,7 @@
      table header sticks to its edge (`th { position: sticky; top: 0 }`). With a
      single pixel of padding here, the scrolled row shows up in THAT pixel — above
      the bar, which sits slightly loose from it (2026-09-13). Whoever needs air
-     at the top brings their own (the `dl`, the `pre`, the `.back`: each one's). */
+     at-cli the top brings their own (the `dl`, the `pre`, the `.back`: each one's). */
   --body-pad: 0;
   /* THE BREATHING ROOM OF THE BOTTOM EDGE (2026-09-15): neither the main area nor
      the sidebar touches the last row of the window. It is what lifts the lying

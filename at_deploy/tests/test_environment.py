@@ -525,7 +525,7 @@ class TheIdentityProvider(FolderCase):
 
     def test_the_session_secret_is_drawn_once_and_kept(self):
         # Authelia signs its cookie with it: drawn per start, every session
-        # would die on the next `at services up`.
+        # would die on the next `at-cli services up`.
         self.up()
         drawn = self.secret()
         self.assertTrue(drawn.strip())
@@ -1127,7 +1127,7 @@ class TheWords(unittest.TestCase):
 
 
 class TheDoor(FolderCase):
-    """`at services` — the cli's word for the environment."""
+    """`at-cli services` — the cli's word for the environment."""
 
     def test_the_tree_offers_the_words_of_the_environment_and_the_doors_of_the_switch(self):
         node = tree.find("services")

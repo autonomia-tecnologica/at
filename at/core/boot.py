@@ -119,7 +119,7 @@ def create_working_folder(ask: Ask | None = None) -> None:
 
     # The engine's row is born with the folder, because every act of the engine
     # needs a row to be named in the `audit` (item 15). The first ADMIN is not:
-    # it is asked for, and `at admin` is the door (§3, item 9).
+    # it is asked for, and `at-cli admin` is the door (§3, item 9).
     actors.seed_engine()
 
     settings.save({"schema": settings.SCHEMA})

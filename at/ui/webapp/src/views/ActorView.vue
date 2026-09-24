@@ -5,7 +5,7 @@
 // An actor is a row of the `actor` table, and the `actor` table's own table
 // (`KindView`) already lists them; what this page adds is the one thing item 10
 // left without a surface: an `agent` could only be born through the table door
-// with the token TYPED (`at actor create`), and a token is not something a
+// with the token TYPED (`at-cli actor create`), and a token is not something a
 // person types — it is something AT draws. Here it is drawn
 // (`POST /api/agent`), shown ONCE, and taken away.
 //

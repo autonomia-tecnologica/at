@@ -87,7 +87,7 @@ docs/                          os documentos
     └── backlog.md             o documento de trabalho, só em inglês: o que vem a seguir, e o que conta como pronto
 ```
 
-Os dois specs — `at.spec` e `at-deploy.spec` — são o único lugar que diz o que viaja dentro de cada artefato, e são à mão de propósito: os conteúdos — `at/i18n`, `at/data/defaults`, o tarball do Caddy em `at/vendor/caddy/` e os `assets`, `dist` e `vendor` do WebApp — são invisíveis a um grafo de importação, e `at/ui/webapp/` também guarda `node_modules/` e `src/`, que são a derivação e não podem viajar. Um conteúdo deixado de fora falha em silêncio no WebApp (404 e um 500) e em voz alta em todo o resto, porque `tr()` levanta na primeira mensagem de cada comando. O spec do deploy é o curto de propósito: ele não carrega o WebApp, o interpretador nem o Caddy, porque não alcança nenhum deles.
+Os dois specs — `at-cli.spec` e `at-deploy.spec` — são o único lugar que diz o que viaja dentro de cada artefato, e são à mão de propósito: os conteúdos — `at/i18n`, `at/data/defaults`, o tarball do Caddy em `at/vendor/caddy/` e os `assets`, `dist` e `vendor` do WebApp — são invisíveis a um grafo de importação, e `at/ui/webapp/` também guarda `node_modules/` e `src/`, que são a derivação e não podem viajar. Um conteúdo deixado de fora falha em silêncio no WebApp (404 e um 500) e em voz alta em todo o resto, porque `tr()` levanta na primeira mensagem de cada comando. O spec do deploy é o curto de propósito: ele não carrega o WebApp, o interpretador nem o Caddy, porque não alcança nenhum deles.
 
 ## 2. A Pasta de Trabalho
 
@@ -117,7 +117,7 @@ A listagem acima é aquilo com que a pasta nasce. Uma pasta chega depois, e só 
 pessoa pedir: `App/caddy/` — o Caddy extraído de dentro do binário, o carimbo que
 diz para que plataforma ele serve, o Caddyfile que o AT gera e o armazenamento do
 próprio Caddy, a autoridade local dele entre o resto. Ela é escrita por
-`at webapp --include-caddy` e por mais nada (§6, §12), e mora em `App/` pelo
+`at-cli webapp --include-caddy` e por mais nada (§6, §12), e mora em `App/` pelo
 motivo que o §3 dá: o que foi extraído para rodar é da pasta, então uma pasta
 copiada volta com o Caddy e os certificados que ela tinha.
 
@@ -180,12 +180,12 @@ Superfícies, e o estado de cada uma hoje:
 
 | superfície | como se chega | estado |
 |---|---|---|
-| `cli` | `at <palavra>` | `help`, `version`, `webapp`, `admin`, `lang`, `ask` e as tabelas |
+| `cli` | `at-cli <palavra>` | `help`, `version`, `webapp`, `admin`, `lang`, `ask` e as tabelas |
 | `cli` do deploy | `at-deploy <palavra>` | `help`, `version` e as seis palavras de `services` mais as duas do operador — `phone` e `credential`; ele não carrega WebApp, e o Wizard dele é a fatia 3 do item 27 |
-| Wizard | — | fora do ar enquanto o item 9 não chega à fatia 3: `at` sem palavra imprime o `help` |
-| WebApp | `at webapp run` | lê e edita as tabelas, alcança o interpretador pelo chat e pelo balão, recusa subir numa pasta sem administrador e — havendo um — pede a credencial e não responde nada da API antes de ela ser provada; e é onde o teto se MOVE: a entrada Pessoas, com as telas do ator e do papel, a lista fechada contra a qual um papel se escreve, e a credencial de máquina que o AT mina |
+| Wizard | — | fora do ar enquanto o item 9 não chega à fatia 3: `at-cli` sem palavra imprime o `help` |
+| WebApp | `at-cli webapp run` | lê e edita as tabelas, alcança o interpretador pelo chat e pelo balão, recusa subir numa pasta sem administrador e — havendo um — pede a credencial e não responde nada da API antes de ela ser provada; e é onde o teto se MOVE: a entrada Pessoas, com as telas do ator e do papel, a lista fechada contra a qual um papel se escreve, e a credencial de máquina que o AT mina |
 
-`at webapp` serve em HTTP no laço local, e `--include-caddy` é a exposição para
+`at-cli webapp` serve em HTTP no laço local, e `--include-caddy` é a exposição para
 a qual o §3 exige TLS: o Caddy que veio dentro do binário o termina, com o
 certificado do próprio AT, e o WebApp fica em `127.0.0.1` atrás dele. O que o
 `--host` nomeia muda com a bandeira — o laço que ele pode amarrar sem ela, e o
@@ -227,14 +227,14 @@ Dois ajustes no `vite.config.ts` não são gosto: o polyfill de modulepreload e 
 # requirements de desenvolvimento, com versão e hash (§3), porque os hooks
 # viajam separados do freezer e flutuam sozinhos
 .venv/bin/pip install --require-hashes -r requirements-dev.txt
-.venv/bin/pyinstaller --clean --noconfirm at.spec          # escreve dist/at
+.venv/bin/pyinstaller --clean --noconfirm at-cli.spec          # escreve dist/at
 .venv/bin/pyinstaller --clean --noconfirm at-deploy.spec   # escreve dist/at-deploy
 ```
 
-**Uma release, dois arquivos, e a divisão É o ponto.** O `at` é a pasta e o app — as tabelas, a prosa, o interpretador, o WebApp e o Wizard —, e o `at-deploy` é o §7 inteiro: o Podman, a VPN, o DNS, os containers do portão, a borda, a virada transacional e a única elevação do produto. É um segundo artefato e não um segundo comando do mesmo porque a promessa que o §3 faz se lê do que o ARQUIVO é: um `at` que NÃO CONSEGUE pedir é uma promessa mais forte do que um `at` que não pede. A elevação MUDOU e não se duplica, e o que separa os dois é o grafo de importação — o `at_deploy` importa o `at`, e o `at` não importa nada do deploy —, que a suíte afirma a partir das fontes. O núcleo compartilhado (`paths`, `i18n`, `files`, o motor de tabelas) viaja nos dois, colhido dos mesmos arquivos: uma fonte e não duas.
+**Uma release, dois arquivos, e a divisão É o ponto.** O `at-cli` é a pasta e o app — as tabelas, a prosa, o interpretador, o WebApp e o Wizard —, e o `at-deploy` é o §7 inteiro: o Podman, a VPN, o DNS, os containers do portão, a borda, a virada transacional e a única elevação do produto. É um segundo artefato e não um segundo comando do mesmo porque a promessa que o §3 faz se lê do que o ARQUIVO é: um `at-cli` que NÃO CONSEGUE pedir é uma promessa mais forte do que um `at-cli` que não pede. A elevação MUDOU e não se duplica, e o que separa os dois é o grafo de importação — o `at_deploy` importa o `at`, e o `at` não importa nada do deploy —, que a suíte afirma a partir das fontes. O núcleo compartilhado (`paths`, `i18n`, `files`, o motor de tabelas) viaja nos dois, colhido dos mesmos arquivos: uma fonte e não duas.
 
-Cada binário é um arquivo só porque é o que o documento fundador promete (§3), e o preço é que todo o conteúdo — Tcl/Tk incluído — é re-extraído a cada execução, então o arranque a frio é mais lento do que seria numa construção em diretório. O deploy não carrega Tcl/Tk nem WebApp: o conteúdo dele são os blocos de `i18n` e as declarações das tabelas, porque ele confirma a Pasta de Trabalho exatamente como o `at` e precisa conseguir criar uma.
+Cada binário é um arquivo só porque é o que o documento fundador promete (§3), e o preço é que todo o conteúdo — Tcl/Tk incluído — é re-extraído a cada execução, então o arranque a frio é mais lento do que seria numa construção em diretório. O deploy não carrega Tcl/Tk nem WebApp: o conteúdo dele são os blocos de `i18n` e as declarações das tabelas, porque ele confirma a Pasta de Trabalho exatamente como o `at-cli` e precisa conseguir criar uma.
 
-**Ele constrói só no Linux.** O PyInstaller não é um compilador cruzado e não pode ser: ele congela executando código do interpretador *alvo* em tempo de construção. Então binários de Windows e macOS precisam das suas próprias construções, nos seus próprios runners (§9), e os dois specs são escritos para serem os arquivos que os três compartilham — `at-deploy.spec` não é um segundo alvo do `at.spec`, porque um spec É um artefato e os dois diferem no ponto de entrada, nos conteúdos e nas exclusões.
+**Ele constrói só no Linux.** O PyInstaller não é um compilador cruzado e não pode ser: ele congela executando código do interpretador *alvo* em tempo de construção. Então binários de Windows e macOS precisam das suas próprias construções, nos seus próprios runners (§9), e os dois specs são escritos para serem os arquivos que os três compartilham — `at-deploy.spec` não é um segundo alvo do `at-cli.spec`, porque um spec É um artefato e os dois diferem no ponto de entrada, nos conteúdos e nas exclusões.
 
-A Pasta de Trabalho não depende dessa escolha: `paths.working_folder()` resolve a partir de `sys.executable`, que é o binário lançado também sob `--onedir`, então a pasta em que o binário está é a pasta em que ele trabalha dos dois jeitos. Rode de qualquer lugar e ele continua trabalhando na pasta dele. Repare que `at` sem palavra imprime o `help` — o Wizard do Tkinter está fora do ar até a fatia 3 do item 9 —, então uma verificação sem tela quer `at <palavra>`. Os dois artefatos dividem o ESTADO da pasta e não uma API, então `at-deploy services up` trabalha na mesma pasta que o `at` serve, e o `at` continua servindo com o deploy ausente.
+A Pasta de Trabalho não depende dessa escolha: `paths.working_folder()` resolve a partir de `sys.executable`, que é o binário lançado também sob `--onedir`, então a pasta em que o binário está é a pasta em que ele trabalha dos dois jeitos. Rode de qualquer lugar e ele continua trabalhando na pasta dele. Repare que `at-cli` sem palavra imprime o `help` — o Wizard do Tkinter está fora do ar até a fatia 3 do item 9 —, então uma verificação sem tela quer `at-cli <palavra>`. Os dois artefatos dividem o ESTADO da pasta e não uma API, então `at-deploy services up` trabalha na mesma pasta que o `at-cli` serve, e o `at-cli` continua servindo com o deploy ausente.

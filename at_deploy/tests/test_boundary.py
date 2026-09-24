@@ -1,13 +1,13 @@
 """The frontier between the two artifacts, as a property of the import graph.
 
 Item 27 splits the product in two, and the promise the split is FOR is readable
-off the artifact: `at` is architected to run without administration
+off the artifact: `at-cli` is architected to run without administration
 permissions, and §3's closed list of elevations names `at-deploy` as the one
 that asks. That promise is worth nothing if it is a convention — so it is
 affirmed here, from the SOURCE, by the two questions that make it true:
 
 1. **`at` names nothing of the deploy.** Not one import statement under
-   `at/` reaches `at_deploy`, which is what makes an `at` built by
+   `at/` reaches `at_deploy`, which is what makes an `at-cli` built by
    PyInstaller carry no line of §7: the collector follows the imports, and there
    is nothing to follow.
 2. **No elevation survives in `at`.** The word `sudo`, the function that
@@ -72,7 +72,7 @@ class TheAppCannotAsk(unittest.TestCase):
                         name == "at_deploy" or name.startswith("at_deploy."),
                         f"{path.relative_to(ROOT)} imports `{name}`; the two "
                         f"artifacts share the FOLDER's state and not an API, and "
-                        f"`at` must not be able to reach §7 — the import graph "
+                        f"`at-cli` must not be able to reach §7 — the import graph "
                         f"is what keeps the elevation out of the artifact",
                     )
 
@@ -132,7 +132,7 @@ class TheTwoTreesDoNotMix(unittest.TestCase):
 
         self.assertIsNone(
             next((node for node in app_tree.WORDS if node.name == "services"), None),
-            "`at` offers the `services` word; the environment is `at-deploy`'s",
+            "`at-cli` offers the `services` word; the environment is `at-deploy`'s",
         )
         self.assertIsNotNone(deploy_tree.find("services"))
 

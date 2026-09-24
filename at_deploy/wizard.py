@@ -24,7 +24,7 @@ sentence for a failure: every act already has its own (`services.no_podman.*`,
 `services.elevation.*`, `services.switch.*`), and they are the ones the word
 printed.
 
-**The no-display answer is `at`'s own sentence** (`wizard.unavailable`): a
+**The no-display answer is `at-cli`'s own sentence** (`wizard.unavailable`): a
 machine without a display is a legitimate place to run the deploy — §5's one-way
 rule is what makes that not a loss — and what it is owed is to be told so and
 handed the words (`cli.main` prints the help after it).
@@ -79,7 +79,7 @@ def _up_settled(code: int) -> bool:
 
 def _switch_settled(code: int) -> bool:
     """Whether §6's switch committed — read off the folder's own record, which
-    is the one `at` reads too (`gate.mode`), so the screen and the app cannot
+    is the one `at-cli` reads too (`gate.mode`), so the screen and the app cannot
     disagree about which path this folder is on.
     """
     return code == OK and gate.on_gate()
@@ -317,7 +317,7 @@ def open_wizard() -> bool:
 
     `False` when there is no graphical interface to open — a machine with no
     display is a legitimate place to run the deploy, and it must be told so
-    plainly instead of by a traceback. The sentence is `at`'s own: the Control
+    plainly instead of by a traceback. The sentence is `at-cli`'s own: the Control
     Panel is one thing with two fronts, and a refusal that read differently on
     each artifact would be two.
     """

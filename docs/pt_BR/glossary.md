@@ -5,7 +5,7 @@ Cada nome tem um só significado, e nomes que se encostariam não convivem. Semp
 | termo | o que é |
 |---|---|
 | **produto** | o conjunto publicado: este repositório, os binários que ele gera e as declarações que viajam dentro |
-| **binário** | cada arquivo que o produto publica: `at`, que é a pasta e o app, e `at-deploy`, que é o §7 — e o arquivo de cada um é `at.bin` e `at-deploy.bin` no Linux e no macOS, `at.exe` e `at-deploy.exe` no Windows |
+| **binário** | cada arquivo que o produto publica: `at-cli`, que é a pasta e o app, e `at-deploy`, que é o §7 — o arquivo do app é `at-cli` no Linux e no macOS e `at-cli.exe` no Windows, e o do deploy é `at-deploy` e `at-deploy.exe`. No Linux e no macOS o nome do arquivo É o comando, e é `at-cli` e não `at` porque a máquina pode já responder por esse |
 | **Pasta de Trabalho** | a pasta onde o binário foi aberto e que passa a ser dele |
 | **camada** | cada pasta do código com um trabalho só: `core`, `data`, `prose`, `services`, `encryption`, `nlu`, `posture`, `ui`, `i18n` |
 | **superfície** | cada forma de uma pessoa alcançar o core: `cli`, WebApp e Wizard |

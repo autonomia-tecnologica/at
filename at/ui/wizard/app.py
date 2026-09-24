@@ -1,6 +1,6 @@
 """The Control Panel window.
 
-This is only the door standing open: it proves that `at` with no word has
+This is only the door standing open: it proves that `at-cli` with no word has
 where to go. What the panel governs — what is enabled, what is running, what is
 installed — arrives with the environment, and it is the last item in the
 backlog because it depends on everything before it.

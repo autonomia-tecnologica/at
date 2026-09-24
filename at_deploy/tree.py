@@ -1,7 +1,7 @@
 """The deploy's word tree — the single declaration its surfaces read.
 
-It is the same shape as `at`'s (`at/ui/words.py`) and a different list: the
-environment of §7 is this artifact's, and the words that reach it left `at`'s
+It is the same shape as `at-cli`'s (`at/ui/words.py`) and a different list: the
+environment of §7 is this artifact's, and the words that reach it left `at-cli`'s
 tree with it (item 27). One declaration, read by the help and by the dispatch at
 once — a word can never dispatch without being offered, nor the other way round.
 """

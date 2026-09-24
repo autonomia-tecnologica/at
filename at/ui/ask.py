@@ -23,7 +23,7 @@ proposal's permission for itself would be a second ceiling, and the two would
 disagree the moment a third surface reached the door. So `ask` takes the ACTOR
 that is asking, the proposal answers the action and the table, and what the actor's
 role does not carry is refused HERE — before the proposal is shown and before
-anything runs. The `balloon`, the `chat` and `at ask` read this one door.
+anything runs. The `balloon`, the `chat` and `at-cli ask` read this one door.
 
 **No actor is no ceiling, and that is not a hole.** The `cli` asks with nobody
 proved (there is no entrance in a terminal, and item 10's brief leaves the `cli`'s

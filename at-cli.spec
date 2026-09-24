@@ -1,9 +1,9 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""The build that derives `dist/at.bin` — the app's artifact (§3, item 27).
+"""The build that derives `dist/at-cli` — the app's artifact (§3, item 27).
 
 Build it from the repository root, with the PyInstaller version the README pins:
 
-    .venv/bin/pyinstaller --clean --noconfirm at.spec
+    .venv/bin/pyinstaller --clean --noconfirm at-cli.spec
 
 **There are two artifacts and two specs**, and this is the one that carries the
 folder and the app: the tables, the prose, the interpreter, the WebApp and the
@@ -44,7 +44,7 @@ ENTRY = "at/__main__.py"
 # `at/tests/test_lifecycle.py` holds the two to each other — §7c's WebApp
 # container runs this very file by this very name, so a build that named another
 # one would be a container that never starts.
-NAME = "at.exe" if sys.platform == "win32" else "at.bin"
+NAME = "at-cli.exe" if sys.platform == "win32" else "at-cli"
 
 # (source, destination). The destination is where the code looks at runtime, and
 # repeating the source's last segment is required, not redundant: a directory
@@ -75,8 +75,8 @@ DATAS = [
 a = Analysis(
     [ENTRY],
     # SPECPATH, not ".": the datas sources resolve against the spec's own
-    # directory, so an absolute `pyinstaller /path/to/at.spec` from elsewhere
-    # must find them the same way `pyinstaller at.spec` from the root does.
+    # directory, so an absolute `pyinstaller /path/to/at-cli.spec` from elsewhere
+    # must find them the same way `pyinstaller at-cli.spec` from the root does.
     pathex=[SPECPATH],
     binaries=[],
     datas=DATAS,

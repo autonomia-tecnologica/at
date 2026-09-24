@@ -8,7 +8,7 @@ real `~/.local/bin` is never named — the same seam the Podman and the git get,
 one file over.
 
 What is under test here is the install and not the first run, so the folder is
-born by hand — `App/settings.json` and a stand-in `at.bin` — instead of by
+born by hand — `App/settings.json` and a stand-in `at-cli` — instead of by
 `boot`: that keeps the case where the folder is NOT AT's yet a case a test can
 set up deliberately, which is one of the ones this item had to decide.
 
@@ -46,8 +46,8 @@ class Scratch(unittest.TestCase):
         self.home = base / "home"
         for directory in (self.root, self.bin, self.home):
             directory.mkdir()
-        (self.root / "at.bin").write_text("#!/bin/sh\n", encoding="utf-8")
-        (self.root / "at-deploy.bin").write_text("#!/bin/sh\n", encoding="utf-8")
+        (self.root / "at-cli").write_text("#!/bin/sh\n", encoding="utf-8")
+        (self.root / "at-deploy").write_text("#!/bin/sh\n", encoding="utf-8")
         (self.root / "App").mkdir()
         (self.root / "App" / "settings.json").write_text("{}\n", encoding="utf-8")
 
@@ -73,7 +73,7 @@ class Scratch(unittest.TestCase):
     # --- the doors the tests walk through ---------------------------------
 
     def act(self, rest: tuple[str, ...] = (), shell: str = "bash") -> tuple[str, str]:
-        """`at install` as the `cli` runs it, in a terminal that is not one."""
+        """`at-cli install` as the `cli` runs it, in a terminal that is not one."""
         return self.walk(main, ("install", *rest), shell)
 
     def undo(self, rest: tuple[str, ...] = (), shell: str = "bash") -> tuple[int, str]:
@@ -100,13 +100,13 @@ class Scratch(unittest.TestCase):
                                   tree.completion(), bin_flag=flag, shell=shell)
         return outcome, output.getvalue()
 
-    def link(self, word: str = "at") -> Path:
+    def link(self, word: str = "at-cli") -> Path:
         return self.bin / word
 
     def record(self) -> dict:
         return json.loads((self.root / "App" / "install.json").read_text(encoding="utf-8"))
 
-    def completion(self, word: str = "at", shell: str = "bash") -> Path:
+    def completion(self, word: str = "at-cli", shell: str = "bash") -> Path:
         where = install.completion_path(word, shell)
         assert where is not None
         return where
@@ -119,18 +119,18 @@ class TheLink(Scratch):
         code, text_ = self.act(("--bin", str(self.bin)))
         self.assertEqual(code, 0)
         self.assertTrue(self.link().is_symlink())
-        self.assertEqual(self.link().resolve(), (self.root / "at.bin").resolve())
-        self.assertIn(str(self.root / "at.bin"), text_)
+        self.assertEqual(self.link().resolve(), (self.root / "at-cli").resolve())
+        self.assertIn(str(self.root / "at-cli"), text_)
 
     def test_nothing_is_copied_out_of_the_folder(self):
         # The whole of item 28's "what the install is NOT": what leaves the
         # folder is a link, and a link is not state.
         self.act(("--bin", str(self.bin)), shell="")
         wrote = sorted(path.name for path in self.bin.iterdir())
-        self.assertEqual(wrote, ["at"])
+        self.assertEqual(wrote, ["at-cli"])
 
     def test_the_default_is_the_xdg_directory_under_the_home(self):
-        self.assertEqual(install.where("at"), self.home / ".local" / "bin")
+        self.assertEqual(install.where("at-cli"), self.home / ".local" / "bin")
 
     def test_a_directory_chosen_once_stays_chosen(self):
         # The one thing the install REMEMBERS, and the reason it remembers it:
@@ -141,16 +141,16 @@ class TheLink(Scratch):
         self.act(("--bin", str(chosen)))
         code, _ = self.act()
         self.assertEqual(code, 0)
-        self.assertTrue((chosen / "at").is_symlink())
-        self.assertFalse((self.home / ".local" / "bin" / "at").exists())
+        self.assertTrue((chosen / "at-cli").is_symlink())
+        self.assertFalse((self.home / ".local" / "bin" / "at-cli").exists())
 
     def test_installing_twice_leaves_one_link(self):
         self.act(("--bin", str(self.bin)))
         code, text_ = self.act(("--bin", str(self.bin)))
         self.assertEqual(code, 0)
-        self.assertEqual(sorted(path.name for path in self.bin.iterdir()), ["at"])
-        self.assertIn(i18n.tr("install.already", word="at",
-                              link=self.link(), target=self.root / "at.bin"), text_)
+        self.assertEqual(sorted(path.name for path in self.bin.iterdir()), ["at-cli"])
+        self.assertIn(i18n.tr("install.already", word="at-cli",
+                              link=self.link(), target=self.root / "at-cli"), text_)
 
     def test_an_update_is_the_file_replaced_and_the_link_following_it(self):
         # §3's own sentence about updating, read through the install: the new
@@ -159,18 +159,18 @@ class TheLink(Scratch):
         # install is a link and not a copy.
         self.act(("--bin", str(self.bin)))
         was = self.link().resolve()
-        (self.root / "at.bin").write_text("#!/bin/sh\n# the new build\n", encoding="utf-8")
+        (self.root / "at-cli").write_text("#!/bin/sh\n# the new build\n", encoding="utf-8")
 
         self.assertEqual(self.link().resolve(), was)
         self.assertEqual(self.link().resolve().read_text(encoding="utf-8"),
                          "#!/bin/sh\n# the new build\n")
-        self.assertEqual(sorted(path.name for path in self.bin.iterdir()), ["at"])
+        self.assertEqual(sorted(path.name for path in self.bin.iterdir()), ["at-cli"])
 
     def test_a_folder_with_no_artifact_is_refused_and_writes_nothing(self):
-        (self.root / "at.bin").unlink()
+        (self.root / "at-cli").unlink()
         code, text_ = self.act(("--bin", str(self.bin)))
         self.assertEqual(code, 1)
-        self.assertIn("at.bin", text_)
+        self.assertIn("at-cli", text_)
         self.assertFalse(self.link().exists())
         self.assertFalse((self.root / "App" / "install.json").exists())
 
@@ -209,49 +209,55 @@ class TheObstacle(Scratch):
         # points at nothing — so the door that speaks about it is this one, run
         # from the artifact that exists, and what it reads is the NAME the link
         # points at: only AT writes a link named after its own artifact.
-        self.link().symlink_to(self.root / "at.bin")
-        (self.root / "at.bin").unlink()
-        (self.root / "at.bin").write_text("#!/bin/sh\n", encoding="utf-8")
+        self.link().symlink_to(self.root / "at-cli")
+        (self.root / "at-cli").unlink()
+        (self.root / "at-cli").write_text("#!/bin/sh\n", encoding="utf-8")
 
         code, text_ = self.act(("--bin", str(self.bin)))
         self.assertEqual(code, 0)
-        self.assertEqual(self.link().resolve(), (self.root / "at.bin").resolve())
+        self.assertEqual(self.link().resolve(), (self.root / "at-cli").resolve())
         self.assertNotIn(i18n.tr("install.held.file", link=self.link()), text_)
 
 
 class TheName(Scratch):
-    """`at` is a name a UNIX machine may already answer to (§3)."""
+    """The name is `at-cli` so that `at` stays the machine's (§3, item 28).
+
+    What the rename settles is the NAME and not the DIRECTORY: a link can still
+    land where another command of its own name already answers — a file of the
+    person's, or a tool that arrives later — and what the install does there is
+    write the link and say which of the two the `PATH` makes win.
+    """
 
     def test_the_link_is_still_written_when_the_directory_is_off_the_path(self):
         with mock.patch.dict(os.environ, {"PATH": "/usr/bin"}):
             code, text_ = self.act(("--bin", str(self.bin)))
         self.assertEqual(code, 0)
         self.assertTrue(self.link().is_symlink())
-        self.assertIn(i18n.tr("install.off_path", bin=self.bin, word="at"), text_)
+        self.assertIn(i18n.tr("install.off_path", bin=self.bin, word="at-cli"), text_)
 
     def test_a_command_of_the_same_name_earlier_on_the_path_wins(self):
         earlier = Path(self.scratch.name) / "earlier"
         earlier.mkdir()
-        other = earlier / "at"
+        other = earlier / "at-cli"
         other.write_text("#!/bin/sh\n", encoding="utf-8")
         other.chmod(other.stat().st_mode | stat.S_IXUSR)
         with mock.patch.dict(os.environ, {"PATH": f"{earlier}{os.pathsep}{self.bin}"}):
             code, text_ = self.act(("--bin", str(self.bin)))
         self.assertEqual(code, 0)
         self.assertTrue(self.link().is_symlink())
-        self.assertIn(i18n.tr("install.collision.shadowed", word="at",
+        self.assertIn(i18n.tr("install.collision.shadowed", word="at-cli",
                               other=other, bin=self.bin), text_)
 
     def test_a_command_of_the_same_name_later_on_the_path_is_shadowed(self):
         later = Path(self.scratch.name) / "later"
         later.mkdir()
-        other = later / "at"
+        other = later / "at-cli"
         other.write_text("#!/bin/sh\n", encoding="utf-8")
         other.chmod(other.stat().st_mode | stat.S_IXUSR)
         with mock.patch.dict(os.environ, {"PATH": f"{self.bin}{os.pathsep}{later}"}):
             code, text_ = self.act(("--bin", str(self.bin)))
         self.assertEqual(code, 0)
-        self.assertIn(i18n.tr("install.collision.shadowing", word="at",
+        self.assertIn(i18n.tr("install.collision.shadowing", word="at-cli",
                               other=other, bin=self.bin), text_)
 
     def test_ats_own_link_is_not_a_collision(self):
@@ -262,7 +268,7 @@ class TheName(Scratch):
         self.act(("--bin", str(self.bin)))
         code, text_ = self.act(("--bin", str(self.bin)))
         self.assertEqual(code, 0)
-        self.assertNotIn(i18n.tr("install.off_path", bin=self.bin, word="at"), text_)
+        self.assertNotIn(i18n.tr("install.off_path", bin=self.bin, word="at-cli"), text_)
         self.assertNotIn("collision", text_)
 
 
@@ -272,9 +278,9 @@ class TheRecord(Scratch):
     def test_the_record_lands_in_app(self):
         self.act(("--bin", str(self.bin)))
         remembered = self.record()
-        self.assertEqual(remembered["at"]["bin"], str(self.bin))
-        self.assertIn(str(self.link()), remembered["at"]["wrote"])
-        self.assertIn(str(self.completion()), remembered["at"]["wrote"])
+        self.assertEqual(remembered["at-cli"]["bin"], str(self.bin))
+        self.assertIn(str(self.link()), remembered["at-cli"]["wrote"])
+        self.assertIn(str(self.completion()), remembered["at-cli"]["wrote"])
 
     def test_a_folder_that_is_not_ats_yet_is_told_and_records_nothing(self):
         # The install reads the folder from where the ARTIFACT is, and a folder
@@ -293,7 +299,7 @@ class TheRecord(Scratch):
 
     def test_a_corrupt_record_falls_back_to_the_default(self):
         (self.root / "App" / "install.json").write_text("{not json", encoding="utf-8")
-        self.assertEqual(install.where("at"), self.home / ".local" / "bin")
+        self.assertEqual(install.where("at-cli"), self.home / ".local" / "bin")
 
 
 class TheCompletion(Scratch):
@@ -311,7 +317,10 @@ class TheCompletion(Scratch):
     def test_the_zsh_completion_is_a_compdef_file(self):
         self.act(("--bin", str(self.bin)), shell="zsh")
         script = self.completion(shell="zsh").read_text(encoding="utf-8")
-        self.assertTrue(script.startswith("#compdef at\n"))
+        # The word comes from the declaration and not from a literal here: the
+        # completion has to name whatever command the install writes, and
+        # `test_names` is where that name is held.
+        self.assertTrue(script.startswith(f"#compdef {paths.ARTIFACT}\n"))
         self.assertIn("_describe", script)
 
     def test_the_zsh_file_says_the_fpath_line_nobody_can_guess(self):
@@ -339,7 +348,7 @@ class TheCompletion(Scratch):
     def test_the_completion_is_the_trees_and_not_a_second_list(self):
         # The one declaration, read twice: a word arriving in the tree arrives
         # in the completion with it, and a word leaving leaves both.
-        script = install.completion_text("at", (("nowhere", ("in", "it")),), "bash")
+        script = install.completion_text("at-cli", (("nowhere", ("in", "it")),), "bash")
         self.assertIn("nowhere", script)
         self.assertIn("in it", script)
         self.assertNotIn("webapp", script)
@@ -368,7 +377,7 @@ class TheUndo(Scratch):
     def test_nothing_installed_is_not_a_failure(self):
         code, text_ = self.undo(("--bin", str(self.bin)))
         self.assertEqual(code, 0)
-        self.assertIn(i18n.tr("install.uninstall.nothing", word="at", bin=self.bin), text_)
+        self.assertIn(i18n.tr("install.uninstall.nothing", word="at-cli", bin=self.bin), text_)
 
     def test_read_only_refuses_the_undo_too(self):
         self.act(("--bin", str(self.bin)))
@@ -401,7 +410,7 @@ class TheRule(unittest.TestCase):
                 end = section.find("\n### ", 1)
                 section = section if end < 0 else section[:end]
 
-                for marker in ("`at install`", "`at-deploy install`",
+                for marker in ("`at-cli install`", "`at-deploy install`",
                                "`App/install.json`", "`uninstall`"):
                     with self.subTest(marker=marker):
                         self.assertIn(
@@ -447,19 +456,19 @@ class TheDoor(Scratch):
         self.assertEqual(code, 0)
         deploy = self.bin / "at-deploy"
         self.assertTrue(deploy.is_symlink())
-        self.assertEqual(deploy.resolve(), (self.root / "at-deploy.bin").resolve())
+        self.assertEqual(deploy.resolve(), (self.root / "at-deploy").resolve())
         self.assertIn("at-deploy", text_)
 
     def test_neither_artifact_installs_the_other(self):
         # §3's cut read from the install: whoever stays on the hosted path never
-        # needs the deploy, so `at install` does not reach for it.
+        # needs the deploy, so `at-cli install` does not reach for it.
         self.deploy("install", ("--bin", str(self.bin)))
-        self.assertFalse((self.bin / "at").exists())
+        self.assertFalse((self.bin / "at-cli").exists())
         self.assertEqual(list(self.record()), ["at-deploy"])
 
         self.act(("--bin", str(self.bin)))
-        self.assertEqual(sorted(self.record()), ["at", "at-deploy"])
-        self.assertTrue((self.bin / "at").is_symlink())
+        self.assertEqual(sorted(self.record()), ["at-cli", "at-deploy"])
+        self.assertTrue((self.bin / "at-cli").is_symlink())
         self.assertTrue((self.bin / "at-deploy").is_symlink())
 
     def test_the_deploys_help_offers_both_words_in_both_languages(self):

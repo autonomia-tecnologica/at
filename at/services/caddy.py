@@ -2,7 +2,7 @@
 
 The rule this file answers is one sentence of §3: exposing demands
 authentication **and** TLS, the TLS is Caddy's, and Caddy travels inside the
-binary. So `at webapp --include-caddy` is what turns a loopback WebApp into an
+binary. So `at-cli webapp --include-caddy` is what turns a loopback WebApp into an
 exposed one, and the four things that happen are these, in this order: the Caddy
 is unpacked into the instance folder, the Caddyfile AT generates is written,
 the Caddy is put in front of the WebApp, and the WebApp stays exactly where it
@@ -35,10 +35,10 @@ hosted path has no gate, so the file is absent and the two lines are too.
 
 **The secret is READ here and DRAWN there.** `gate_secret` and `gate_file` are
 below because the file is this Caddy's own (`App/caddy/gate`), and both
-artifacts read them: `at` refuses the identity that arrives without it, and
+artifacts read them: `at-cli` refuses the identity that arrives without it, and
 the WebApp's check is what turns the M2M into a door. The DRAWING is the
 environment's installation act and belongs to `at-deploy` (§7b, item 27) —
-the deploy tool is the one that writes the environment's state, and `at` is
+the deploy tool is the one that writes the environment's state, and `at-cli` is
 the one that reads it with the deploy artifact absent.
 """
 
@@ -58,7 +58,7 @@ from at.i18n import tr
 
 # Where the payload travels: `at/vendor/caddy/`, and the same arithmetic
 # `app.py` uses for its own payload — the frozen loader sets `__file__` to
-# `<sys._MEIPASS>/at/services/caddy.py`, which is where `at.spec` lands it.
+# `<sys._MEIPASS>/at/services/caddy.py`, which is where `at-cli.spec` lands it.
 PAYLOAD = Path(__file__).resolve().parents[1] / "vendor" / "caddy"
 
 # The instance folder the unpacking goes to: `App/caddy/`. It is `App/` and not

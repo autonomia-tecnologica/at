@@ -28,7 +28,7 @@ from at.data import schema
 from at.nlu import normalizer, vocabulary
 
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = ROOT / "at.spec"
+SPEC = ROOT / "at-cli.spec"
 
 
 def universe() -> set[str]:

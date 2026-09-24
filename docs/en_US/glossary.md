@@ -5,7 +5,7 @@ Each name has one meaning, and names that would touch each other do not coexist.
 | term | what it is |
 |---|---|
 | **product** | the published set: this repository, the binary it generates and the declarations that travel inside |
-| **binary** | each file the product publishes: `at`, which is the folder and the app, and `at-deploy`, which is §7 — and each one's file is `at.bin` and `at-deploy.bin` on Linux and macOS, `at.exe` and `at-deploy.exe` on Windows |
+| **binary** | each file the product publishes: `at-cli`, which is the folder and the app, and `at-deploy`, which is §7 — the app's file is `at-cli` on Linux and macOS and `at-cli.exe` on Windows, and the deploy's is `at-deploy` and `at-deploy.exe`. On Linux and macOS the file's name IS the command, and it is `at-cli` and not `at` because the machine may already answer to that one |
 | **Working Folder** | the folder where the binary was opened and which becomes its own |
 | **layer** | each code folder with a single job: `core`, `data`, `prose`, `services`, `encryption`, `nlu`, `posture`, `ui`, `i18n` |
 | **surface** | each way for a person to reach the core: `cli`, WebApp and Wizard |

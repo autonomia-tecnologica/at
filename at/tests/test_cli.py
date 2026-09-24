@@ -1,6 +1,6 @@
 """Dispatch: which word reaches what, and what an unknown one costs.
 
-`at` with no word prints the help — the Control Panel is a screen for whoever
+`at-cli` with no word prints the help — the Control Panel is a screen for whoever
 does not type commands, and it is not built yet. So there is no path here that
 can pop a window, and the suite that runs on a build machine stays awake.
 """
@@ -76,7 +76,7 @@ class Dispatch(unittest.TestCase):
 
 
 class TheLanguage(unittest.TestCase):
-    """`at lang` — the language AT speaks, and the choice of it (item 7).
+    """`at-cli lang` — the language AT speaks, and the choice of it (item 7).
 
     A folder born under the machine's own locale has no door to another
     language: the resolution reads `$AT_LANG`, then the folder, then the
@@ -204,7 +204,7 @@ class TheLanguage(unittest.TestCase):
 
 
 class TheWebappWords(unittest.TestCase):
-    """`at webapp` — the flags it takes, and what a word it does not take costs.
+    """`at-cli webapp` — the flags it takes, and what a word it does not take costs.
 
     Starting a server is `run`'s business and is not what is under test here, so
     `run` is replaced: what this reads is which words reach it. The refusals

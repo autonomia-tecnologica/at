@@ -486,7 +486,7 @@ class TheDoor(FolderCase):
         self.assertEqual(code, REFUSED)
 
     def test_the_credential_door_reads_it_twice_and_without_echo(self):
-        # The two readers are the account's own (`at admin`): the credential
+        # The two readers are the account's own (`at-cli admin`): the credential
         # does not travel through the command line, so it stays out of the
         # shell's history and out of anybody's `ps`.
         self.person()

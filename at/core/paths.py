@@ -63,11 +63,19 @@ LEGACY_INSTANCE = (".bill", "app")
 # keeps its spelling in every language. The TEXT is translated; the name is not.
 AGENT_NOTE = "AGENT.md"
 
-# The two artifacts, and the file each one is on each platform (§3, item 29).
-# `.app` was refused on purpose: on the Mac it is a BUNDLE, a folder, and the
-# product promises ONE file. The rule is one and it covers both artifacts — the
-# app and the deploy —, and it is a rule of the FILE: `.exe` on Windows, `.bin`
-# on Linux and macOS.
+# The two artifacts, and the file each one is on each platform (§3, items 28
+# and 29). `.app` was refused on purpose: on the Mac it is a BUNDLE, a folder,
+# and the product promises ONE file. The rule is one and it covers both
+# artifacts — the app and the deploy —, and it is a rule of the FILE: `.exe` on
+# Windows, and NO extension on Linux and macOS, where the file's name is the
+# command a person types.
+#
+# **The app's is `at-cli` and not `at`** (item 28). `at` is a command a UNIX
+# machine may already answer to — the `at`/`atd` job scheduler, one package away
+# and present in this distribution's own repositories — and the product does not
+# take a name that is not only its own. The brand is AT; the word the machine
+# answers to is one the machine did not already have. The deploy's name was free
+# from the start, which is why only the app's carries the suffix.
 #
 # It is declared here because the name is what the product EXECUTES and not only
 # what it publishes: §7c's WebApp container runs this very file, by this very
@@ -76,23 +84,30 @@ AGENT_NOTE = "AGENT.md"
 # importable, so it spells the names itself — and `at/tests/test_lifecycle.py`
 # holds the three to each other, because a build that named another file would
 # be a container that never starts.
-ARTIFACT = "at"
+ARTIFACT = "at-cli"
 DEPLOY = "at-deploy"
 WINDOWS = ".exe"
-UNIX = ".bin"
+UNIX = ""
 
 
 def artifact_file() -> str:
-    """The app's file on this platform — `at.bin`, or `at.exe` on Windows."""
+    """The app's file on this platform — `at-cli`, or `at-cli.exe` on Windows."""
     return ARTIFACT + _extension()
 
 
 def deploy_file() -> str:
-    """The deploy's file on this platform — `at-deploy.bin`, or `at-deploy.exe`."""
+    """The deploy's file on this platform — `at-deploy`, or `at-deploy.exe`."""
     return DEPLOY + _extension()
 
 
 def _extension() -> str:
+    """The platform's answer, which on Linux and macOS is an empty one.
+
+    A name and not a convenience: the two constants above ARE the rule, and this
+    is the one place that reads the platform to choose between them. An
+    extensionless file is executable because of its mode, and it is what keeps
+    the file's name and the command's name the same word on those two platforms.
+    """
     return WINDOWS if sys.platform == "win32" else UNIX
 
 

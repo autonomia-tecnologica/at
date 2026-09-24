@@ -24,11 +24,14 @@ the artifact is (§3: the binary's folder), links to it, and says plainly when
 that folder is not AT's yet — and then it records nothing, because there is
 nowhere of AT's to record it in, and the person is told what that costs.
 
-**The name is not always free.** `at` is a command a UNIX machine may already
-answer to — the `at`/`atd` job scheduler, one package away and absent on this
-machine — and which of the two wins comes down to the order of `PATH`. The
-product does not refuse and does not choose: it installs, and it SAYS which
-directory answers, because installing is an explicit request on the person's own
+**The command is `at-cli`, and the install still says what it finds.** `at` is a
+command a UNIX machine may already answer to — the `at`/`atd` job scheduler, one
+package away and in this distribution's own repositories — and the artifact is
+named `at-cli` so that the product does not take a name that is not only its own.
+That settles the NAME and not the DIRECTORY: a link can still land where another
+command of its own name already answers, and there the install does not refuse
+and does not choose — it writes the link and SAYS which directory wins in the
+order of `PATH`, because installing is an explicit request on the person's own
 machine and whoever decides is whoever will live with it (§3, Permissão de
 acesso).
 
@@ -169,9 +172,10 @@ def act(
 ) -> str:
     """Put the artifact where commands are found, and say what it did.
 
-    `word` is the command (`at`, `at-deploy`) and `artifact` is the FILE in the
-    folder it points at — two names, because they are two different names: the
-    command is what a person types and the file is what the release publishes.
+    `word` is the command (`at-cli`, `at-deploy`) and `artifact` is the FILE in
+    the folder it points at — two names, because they are two different names:
+    the command is what a person types and the file is what the release
+    publishes, and on Windows they differ by the `.exe`.
     """
     into = where(word, bin_flag)
     link = into / word

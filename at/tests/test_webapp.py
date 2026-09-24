@@ -1613,7 +1613,7 @@ class TheAskCeiling(ServerCase):
 
     §5: "o que ela pode propor é o que ela já pode fazer". The route demands
     `nlu:ask`, and the PROPOSAL demands the permission the action on the table
-    is; the door is the same one the balloon, the chat and `at ask` read, so
+    is; the door is the same one the balloon, the chat and `at-cli ask` read, so
     the refusal lands on every surface at once (`at.ui.ask`).
     """
 
@@ -1734,7 +1734,7 @@ class TheFolderWithNobodyToAsk(ServerCase):
 
 
 class TheExposure(unittest.TestCase):
-    """`at webapp` in a folder with nobody to enter it.
+    """`at-cli webapp` in a folder with nobody to enter it.
 
     "Sem ator nenhum o AT não expõe" (§3): the command refuses BEFORE it takes
     the port, and the engine's row does not count — it does not enter, the person
@@ -1771,7 +1771,7 @@ class TheExposure(unittest.TestCase):
 
 
 class ThePort(unittest.TestCase):
-    """`at webapp` when somebody else already answers on that port.
+    """`at-cli webapp` when somebody else already answers on that port.
 
     It is the way the command fails in practice — the PoC on 12345, or a second
     AT — and what the person used to get was a bare `OSError: Address already

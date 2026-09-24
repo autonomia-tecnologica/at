@@ -1,11 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""The build that derives `dist/at-deploy.bin` — the environment's artifact (§7).
+"""The build that derives `dist/at-deploy` — the environment's artifact (§7).
 
 Build it from the repository root, with the PyInstaller version the README pins:
 
     .venv/bin/pyinstaller --clean --noconfirm at-deploy.spec
 
-**Why a second file and not a second target of `at.spec`.** A spec IS one
+**Why a second file and not a second target of `at-cli.spec`.** A spec IS one
 artifact: it names the entry point, the payloads and the exclusions, and the two
 artifacts differ in all three. Written apart, the difference is readable — what
 travels inside each one is a list somebody can read — and the deploy's list is
@@ -45,10 +45,10 @@ ENTRY = "at_deploy/__main__.py"
 # is a rule of the FILE and not of one artifact. The word does not move: the
 # second artifact is `at-deploy`, and what §7 does to the machine is what gave
 # it the name.
-NAME = "at-deploy.exe" if sys.platform == "win32" else "at-deploy.bin"
+NAME = "at-deploy.exe" if sys.platform == "win32" else "at-deploy"
 
 # (source, destination), and the destination repeats the last segment for the
-# same reason `at.spec` does: a directory source lands its CONTENTS in the
+# same reason `at-cli.spec` does: a directory source lands its CONTENTS in the
 # dest folder, so the destination has to be the folder the code looks at
 # runtime. Both of these anchor on their package directories (`at/i18n` and
 # `at/data/schema`), which is the same arithmetic one directory up.

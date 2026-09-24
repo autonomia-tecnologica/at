@@ -1,6 +1,6 @@
 """`at-deploy`'s command line: the surface that reaches §7 whole.
 
-It is the same shape as `at`'s `cli` and a smaller list, because this artifact
+It is the same shape as `at-cli`'s `cli` and a smaller list, because this artifact
 owns one subject: the environment. `services` is the whole of it — bring the
 environment up, take it down, say what is standing, move the folder between the
 two paths, and prove the delivery — and the Wizard of §7 (item 27's third slice)
@@ -9,7 +9,7 @@ reachable from here, because §5's one-way rule does not bend for a second
 artifact.
 
 **The folder comes first, and it is the same folder.** Every invocation confirms
-the Working Folder exactly as `at` does, through the same `boot`: the two
+the Working Folder exactly as `at-cli` does, through the same `boot`: the two
 artifacts share the folder's STATE and not an API, and nothing here may assume a
 folder the other one has not made — or make one this one would not recognise.
 
@@ -29,9 +29,9 @@ from at_deploy import environment, tree
 from at_deploy.environment import HOSTED, INSTALL, UP
 
 # What a person answers with, injected so a test can answer without a terminal —
-# the same shape `boot` and `at`'s `cli` take. The credential's door takes two
+# the same shape `boot` and `at-cli`'s `cli` take. The credential's door takes two
 # readers, because one of them reads WITHOUT ECHO (the account's own shape,
-# `at admin`).
+# `at-cli admin`).
 Ask = Callable[[str], str]
 
 # The words of `services`, read off the tree that OFFERS them — the declaration
@@ -56,7 +56,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     words = list(sys.argv[1:] if argv is None else argv)
 
     # The same two words run before the folder is confirmed here, and for the
-    # same reason `at` gives them: they are about the FILE and where it is
+    # same reason `at-cli` gives them: they are about the FILE and where it is
     # found, and not about the folder the file happens to sit in.
     if words[:1] in (["install"], ["uninstall"]):
         return _installed(words[0], words[1:])
@@ -69,7 +69,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         # deploying is a SEQUENCE and not a sentence, and the screen walks it.
         # A machine with no display is still a legitimate place to run the
         # deploy — there the words below ARE the whole of it, which is what §5's
-        # one-way rule buys — and the window says so in `at`'s own sentence
+        # one-way rule buys — and the window says so in `at-cli`'s own sentence
         # before the help is printed.
         from at_deploy import wizard  # noqa: PLC0415 — it reads this module
 
@@ -104,7 +104,7 @@ def _installed(word: str, rest: list[str]) -> int:
     """`at-deploy install` and `at-deploy uninstall` — the second artifact, put
     where commands are found.
 
-    The same word as `at`'s and the same core (`core/install.py`), because
+    The same word as `at-cli`'s and the same core (`core/install.py`), because
     where a command is found is one rule (§3, item 28) — and a different
     artifact all the same: this one installs itself and never the other, which
     is §3's cut read from the side of §7. Whoever stays on the hosted path never
@@ -226,7 +226,7 @@ def services(
         outcome = environment.up(ask if ask is not None else _reader())
     except files.ReadOnly as error:
         # The pin and the services' files are written by `up`, and the read-only
-        # switch is the one writer's rule — the same answer `at`'s table route
+        # switch is the one writer's rule — the same answer `at-cli`'s table route
         # and every other engine give (§3).
         print(tr("deploy.error.read_only", where=error.where))
         return REFUSED
@@ -240,7 +240,7 @@ def _credential(name: str, ask: Ask | None, secret: Ask | None) -> int:
     """`at-deploy services credential <name>` — the operator's act (§7b).
 
     The credential is read WITHOUT ECHO and twice, exactly as the first
-    administrator's is (`at admin`): it does not travel through the command
+    administrator's is (`at-cli admin`): it does not travel through the command
     line, so it stays out of the shell's history and out of anybody's `ps`, and
     it is read twice because a credential is not recovered — there is no
     "forgot the password" in a folder on your own disk.

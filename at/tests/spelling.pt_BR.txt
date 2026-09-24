@@ -23,9 +23,12 @@ argv
 artefato
 artefatos
 asset
-# `at` é o COMANDO (§3, item 29): a marca é `AT`, maiúscula, em toda referência
-# visual, e o minúsculo é o que a pessoa digita. A lista inglesa não precisa dele —
-# lá `at` é palavra do idioma.
+# `at-cli` é o COMANDO (§3, item 28): a marca é `AT`, maiúscula, em toda referência
+# visual, e o minúsculo é o que a pessoa digita. O `at` sozinho continua nesta lista
+# porque os documentos citam o AGENDADOR `at`/`atd` — o nome que a máquina já
+# responde e que o produto NÃO tomou para si; a lista inglesa não precisa dele, lá
+# `at` é palavra do idioma. O corretor corta o `at-cli` no hífen, então `at` e `cli`
+# são as duas metades que ele confere.
 at
 audit
 auditados

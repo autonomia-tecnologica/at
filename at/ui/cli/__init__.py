@@ -88,7 +88,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 def _webapp(rest: list[str]) -> int:
-    """`at webapp` opens the app, and `--include-caddy` exposes it.
+    """`at-cli webapp` opens the app, and `--include-caddy` exposes it.
 
     This is the hosted path: loopback, in HTTP, and nothing leaves it until a
     person authenticates (§3, Acesso e exposição). The flag is the exception the
@@ -146,7 +146,7 @@ def _admin(
     ask: Ask | None = None,
     secret: Ask | None = None,
 ) -> int:
-    """`at admin` — the first administrator, asked for and never seeded.
+    """`at-cli admin` — the first administrator, asked for and never seeded.
 
     The credential is read WITHOUT ECHO (`getpass`): it does not travel through
     the command line, so it stays out of the shell's history and out of anybody's
@@ -198,7 +198,7 @@ def _readers() -> tuple[Ask | None, Ask | None]:
 # ------------------------------------------------------------ the language ---
 
 def _lang(rest: list[str], ask: Ask | None = None) -> int:
-    """`at lang` — the language AT speaks, and the choice of it.
+    """`at-cli lang` — the language AT speaks, and the choice of it.
 
     With no argument it SHOWS the active code and where it came from, which the
     resolution already knows (`i18n.active_origin`): a person who sees the wrong
@@ -253,7 +253,7 @@ def _lang(rest: list[str], ask: Ask | None = None) -> int:
 # -------------------------------------------------------------- the install ---
 
 def _installed(word: str, rest: list[str]) -> int:
-    """`at install` and `at uninstall` — the file, where commands are found.
+    """`at-cli install` and `at-cli uninstall` — the file, where commands are found.
 
     What the word takes is `--bin <directory>`, and that is the whole of it:
     the artifact is not fetched and not copied, and a new one arrives by the
@@ -262,7 +262,7 @@ def _installed(word: str, rest: list[str]) -> int:
     Both artifacts answer through the same core (`core/install.py`), because
     where a command is found is one rule and not one per artifact — and the two
     are two installs all the same: neither installs the other, which is the
-    same cut §3 makes between `at` and `at-deploy`.
+    same cut §3 makes between `at-cli` and `at-deploy`.
 
     A `uninstall` that found nothing to take back is not a failure: what the
     person asked for is the state, and the state is already it.
@@ -287,7 +287,7 @@ def _installed(word: str, rest: list[str]) -> int:
 # ---------------------------------------------------------- the interpreter ---
 
 def _ask(rest: list[str]) -> int:
-    """`at ask "..."` — one sentence becomes one proposal, and runs.
+    """`at-cli ask "..."` — one sentence becomes one proposal, and runs.
 
     The sentence is ONE argument: it is a phrase, and a phrase the shell split in
     two is two phrases. `pedir` is the same door, and `ask pedir` is that door

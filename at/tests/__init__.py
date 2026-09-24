@@ -14,7 +14,7 @@ from at.core import files
 from at.services import caddy
 
 # The gate secret the suite works with when it has to EXIST. The deploy draws it
-# at installation (`at_deploy/environment.py`, §7b) and `at` reads it — so a
+# at installation (`at_deploy/environment.py`, §7b) and `at-cli` reads it — so a
 # test of the READER writes the file, which is exactly the state the deploy
 # leaves behind, and never imports the deploy to produce it.
 DRAWN_GATE = "segredo-sorteado"

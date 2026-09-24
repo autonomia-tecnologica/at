@@ -1,6 +1,6 @@
 """The gate, as the APP reads it (§6, §7b, item 27).
 
-Two halves of the same record live in two artifacts, and this file is `at`'s
+Two halves of the same record live in two artifacts, and this file is `at-cli`'s
 half: which authenticator this folder is on (`core/gate.py`), and what the
 WebApp does with that fact — the Forms off, `Basic` off with it, the entrance
 closed, and AT closing when the portal stops answering.
@@ -8,7 +8,7 @@ closed, and AT closing when the portal stops answering.
 **The deploy artifact is absent here and that is the point of the file.** The
 switch that COMMITS the record is `at-deploy`'s and is proved in its own suite
 (`at_deploy/tests/test_switch.py`); what is proved here is the "Done when" of
-item 27 — a folder on the container path is served by `at` on its own, with
+item 27 — a folder on the container path is served by `at-cli` on its own, with
 nothing of §7 anywhere in the import graph. Nothing here touches a socket: the
 portal is asked through the answer seam (`gate.Answer`).
 """
@@ -104,7 +104,7 @@ class TheMode(FolderCase):
     def test_the_record_is_the_apps_to_read_with_the_deploy_absent(self):
         # The commit is the deploy's (`switch.to_gate`), and the READ is the
         # app's: this suite imports nothing of `at_deploy`, and the folder the
-        # deploy left behind is read here exactly as the running `at` reads it.
+        # deploy left behind is read here exactly as the running `at-cli` reads it.
         gate.remember(gate.GATE)
         self.assertTrue(gate.on_gate())
         gate.remember(gate.FORMS)

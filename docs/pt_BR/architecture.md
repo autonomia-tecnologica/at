@@ -20,7 +20,7 @@
 
 ### Tabelas
 
-- O AT possui um motor próprio de gestão de dados estruturados. Aqui é usado o termo Tabela, ou `table` internamente. A identidade da tabela é um id, e o id é singular (`task`, `project`, `reminder`, `secret`, `actor`, `role`, `audit`): é ele que nomeia a tabela em todo lugar, inclusive no comando (`at task list`) e no esquema. O arquivo de linhas é que vai no plural. Logo `data/tasks.jsonl` é a tabela em si e `data/schema/task.json` o esquema dela.
+- O AT possui um motor próprio de gestão de dados estruturados. Aqui é usado o termo Tabela, ou `table` internamente. A identidade da tabela é um id, e o id é singular (`task`, `project`, `reminder`, `secret`, `actor`, `role`, `audit`): é ele que nomeia a tabela em todo lugar, inclusive no comando (`at-cli task list`) e no esquema. O arquivo de linhas é que vai no plural. Logo `data/tasks.jsonl` é a tabela em si e `data/schema/task.json` o esquema dela.
 
 - As tabelas `task`, `project`, `reminder`, `secret`, `actor`, `role` e `audit` são padrão do sistema. Servem para entregar uma funcionalidade inerente. Tabelas de sistema não são deletáveis, e **a deletabilidade de uma linha é declarada no esquema da tabela**: o `audit` declara que nenhuma linha sua se apaga.
 

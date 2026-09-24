@@ -23,8 +23,8 @@ without the secret must be refused (`webapp.gate_refused`) — that is the M2M
 being more than a header somebody wrote. A probe that cannot reach anything is a
 failure like any other, because "could not tell" is not "proved".
 
-**The switch lives in `at-deploy` and not in `at`.** It is an environment act
-and the transactional one is the environment's (item 27); what `at` keeps is
+**The switch lives in `at-deploy` and not in `at-cli`.** It is an environment act
+and the transactional one is the environment's (item 27); what `at-cli` keeps is
 the other half of the same record — reading `authenticator` and refusing to serve
 behind a gate that fell (`core/gate.py`), with the deploy artifact absent. The
 record itself is ONE file, and `gate.remember` is the one door that writes it.

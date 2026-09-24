@@ -4,13 +4,13 @@
 
 - When opening AT, whether on the command line or straight through the graphical interface, we have the "Control Panel". It is a Tkinter interface, the Wizard. Here the "guts" of AT's environment are configured, its first layer being the web application.
 
-- Calling the binary straight from the terminal loads the Tkinter interface. Any other parameter passed makes the program act as a `cli`. `at ajuda`, or `at help`, shows how to use the cli completely. You can change it in the settings so that the command `at` opens `at help` instead of Tkinter.
+- Calling the binary straight from the terminal loads the Tkinter interface. Any other parameter passed makes the program act as a `cli`. `at-cli ajuda`, or `at-cli help`, shows how to use the cli completely. You can change it in the settings so that `at-cli` with no word opens the help instead of Tkinter.
 
 - The command line works for everything in AT. Any functionality it exposes, whether in the REST API (used by the WebApp frontend) or in the WebApp itself, is reachable from the command line.
 
 - The Wizard is a screen that allows more critical configurations of AT that I did not want to leave available on the network. It has roles that do not move: the **first start**, where the Working Folder is confirmed and the first admin is created; the **installation of services**, and only it installs; the **return to Forms mode**, when the authentication gate falls; and the management of the main keys in advanced mode.
 
-- While the Control Panel is not built, the first start happens in the `cli`: `at admin` asks for the name and reads the credential with no echo, and `at` with no word prints the `help`. The Wizard does not lose the role — the first admin's screen is its own — and the door is the same one: the rule of this section is that everything of the `Wizard` is reachable from the `cli`.
+- While the Control Panel is not built, the first start happens in the `cli`: `at-cli admin` asks for the name and reads the credential with no echo, and `at-cli` with no word prints the `help`. The Wizard does not lose the role — the first admin's screen is its own — and the door is the same one: the rule of this section is that everything of the `Wizard` is reachable from the `cli`.
 
 - The `cli` runs only locally, except when it is communicating with external APIs for the due configuration. And it is it, or the Wizard, that returns AT to Forms mode: both are local surfaces, and that is why the return exists.
 

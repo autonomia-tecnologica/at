@@ -8,7 +8,7 @@
 
 - **Não há isolamento**, e o AT não promete nenhum neste caminho: um comprometimento do WebApp é um comprometimento de processo na sua máquina, com acesso ao que o seu usuário tem. Em troca, o padrão é não sair do laço local, e sair dele exige autenticação e TLS.
 
-- Sair do laço local, aqui, é `at webapp --include-caddy`: o Caddy que veio dentro do binário termina o TLS e publica o AT. Sem a bandeira, o WebApp serve em HTTP e só em `127.0.0.1` — e ele recusa que lhe peçam qualquer outro endereço, porque expor sem TLS é o que a regra acima proíbe. O `--host` nomeia o endereço em que o AT atende, e com a bandeira ele precisa ser um nome para o qual um certificado se emite: `0.0.0.0` é todos os endereços, e certificado não tem nenhum.
+- Sair do laço local, aqui, é `at-cli webapp --include-caddy`: o Caddy que veio dentro do binário termina o TLS e publica o AT. Sem a bandeira, o WebApp serve em HTTP e só em `127.0.0.1` — e ele recusa que lhe peçam qualquer outro endereço, porque expor sem TLS é o que a regra acima proíbe. O `--host` nomeia o endereço em que o AT atende, e com a bandeira ele precisa ser um nome para o qual um certificado se emite: `0.0.0.0` é todos os endereços, e certificado não tem nenhum.
 
 - As integrações (§7) podem existir sem container: quem instala o serviço por conta e aponta o AT para ele usa o serviço, com a ciência de que o estado daquele serviço não é mais assunto do AT — e, portanto, que o backup da pasta não o cobre. A aprovação de uma demanda arriscada, aqui, acontece na própria máquina: o serviço `notifier` é do caminho container.
 
@@ -22,7 +22,7 @@
 
 - O caminho container é o que sustenta o portão de autenticação (§7b), e é onde o AT entra como mais um app atrás dele.
 
-- **Quem monta o ambiente é um segundo artefato, e quem serve a pasta continua sendo o `at`.** O `at-deploy` é uma `cli` e um Wizard, como o `at`, e aqui o Wizard é a frente natural: montar é uma SEQUÊNCIA e não uma frase, e ele leva a pessoa passo a passo — checa os requisitos, sobe um serviço, segue para o próximo. Cada passo que ele dá é um que a `cli` dá sozinha, porque a regra de mão única do §5 não se dobra para um segundo artefato. Os dois arquivos são necessários neste caminho, e o `at` serve a pasta com a ferramenta de deploy ausente: é ele que lê o `authenticator` e o segredo do portão, recusa o Forms e fecha quando o portão cai.
+- **Quem monta o ambiente é um segundo artefato, e quem serve a pasta continua sendo o `at-cli`.** O `at-deploy` é uma `cli` e um Wizard, como o `at-cli`, e aqui o Wizard é a frente natural: montar é uma SEQUÊNCIA e não uma frase, e ele leva a pessoa passo a passo — checa os requisitos, sobe um serviço, segue para o próximo. Cada passo que ele dá é um que a `cli` dá sozinha, porque a regra de mão única do §5 não se dobra para um segundo artefato. Os dois arquivos são necessários neste caminho, e o `at-cli` serve a pasta com a ferramenta de deploy ausente: é ele que lê o `authenticator` e o segredo do portão, recusa o Forms e fecha quando o portão cai.
 
 ### A virada entre os caminhos
 

@@ -1,6 +1,6 @@
 # AT
 
-AT is a deterministic task engine. It runs **inside a folder**, and that folder becomes its **Working Folder**. This repository is the **product to publish** — the engine, the default declarations, the infrastructure that travels inside and the two binaries — `at`, which is the folder and the app, and `at-deploy`, which builds the environment of §7. It carries no personal data: no path of anyone's machine, no host, no id.
+AT is a deterministic task engine. It runs **inside a folder**, and that folder becomes its **Working Folder**. This repository is the **product to publish** — the engine, the default declarations, the infrastructure that travels inside and the two binaries — `at-cli`, which is the folder and the app, and `at-deploy`, which builds the environment of §7. It carries no personal data: no path of anyone's machine, no host, no id.
 
 ## 0. Agent protocol
 

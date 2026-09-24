@@ -392,7 +392,7 @@ class TheSequenceHoldsItselfBack(FolderCase):
         self.assertTrue(wizard.STEPS[0].settled(code))
 
     def test_a_gate_that_did_not_commit_is_not_a_closed_switch(self):
-        # §6's switch is read off the folder's own record — the one `at` reads
+        # §6's switch is read off the folder's own record — the one `at-cli` reads
         # (`gate.mode`) — so the screen and the app cannot disagree about the
         # path this folder is on.
         code, _ = wizard.run_step("switch", lambda question: "")

@@ -3,7 +3,7 @@
 There are two artifacts and two command lines (item 27), and both of them offer
 their words the same way: a declaration read by the help and by the dispatch, so
 that a word can never dispatch without being offered nor the other way round. The
-DECLARATIONS are each surface's own — `at`'s tree is `ui/cli/tree.py` and the
+DECLARATIONS are each surface's own — `at-cli`'s tree is `ui/cli/tree.py` and the
 deploy's is `at_deploy/tree.py` — and the SHAPE is this file, written once,
 because a product whose two surfaces drew their help differently would be two
 products wearing one name.

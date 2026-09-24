@@ -252,7 +252,7 @@ class TheQuestion(MatcherCase):
 
 
 class TheDoor(MatcherCase):
-    """`at ask` and `at pedir`: the proposal, then the engine's own answer."""
+    """`at-cli ask` and `at-cli pedir`: the proposal, then the engine's own answer."""
 
     def run_words(self, *words: str) -> tuple[int, str]:
         output = io.StringIO()

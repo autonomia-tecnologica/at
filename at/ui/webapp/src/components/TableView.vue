@@ -346,7 +346,7 @@ function shownText(name: string, rec: RecordRow): string {
   for (const ref of refs) {
     if (ref.at < at) continue;
     out += text.slice(at, ref.at) + (ref.title || ref.id);
-    at = ref.at + ref.shown.length;
+    at-cli = ref.at + ref.shown.length;
   }
   return out + text.slice(at);
 }

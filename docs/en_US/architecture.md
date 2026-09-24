@@ -20,7 +20,7 @@
 
 ### Tables
 
-- AT has an engine of its own for managing structured data. The term Table is used here, or `table` internally. The identity of the table is an id, and the id is singular (`task`, `project`, `reminder`, `secret`, `actor`, `role`, `audit`): it is what names the table everywhere, including in the command (`at task list`) and in the schema. The file of rows is the one that goes in the plural. So `data/tasks.jsonl` is the table itself and `data/schema/task.json` is its schema.
+- AT has an engine of its own for managing structured data. The term Table is used here, or `table` internally. The identity of the table is an id, and the id is singular (`task`, `project`, `reminder`, `secret`, `actor`, `role`, `audit`): it is what names the table everywhere, including in the command (`at-cli task list`) and in the schema. The file of rows is the one that goes in the plural. So `data/tasks.jsonl` is the table itself and `data/schema/task.json` is its schema.
 
 - The tables `task`, `project`, `reminder`, `secret`, `actor`, `role` and `audit` are system defaults. They serve to deliver an inherent functionality. System tables are not deletable, and **the deletability of a row is declared in the table's schema**: `audit` declares that no row of its own is erased.
 

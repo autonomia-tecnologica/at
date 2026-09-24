@@ -740,7 +740,7 @@ class TheCeiling(ActorCase):
 
 
 class TheVerb(ActorCase):
-    """`at admin` — the conversation the `cli` has, with the readers injected
+    """`at-cli admin` — the conversation the `cli` has, with the readers injected
     the way the first run's `ask` is. A test that typed at a real terminal would
     be a test that hangs on a build machine."""
 

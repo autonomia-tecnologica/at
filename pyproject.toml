@@ -17,7 +17,7 @@ dependencies = ["PyNaCl==1.6.2"]
 # elevation in the product. `at` imports nothing of `at_deploy`, and the
 # suite affirms it.
 [project.scripts]
-at = "at.ui.cli:main"
+at-cli = "at.ui.cli:main"
 at-deploy = "at_deploy.cli:main"
 
 # The version has one home: `at.__version__`, and both artifacts wear it.
@@ -34,7 +34,7 @@ exclude = ["at.tests*", "at_deploy.tests*"]
 # answers in raw keys), no `defaults/*.json` (the first run seeds no system
 # table) and no `vocabulary/*.json` (the interpreter names nothing a person
 # says). The WebApp's `assets/`, `dist/` and `vendor/` are collected by
-# `at.spec` instead, because they must stay out of a wheel: `dist/` is derived,
+# `at-cli.spec` instead, because they must stay out of a wheel: `dist/` is derived,
 # and the three together are what the single binary carries (§3).
 [tool.setuptools.package-data]
 "at.i18n" = ["blocks/*.json", "vocabulary/*.json"]

@@ -4,13 +4,13 @@
 
 - Ao abrir o AT, seja em linha de comando, seja direto pela interface gráfica, temos o "Painel de Controle". É uma interface em Tkinter, o Wizard. Aqui são configuradas as "entranhas" do ambiente do AT, sendo sua primeira camada a aplicação web.
 
-- Chamar o binário direto do terminal carrega a interface Tkinter. Qualquer outro parâmetro passado faz o programa agir como uma `cli`. `at ajuda`, ou `at help`, mostra como usar a cli completamente. Você pode modificar nas configurações para o comando `at` não abrir o Tkinter e sim o `at help`.
+- Chamar o binário direto do terminal carrega a interface Tkinter. Qualquer outro parâmetro passado faz o programa agir como uma `cli`. `at-cli ajuda`, ou `at-cli help`, mostra como usar a cli completamente. Você pode modificar nas configurações para o `at-cli` sem palavra abrir a ajuda em vez do Tkinter.
 
 - A linha de comando funciona para tudo do AT. Qualquer funcionalidade que ele exponha, seja na API REST (utilizada pelo frontend do WebApp), seja no WebApp em si, é acessível pela linha de comando.
 
 - O Wizard é uma tela que permite realizar configurações mais críticas do AT que eu não queria deixar disponível na rede. Ele tem papéis que não se mudam de lugar: a **primeira subida**, em que a Pasta de Trabalho é confirmada e o primeiro admin é criado; a **instalação de serviços**, e só ele instala; a **volta ao modo Forms**, quando o portão de autenticação cai; e a gestão das chaves principais no modo avançado.
 
-- Enquanto o Painel de Controle não estiver construído, a primeira subida acontece na `cli`: `at admin` pergunta o nome e lê a credencial sem eco, e `at` sem palavra imprime o `help`. O Wizard não perde o papel — a tela do primeiro admin é dele —, e a porta é a mesma: a regra desta seção é que tudo do `Wizard` seja alcançável pela `cli`.
+- Enquanto o Painel de Controle não estiver construído, a primeira subida acontece na `cli`: `at-cli admin` pergunta o nome e lê a credencial sem eco, e `at-cli` sem palavra imprime o `help`. O Wizard não perde o papel — a tela do primeiro admin é dele —, e a porta é a mesma: a regra desta seção é que tudo do `Wizard` seja alcançável pela `cli`.
 
 - O `cli` executa apenas localmente, em exceção quando está comunicando com APIs externas para devida configuração. E é ele, ou o Wizard, que devolve o AT ao modo Forms: as duas são superfícies locais, e é por isso que a volta existe.
 
