@@ -73,3 +73,7 @@
 
 - Essa pasta não é conveniência, é condição de entrada: um serviço só entra no §7 se o estado persistente dele couber aí dentro. Serviço que guarda a vida dele em algum volume que ninguém copia deixa o backup da pasta mentir.
 
+- **A pasta nasce sob versionamento, e o histórico é o do AT.** Na primeira execução o AT faz o `git init` na raiz da Pasta de Trabalho, escreve o `.gitignore` que ele mesmo gera e toma a primeira versão; daí em diante, toda ação que muda a pasta é versionada por ele, com uma versão nomeada pela frase do motor — é por isso que o `git log` se lê como a história da própria tabela. **O AT versiona onde o repositório é dele**: a pasta que já carrega um repositório próprio não é sobrescrita nem conduzida. **Versionar não é fazer backup** — a cópia que sobrevive à máquina é outra coisa, ainda devida.
+
+- **A cadência do versionamento é uma configuração.** `versioning_interval` diz quantos minutos a pasta pode passar sem ganhar uma versão enquanto o AT é usado; `0` é a pessoa pedindo uma versão a cada escrita, e a pasta que nunca escolheu é periódica. O número é lido uma vez pelo `core`, e é a mesma leitura que governa as duas pontas: a escrita só versiona quando o intervalo passou — e o que esperou não se perde, porque a versão seguinte carrega a pasta inteira —, e a pasta que ficou para trás diz isso na `cli` e na página, no idioma ativo.
+

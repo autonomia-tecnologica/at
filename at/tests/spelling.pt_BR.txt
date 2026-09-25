@@ -244,9 +244,11 @@ up
 urls
 utc
 vault
+versiona
 versionada
 versionado
 versionamento
+versionar
 vite
 vm
 vms
