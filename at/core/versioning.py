@@ -36,17 +36,39 @@ calls it with the sentence that names it — the engine's own — so `git log` r
 like the table's own story. And what the action wrote is `files.writes`, the
 single writer's count, so this door costs a `list` nothing and never guesses
 whether there is anything to version.
+
+**And the folder is versioned from time to time, never on every write.** The
+default is PERIODIC (§4, item 30): the WebApp writes to disk on every edit, and
+one version per keystroke is not a history, it is a metronome. The cadence is the
+FOLDER's — a setting says how many minutes may pass between versions, and `0` is
+the person asking for every write back — and the WRITE itself looks at how long
+ago the last version was and only commits when the interval has passed. That is
+the cheapest of the shapes the item names and the one that needs no clock: the
+folder never goes unversioned for longer than the interval AT is being USED. What
+arrives between versions is not lost — the writes are on disk, and the next
+version carries all of them, because a version is the whole folder and not one
+action's diff.
+
+**A folder that has fallen behind SAYS SO.** The `cli` prints it on the run it
+notices, and the page draws it in the same band that already carries the folder
+that has no versioning at all: `phrase` is the one wording, and `stale` is the
+one predicate — AT's repository, writes the last version does not carry, and the
+chosen interval gone by. A version that fires on its own while the WebApp is up
+is item 24's job, and until it exists this sentence is the whole of what tells
+the person the folder is waiting.
 """
 
 from __future__ import annotations
 
+import math
 import shutil
 import subprocess
+import time
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Callable
 
-from at.core import files, paths
+from at.core import files, paths, settings
 from at.i18n import tr
 
 # What a person answers with, injected so a test can answer without a terminal —
@@ -85,6 +107,26 @@ PHRASES = {FOREIGN: "versioning.foreign", MISSING: "versioning.missing"}
 INSTALL = "install"
 WITHOUT = "without"
 NO_ANSWER = "no_answer"
+
+# The cadence (§4, item 30). `KEY` is the setting — the name lives in
+# `core.settings`, which owns the file's keys, so the two homes are one — and
+# `DEFAULT` is what a folder that never chose is versioned at: minutes, and few
+# enough that a working session is a handful of versions instead of hundreds.
+# `EVERY_WRITE` is the number a person writes to have the metronome back, and it
+# is the old default kept as a choice.
+KEY = settings.VERSIONING
+DEFAULT = 10.0
+EVERY_WRITE = 0.0
+
+# The seconds in a minute, for the one comparison the cadence makes: the
+# interval is READ in minutes and COMPARED in seconds, and the conversion lives
+# here and nowhere else.
+_MINUTE = 60.0
+
+# The sentence a folder that fell behind is owed. It is not a STATE like the two
+# in `PHRASES`: the folder IS under versioning, and what it says is about time —
+# the interval went by with writes still waiting.
+STALE = "versioning.stale"
 
 # How many writes this process has committed. Module state like the writer's
 # count, and for the same reason: both are about a RUN.
@@ -153,14 +195,117 @@ def state() -> str:
     return BARE if present() else MISSING
 
 
+def interval() -> float:
+    """The cadence, in minutes — the ONE reading of the folder's setting (§4).
+
+    Both halves of the cadence read here: the write that decides whether to
+    commit, and the sentence that reports the folder which waited. Two readings
+    would be two answers about how long the folder may stay unversioned, and the
+    one the person was shown would be the one that lies.
+
+    A value that is not a number is a setting that was never made, and the folder
+    answers the default — the way `risk.threshold` answers its own — because a
+    cadence AT cannot read may neither flood the history nor quietly stop it. A
+    number below zero is that same strange value. Zero is not: it is a cadence
+    like any other, the one where no version is ever late.
+    """
+    value = settings.get(KEY, DEFAULT)
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return DEFAULT
+    if not math.isfinite(value) or value < EVERY_WRITE:
+        return DEFAULT
+    return float(value)
+
+
+def _now() -> float:
+    """The clock, in seconds since the epoch — the cadence's one seam.
+
+    A function and not an inline call so that a test can move the clock instead
+    of sleeping through the interval it is proving, and so that the whole module
+    reads it in one place.
+    """
+    return time.time()
+
+
+def last_version() -> float | None:
+    """When the folder was last versioned, in seconds — the COMMIT's own stamp.
+
+    The commit IS the version, so its stamp is the version's hour, and there is
+    no second record of it to drift from: a stamp of the folder's own would be a
+    second answer to a question git already answers, and the two would disagree
+    the day somebody committed in the folder by hand.
+
+    `None` is the folder that has waited forever — one with no version yet — and
+    it is also what an answer nobody can read becomes, because the failure this
+    door may not have is the one that stops versioning: a stamp that does not
+    parse reads as "no version", and no version commits.
+    """
+    try:
+        stamp = run(["log", "-1", "--format=%ct"]).stdout.strip()
+        return float(stamp) if stamp else None
+    except (OSError, ValueError):
+        return None
+
+
+def _elapsed(minutes: float) -> bool:
+    """Whether `minutes` have gone by since the folder was last versioned.
+
+    A folder with no version yet has waited long enough by definition: the first
+    version is not something a cadence postpones.
+    """
+    last = last_version()
+    return last is None or _now() - last >= minutes * _MINUTE
+
+
+def dirty() -> bool:
+    """Whether the folder carries writes no version has taken.
+
+    The process's own counter cannot answer it: a `cli` run starts at zero, and
+    the folder's dirt is older than the process asking. So the question goes to
+    git, and `status --porcelain` lists exactly what the next `add --all` would
+    carry — the derived files git ignores are not writes of the person's, and
+    they are not dirt either. A folder git cannot answer for reads as clean,
+    because what this feeds is a sentence and never a refusal.
+    """
+    if state() != OWNED:
+        return False
+    try:
+        return bool(run(["status", "--porcelain"]).stdout.strip())
+    except OSError:
+        return False
+
+
+def stale() -> bool:
+    """Whether the folder is under versioning and has fallen behind (§4, item 30).
+
+    Three things at once, and each one is needed: the repository is AT's, there
+    are writes the last version does not carry, and the interval this folder
+    chose has gone by. A clean folder is never behind — there is nothing owed —
+    and neither is the folder that asked for a version on every write: its writes
+    are versioned as they happen, so the wait this asks about never exists.
+    """
+    minutes = interval()
+    return (
+        minutes > EVERY_WRITE
+        and state() == OWNED
+        and dirty()
+        and _elapsed(minutes)
+    )
+
+
 def phrase(where: str | None = None) -> str | None:
     """The catalog key of what a person must hear, or `None` for silence.
 
     The PAGE reads this, and so does the sentence `notice` prints: one home for
     the wording, because the same truth told twice is the two sentences that
-    drift.
+    drift. Two truths arrive here, told apart by the state the rest of the module
+    reads: the folder that is not under versioning at all, and the folder that IS
+    and has fallen behind (`stale`).
     """
-    return PHRASES.get(state() if where is None else where)
+    here = state() if where is None else where
+    if here == OWNED:
+        return STALE if stale() else None
+    return PHRASES.get(here)
 
 
 def ensure() -> str:
@@ -234,10 +379,12 @@ def notice() -> str:
     The repository is born here when it could not be born before, so a machine
     that gained git gains the history by itself. What is said is the STATE and
     never a question: the question is the birth's and the migration's, and a
-    folder that answers the same one every run is a folder nagging.
+    folder that answers the same one every run is a folder nagging. The folder
+    that IS versioned and has fallen behind is the third thing said here, and it
+    is the one a `list` owes: a wait nobody names is a history quietly missing.
     """
     here = ensure()
-    key = PHRASES.get(here)
+    key = phrase(here)
     if key:
         print(tr(key))
     return here
@@ -247,8 +394,9 @@ def pending() -> bool:
     """Whether this process wrote anything the last commit did not carry.
 
     It is the single writer's count against what was committed, and it is what
-    makes "the folder is never left dirty" a thing a test can see instead of a
-    promise.
+    makes the cadence a thing a test can see instead of a promise. With the
+    periodic default it is TRUE between versions, and that is the cadence
+    working: what the folder owes is the next version, and not one per write.
     """
     return files.writes() != _committed
 
@@ -257,17 +405,24 @@ def commit(message: str) -> bool:
     """A version of what the folder now is, named by the action that made it.
 
     `False` — and no git call at all — when there is nothing to version: the
-    repository is not AT's, the run is read-only, or the process wrote nothing
-    since the last commit. That last guard is `files.writes` and not a guess: a
-    `list` costs nothing, and an action that wrote is exactly the case this door
-    exists for.
+    repository is not AT's, the run is read-only, the process wrote nothing since
+    the last commit, or the folder's cadence is periodic and the interval it
+    chose has not gone by yet (§4, item 30). That last guard is what makes a
+    CADENCE of the commit: the writes waiting for it are not lost, and the next
+    version carries all of them.
 
     Identity travels per call and is never written into the folder's config:
     nothing of the person's is touched to make AT's commits possible.
     """
     global _committed
 
-    if state() != OWNED or files.readonly() or files.writes() == _committed:
+    minutes = interval()
+    if (
+        state() != OWNED
+        or files.readonly()
+        or files.writes() == _committed
+        or (minutes > EVERY_WRITE and not _elapsed(minutes))
+    ):
         return False
     try:
         # `--quiet` answers with the exit code and nothing else: 0 is "nothing

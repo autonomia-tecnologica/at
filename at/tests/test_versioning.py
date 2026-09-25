@@ -26,13 +26,22 @@ import os
 import shutil
 import subprocess
 import tempfile
+import time
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
 
 from at import i18n
-from at.core import audit, boot, files, migrations, paths, versioning
+from at.core import (
+    audit,
+    boot,
+    files,
+    migrations,
+    paths,
+    settings,
+    versioning,
+)
 from at.data import store
 from at.prose import listing as prose
 from at.ui import ask as door
@@ -95,6 +104,39 @@ class ScratchCase(unittest.TestCase):
         with redirect_stdout(io.StringIO()):
             door.run("task", "create", ["--set", "text=comprar pão"], **AS_A_PERSON)
 
+    def chose(self, minutes: float) -> None:
+        """The folder chooses its cadence (§4, item 30).
+
+        Written through the core's door and not through the ACT: what this module
+        measures is what the cadence DOES to the history, and the line an edit of
+        a setting leaves is `test_settings`'s subject.
+        """
+        settings.save({**settings.load(), versioning.KEY: minutes})
+
+    def every_write(self) -> None:
+        """The cadence of one version per write — the choice, not the default.
+
+        A test about the history being the table's story says which cadence it is
+        talking about, because the folder that never chose is periodic and would
+        carry those writes in one version instead of one each.
+        """
+        self.chose(versioning.EVERY_WRITE)
+
+    def long_ago(self) -> None:
+        """Make the last version look older than the interval this folder chose.
+
+        The clock moves here and nowhere else: the cadence reads the commit's own
+        stamp, and a test that proved the interval by waiting it out would sleep
+        for ten minutes to prove a comparison.
+        """
+        stamp = mock.patch.object(
+            versioning,
+            "last_version",
+            lambda: time.time() - (versioning.interval() + 1) * 60,
+        )
+        stamp.start()
+        self.addCleanup(stamp.stop)
+
     def git(self, *args: str) -> str:
         return subprocess.run(
             ["git", *args], cwd=self.root, capture_output=True, text=True
@@ -154,6 +196,7 @@ class TheRepository(ScratchCase):
 
     def test_an_action_ends_in_a_version_named_by_the_engine_s_own_sentence(self):
         self.born()
+        self.every_write()
         with redirect_stdout(io.StringIO()):
             _, answer, _ = door.run(
                 "task", "create", ["--set", "text=comprar pão"], **AS_A_PERSON
@@ -163,15 +206,19 @@ class TheRepository(ScratchCase):
         self.assertEqual(self.versions()[0], answer)
         self.assertEqual(self.versions()[0], "TASK-1 criado.")
 
-    def test_the_folder_is_never_left_dirty(self):
+    def test_a_folder_that_asks_for_every_write_is_never_left_dirty(self):
+        # The cadence of zero minutes is the version that is never late, and it
+        # keeps the invariant the periodic default trades away: nothing waits.
         self.born()
         self.assertFalse(versioning.pending())
+        self.every_write()
         self.wrote()
         self.assertFalse(versioning.pending())
         self.assertEqual(self.git("status", "--porcelain"), "")
 
     def test_the_whole_history_is_the_table_s_story_in_order(self):
         self.born()
+        self.every_write()
         for value in ("primeira", "segunda"):
             with redirect_stdout(io.StringIO()):
                 door.run("task", "create", ["--set", f"text={value}"], **AS_A_PERSON)
@@ -194,6 +241,7 @@ class TheRepository(ScratchCase):
 
     def test_a_refused_action_leaves_the_line_and_no_row(self):
         self.born()
+        self.every_write()
         before = len(self.versions())
         # The engine coerces and requires BEFORE it writes, so the ROW is never
         # written and the table is untouched. What the refusal leaves is the
@@ -214,6 +262,7 @@ class TheRepository(ScratchCase):
 
     def test_a_file_of_the_person_s_ends_in_a_version_named_by_its_path(self):
         self.born()
+        self.every_write()
         (prose.root() / "nota.md").write_text("olá\n", encoding="utf-8")
         status, _ = prose.write("nota.md", "olá, mundo\n", "")
         self.assertEqual(status, 200)
@@ -224,6 +273,81 @@ class TheRepository(ScratchCase):
         with mock.patch.object(versioning, "run", side_effect=OSError("boom")):
             self.wrote()
         self.assertEqual(len(store.load("task")), 1)
+
+
+@unittest.skipUnless(GIT, SKIP)
+class TheCadence(ScratchCase):
+    """The folder versioned from time to time, and never on every write.
+
+    The default is PERIODIC (§4, item 30): a working session writes hundreds of
+    times, and one version per keystroke is a metronome, not a history. The write
+    itself looks at how long ago the last version was and only commits when the
+    interval has passed — no job and no timer — and what waits between versions
+    is carried by the next one, because a version is the whole folder.
+    """
+
+    def test_a_folder_that_never_chose_is_versioned_periodically(self):
+        self.born()
+        before = self.versions()
+        self.wrote()
+        # The birth is the only version there is: the interval has not gone by.
+        # The row is on disk all the same — what waits is the HISTORY, and the
+        # folder is more useful carrying a wait than wearing a version per edit.
+        self.assertEqual(self.versions(), before)
+        self.assertEqual(len(store.load("task")), 1)
+        self.assertTrue(versioning.pending())
+        self.assertFalse(versioning.stale())
+
+    def test_the_next_write_after_the_interval_carries_everything_that_waited(self):
+        self.born()
+        self.wrote()
+        self.long_ago()
+        # The folder is behind, and this is what the `cli` and the page read
+        # before the write that resolves it: AT's repository, writes the last
+        # version does not carry, and the interval gone by.
+        self.assertTrue(versioning.stale())
+        self.assertEqual(versioning.phrase(), versioning.STALE)
+        self.wrote()
+        # ONE version for both rows, named by the write that took it, and the
+        # folder is clean again: what waited was carried, and not lost.
+        self.assertEqual(self.versions()[0], "TASK-2 criado.")
+        self.assertEqual(len(store.load("task")), 2)
+        self.assertFalse(versioning.pending())
+        self.assertFalse(versioning.stale())
+        self.assertEqual(self.git("status", "--porcelain"), "")
+
+    def test_a_clean_folder_is_never_behind(self):
+        # The sentence is about writes the last version does not carry, and never
+        # about age: a folder nothing was written to owes nothing, and warning
+        # about the time it sat still would be a sentence with no subject.
+        self.born()
+        self.long_ago()
+        self.assertIsNone(versioning.phrase())
+        self.assertFalse(versioning.stale())
+
+    def test_the_cli_says_the_folder_fell_behind(self):
+        self.born()
+        self.wrote()
+        self.long_ago()
+        out = io.StringIO()
+        with redirect_stdout(out):
+            main(["version"])
+        self.assertIn(i18n.tr("versioning.stale"), out.getvalue())
+
+    def test_the_page_is_handed_the_sentence_in_every_language(self):
+        self.born()
+        self.wrote()
+        self.long_ago()
+        handed = webapp.state_payload()["versioning"]
+        self.assertEqual(sorted(handed), sorted(i18n.SUPPORTED))
+        for language in i18n.SUPPORTED:
+            self.assertEqual(
+                handed[language], i18n.text("versioning.stale", language)
+            )
+
+    def test_the_page_of_a_folder_that_is_not_behind_is_handed_nothing(self):
+        self.born()
+        self.assertIsNone(webapp.state_payload()["versioning"])
 
 
 @unittest.skipUnless(GIT, SKIP)
@@ -255,6 +379,15 @@ class TheFolderWithARepositoryOfItsOwn(ScratchCase):
         handed = webapp.state_payload()["versioning"]
         self.assertEqual(sorted(handed), sorted(i18n.SUPPORTED))
         self.assertEqual(handed["pt_BR"], i18n.tr("versioning.foreign"))
+
+    def test_the_folder_of_somebody_else_is_never_told_it_fell_behind(self):
+        # AT does not version in here at all, so the wait this item is about does
+        # not exist: what the person hears is whose the repository is.
+        self.born()
+        self.wrote()
+        self.long_ago()
+        self.assertFalse(versioning.stale())
+        self.assertEqual(versioning.phrase(), versioning.PHRASES[versioning.FOREIGN])
 
     def test_the_cli_says_it_on_every_run(self):
         self.born()
@@ -325,6 +458,15 @@ class WithoutTheTool(ScratchCase):
             main(["version"])
         self.assertIn(i18n.tr("versioning.missing"), out.getvalue())
 
+    def test_the_folder_without_the_tool_is_never_told_it_fell_behind(self):
+        # There is no repository to fall behind in, and the sentence this module
+        # owes is the one about the tool that is not here.
+        self.born()
+        self.wrote()
+        self.long_ago()
+        self.assertFalse(versioning.stale())
+        self.assertEqual(versioning.phrase(), versioning.PHRASES[versioning.MISSING])
+
     def test_the_page_is_handed_the_sentence(self):
         self.born()
         handed = webapp.state_payload()["versioning"]
@@ -367,6 +509,27 @@ class WithoutTheTool(ScratchCase):
                 versioning.notice()
         self.assertEqual(versioning.state(), versioning.OWNED)
         self.assertTrue((self.root / ".git").is_dir())
+
+
+class TheCadenceSetting(ScratchCase):
+    """The key the cadence lives in, read ONCE and governing both halves (§4)."""
+
+    def test_a_folder_that_never_chose_is_periodic(self):
+        self.assertEqual(versioning.interval(), versioning.DEFAULT)
+        self.assertGreater(versioning.DEFAULT, versioning.EVERY_WRITE)
+
+    def test_zero_is_the_person_asking_for_every_write(self):
+        self.chose(versioning.EVERY_WRITE)
+        self.assertEqual(versioning.interval(), versioning.EVERY_WRITE)
+
+    def test_a_value_that_is_not_a_cadence_is_read_as_the_default(self):
+        # `risk.threshold`'s rule, on this key: a number AT cannot read is a
+        # setting that was never made — never a refusal, and never a cadence that
+        # either floods the history or quietly stops it.
+        for strange in ("1h", None, True, -3, [10]):
+            with self.subTest(value=strange):
+                self.chose(strange)
+                self.assertEqual(versioning.interval(), versioning.DEFAULT)
 
 
 class TheWords(ScratchCase):

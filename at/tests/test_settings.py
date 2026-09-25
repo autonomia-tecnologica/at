@@ -169,6 +169,16 @@ class TheDoor(SettingsCase):
         self.assertIn(risk.BY_ACTION, settings.KNOWN)
         self.assertIn(risk.BY_ACTION, settings.keys())
 
+    def test_the_cadence_of_versioning_is_a_key_the_product_reads(self):
+        # §4, item 30: the folder's versioning cadence is an adjustment like the
+        # interpreter's switch, and it reaches the person by this same door. It
+        # raises nothing, and for the reason the switch raises nothing: what it
+        # moves is how often the folder is versioned, and never a wall.
+        self.assertEqual(versioning.KEY, settings.VERSIONING)
+        self.assertIn(settings.VERSIONING, settings.KNOWN)
+        self.assertIn(settings.VERSIONING, settings.keys())
+        self.assertIsNone(settings.raised(settings.VERSIONING))
+
     def test_the_map_that_moves_the_wall_is_priced_with_the_bar(self):
         # An edit of the map writes which number each action carries, so it walks
         # an entry under the bar without touching the bar at all: it is the same
@@ -282,6 +292,18 @@ class TheWords(SettingsCase):
                 value='{"task:delete": 0.1}',
             ),
             text,
+        )
+
+    def test_the_cadence_is_written_and_read_through_the_door(self):
+        # The person chooses the cadence the way they choose any other
+        # adjustment, and the number the core reads afterwards is the number the
+        # file holds — `0` being the version on every write (§4, item 30).
+        code, text = self.words("setting", "edit", versioning.KEY, "0")
+        self.assertEqual(code, 0)
+        self.assertEqual(settings.get(versioning.KEY), 0)
+        self.assertEqual(versioning.interval(), versioning.EVERY_WRITE)
+        self.assertIn(
+            tr("setting.edited", setting=versioning.KEY, value="0"), text
         )
 
     def test_a_map_a_hand_wrote_is_read_the_same_way(self):

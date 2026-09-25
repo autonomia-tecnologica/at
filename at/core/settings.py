@@ -16,7 +16,8 @@ reader of a shape that has one home.
 
 **The core reads the same `get`, and that is not a hole in the door.** A setting
 is what the core reads of itself — `risk` its bar, `gate` its authenticator,
-`migrations` its decisions, `nlu` its switch — and those four ARE the core: the
+`migrations` its decisions, `nlu` its switch, `versioning` its cadence — and
+those five ARE the core: the
 door is not a wall it is held behind, and wrapping each of those reads in a
 function of its own would be a second name for the same one. What the door is FOR
 is the other side: a surface, which has neither the shape of the file nor the
@@ -64,6 +65,14 @@ SCHEMA = 1
 THRESHOLD = "risk_threshold"
 BY_ACTION = "risk_by_action"
 
+# The cadence of the folder's versioning, in MINUTES (§4, item 30): how long the
+# folder may go unversioned while AT is being used. `0` is the person asking for
+# a version on every write, which is the choice and not the default. The key is
+# named here because the door's list spells it; what the number means — and what
+# a folder that never chose gets — is `at.core.versioning`'s, which is where the
+# version is taken.
+VERSIONING = "versioning_interval"
+
 # The keys the product READS, in the order the door hands them over. A key the
 # folder carries and this tuple does not name is still shown — the file is the
 # person's — and it comes after these, by name.
@@ -78,6 +87,7 @@ KNOWN = (
     THRESHOLD,
     BY_ACTION,
     "authenticator",
+    VERSIONING,
     "folders",
     "schema",
 )
