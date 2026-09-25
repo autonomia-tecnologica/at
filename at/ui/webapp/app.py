@@ -1247,6 +1247,15 @@ class Handler(BaseHTTPRequestHandler):
             return
         payload["fields"] = _schema_payload("task")
         payload["records"] = [_record("task", row) for row in payload.pop("rows")]
+        # The project's OWN fields, rendered like any other record's: it is what
+        # carries the body of an item to the page — the `desc` the table
+        # declares `markdown`, plus the status and the priority the tree orders
+        # by. The two are named apart on purpose: `fields`/`records` below are
+        # the TASKS the page draws, and this pair is the page itself.
+        payload["project"] = {
+            "fields": _schema_payload("project"),
+            "record": _record("project", payload.pop("row")),
+        }
         self._json(payload)
 
     def _orphans_payload(self) -> dict:

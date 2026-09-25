@@ -157,5 +157,7 @@
 
 - Caddy is the declared exception, and not by carelessness: it travels embedded in the binary, so whoever pins it is the binary itself, with AT's SemVer.
 
+- **The machine the release is built on is a dependency too, and it is pinned like one.** A frozen binary carries the machine that built it: the interpreter's extension modules travel with the artifact, and each one records the version of the library it was linked against — so the release's glibc floor is a property of WHERE it was built and not of the code. The release declares that floor, is built in the base the declaration pins, and is refused when the artifact needs more than it promised.
+
 - **Nothing experimental comes in**, not even as a development tool: stable components only. Alpha, beta, release candidate and preview stay out, and whatever the vendor marks as experimental stays out with them — the promise that AT does not change under your feet cannot rest on a surface whose owner says it will change.
 

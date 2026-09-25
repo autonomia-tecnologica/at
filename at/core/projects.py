@@ -95,6 +95,35 @@ def _subtree(projects: dict[int, dict], root: int) -> list[int]:
     return out
 
 
+def _ordered(table: str, numbers: list[int], rows: dict[int, dict]) -> list[int]:
+    """`numbers`, in the order the table declares for its display.
+
+    The declared order is computed over ROWS, and a page holds numbers — so the
+    rows are handed to `tables.ordered` and their numbers read back. It is the
+    same reading the listing makes, which is what keeps the page and the `cli`
+    from ordering the same queue two ways.
+    """
+    ranked = [
+        number
+        for row in tables.ordered(table, [rows[n] for n in numbers if n in rows])
+        for number in [store.number_of(row)]
+    ]
+    return [number for number in ranked if number is not None]
+
+
+def subtree(number: int) -> list[int]:
+    """The project and everything under it, parent before child — the SCOPE of
+    its page, readable from outside so a surface that answers "what is inside
+    this item" answers with the same set the page draws.
+
+    It reads every project the folder has and not only the listed ones: a
+    subproject the listing hides is still inside its parent, and the caller is
+    the one who filters. A number that names nothing answers itself, which is
+    what `_subtree` does with a root no parent claims.
+    """
+    return _subtree(_rows(PROJECT), number)
+
+
 def _tasks_by_owner(projects: dict[int, dict]) -> dict[int, int]:
     """task number → the project that owns it, for the tasks a shown project
     claims."""
@@ -184,7 +213,10 @@ def page(number: int) -> dict | None:
 
     parent = all_projects[number].get("parent")
     parent = parent if isinstance(parent, int) and parent in projects else None
-    kids = _children(all_projects).get(number, [])
+    # The children in the order the table declares: inside a backlog item, the
+    # subprojects ARE the queue, and the page has to read it the way the folder
+    # answers it.
+    kids = _ordered(PROJECT, _children(all_projects).get(number, []), all_projects)
 
     return {
         "id": number,
@@ -204,4 +236,9 @@ def page(number: int) -> dict | None:
         # The rows, not the payload: whoever serves this one knows how a row is
         # spelled on the wire, and `core` does not.
         "rows": listed,
+        # And the project's OWN row, which is what gives the page the item's
+        # body: a backlog item keeps its why, its decided and its open in the
+        # project's `desc`, and a page that showed the contents and not the item
+        # would be the one place a person reads it and cannot find it.
+        "row": all_projects[number],
     }

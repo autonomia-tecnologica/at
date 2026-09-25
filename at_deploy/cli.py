@@ -65,16 +65,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         return REFUSED
 
     if not words:
-        # The Wizard of §7 is the natural front for this artifact (§6, item 27):
-        # deploying is a SEQUENCE and not a sentence, and the screen walks it.
-        # A machine with no display is still a legitimate place to run the
-        # deploy — there the words below ARE the whole of it, which is what §5's
-        # one-way rule buys — and the window says so in `at-cli`'s own sentence
-        # before the help is printed.
-        from at_deploy import wizard  # noqa: PLC0415 — it reads this module
-
-        if wizard.open_wizard():
-            return OK
+        # THE `Tk` STEPS ASIDE FOR NOW, and it is the same decision `at-cli` took
+        # in item 9. The Wizard of §7 is a screen for whoever does not type
+        # commands, and it is the least urgent of the slices: the door is the
+        # `cli` — §5's one-way rule says everything of the screen is reachable
+        # from here — and the screen is how somebody who does not type reaches it.
+        #
+        # So `at_deploy/wizard.py` stays in the code with NO CALLER until the
+        # slice that brings the `Tk` back, and what a wordless command answers is
+        # the help, exactly like the other artifact. Until then, a machine with
+        # no display and a machine with one behave the same way, which is the
+        # point: nothing here opens a window.
         print(tree.as_text())
         return OK
 

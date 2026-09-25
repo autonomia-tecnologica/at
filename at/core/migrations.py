@@ -734,6 +734,91 @@ def _jobs(ask: Ask | None) -> list[Report]:
     return report + _hand_over(JOB_PERMISSIONS)
 
 
+# What THIS release adds to declarations that are ALREADY on disk — migration
+# fifteen. It is the backlog moving into the tables, read off the declaration:
+# the `project` gains the `priority` the queue is ordered by, the `planned`
+# status that says "decided and not started", and the default order §4 names
+# beside the default fields; the `task` gains the `project` column, which is
+# what lets the listing say which item a slice belongs to.
+#
+# It is written the way migration nine writes one, and for the same reason: the
+# additions are spelled as a declaration spells them, so the merge never has to
+# be told which kind of key it is holding. `planned` lands at the END of the
+# folder's `enum` and not where the bundled declaration puts it — the merge
+# only ever ADDS, and a key inserted in the middle would be an edit to the
+# person's file. The order the picker lists them in is cosmetic; the closed set
+# is the same one either way.
+BACKLOG: dict[str, dict] = {
+    "project": {
+        "columns": ["priority"],
+        "sort": {"by": "priority", "direction": "desc", "then": "id"},
+        "fields": {
+            "priority": {
+                "label": "table.project.field.priority",
+                "filterable": True,
+                "searchable": True,
+                "enum": {
+                    "low": "table.project.field.priority.low",
+                    "medium": "table.project.field.priority.medium",
+                    "high": "table.project.field.priority.high",
+                    "critical": "table.project.field.priority.critical",
+                },
+                "default": "medium",
+            },
+            "status": {
+                "enum": {"planned": "table.project.field.status.planned"},
+                "show": ["planned"],
+            },
+        },
+    },
+    "task": {"columns": ["project"]},
+}
+
+
+def _fill_missing(table: str, field: str) -> list[str]:
+    """As linhas que já existiam ganham o valor que a declaração dá ao campo novo.
+
+    O motor JÁ lê um campo ausente como o padrão declarado quando ordena — é o
+    que `tables._sort_key` faz —, e esta escrita põe na linha o mesmo valor que
+    a leitura vinha supondo. O que se ganha é não haver duas verdades: a
+    listagem mostra o que a ordem usa, em vez de uma coluna vazia ao lado de uma
+    ordem que já decidiu.
+
+    Nada é sobrescrito. Só a linha que NÃO tem o campo o recebe, e a que a pessoa
+    já escreveu fica com o que ela escreveu — uma linha sem `priority` não é uma
+    decisão, é uma linha mais velha que o campo. É o outro lado da regra de
+    sempre: a migração acrescenta o que falta, e diz o que acrescentou.
+    """
+    default = schema.field(table, field).get("default")
+    if default is None or schema.of(table) is None:
+        return []
+    filled: list[str] = []
+    for row in store.load(table):
+        if row.get(field) is not None:
+            continue
+        number = store.number_of(row)
+        if number is None:
+            continue
+        tables.edit(table, number, {field: default})
+        filled.append(tables.format_id(table, number))
+    return filled
+
+
+def _backlog_order(ask: Ask | None) -> list[Report]:
+    """Migration fifteen: the fields the backlog needs to be a queue.
+
+    It does not ask: a declaration of the product's own, and nothing outside the
+    folder points at it (§3, migration). The rows it writes are the `priority`
+    those projects never had the chance to carry — the very value the order was
+    already reading off the declaration for them.
+    """
+    report = _extend(BACKLOG)
+    filled = _fill_missing("project", "priority")
+    if filled:
+        report.append(("boot.migration.backlog.filled", {"names": ", ".join(filled)}))
+    return report
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, _legacy_instance),
     Migration(2, _capitalized_instance),
@@ -749,6 +834,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(12, _audits),
     Migration(13, _audit_threshold),
     Migration(14, _jobs),
+    Migration(15, _backlog_order),
 )
 
 

@@ -11,7 +11,8 @@
   "columns": [
     "status",
     "priority",
-    "text"
+    "text",
+    "project"
   ],
   "desc": "the movement: one short text, the whole of the prose in desc, and the status log in modifications",
   "fields": {

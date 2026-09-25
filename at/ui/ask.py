@@ -81,6 +81,7 @@ from at.core import (
     files,
     jobs,
     permissions,
+    projects,
     risk,
     settings,
     tables,
@@ -88,6 +89,13 @@ from at.core import (
 )
 from at.data import schema
 from at.i18n import tr
+from at.ui import words
+
+# The two tables the tree is read off, named once: the `--project` filter and
+# the slices of an item are about the pair, and a string typed twice is the one
+# that drifts from the declaration.
+PROJECT = projects.PROJECT
+TASK = projects.TASK
 
 # The three outcomes of an exit, and the same three the `cli` documents.
 OK = 0
@@ -736,16 +744,52 @@ def _acted(
 
 
 def _listing(table: str, args: list[str]) -> tuple[int, str]:
+    """A table's listing, and the one narrowing the `cli` adds to it: `--all`
+    puts back what the declaration hides, and `--project` keeps what one item
+    claims.
+
+    The filter is the PAGE's SCOPE and not a second one: a project's tasks are
+    the whole of its SUBTREE, the set item 3's page draws. What stays the
+    listing's own is the status filter the table declares — `task list` hides
+    what is finished, `--all` puts it back — so the scope is shared with the
+    page and the narrowing is the listing's, each in its own place.
+    """
     show_all = "--all" in args
-    if [arg for arg in args if arg != "--all"]:
+    rest = [arg for arg in args if arg != "--all"]
+    wanted: str | None = None
+    if rest[:1] == ["--project"] and len(rest) == 2:
+        wanted, rest = rest[1], []
+    if rest:
+        return USAGE, rejected("list")
+    if wanted is not None and not _claims(table):
         return USAGE, rejected("list")
     rows = tables.rows(table, show_all=show_all)
+    if wanted is not None:
+        # A project nobody has is refused the way a row nobody has is, and by
+        # the same sentence: the filter is a reference like any other.
+        owner = tables.find(PROJECT, wanted)
+        scope = set(projects.subtree(owner["id"]))
+        rows = [row for row in rows if projects.project_of(row) in scope]
     if not rows:
         return OK, tr("table.word.empty")
     return OK, rendered(table, rows)
 
 
+def _claims(table: str) -> bool:
+    """Whether `table` is one a `--project` filter can narrow — a table that
+    declares a field of its own pointing at `project`."""
+    ref = schema.field(table, "project").get("ref")
+    return isinstance(ref, list) and PROJECT in ref
+
+
 def _viewing(table: str, args: list[str]) -> tuple[int, str]:
+    """One row's fields — and, for a project, what is inside it.
+
+    A project is a SCOPE and not a table of its own (§4): the page a person
+    opens shows the project's own fields and then the tasks of the whole
+    subtree, and §5 does not let the `cli` be the surface that cannot. So the
+    slices of an item are answered here, by the very rows the page draws.
+    """
     if len(args) != 1:
         return USAGE, rejected("view")
     row = tables.find(table, args[0])
@@ -754,15 +798,21 @@ def _viewing(table: str, args: list[str]) -> tuple[int, str]:
         if name == "id":
             continue
         lines.append(f"{tables.label(table, name)}: {tables.text_of(table, name, row.get(name))}")
+    if table == PROJECT:
+        page = projects.page(row["id"]) or {}
+        slices = [entry for entry in page.get("rows", []) if isinstance(entry, dict)]
+        lines.append("")
+        lines.append(f"{tables.table_name(TASK, many=True)}:")
+        lines.append(rendered(TASK, slices) if slices else tr("table.word.empty"))
     return OK, "\n".join(lines)
 
 
 def rendered(table: str, rows: list[dict]) -> str:
     """The listing: the id, then the columns the table declares.
 
-    The widths are measured from what is about to be printed, so a column is as
-    wide as its widest cell — the alternative, a fixed width, is a table that
-    breaks the first time a title is long.
+    The drawing is `ui/words.table`'s and not this file's: the deploy's status
+    is the same kind of thing — a header and cells — and two renderers would be
+    two sets of widths that part company the first time a title grows.
     """
     header = [tr("table.field.id")] + [tables.label(table, name) for name in tables.columns(table)]
     cells = [
@@ -770,9 +820,7 @@ def rendered(table: str, rows: list[dict]) -> str:
         + [tables.text_of(table, name, row.get(name)) for name in tables.columns(table)]
         for row in rows
     ]
-    widths = [max(len(line) for line in column) for column in zip(header, *cells)]
-    line = lambda row: "  ".join(cell.ljust(width) for cell, width in zip(row, widths)).rstrip()
-    return "\n".join([line(header), *[line(cell) for cell in cells]])
+    return words.table([header, *cells])
 
 
 def _sets(args: list[str]) -> tuple[dict[str, str], list[str]]:

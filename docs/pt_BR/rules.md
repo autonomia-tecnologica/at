@@ -157,5 +157,7 @@
 
 - O Caddy é a exceção declarada, e não por descuido: ele vai embarcado no binário, então quem o pina é o próprio binário, com o SemVer do AT.
 
+- **A máquina onde o release é construído também é dependência, e é pinada como uma.** Um binário congelado carrega a máquina que o construiu: as extensões do interpretador viajam com o artefato, e cada uma guarda a versão da biblioteca contra a qual foi ligada — então o piso de glibc do release é propriedade de ONDE ele foi construído, e não do código. O release declara esse piso, é construído na base que a declaração pina, e é recusado quando o artefato precisa de mais do que prometeu.
+
 - **Nada experimental entra**, nem como ferramenta de desenvolvimento: só componente estável. Versão alpha, beta, release candidate e preview ficam de fora, e o que o fornecedor marca como experimental fica de fora junto — a promessa de que o AT não muda sob os seus pés não pode depender de uma superfície que o dono dela avisa que vai mudar.
 

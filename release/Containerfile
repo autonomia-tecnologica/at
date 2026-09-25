@@ -1,0 +1,58 @@
+# AT's WebApp container — and it runs the CODE, not the single file.
+#
+# **Why the source and not the artifact.** §7c's container used to run the
+# `at-cli` that sits in the Working Folder, and that made the BASE a prisoner of
+# whoever built the release: a frozen binary carries the glibc of its builder,
+# so the image had to name a floor that only a rolling distribution carried
+# (`environment.py` keeps that measurement, and its cost). Running the source
+# moves the floor to the INTERPRETER OF THE IMAGE — which is ours, pinned by us,
+# and chosen by us — and the coupling is gone by construction rather than by a
+# swap.
+#
+# It also answers the thing a clone could not: the front page is DERIVED
+# (`at/ui/webapp/dist` is built by Vite and the repository never carries it), so
+# a container that only cloned would answer 500 at the door. Here the page is
+# built in the first stage, where node is, and copied into the second.
+#
+# Two stages, and the second is `FROM build` — the first one's output is the
+# only thing that crosses.
+#
+# Build it from the checkout root:
+#
+#     podman build -f release/Containerfile -t at-webapp:<version> .
+#
+# Both bases are pinned in version AND digest, like every other external
+# dependency (§3): a tag moves, a digest does not.
+
+# ---- the front page: built where node is ---------------------------------
+FROM docker.io/library/node:22-bookworm-slim@sha256:43ac6c60b8f89723f746e8a92ce91abd5017e627ce1ddfe4238355d3a30b772c AS build
+
+WORKDIR /ui
+# The lockfile is copied FIRST and the install runs alone, so the layer is kept
+# while the sources change — and `npm ci` is what makes the lockfile the truth.
+COPY at/ui/webapp/package.json at/ui/webapp/package-lock.json ./
+RUN npm ci --ignore-scripts
+
+COPY at/ui/webapp/ ./
+RUN npm run build
+
+# ---- the app: the source, and the page the stage above built --------------
+FROM docker.io/library/python:3.14-slim-bookworm@sha256:82bc3c539b8813ada9d68c63b40158fa002f7f33de9bf3312a3dfdc0620dff56 AS app
+
+WORKDIR /app
+
+# The runtime dependencies, from the hashes the repository already carries —
+# the image's own pip cannot choose a version nobody pinned.
+COPY requirements.txt ./
+RUN pip install --no-cache-dir --require-hashes -r requirements.txt
+
+# And the checkout: the app reads its own assets from the tree it lives in, and
+# the wheel deliberately does not carry the WebApp's (the spec collects them for
+# the binary, `pyproject.toml` says why). So what travels is the source.
+COPY . /app
+COPY --from=build /ui/dist /app/at/ui/webapp/dist
+
+# The Working Folder is MOUNTED, and `AT_ROOT` names it at run time: the app
+# resolves the folder from the environment before it looks at the process's own
+# directory, which here is the image's tree and not the person's folder.
+CMD ["python", "-m", "at", "webapp", "--port", "12345"]

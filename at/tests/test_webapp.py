@@ -654,6 +654,28 @@ class TheProjectBranch(ServerCase):
         project = next(f for f in json.loads(body)["fields"] if f["name"] == "project")
         self.assertIn("project", project["hide"])
 
+    def test_the_page_carries_the_item_own_record_and_its_schema(self):
+        # The project's OWN pair, apart from the `fields`/`records` the page
+        # draws: it is what puts the body of an item on the page it belongs to.
+        with redirect_stdout(io.StringIO()):
+            tables.edit("project", 1, {"desc": "## O porquê\n\no corpo do item"})
+        _, _, body = self.get("/api/project/1")
+        payload = json.loads(body)
+        fields = {field["name"]: field for field in payload["project"]["record"]["fields"]}
+        self.assertEqual(fields["desc"]["value"], "## O porquê\n\no corpo do item")
+        self.assertEqual(fields["desc"]["type"], "markdown")
+        self.assertIn("desc", [field["name"] for field in payload["project"]["fields"]])
+        # And the pair the page's TABLE reads is still the task's.
+        self.assertIn("text", [field["name"] for field in payload["fields"]])
+
+    def test_the_subprojects_come_in_the_order_the_table_declares(self):
+        with redirect_stdout(io.StringIO()):
+            tables.create("project", {"name": "Depois", "parent": "1", "priority": "low"})
+            tables.create("project", {"name": "Antes", "parent": "1", "priority": "critical"})
+        _, _, body = self.get("/api/project/1")
+        children = [child["title"] for child in json.loads(body)["children"]]
+        self.assertEqual(children, ["Antes", "Site", "Depois"])
+
     def test_an_unknown_project_is_not_a_crash(self):
         self.assertEqual(self.status("/api/project/999"), 404)
 

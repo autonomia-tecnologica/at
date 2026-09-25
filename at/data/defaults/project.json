@@ -10,8 +10,14 @@
   "primary": "name",
   "columns": [
     "status",
-    "name"
+    "name",
+    "priority"
   ],
+  "sort": {
+    "by": "priority",
+    "direction": "desc",
+    "then": "id"
+  },
   "desc": "the direction; macro or micro by the parent tree — the task is the movement",
   "fields": {
     "id": {
@@ -39,6 +45,7 @@
       "searchable": true,
       "enum": {
         "idea": "table.project.field.status.idea",
+        "planned": "table.project.field.status.planned",
         "active": "table.project.field.status.active",
         "paused": "table.project.field.status.paused",
         "done": "table.project.field.status.done",
@@ -46,10 +53,23 @@
       },
       "show": [
         "idea",
+        "planned",
         "active",
         "paused"
       ],
       "default": "idea"
+    },
+    "priority": {
+      "label": "table.project.field.priority",
+      "filterable": true,
+      "searchable": true,
+      "enum": {
+        "low": "table.project.field.priority.low",
+        "medium": "table.project.field.priority.medium",
+        "high": "table.project.field.priority.high",
+        "critical": "table.project.field.priority.critical"
+      },
+      "default": "medium"
     },
     "desc": {
       "label": "table.project.field.desc",

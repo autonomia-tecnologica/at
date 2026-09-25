@@ -48,20 +48,34 @@ INSTANT = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$")
 
 
 class RulerCase(unittest.TestCase):
-    """The active language, and the zone the sentences are read in."""
+    """The active language, the zone the sentences are read in, and a folder.
+
+    **The folder is the test's own and not the checkout.** A suite that runs
+    with the repository as the Working Folder reads whatever that folder happens
+    to carry — and one test here did: with a language the product does not
+    support, `i18n` falls back to the language the FOLDER stores, and the
+    sentence only resolved because the checkout had one. The repository is the
+    product; a test that needs a Working Folder makes its own.
+    """
 
     def setUp(self):
+        self.scratch = tempfile.TemporaryDirectory()
+        self.root = Path(self.scratch.name)
         self.env = mock.patch.dict(
-            os.environ, {"AT_LANG": "pt_BR", "TZ": ZONE}
+            os.environ,
+            {"AT_LANG": "pt_BR", "TZ": ZONE, "AT_ROOT": str(self.root)},
         )
         self.env.start()
         time.tzset()
         i18n.reset()
+        with redirect_stdout(StringIO()):
+            boot.create_working_folder()
 
     def tearDown(self):
         self.env.stop()
         time.tzset()
         i18n.reset()
+        self.scratch.cleanup()
 
     @contextmanager
     def speaking(self, language: str):
@@ -339,28 +353,27 @@ class TheField(RulerCase):
     """
 
     def setUp(self):
+        # A pasta é a do `RulerCase` e não uma segunda: o `super` já abriu uma
+        # Pasta de Trabalho própria, e abrir outra aqui trocaria o `scratch` de
+        # baixo dos pés do `tearDown` de cima — que passaria a limpar a de
+        # baixo, duas vezes, e a de cima nunca.
         super().setUp()
-        self.scratch = tempfile.TemporaryDirectory()
-        self.root = Path(self.scratch.name)
-        with mock.patch.dict(os.environ, {"AT_ROOT": str(self.root)}):
-            with redirect_stdout(StringIO()):
-                boot.create_working_folder()
-            self.where = paths.data_dir() / schema.SCHEMA_DIR / "moment.json"
-            self.where.write_text(
-                json.dumps(
-                    {
-                        "id": "moment",
-                        "order": 90,
-                        "name": {"one": "table.task.name.one", "many": "table.task.name.many"},
-                        "store": "data/moments.jsonl",
-                        "primary": "text",
-                        "columns": ["text"],
-                        "fields": {
-                            "id": {"label": "table.field.id"},
-                            "text": {"label": "table.task.field.text"},
-                            "since": {"label": "table.task.field.since", "type": "day"},
-                            "when": {"label": "table.task.field.deadline", "type": "instant"},
-                            "count": {"label": "table.task.field.priority", "type": "number"},
+        self.where = paths.data_dir() / schema.SCHEMA_DIR / "moment.json"
+        self.where.write_text(
+            json.dumps(
+                {
+                    "id": "moment",
+                    "order": 90,
+                    "name": {"one": "table.task.name.one", "many": "table.task.name.many"},
+                    "store": "data/moments.jsonl",
+                    "primary": "text",
+                    "columns": ["text"],
+                    "fields": {
+                        "id": {"label": "table.field.id"},
+                        "text": {"label": "table.task.field.text"},
+                        "since": {"label": "table.task.field.since", "type": "day"},
+                        "when": {"label": "table.task.field.deadline", "type": "instant"},
+                        "count": {"label": "table.task.field.priority", "type": "number"},
                         },
                     },
                     ensure_ascii=False,
@@ -370,14 +383,10 @@ class TheField(RulerCase):
                 encoding="utf-8",
             )
         schema.reset()
-        self.inside = mock.patch.dict(os.environ, {"AT_ROOT": str(self.root)})
-        self.inside.start()
 
     def tearDown(self):
-        self.inside.stop()
         schema.reset()
         store.reset()
-        self.scratch.cleanup()
         super().tearDown()
 
     def test_the_answer_is_what_the_field_stores(self):

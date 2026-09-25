@@ -16,6 +16,7 @@ import { store, setFields, word } from "../lib/store";
 import { nav, markPage, leave, open, openRef, setHeading, showError } from "../lib/views";
 import TableView from "../components/TableView.vue";
 import RecordView from "../components/RecordView.vue";
+import ProseField from "../components/ProseField.vue";
 import type { FieldSpec, RecordRow } from "../lib/record";
 
 interface Child {
@@ -33,6 +34,11 @@ interface ProjectPayload {
   children: Child[];
   fields: FieldSpec[];
   records: RecordRow[];
+  // The project's OWN fields and record — the pair `fields`/`records` above is
+  // the TASKS the page draws, and this one is the project the page IS. It is
+  // where the body of an item arrives: the `desc` the table declares
+  // `markdown`, which is what a backlog item keeps its why and its decided in.
+  project: { fields: FieldSpec[]; record: RecordRow };
 }
 
 const props = defineProps<{ id: string }>();
@@ -40,6 +46,30 @@ const props = defineProps<{ id: string }>();
 const payload = ref<ProjectPayload | null>(null);
 
 const page = computed(() => "project:" + props.id);
+
+// THE BODY OF THE ITEM: every field of the project the table declares
+// `markdown`, which is where an item keeps its why, its decided and its open.
+// It is drawn AS PROSE — the renderer is the debt `lib/markdown` names, and
+// until it lands the text a person reads is the text as it is stored.
+const prose = computed(() =>
+  (payload.value?.project.record.fields || []).filter(field => field.type === "markdown" && field.value),
+);
+
+// The band's sentence, built once: what the page IS — the item, its state, and
+// the priority the queue is ordered by when the row carries one — and how much
+// of it the filter leaves. A migrated row has no priority, and it says nothing
+// rather than a placeholder: the ORDER already reads a missing value as the
+// declared default, and the band does not have to spell it out.
+function describe(shown: number, hidden = 0): void {
+  if (!payload.value) return;
+  const { id, title, status } = payload.value;
+  const priority = payload.value.project.record.fields.find(field => field.name === "priority");
+  const parts = [title, status];
+  if (priority?.raw) parts.push(priority.value);
+  parts.push(shown + " " + word("tasks"));
+  if (hidden) parts.push(hidden + " " + word("hidden"));
+  setHeading(String(id), " · " + parts.join(" · "));
+}
 
 const record = computed(() => {
   const current = nav.current;
@@ -55,9 +85,7 @@ async function load(): Promise<void> {
     payload.value = data;
     setFields(data.fields);
     markPage("project:" + data.id, wasOpen);
-    setHeading(String(data.id),
-               " · " + data.title + " · " + data.status + " · "
-               + data.records.length + " " + word("tasks"));
+    describe(data.records.length);
   } catch (err) {
     // A project can have been CLOSED, and the preference outlives what it names:
     // the page falls to the first table, never to an error page.
@@ -77,11 +105,7 @@ function go(id: number): void {
 // The band carries what the FILTER leaves, like the panel's line does — the two
 // numbers describe the same rows and may not disagree.
 function onCount(shown: number, hidden: number): void {
-  if (!payload.value) return;
-  const { id, title, status } = payload.value;
-  setHeading(String(id),
-             " · " + title + " · " + status + " · " + shown + " " + word("tasks")
-             + (hidden ? " · " + hidden + " " + word("hidden") : ""));
+  describe(shown, hidden);
 }
 
 onMounted(load);
@@ -101,6 +125,9 @@ watch(() => props.id, () => {
     <div v-if="payload.parent" class="back" @click="go(payload.parent.id)">
       ← {{ payload.parent.id }}  ({{ payload.parent.title }})
     </div>
+    <!-- The ITEM's body, drawn as the page's prose: the fields this table
+         declares `markdown` — the `desc` where an item keeps its why. -->
+    <ProseField v-for="field in prose" :key="field.name" :text="field.value" />
     <div v-if="payload.children.length" class="subs">
       <button v-for="child in payload.children" :key="child.id" type="button" class="sub"
               @click="go(child.id)">

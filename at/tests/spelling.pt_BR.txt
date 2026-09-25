@@ -116,6 +116,7 @@ gerenciar
 ghostwriter
 git
 github
+glibc
 go
 gênero
 harness

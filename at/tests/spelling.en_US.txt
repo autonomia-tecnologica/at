@@ -57,6 +57,7 @@ frontend
 functionalities
 fundador
 github
+glibc
 headscale
 horizonte
 hospedado

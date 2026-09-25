@@ -53,8 +53,10 @@ SAID = (
     "services.no_podman.status", "services.no_podman.down",
     "services.up.ahead", "services.up.waiting", "services.up.no_address",
     "services.up.failed", "services.up.service",
-    "services.down.done", "services.status.line", "services.status.site",
-    "services.status.running", "services.status.stopped", "services.status.absent",
+    "services.down.done", "services.status.site",
+    "services.status.running", "services.status.installed", "services.status.missing",
+    "services.status.head.service", "services.status.head.state",
+    "services.status.head.image",
     "services.dnsmasq.file.header", "services.gate.drawn",
     "services.elevation.ask", "services.elevation.refused",
     "services.elevation.no_tty", "services.elevation.failed",
@@ -209,6 +211,19 @@ class TheManifest(unittest.TestCase):
                 self.assertIn(f":{service.image.version}@", reference)
                 self.assertTrue(reference.endswith(service.image.digest))
 
+    def test_a_person_reads_the_image_without_the_pin(self):
+        # DUAS LEITURAS, DOIS LEITORES. O digest é o que fixa, e é por isso que
+        # o `podman run` e o registro da pasta não podem viver sem ele — mas
+        # sessenta e quatro caracteres de hexadecimal não dizem nada a quem só
+        # quer saber qual imagem e qual release. O que fixa a imagem é ela ser
+        # USADA com o digest, não ele ser impresso.
+        for service in env.SERVICES:
+            with self.subTest(service=service.name):
+                image = service.image
+                self.assertEqual(image.shown(),
+                                 f"{image.repo}:{image.version}")
+                self.assertNotIn(image.digest, image.shown())
+
     def test_a_tag_that_moves_is_not_a_pin(self):
         # The rule this reads is the shape of the digest, so a pin written by
         # hand has to pass the same door.
@@ -354,8 +369,17 @@ class TheUp(FolderCase):
                 self.assertIn(service.image.reference(), [call[-1] for call in fake.calls])
                 self.assertIn(i18n.tr(
                     "services.up.service", service=i18n.tr(service.label),
-                    reference=service.image.reference(), where=env.state(service.name),
+                    image=service.image.shown(), where=env.state(service.name),
                 ), text)
+
+    def test_no_line_a_person_reads_carries_the_pin(self):
+        # O defeito que isto tranca: `services up` imprimia
+        # `repo:version@sha256:…` para quem estava lendo. O digest continua indo
+        # para onde ele é OBRIGATÓRIO — o `podman run` e o registro da pasta, que
+        # o teste acima prova —, e some de toda frase que uma pessoa lê.
+        self.runtime()
+        _, text = self.quiet(env.up)
+        self.assertNotIn("sha256:", text)
 
     def test_the_dnsmasq_publishes_on_the_loop_and_mounts_its_own_folder(self):
         fake = self.runtime()
@@ -838,26 +862,97 @@ class TheDown(FolderCase):
 class TheStatus(FolderCase):
     """What is standing, read off the runtime and said in AT's words."""
 
+    def test_the_status_line_a_person_reads_carries_no_pin(self):
+        self.runtime(running="true")
+        _, text = self.quiet(env.status)
+        self.assertNotIn("sha256:", text)
+
     def test_a_running_service_is_said_to_be_up(self):
         self.runtime(running="true")
         _, text = self.quiet(env.status)
+        self.assertIn(i18n.tr("services.status.running"), text)
         for service in env.SERVICES:
             with self.subTest(service=service.name):
-                self.assertIn(i18n.tr(
-                    "services.status.line", service=i18n.tr(service.label),
-                    state=i18n.tr("services.status.running"),
-                    reference=service.image.reference(),
-                ), text)
+                self.assertIn(i18n.tr(service.label), text)
+                self.assertIn(service.image.shown(), text)
 
-    def test_a_container_that_is_there_and_stopped_says_so(self):
+    def test_the_services_are_a_table_and_not_a_sentence_each(self):
+        # Cinco linhas com a mesma forma são cinco linhas que ninguém compara, e
+        # o que se lê aqui é a COLUNA. O desenho é o mesmo da listagem da `cli`
+        # (`ui/words.table`), para os dois artefatos imprimirem tabela igual.
+        self.runtime(running="true")
+        _, text = self.quiet(env.status)
+        lines = text.splitlines()
+        # O relatório COMEÇA na tabela: nada antes dela, nem linha vazia — o
+        # estado dos serviços é a resposta inteira.
+        self.assertTrue(lines[0].startswith(i18n.tr("services.status.head.service")),
+                        f"o relatório não começa na tabela: {lines[0]!r}")
+        head = next(
+            line for line in lines
+            if i18n.tr("services.status.head.state") in line
+        )
+        for name in ("service", "state", "image"):
+            with self.subTest(column=name):
+                self.assertIn(i18n.tr(f"services.status.head.{name}"), head)
+        for service in env.SERVICES:
+            with self.subTest(service=service.name):
+                row = next(line for line in lines
+                           if line.startswith(i18n.tr(service.label)))
+                self.assertIn(service.image.shown(), row)
+
+    def test_a_service_that_is_there_and_stopped_is_still_installed(self):
+        # O container parou, mas a coisa ESTÁ aqui — e é isso que a pessoa
+        # pergunta. Criado, parado, removido: esse é o vocabulário do runtime, e
+        # um relatório que responde nele responde o que ninguém perguntou.
         self.runtime(running="false")
         _, text = self.quiet(env.status)
-        self.assertIn(i18n.tr("services.status.stopped"), text)
+        self.assertIn(i18n.tr("services.status.installed"), text)
 
-    def test_a_container_that_never_came_up_says_so(self):
+    def test_a_service_whose_image_is_not_here_is_not_installed(self):
+        # "não instalado" CONTÉM "instalado": o que se lê é a linha do serviço,
+        # e não a presença da palavra em qualquer lugar do texto.
+        self.runtime(fails=("container", "image"))
+        _, text = self.quiet(env.status)
+        for service in env.SERVICES:
+            with self.subTest(service=service.name):
+                row = next(line for line in text.splitlines()
+                           if line.startswith(i18n.tr(service.label)))
+                self.assertIn(i18n.tr("services.status.missing"), row)
+                self.assertIn(service.image.shown(), row)
+
+    def test_a_service_that_is_up_says_so(self):
+        self.runtime(running="true")
+        _, text = self.quiet(env.status)
+        self.assertIn(i18n.tr("services.status.running"), text)
+
+    def test_the_three_states_are_the_whole_vocabulary(self):
+        # O que a tabela responde, e nada mais: **não instalado, instalado, em
+        # execução**. As três são conferidas — a imagem no disco, o container
+        # rodando — e não inferidas de um pino ou de uma história.
+        for fails, expected in (
+            (("container", "image"), "missing"),
+            (("container",), "installed"),
+            ((), "running"),
+        ):
+            with self.subTest(expected=expected):
+                self.runtime(fails=fails)
+                _, text = self.quiet(env.status)
+                self.assertIn(i18n.tr(f"services.status.{expected}"), text)
+
+    def test_the_notifiers_credentials_are_said_only_with_the_notifier_up(self):
+        # O relato: as duas linhas do notificador apareciam para quem nem tem o
+        # ntfy. Elas são fatos sobre um serviço DE PÉ, e um credencial que
+        # existiria para um notificador que ninguém subiu não é um fato.
         self.runtime(fails=("container",))
         _, text = self.quiet(env.status)
-        self.assertIn(i18n.tr("services.status.absent"), text)
+        self.assertNotIn(
+            i18n.tr("services.notifier.credential.absent", where=notifier.token_file()),
+            text,
+        )
+        self.assertNotIn(
+            i18n.tr("services.notifier.phone.absent", where=notifier.phone_file()),
+            text,
+        )
 
     def test_without_a_podman_the_environment_has_nothing_standing(self):
         _, text = self.quiet(env.status)

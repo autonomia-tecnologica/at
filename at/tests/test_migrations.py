@@ -540,6 +540,111 @@ class TheMechanismGrowsAnyDeclaration(FolderCase):
         self.assertEqual(where.read_text(encoding="utf-8"), "não é json\n")
 
 
+class TheBacklogArrives(FolderCase):
+    """Migration fifteen: a folder that already exists gains what the queue needs.
+
+    The backlog moving into the tables is a DECLARATION change and nothing else —
+    the `priority` the order is computed from, the `planned` step between
+    "decided" and "started", the declared order itself, and the `project` column
+    the task listing was missing. A row is never touched: a project written
+    before the field landed reads as the declared default where the order is
+    computed, and that is the one place an old row and a new one have to agree.
+    """
+
+    def old_project(self) -> dict:
+        """`project.json` as the release before this one wrote it."""
+        declared = json.loads(self.declaration("project").read_text(encoding="utf-8"))
+        declared["fields"].pop("priority", None)
+        declared["fields"]["status"]["enum"].pop("planned", None)
+        declared["fields"]["status"]["show"] = ["idea", "active", "paused"]
+        declared.pop("sort", None)
+        declared["columns"] = ["status", "name"]
+        return declared
+
+    def old_task(self) -> dict:
+        declared = json.loads(self.declaration("task").read_text(encoding="utf-8"))
+        declared["columns"] = ["status", "priority", "text"]
+        return declared
+
+    def old_folder(self) -> None:
+        """A folder born before this release, with the rows it already had."""
+        self.born()
+        self.rewrite(self.declaration("project"), self.old_project())
+        self.rewrite(self.declaration("task"), self.old_task())
+        (self.root / "Tabelas" / "projects.jsonl").write_text(
+            json.dumps({"id": 1, "name": "Autonomia", "status": "active"}) + "\n",
+            encoding="utf-8",
+        )
+        self.forgotten()
+
+    def test_an_old_folder_gains_the_field_the_queue_is_ordered_by(self):
+        self.old_folder()
+        said = self.caught_up()
+        declared = json.loads(self.declaration("project").read_text(encoding="utf-8"))
+        self.assertEqual(declared["sort"], {"by": "priority", "direction": "desc", "then": "id"})
+        self.assertEqual(declared["fields"]["priority"]["default"], "medium")
+        self.assertIn("priority", declared["columns"])
+        self.assertIn("project.fields.priority", said)
+        self.assertIn("project.sort", said)
+
+    def test_an_old_folder_gains_the_step_between_decided_and_started(self):
+        self.old_folder()
+        self.caught_up()
+        status = json.loads(self.declaration("project").read_text(encoding="utf-8"))["fields"]["status"]
+        self.assertIn("planned", status["enum"])
+        self.assertIn("planned", status["show"])
+
+    def test_the_task_listing_gains_the_project_column(self):
+        self.old_folder()
+        self.caught_up()
+        declared = json.loads(self.declaration("task").read_text(encoding="utf-8"))
+        self.assertIn("project", declared["columns"])
+
+    def test_a_row_that_predates_the_field_gains_the_declared_default(self):
+        # A linha não é sobrescrita: ela RECEBE o valor que a declaração já dava
+        # a ela — o mesmo que a ordem vinha lendo de lá —, e todo o resto dela
+        # fica como estava.
+        self.old_folder()
+        where = self.root / "Tabelas" / "projects.jsonl"
+        said = self.caught_up()
+        rows = [json.loads(line) for line in where.read_text(encoding="utf-8").splitlines()]
+        self.assertEqual(rows[0]["priority"], "medium")
+        self.assertEqual(rows[0]["name"], "Autonomia")
+        self.assertEqual(rows[0]["status"], "active")
+        self.assertIn("PROJECT-1", said)
+
+    def test_a_priority_the_person_already_wrote_is_not_overwritten(self):
+        self.old_folder()
+        where = self.root / "Tabelas" / "projects.jsonl"
+        where.write_text(
+            json.dumps({"id": 1, "name": "Autonomia", "status": "active",
+                        "priority": "critical"}) + "\n",
+            encoding="utf-8",
+        )
+        self.caught_up()
+        rows = [json.loads(line) for line in where.read_text(encoding="utf-8").splitlines()]
+        self.assertEqual(rows[0]["priority"], "critical")
+
+    def test_an_edit_the_person_made_is_not_overwritten(self):
+        self.old_folder()
+        declared = self.old_project()
+        # A person who put an entry of their own in the listing keeps it, and
+        # what arrives lands BESIDE it — the merge only ever adds.
+        declared["columns"] = ["status", "name", "deadline"]
+        self.rewrite(self.declaration("project"), declared)
+        self.caught_up()
+        columns = json.loads(self.declaration("project").read_text(encoding="utf-8"))["columns"]
+        self.assertEqual(columns, ["status", "name", "deadline", "priority"])
+
+    def test_a_folder_that_already_carried_everything_is_not_rewritten(self):
+        self.born()
+        self.forgotten()
+        where = self.declaration("project")
+        before = where.read_text(encoding="utf-8")
+        self.caught_up()
+        self.assertEqual(where.read_text(encoding="utf-8"), before)
+
+
 # ------------------------------------------------------------- the stamp ---
 
 

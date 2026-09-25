@@ -94,6 +94,7 @@ from at.core import actors, files, gate, paths, tables
 from at.core.migrations import is_yes
 from at.i18n import tr
 from at.services import caddy as caddy_service
+from at.ui import words
 
 from at_deploy import podman, vpn
 
@@ -262,6 +263,14 @@ RUNNING = "running"
 STOPPED = "stopped"
 ABSENT = "absent"
 
+# WHAT A PERSON IS ASKED, and the three words are all of it: is it on this
+# machine, and is it on. The container's life — created, stopped, removed — is
+# the RUNTIME's vocabulary, and a report that answers in it is answering a
+# question nobody asked. The three are checked, not inferred: the image is in
+# the machine's store, and the container is running.
+INSTALLED = "installed"     # the image is here, and nothing is running
+MISSING = "missing"         # the image is not here — it was never brought
+
 
 # ------------------------------------------------------------ the manifest ---
 
@@ -269,9 +278,17 @@ ABSENT = "absent"
 class Image:
     """One image at the pin: the repository, the version and the digest.
 
-    All three, and the version is not decoration: `.reference()` hands over
-    `repo:version@digest`, so whoever reads the line knows which release it is
-    while the digest is what pins it — a tag moves, a digest does not (§3).
+    **Two readings, because there are two readers, and they were one.** A tag
+    moves and a digest does not (§3), so the digest is what pins — and what pins
+    is what `podman run` takes and what the folder records, and neither can do
+    without it. That is `.reference()`. A PERSON reading a status line has no
+    use for sixty-four characters of hexadecimal: what they need is which image
+    and which release, and that is `.shown()`.
+
+    They were one function, and the pin leaked into every sentence a person
+    reads. The one who wants to check that an image did not move reads the
+    folder's own record — the promise is kept by the digest being USED, not by
+    its being printed.
     """
 
     repo: str
@@ -279,7 +296,13 @@ class Image:
     digest: str
 
     def reference(self) -> str:
+        """`repo:version@digest` — the machine's reading: what runs, and what is
+        recorded. A tag moves, a digest does not."""
         return f"{self.repo}:{self.version}@{self.digest}"
+
+    def shown(self) -> str:
+        """`repo:version` — the person's reading, without the pin."""
+        return f"{self.repo}:{self.version}"
 
     def at_the_pin(self) -> bool:
         """Whether this is a pin at all, in the shape §3 demands.
@@ -805,12 +828,22 @@ class Service:
 # payload, no configuration: the Working Folder is mounted, and the container's
 # whole reach is that mount. **The base has to be one the artifact RUNS on**, and
 # that is not a preference: a frozen binary links against the glibc of the
-# machine that built it, and MEASURED, the artifact built in this folder needs
-# `GLIBC_2.44` while `debian:13` carries `2.41` — the container dies on
-# `libm.so.6: version GLIBC_2.44 not found` before AT ever starts. A rolling
-# distribution is what names the same floor here, and its `latest` is the
-# vendor's own word: the DIGEST is what pins it, exactly like the Caddy's pin
-# (§3), and moving it is a release act.
+# machine that BUILT it, so the base needs a glibc at least as new as the
+# release's floor — a floor the release DECLARES and the build PROVES
+# (`release/builder.json`, checked by `release.build`'s gate).
+#
+# **This base is the old floor's leftover, and the swap is owed.** It was chosen
+# when the release was built on whatever machine was at hand and needed
+# `GLIBC_2.44`, which only a rolling distribution named; the release is built in
+# the pinned builder now and needs `2.35`, which `debian:12` and everything
+# newer carries — the artifact runs there, MEASURED. Rolling is still what names
+# the same floor, and it costs 409 MB against `debian:12`'s 124. Nothing checks
+# that a pinned base satisfies the declared floor yet, and that check is owed
+# with the swap: a base that lags the release would be a container that dies
+# before AT ever starts.
+#
+# Its `latest` is the vendor's own word: the DIGEST is what pins it, exactly
+# like the Caddy's pin (§3), and moving it is a release act.
 WEBAPP_IMAGE = Image(
     repo="docker.io/library/archlinux",
     version="latest",
@@ -1083,7 +1116,8 @@ def _network() -> None:
 
 
 def _state_of(service: Service) -> str:
-    """Whether the service's container is running, stopped, or never was."""
+    """Whether the service's container is running, stopped, or not there — the
+    RUNTIME's answer, which the decisions below read and the report does not."""
     answer = podman.run([
         "container", "inspect", "--format", "{{.State.Running}}",
         container(service.name),
@@ -1091,6 +1125,47 @@ def _state_of(service: Service) -> str:
     if answer.returncode != 0:
         return ABSENT
     return RUNNING if answer.stdout.strip() == "true" else STOPPED
+
+
+def _here(image: Image) -> bool:
+    """Whether the image is in this machine's store — "instalado", measured."""
+    return podman.run(["image", "exists", image.reference()]).returncode == 0
+
+
+def _shown_state(service: Service, image: Image) -> str:
+    """The service as a PERSON reads it: running, installed, or not installed.
+
+    It is the runtime's answer folded into the three words a person asks with.
+    A container that was stopped, one that was taken down and one that is about
+    to be created are the same answer to "is it on?" — and the difference that
+    matters is whether the thing is HERE at all, which is the image.
+    """
+    if _state_of(service) == RUNNING:
+        return RUNNING
+    return INSTALLED if _here(image) else MISSING
+
+
+# How long a report waits for an address to answer. It is a question about NOW,
+# and a machine that does not answer in a second is a machine that does not
+# answer — waiting longer would make `status` slow to say what it already knows.
+STATUS_TIMEOUT = 1.0
+
+
+def published(host: str, port: int) -> bool:
+    """Whether something actually ANSWERS at the address.
+
+    **Derived is not the same as true**, and this is where the difference is
+    measured. The address comes from the machine's private network — a fact
+    about the CONFIGURATION — and the report said "reachable at" from it: a
+    folder whose environment was down announced an address while nothing at all
+    listened on the port. What is reachable is what answers, and that is asked
+    here and never inferred.
+    """
+    try:
+        with socket.create_connection((host, port), timeout=STATUS_TIMEOUT):
+            return True
+    except OSError:
+        return False
 
 
 def _start(service: Service, pins: dict[str, dict]) -> bool:
@@ -1106,7 +1181,7 @@ def _start(service: Service, pins: dict[str, dict]) -> bool:
                  held=image.version, pin=service.image.version))
 
     if podman.run(["pull", image.reference()]).returncode != 0:
-        print(tr("services.up.failed", service=name, reference=image.reference()))
+        print(tr("services.up.failed", service=name, image=image.shown()))
         return False
 
     for address in addresses(service):
@@ -1120,11 +1195,11 @@ def _start(service: Service, pins: dict[str, dict]) -> bool:
     # is the service, and two containers cannot share one.
     podman.run(["rm", "--force", container(service.name)])
     if podman.run(run_argv(service, image)).returncode != 0:
-        print(tr("services.up.failed", service=name, reference=image.reference()))
+        print(tr("services.up.failed", service=name, image=image.shown()))
         return False
 
     _record(service, image)
-    print(tr("services.up.service", service=name, reference=image.reference(),
+    print(tr("services.up.service", service=name, image=image.shown(),
              where=where))
     return True
 
@@ -1246,7 +1321,7 @@ def restart(name: str) -> bool:
     podman.run(["rm", "--force", container(service.name)])
     if podman.run(run_argv(service, image)).returncode != 0:
         print(tr("services.up.failed", service=tr(service.label),
-                 reference=image.reference()))
+                 image=image.shown()))
         return False
 
     print(tr("services.restarted", service=tr(service.label), where=where))
@@ -1355,10 +1430,18 @@ def down(say: bool = True) -> None:
 def status() -> None:
     """What is standing: the path this folder is on, and each service.
 
-    The PATH comes first, and it is said even where there is no Podman at all:
-    which authenticator this folder is on is a fact the folder carries
-    (`gate.mode`, the app's own reader of the same record), and it is the one
-    line that tells a person whether the environment is supposed to be standing.
+    **This artifact is the CONTAINERS'**, and this report is the containers'
+    state and nothing else. Whoever stays on the hosted path needs `at-cli`
+    alone, and the AT served locally — `at-cli webapp` — is not this binary's to
+    bring up, take down or report on. Which path the folder is on is the
+    SWITCH's business (§6), and the words that change it — `switch`, `forms` —
+    are where a person reads it; a report of what is standing does not have to
+    repeat it.
+
+    Two things may serve the same folder — the `at-cli` on the loop and the
+    WebApp in a container — and this artifact does not arbitrate that: the
+    conflict is named and is another problem.
+
     The credential's import is inside the function because `notifier` reads THIS
     module — the two are one subject.
 
@@ -1369,27 +1452,53 @@ def status() -> None:
     """
     from at_deploy import notifier  # noqa: PLC0415 — it reads this module
 
-    print(tr("services.status.mode", mode=tr(f"services.mode.{gate.mode()}")))
-    # Where the environment is reached from OUTSIDE this machine (§7e), and it is
-    # said only when there is such a place: a loopback AT has no second address
-    # to announce, and announcing the loop would be naming the machine the person
-    # is already sitting at.
-    if site_host() != HOST:
-        print(tr("services.status.site",
-                 url=caddy_service.address(site_host(), PORT)))
     if not podman.present():
         print(tr("services.no_podman.status"))
         return
+
+    # **An address is said only when something ANSWERS at it.** A fact about the
+    # machine's network is not a fact about being reachable, and the report used
+    # to say "reachable at" from the first alone: an address nobody served was
+    # announced as if the person could open it. What is reachable is what
+    # answers, and an address that answers nothing is not said at all — it is
+    # not the report's business to name a door that is not there.
+    host = site_host()
+    served = host != HOST and published(host, PORT)
+    if served:
+        print(tr("services.status.site",
+                 url=caddy_service.address(host, PORT)))
+
+    # The services are a TABLE — always, and that is the point. Five lines of
+    # one shape in a column are what a person compares, and the drawing is
+    # `ui/words.table`'s: the same one the `cli`'s listing uses, so the two
+    # artifacts print a table the same way.
     pins = held()
+    rows = [[
+        tr("services.status.head.service"),
+        tr("services.status.head.state"),
+        tr("services.status.head.image"),
+    ]]
     for service in SERVICES:
         image = running(service, pins)
-        print(tr(
-            "services.status.line",
-            service=tr(service.label),
-            state=tr(f"services.status.{_state_of(service)}"),
-            reference=image.reference(),
-        ))
+        rows.append([
+            tr(service.label),
+            tr(f"services.status.{_shown_state(service, image)}"),
+            image.shown(),
+        ])
+    # A linha em branco separa a tabela do que veio antes, e só existe quando
+    # ALGO veio antes: a tabela é a primeira coisa do relatório na maioria das
+    # vezes, e um relatório que começa com uma linha vazia começa torto.
+    if served:
+        print()
+    print(words.table(rows))
 
+    # The notifier's credentials are said WITH the notifier, and only then: they
+    # are facts about a service that is up, and listing where a credential would
+    # live for a notifier nobody brought is a report about a thing that is not
+    # there.
+    served = _service(NOTIFIER)
+    if served is None or _state_of(served) != RUNNING:
+        return
     where = notifier.token_file()
     print(tr("services.notifier.credential.at", where=where, topic=notifier.TOPIC,
              scope=notifier.SCOPE)

@@ -1,0 +1,16 @@
+{
+  "desc": "a máquina onde o release é construído, o piso que ele promete, e o que cada artefato promete carregar",
+  "builder": {
+    "repo": "docker.io/library/python",
+    "version": "3.14-slim-bookworm",
+    "digest": "sha256:82bc3c539b8813ada9d68c63b40158fa002f7f33de9bf3312a3dfdc0620dff56",
+    "packages": [
+      "binutils"
+    ]
+  },
+  "floor": "2.35",
+  "payload": {
+    "at-cli": [],
+    "at-deploy": []
+  }
+}

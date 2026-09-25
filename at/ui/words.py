@@ -14,6 +14,7 @@ sentence is the person's.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from at.i18n import tr
@@ -47,6 +48,25 @@ def completion_words(nodes: tuple[Node, ...]) -> tuple[tuple[str, tuple[str, ...
 def width(nodes: tuple[Node, ...]) -> int:
     """The column the descriptions start at: the longest word there is."""
     return max((len(node.name) for node in nodes), default=0)
+
+
+def table(rows: Sequence[Sequence[str]]) -> str:
+    """Rows printed as a TABLE: the first row is the header, and every column is
+    as wide as its widest cell.
+
+    It is the shape a listing already had (`ui/ask.py`), and it lives here for
+    the reason the help's shape lives here: the two artifacts print the same
+    kind of thing, and a second renderer would be a second set of widths — the
+    one that drifts the first time a title grows a character.
+
+    The widths are measured from what is ABOUT to be printed, so a column is as
+    wide as its widest cell and never as wide as somebody guessed.
+    """
+    widths = [max(len(cell) for cell in column) for column in zip(*rows)]
+    return "\n".join(
+        "  ".join(cell.ljust(width) for cell, width in zip(row, widths)).rstrip()
+        for row in rows
+    )
 
 
 def section(nodes: tuple[Node, ...], column: int, title_key: str) -> list[str]:

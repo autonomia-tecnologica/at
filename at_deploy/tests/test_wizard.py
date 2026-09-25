@@ -542,33 +542,37 @@ class TheWindow(FolderCase):
 # --------------------------------------------------------------- the door ---
 
 class TheDoor(FolderCase):
-    """`at-deploy` with no word, and the machine that has no display."""
+    """`at-deploy` with no word — and the `Tk` that stepped aside.
 
-    def test_the_wordless_command_opens_the_window(self):
+    The Wizard of §7 is item 27's third slice, and it stays BUILT
+    (`at_deploy/wizard.py`) but has NO CALLER while the `Tk` is off — the very
+    decision `at-cli` took in item 9. So the door below has one shape only: a
+    command with no word answers the help, and nothing opens a window. What the
+    window would say is still proved below, over the module itself.
+    """
+
+    def test_the_wordless_command_answers_the_help(self):
         fake = FakeTkinter()
         with mock.patch.dict(sys.modules, {"tkinter": fake}):
-            code, _ = self.quiet(main, [])
-        self.assertEqual(code, OK)
-        self.assertTrue([widget for widget in fake.made if widget.kind != "root"],
-                        "the wordless command built no window")
-        # Closed on the way out of a loop that returned, and closed ONCE: the
-        # window the loop left behind is `at.ui.wizard.app.destroy`'s guard to
-        # catch, and a second call here would be the traceback that guard exists
-        # for.
-        self.assertEqual(fake.root.destroys, 1)
-
-    def test_a_machine_with_no_tkinter_is_told_so_and_handed_the_words(self):
-        with mock.patch.dict(sys.modules, {"tkinter": None}):
             code, text = self.quiet(main, [])
         self.assertEqual(code, OK)
-        self.assertIn(i18n.tr("wizard.unavailable", error=""), text)
+        self.assertEqual([widget for widget in fake.made if widget.kind != "root"],
+                         [], "a janela abriu sobre um comando sem palavra")
         self.assertIn(i18n.tr("deploy.help.usage"), text)
+        self.assertIn("services", text)
 
-    def test_a_machine_with_no_display_is_told_so_and_handed_the_words(self):
-        # A `Tk` that cannot open — no `$DISPLAY` — is the same answer as a
-        # `tkinter` that is not installed: the deploy must be told plainly
-        # instead of by a traceback, and §5's one-way rule is what makes the
-        # words enough.
+    def test_the_window_still_separates_a_machine_with_no_tkinter(self):
+        # O módulo fica, e com ele a frase que o item 27 escreveu: uma máquina
+        # sem `tkinter` é avisada numa frase e não num traceback. Sem chamador
+        # hoje, quem a exercita é este teste — e é o que mantém a decisão viva
+        # para a fatia que trouxer o `Tk` de volta.
+        with mock.patch.dict(sys.modules, {"tkinter": None}):
+            opened, text = self.quiet(wizard.open_wizard)
+        self.assertFalse(opened)
+        self.assertIn(i18n.tr("wizard.unavailable", error=""), text)
+
+    def test_the_window_still_separates_a_machine_with_no_display(self):
+        # Um `Tk` que não abre — sem `$DISPLAY` — é a mesma resposta.
         fake = FakeTkinter()
 
         def refuse() -> object:
@@ -576,21 +580,17 @@ class TheDoor(FolderCase):
 
         fake.Tk = refuse
         with mock.patch.dict(sys.modules, {"tkinter": fake}):
-            code, text = self.quiet(main, [])
-        self.assertEqual(code, OK)
+            opened, text = self.quiet(wizard.open_wizard)
+        self.assertFalse(opened)
         self.assertIn(i18n.tr("wizard.unavailable", error=""), text)
-        self.assertIn(i18n.tr("deploy.help.usage"), text)
 
     def test_a_word_still_answers_a_word(self):
-        # The window is for the command with NO word: any other parameter makes
-        # the program act as a `cli` (§5), and a window opening over `help` would
-        # be the screen answering a question that was not asked of it.
         fake = FakeTkinter()
         with mock.patch.dict(sys.modules, {"tkinter": fake}):
             code, text = self.quiet(main, ["help"])
         self.assertEqual(code, OK)
         self.assertEqual([widget for widget in fake.made if widget.kind != "root"],
-                         [], "the window opened over a word")
+                         [], "a janela abriu sobre uma palavra")
         self.assertIn("services", text)
 
 

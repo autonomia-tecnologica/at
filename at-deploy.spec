@@ -27,13 +27,22 @@ the deploy neither reads a sentence nor proposes one. A payload left out of a
 build fails silently, so each one left out is named here rather than omitted in
 silence.
 
-**Tcl/Tk travels here, and it is the Wizard's price.** The deploy's Wizard
-(`at_deploy/wizard.py`) is the front §6 declares for this artifact, and a
-Tkinter window needs the interpreter's toolchain: `_tkinter` and the Tcl/Tk
+**Tcl/Tk does NOT travel here, and it is the Wizard's absence.** The deploy's
+Wizard (`at_deploy/wizard.py`) is the front §6 declares for this artifact, and
+the `Tk` stepped aside for now — the same decision `at-cli` took in item 9, and
+for the same reason: the door is the `cli`, which §5's one-way rule leaves whole
+on its own, and the screen is only how somebody who does not type reaches it.
+
+A Tkinter window needs the interpreter's toolchain — `_tkinter` and the Tcl/Tk
 libraries beside it, some tens of megabytes extracted on every launch of a
-`--onefile` binary. It is written here instead of discovered at the pyz level
-because the price is part of what the artifact IS — `at` pays it already, and
-whoever reads a build has to be able to read this one too.
+`--onefile` binary — and that is the payload of a caller this release does not
+have. It is also a payload that COSTS: the Tk/X11 chain needs a newer glibc for
+the artifact (`libexpat`), and what the release promises it must hold.
+
+The payload is out, and it is said here for the reason above: a payload decided
+by silence is a payload nobody can read. When the `Tk` comes back it comes back
+HERE, and `release/builder.json` gains the builder package and the promised
+payload with it.
 """
 
 import sys
@@ -78,14 +87,11 @@ a = Analysis(
     # table, and the hashed field's derivation is `libsodium`'s — so the same
     # hand-named payload travels here.
     #
-    # `tkinter` is the Wizard's, and it is named for the reason above and one
-    # more: the module that reaches it does so INSIDE a function, because a
-    # machine with no display has to be answered and not crashed on
-    # (`at_deploy/wizard.py`), and a payload decided by an import that only
-    # happens at run time is a payload this file has to say out loud. Its hook
-    # is what drags `_tkinter` and the Tcl/Tk libraries in with it (the
-    # docstring is where the price is declared).
-    hiddenimports=["_cffi_backend", "tkinter"],
+    # `tkinter` was named here, and it is NOT any more: the `Tk` stepped aside
+    # (the docstring says why), and what the release does not carry it does not
+    # promise. Naming a payload the artifact has no caller for would be paying
+    # the megabytes and the glibc for a window nobody opens.
+    hiddenimports=["_cffi_backend"],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

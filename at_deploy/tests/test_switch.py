@@ -456,18 +456,12 @@ class TheCli(FolderCase):
                 code, _ = self.quiet(main, words)
                 self.assertEqual(code, USAGE)
 
-    def test_the_status_says_which_path_the_folder_is_on(self):
-        code, text = self.quiet(main, ["services"])
-        self.assertEqual(code, OK)
-        self.assertIn(i18n.tr("services.mode.forms"), text)
-
     def test_every_word_of_the_switch_is_written_in_both_languages(self):
         for key in ("services.switch.already", "services.switch.rolling_back",
                     "services.switch.failed", "services.switch.unproved",
                     "services.switch.nowitness", "services.switch.done",
                     "services.forms.already", "services.forms.done",
-                    "services.gate.down", "services.status.mode",
-                    "services.mode.forms", "services.mode.gate",
+                    "services.gate.down",
                     "services.missing.ask", "services.missing.no_tty",
                     "deploy.services.about", "deploy.services.switch.about",
                     "deploy.services.forms.about", "deploy.error.read_only"):
