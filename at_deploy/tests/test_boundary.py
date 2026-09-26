@@ -110,15 +110,18 @@ class TheCoreIsOneSource(unittest.TestCase):
             with self.subTest(module=module):
                 self.assertIn(f"from {module} import", text)
 
-    def test_the_deploy_carries_the_nine_modules_of_one_subject(self):
+    def test_the_deploy_carries_the_ten_modules_of_one_subject(self):
         # A list, so that a module added here is a decision somebody makes on
         # purpose: the deploy is §7, and everything it owns is named. `wizard`
         # is the front §6 declares for this artifact — the sequence of §7 walked
-        # over the words the `cli` already has (item 27's third slice).
+        # over the words the `cli` already has (item 27's third slice). `trust`
+        # is the CA in the browser's NSS — the other half of `cert.at.local`,
+        # and the one word of §7 that writes outside the Working Folder and
+        # still asks no elevation (§7a, item 49).
         self.assertEqual(
             {path.stem for path in sources(DEPLOY) if path.stem != "__init__"},
             {"cli", "tree", "__main__", "environment", "podman", "vpn",
-             "notifier", "switch", "wizard"},
+             "notifier", "switch", "wizard", "trust"},
         )
 
 

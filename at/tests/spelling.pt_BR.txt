@@ -58,6 +58,7 @@ canônico
 chain
 chat
 checkout
+chromium
 cli
 code
 comita
@@ -166,6 +167,7 @@ modulepreload
 nlu
 notebook
 notification
+nss
 ntfy
 obsidian
 oidc

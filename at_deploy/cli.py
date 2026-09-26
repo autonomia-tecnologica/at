@@ -45,6 +45,13 @@ WORDS = tuple(node.name for node in _SERVICES.children) if _SERVICES else ()
 # word IS and not how it is spelled after it, which is why this is said here.
 ARGUMENT = "credential"
 
+# The two acts of `ca`, read off the tree that offers them, for the reason the
+# `services` words are: a word can never dispatch without being offered (§5). The
+# ALVOS are the argument — a closed vocabulary of stores —, and the tree does not
+# carry them for the same reason it does not carry the name of `credential`.
+_CA = tree.find("ca")
+CA_WORDS = tuple(node.name for node in _CA.children) if _CA else ()
+
 # The exit codes, and they are the product's: one `cli` answers like the other.
 OK = 0
 REFUSED = 1
@@ -95,6 +102,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if word == "services":
         return services(rest)
+
+    if word == "ca":
+        return ca(rest)
 
     print(tr("deploy.error.unknown_word", word=word))
     print(tr("deploy.error.usage"))
@@ -241,6 +251,50 @@ def services(
     # a failure. What failed is a machine that could not be asked, and a service
     # that did not come up.
     return OK if outcome in (UP, INSTALL, HOSTED) else REFUSED
+
+
+def ca(rest: list[str]) -> int:
+    """`at-deploy ca` — a CA do AT no cofre que o navegador desta máquina lê (item 49).
+
+    A palavra que liga o §7a ao navegador de quem está NESTA máquina: o
+    `cert.at.local` da fatia 1 levou a CA ao aparelho que não lê o disco daqui, e
+    o Firefox desta não lê o cofre do sistema — o NSS dele é por perfil. Quem
+    escreve nesses bancos é o `certutil`, e o ato inteiro mora em
+    `at_deploy/trust.py`.
+
+    **A ordem das palavras é do produto e não do pedido, e vale dizer por quê.**
+    O pedido era `ca <alvo> install`; o que saiu foi `ca install [<alvo>]`. A
+    regra do §5 é que uma palavra que DESPACHA seja uma palavra que a ajuda
+    OFERECE, e a árvore é a declaração única das duas: os ATOS — `install` e
+    `uninstall` — são o que despacha, então são eles os filhos de `ca`; os ALVOS
+    são um vocabulário fechado de ARGUMENTO, como o nome de
+    `services credential <nome>`, e a frase de uso os diz. É o desenho que o
+    `at-cli` já segue — `<objeto> <ação> [<argumento>]` —, e sem ele o ato não
+    apareceria na ajuda nem no completion.
+
+    O alvo vazio é o PADRÃO: sem ele a palavra cobre os dois cofres que a pessoa
+    tem, e nomeá-lo a estreita. Nada aqui pede elevação — os dois bancos são
+    arquivos da própria pessoa —, e o cofre do sistema fica de fora de propósito
+    (`trust.py`).
+    """
+    from at_deploy import trust
+
+    if not rest:
+        print(tr("deploy.ca.ask", targets=", ".join(trust.TARGETS)))
+        return USAGE
+    act, alvos = rest[0], rest[1:]
+    if act not in CA_WORDS:
+        return _reject("ca")
+
+    unknown = [name for name in alvos if name not in trust.TARGETS]
+    if unknown:
+        print(tr("deploy.ca.unknown", name=unknown[0],
+                 targets=", ".join(trust.TARGETS)))
+        return USAGE
+
+    outcome = (trust.install(alvos) if act == trust.INSTALL
+               else trust.uninstall(alvos))
+    return OK if outcome in (trust.INSTALLED, trust.REMOVED) else REFUSED
 
 
 def _credential(name: str, ask: Ask | None, secret: Ask | None) -> int:

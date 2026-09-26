@@ -41,6 +41,21 @@ WORDS: tuple[Node, ...] = (
             Node("credential", "deploy.services.credential.about"),
         ),
     ),
+    # A CA do AT no cofre que o navegador DESTA máquina lê (item 49). É a outra
+    # metade do que o §7a abriu com `cert.at.local`: lá a CA chega ao aparelho
+    # que não lê o disco, aqui ela entra no NSS de quem navega daqui. Os dois
+    # atos são `install` e `uninstall` porque um cofre que só cresce é um cofre
+    # que ninguém audita, e os ALVOS — os cofres — são argumento e não palavra:
+    # os dois nomes do meio (firefox, chromium) são o vocabulário fechado, e a
+    # `cli` os diz quando o ato vem sozinho (`at_deploy/trust.py`).
+    Node(
+        "ca",
+        "deploy.ca.about",
+        (
+            Node("install", "deploy.ca.install.about"),
+            Node("uninstall", "deploy.ca.uninstall.about"),
+        ),
+    ),
     # The second artifact puts ITSELF where commands are found, and it does not
     # install the first one: §3's cut is the same sentence here — whoever stays
     # on the hosted path never needs this binary, and whoever installs this one
