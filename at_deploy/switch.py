@@ -15,22 +15,36 @@ record that its authenticator is the gate, and only then does the WebApp stop
 asking its own Forms. Until that instant the folder is exactly what it was, and a
 failure anywhere in the middle leaves it there.
 
-**The proof is three probes, and each one answers a sentence.** The site through
+**The proof is four probes, and each one answers a sentence.** The site through
 the edge must answer with the GATE's refusal and not with AT's page — that is
 "the gate stands in front". AT, asked directly, must take the identity the
-Caddy seals — that is "AT receives what it expects". And the SAME identity
-without the secret must be refused (`webapp.gate_refused`) — that is the M2M
-being more than a header somebody wrote. A probe that cannot reach anything is a
+Caddy seals — that is "AT receives what it expects". The SAME identity without
+the secret must be refused (`webapp.gate_refused`) — that is the M2M being more
+than a header somebody wrote. And **the PORTAL must answer**, on the address the
+gate sends the browser to — because a gate that redirects every request to a
+page nobody serves is a door that opens onto a wall, and the three probes above
+say nothing about it: the first one only ever asked whether the edge answers
+`302`, and a redirect to nowhere answers `302` too. That is the defect the
+fourth probe exists for (`portal`). A probe that cannot reach anything is a
 failure like any other, because "could not tell" is not "proved".
 
-**Where each probe stands is the PATH's and not a preference.** The first is
-asked from the HOST, because the host is what reaches the edge. The other two ask
-AT directly, and on the container path "directly" means from INSIDE the network:
-the WebApp answers there and nowhere else (§7c), so the deploy asks through a
-throwaway container of its own (`environment.inside`), on the network the edge
-and the app share. A probe standing on the host would reach nothing and would
-read "the identity was not taken" from a gate that is working — which is why the
-road is written down here instead of left to whoever calls.
+**The proof is asked ONCE per claim, and the sentence names the one that
+failed.** `unproved` walks the four in the order the person meets them and
+answers with the sentence of the first that did not close; `proved` is the same
+walk collapsed to a boolean. The portal failing is NOT "the gate is unproved" —
+that sentence blames the provider for an edge that never routes it — so it has
+words of its own (`services.switch.noportal`).
+
+**Where each probe stands is the PATH's and not a preference.** The two that
+speak to the EDGE — the site in front, and the portal it sends the browser to —
+are asked from the HOST, because the host is what reaches the edge, which is
+where the browser stands too. The other two ask AT directly, and on the
+container path "directly" means from INSIDE the network: the WebApp answers
+there and nowhere else (§7c), so the deploy asks through a throwaway container
+of its own (`environment.inside`), on the network the edge and the app share. A
+probe standing on the host would reach nothing and would read "the identity was
+not taken" from a gate that is working — which is why the road is written down
+here instead of left to whoever calls.
 
 **The switch lives in `at-deploy` and not in `at-cli`.** It is an environment act
 and the transactional one is the environment's (item 27); what `at-cli` keeps is
@@ -59,7 +73,9 @@ FAILED = "failed"         # a step did not close, and everything went back
 # AT's 200 page, or an edge with nobody to ask — is not the gate standing in
 # front, and it is not proved.
 IN_FRONT = (401, 302, 303, 307, 308)
-# The status that means AT took the identity it was handed.
+# The status that means AT took the identity it was handed — and the one that
+# means the PORTAL answered: the same number for the two claims it closes,
+# because both are "the page the person needed came back".
 TAKEN = 200
 # The status a request with an identity but no secret is owed (§7b).
 REFUSED = 403
@@ -169,9 +185,44 @@ def unsealed(answer: gate.Answer | None = None) -> bool:
     return _inside("/api/state", {IDENTITY_HEADER: name}, answer) == REFUSED
 
 
+def portal(answer: gate.Answer | None = None) -> bool:
+    """Whether the PORTAL answers — the fourth claim (§7b).
+
+    It is asked through the SAME edge the person uses, and from the host, which
+    is where the browser stands: the address is the one the gate redirects to
+    (`environment.portal_url`), and the answer has to be the portal's own page.
+    A `302` here is the loop showing itself — the edge sending the portal back
+    through the ask — and a `431` is the loop after a few turns; neither is the
+    page, so only `200` closes the claim.
+
+    **It is what the first probe cannot see.** `in_front` is satisfied by the
+    redirect itself, so the gate counted as standing while the browser bounced
+    between the redirect and the ask until the URL died (`caddy.PORTAL`). Asking
+    the destination is the difference between "something stands in front" and
+    "what stands in front can be used".
+    """
+    return gate.ask(environment.portal_url(), {}, answer) == TAKEN
+
+
+def unproved(answer: gate.Answer | None = None) -> str | None:
+    """The sentence of the claim that did not close — or `None` when all close.
+
+    Each claim is asked ONCE, in the order the person meets them, and the walk
+    stops at the first failure: asking the rest would be asking about a gate
+    that is already refused. The three that are about AT share one sentence
+    ("the gate was not proved"); the portal has its own, because it is not the
+    provider that failed — it is the edge that never routes it.
+    """
+    if not (in_front(answer) and sealed(answer) and unsealed(answer)):
+        return "services.switch.unproved"
+    if not portal(answer):
+        return "services.switch.noportal"
+    return None
+
+
 def proved(answer: gate.Answer | None = None) -> bool:
-    """Whether the gate is PROVED in front of AT — all three sentences at once."""
-    return in_front(answer) and sealed(answer) and unsealed(answer)
+    """Whether the gate is PROVED in front of AT — all four claims at once."""
+    return unproved(answer) is None
 
 
 # -------------------------------------------------------------- the switch ---
@@ -215,8 +266,11 @@ def to_gate(ask: environment.Ask | None = None,
         _rollback("services.switch.nowitness")
         return FAILED
 
-    if not proved(answer):
-        _rollback("services.switch.unproved")
+    # The claim that failed is the SWITCH's to name: "not proved" for the gate
+    # and its own words for a portal the edge never routes (`unproved`).
+    reason = unproved(answer)
+    if reason is not None:
+        _rollback(reason)
         return FAILED
 
     # The commit, and the only line that changes what this folder IS. A folder

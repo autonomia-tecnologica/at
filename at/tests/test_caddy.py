@@ -18,6 +18,7 @@ tarball the way the product reads it.
 from __future__ import annotations
 
 import io
+import json
 import os
 import socket
 import ssl
@@ -261,14 +262,56 @@ class TheCaddyfile(FolderCase):
     def test_the_gate_asks_the_provider_who_is_calling(self):
         # §7b: forward-auth is the Caddy asking the identity provider BEFORE it
         # hands anything over, and the four headers are the provider's own answer
-        # travelling on — `Remote-User` is the identity the WebApp reads.
+        # travelling on — `Remote-User` is the identity the WebApp reads. A
+        # pergunta está DENTRO do `handle` de sempre (§7b: o portal é o outro),
+        # e o que ela precede é o proxy do WebApp.
         self.gate()
         text = self.written(auth="127.0.0.1:9091")
         self.assertIn("forward_auth 127.0.0.1:9091 {", text)
-        self.assertIn(f"\t\turi {caddy.AUTH_URI}", text)
-        self.assertIn("\t\tcopy_headers Remote-User Remote-Groups Remote-Name "
+        self.assertIn(f"\t\t\turi {caddy.AUTH_URI}", text)
+        self.assertIn("\t\t\tcopy_headers Remote-User Remote-Groups Remote-Name "
                       "Remote-Email", text)
-        self.assertLess(text.index("forward_auth"), text.index("reverse_proxy"))
+        self.assertLess(text.index("forward_auth"),
+                        text.index("reverse_proxy 127.0.0.1:41234"))
+
+    def test_the_portal_is_routed_straight_to_the_provider(self):
+        # **O defeito que isto tranca, medido contra o container**: o portão
+        # autentica por REDIRECIONAMENTO, então o portal não pode ser perguntado
+        # — perguntar é o que manda o navegador para lá. Com o portal no site
+        # inteiro, a borda perguntava sobre ele, a resposta era outro 302 com
+        # `rd=`, e o laço reescrevia a URL até o `431`. O `handle` do portal é a
+        # volta por fora da pergunta.
+        self.gate()
+        text = self.written(auth="127.0.0.1:9091")
+        self.assertIn(f"\t@portal path {caddy.PORTAL} {caddy.PORTAL}/*", text)
+        self.assertIn("\thandle @portal {", text)
+        self.assertIn(f"\t\treverse_proxy 127.0.0.1:9091", text)
+        # O portal vem ANTES da pergunta, e o proxy do WebApp depois dela.
+        self.assertLess(text.index("handle @portal"),
+                        text.index("forward_auth"))
+        self.assertLess(text.index("forward_auth"),
+                        text.index("reverse_proxy 127.0.0.1:41234"))
+
+    def test_the_portal_is_never_asked_about(self):
+        # O que fecha o laço não é só a ORDEM: é que a pergunta não esteja no
+        # caminho do portal. Um `handle` que perguntasse sobre ele responderia
+        # 302 de novo, e a pessoa continuaria sem entrar.
+        self.gate()
+        text = self.written(auth="127.0.0.1:9091")
+        inside = text[text.index("handle @portal {"):text.index("\thandle {")]
+        self.assertNotIn("forward_auth", inside)
+        self.assertIn(f"reverse_proxy 127.0.0.1:9091", inside)
+
+    def test_without_a_provider_there_is_no_portal_to_route(self):
+        # O caminho hospedado divide este gerador, e um caminho que conserta o
+        # container quebrando o hospedado é pior que o defeito: sem provedor não
+        # há pergunta, e sem pergunta não há volta por fora dela.
+        self.gate()
+        for auth in (None, ""):
+            with self.subTest(auth=auth):
+                text = self.written(auth=auth)
+                self.assertNotIn("@portal", text)
+                self.assertNotIn("handle", text)
 
     def test_without_a_provider_there_is_nobody_to_ask(self):
         # A secret with no provider is a folder that drew one and never took the
@@ -301,6 +344,76 @@ class TheCaddyfile(FolderCase):
         # the gate secret may have appeared.
         self.assertIn("https://localhost:12399 {", self.written())
         self.assertIn("https://localhost:12400 {", self.written(port=12400))
+
+
+class TheAdaptedGate(FolderCase):
+    """O Caddyfile do portão, lido pelo Caddy DE VERDADE.
+
+    A suíte não sobe o Authelia — nem precisa: o que se prova aqui é que o
+    arquivo que o AT gera é um arquivo que o Caddy ACEITA e ORDENA como o
+    desenho diz. `adapt` lê o Caddyfile com o adaptador de verdade e para antes
+    de abrir qualquer porta, então a pergunta é de sintaxe e de ordem, e nenhuma
+    conexão sai daqui.
+
+    E a ordem não é decorativa: o portal só deixa de ser perguntado porque o
+    `handle` dele casa e vence o `handle` sem matcher, que é o fallback. Um
+    arquivo que o Caddy ordenasse ao contrário teria o portal dentro do
+    `forward_auth` de novo — o defeito, de volta, sem nada mudar no texto.
+    """
+
+    def setUp(self):
+        super().setUp()
+        actors.create_admin("Rafael", "uma-frase-bem-longa")
+        self.assertTrue(caddy.ensure(), "the payload of this platform is not here")
+
+    def routes(self, text: str) -> list[dict]:
+        """Os `handle` que o próprio Caddy lê do arquivo, na ordem dele."""
+        where = caddy.caddyfile_path()
+        where.parent.mkdir(parents=True, exist_ok=True)
+        where.write_text(text, encoding="utf-8")
+        done = subprocess.run(
+            [str(caddy.binary()), "adapt", "--config", str(where),
+             "--adapter", "caddyfile"],
+            capture_output=True, text=True, check=False,
+        )
+        self.assertEqual(done.returncode, 0, done.stderr)
+        servers = json.loads(done.stdout)["apps"]["http"]["servers"]
+        return next(iter(servers.values()))["routes"][0]["handle"][0]["routes"]
+
+    def test_the_gate_configuration_is_one_the_caddy_takes(self):
+        text = caddy.caddyfile("localhost", 12399, 41234,
+                               gate="segredo-sorteado", auth="127.0.0.1:9091")
+        routes = self.routes(text)
+        self.assertEqual(len(routes), 2)
+        self.assertEqual(routes[0]["match"],
+                         [{"path": [caddy.PORTAL, f"{caddy.PORTAL}/*"]}])
+        self.assertIsNone(routes[1].get("match"),
+                          "o resto do site tem de ser o fallback, e não um caminho")
+
+    def test_the_portal_goes_to_the_provider_and_the_rest_through_the_ask(self):
+        text = caddy.caddyfile("localhost", 12399, 41234,
+                               gate="segredo-sorteado", auth="127.0.0.1:9091")
+        portal, rest = self.routes(text)
+        portal_proxy = portal["handle"][0]["routes"][0]["handle"][0]
+        self.assertEqual(portal_proxy["upstreams"], [{"dial": "127.0.0.1:9091"}])
+        # O resto do site pergunta ao provedor (o `uri` da pergunta, e o mesmo
+        # endereço do portal), anexa o segredo e entrega ao WebApp. O Caddy
+        # escreve o `forward_auth` como um proxy com `rewrite`, então o que se lê
+        # aqui é o que ele ENTENDEU, e não a palavra do Caddyfile.
+        asked = json.dumps(rest)
+        self.assertIn(caddy.AUTH_URI, asked)
+        self.assertIn("127.0.0.1:9091", asked)
+        self.assertIn("127.0.0.1:41234", asked)
+        self.assertIn(f"X-At-Gate", asked)
+        self.assertIn("segredo-sorteado", asked)
+
+    def test_the_hosted_configuration_has_no_portal_to_route(self):
+        # O mesmo gerador, sem portão: um `handle` aqui seria uma rota que ninguém
+        # pediu, e o caminho hospedado é o que a maioria das pastas usa.
+        text = caddy.caddyfile("localhost", 12399, 41234)
+        routes = self.routes(text)
+        self.assertEqual(len(routes), 1)
+        self.assertIsNone(routes[0].get("match"))
 
 
 class TheExposedRun(FolderCase):

@@ -646,6 +646,20 @@ def site_host() -> str:
     return vpn.name() or NAME
 
 
+def portal_url() -> str:
+    """Where the portal is reached — the site, plus the portal's own path (§7b).
+
+    **ONE place decides it, and three read it**: the provider's `authelia_url`,
+    the edge's routing of the portal and the switch's fourth probe. They have to
+    name the same address or the redirect lands somewhere the edge does not
+    serve, and the drift between "where the gate sends the person" and "what the
+    proof asks" is exactly the kind of difference a proof passes through
+    (`caddy.PORTAL`). It is a function for the same reason `site_host` is: the
+    name is measured when the environment comes up.
+    """
+    return f"{caddy_service.address(site_host(), PORT)}{caddy_service.PORTAL}/"
+
+
 def _dnsmasq_conf() -> str:
     """The names the environment answers for, in dnsmasq's words.
 
@@ -671,7 +685,10 @@ def _caddy_conf() -> str:
     storage — the one line that is a path and not a decision (§7a). The two
     lines of the gate come along when there is a secret, and §7b is what draws
     it: the Caddy asks the identity provider who is calling, and tells the
-    WebApp that the request came through here.
+    WebApp that the request came through here. **And the portal's way around
+    the ask comes with them**, because `auth` is here: the provider's own path
+    is routed straight to it, so the redirect that sends the browser to the
+    portal does not become another question (`caddy.PORTAL`).
 
     **Four things are the container path's and not the hosted path's**, and each
     is an address that means something else on this side of the network. The
@@ -782,6 +799,14 @@ def _identity_conf() -> str:
     dot unless it is an IP — and that last one is why the site on the loop is an
     ADDRESS and not the word `localhost` (`site_host`).
 
+    **The portal gets a path, and it is the fourth thing the provider is told.**
+    `server.address` carries it and `authelia_url` names it (`portal_url`), so
+    the provider serves its page under the same address the edge routes around
+    the ask — without it the redirect comes back to the edge, the edge asks
+    about the portal, and the two rewrite each other until the request dies in
+    `431` (`caddy.PORTAL`). The access control keeps naming the site alone: the
+    portal never travels through it, because it never travels through the ask.
+
     Each secret is drawn once and kept beside this file (`_drawn`), because they
     belong to the installation and not to a start: one drawn per start would
     drop every session on the floor and make every record it had written
@@ -808,20 +833,25 @@ def _identity_conf() -> str:
         "theme: auto",
         # O endereço do container, e não uma publicação: o que sai dele é o que
         # o runtime mapeia (§7a) — e o NOME do serviço é como a borda e o WebApp
-        # o alcançam, os dois na mesma rede.
+        # o alcançam, os dois na mesma rede. **O CAMINHO é o do portal**, e é o
+        # que o Authelia lê para servir a página sob ele: sem o caminho, a borda
+        # não teria como rotear o portal fora do `forward_auth`, e o portão
+        # mandaria a pessoa a uma URL que ele mesmo volta a perguntar.
         "server:",
-        f"  address: {_quoted(f'tcp://{ALL}:{IDENTITY_PORT}')}",
+        f"  address: {_quoted(f'tcp://{ALL}:{IDENTITY_PORT}{caddy_service.PORTAL}')}",
         "log:",
         "  level: info",
         "session:",
         f"  secret: {_quoted(session)}",
         "  cookies:",
-        # O domínio e a URL são os do SITE — o nome em que a pessoa está quando
-        # o portal lhe entrega o cookie (§7e). Um cookie emitido para outro nome
-        # é um cookie que o navegador não devolve, e um portal que redireciona
-        # para fora é um login que pousa fora da borda.
+        # O domínio é o do SITE, e a URL é a do PORTAL — o nome em que a pessoa
+        # está quando o portal lhe entrega o cookie (§7e), e o caminho onde o
+        # portão a manda entrar. Um cookie emitido para outro nome é um cookie
+        # que o navegador não devolve; e a URL sem o caminho é o redirecionamento
+        # que voltava para a borda e era perguntado de novo, dobrando até o 431
+        # (`caddy.PORTAL`).
         f"    - domain: {site}",
-        f"      authelia_url: {caddy_service.address(site, PORT)}",
+        f"      authelia_url: {portal_url()}",
         "storage:",
         f"  encryption_key: {_quoted(encryption)}",
         "  local:",

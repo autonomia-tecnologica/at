@@ -548,7 +548,34 @@ class TheIdentityProvider(FolderCase):
         self.assertIn("default_policy: deny", text)
         self.assertIn(f"    - domain: {env.NAME}", text)
         self.assertIn("      policy: one_factor", text)
-        self.assertIn(f"authelia_url: https://{env.NAME}:{env.PORT}", text)
+        self.assertIn(f"authelia_url: {env.portal_url()}", text)
+
+    def test_the_portal_has_a_path_and_the_provider_is_told_it(self):
+        # **O caminho é o que tira o portal de dentro do `forward_auth`**: a
+        # borda roteia o caminho direto no provedor, e o provedor serve a página
+        # sob ele. Sem o caminho, o redirecionamento do portão volta para a
+        # borda, a borda pergunta sobre o portal, e os dois se reescrevem até o
+        # `431` — medido contra o container, e ninguém atravessava.
+        self.up()
+        text = self.conf()
+        self.assertTrue(caddy.PORTAL.startswith("/"))
+        self.assertIn(
+            f'address: "tcp://{env.ALL}:{env.IDENTITY_PORT}{caddy.PORTAL}"', text)
+        self.assertIn(f"authelia_url: {env.portal_url()}", text)
+        self.assertTrue(env.portal_url().endswith(f"{caddy.PORTAL}/"))
+        # E o caminho não entra no `access_control`: o portal não passa pela
+        # pergunta, então não passa pela regra que a responde.
+        self.assertNotIn(caddy.PORTAL, text[text.index("access_control:"):])
+
+    def test_the_access_control_keeps_naming_the_site_alone(self):
+        # A regra responde pelo SITE — o domínio que a pergunta traz. O portal é
+        # roteado fora da pergunta, então uma regra para ele seria uma regra que
+        # nada consulta.
+        self.up()
+        text = self.conf()
+        rules = text[text.index("access_control:"):text.index("notifier:")]
+        self.assertEqual(rules.count("- domain:"), 1)
+        self.assertIn(f"- domain: {env.site_host()}", rules)
 
     def test_the_storage_and_the_users_are_where_bill_mounts_them(self):
         # §7: the persistent state of the service lives in the folder, and this
@@ -601,9 +628,13 @@ class TheIdentityProvider(FolderCase):
     def test_the_provider_listens_on_the_container_and_not_on_a_publication(self):
         # O endereço do container, e não uma publicação: o que sai dele é o que
         # o runtime mapeia (§7a) — e o NOME do serviço é como a borda e o WebApp
-        # o alcançam.
+        # o alcançam. O CAMINHO faz parte do endereço: é o que o Authelia lê
+        # para servir o portal sob ele (`server.address`), e é essa a ponta que
+        # a borda roteia sem perguntar.
         self.up()
-        self.assertIn(f'address: "tcp://{env.ALL}:{env.IDENTITY_PORT}"', self.conf())
+        self.assertIn(
+            f'address: "tcp://{env.ALL}:{env.IDENTITY_PORT}{caddy.PORTAL}"',
+            self.conf())
 
     def test_the_session_secret_is_drawn_once_and_kept(self):
         # Authelia signs its cookie with it: drawn per start, every session
@@ -654,6 +685,9 @@ class TheGate(FolderCase):
     def caddyfile(self) -> str:
         return (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8")
 
+    def identity(self) -> str:
+        return (env.state(env.IDENTITY) / env.IDENTITY_YAML).read_text(encoding="utf-8")
+
     def test_up_draws_the_secret_and_says_where_it_is(self):
         # §7b: "um valor sorteado pelo AT na instalação". The installation is
         # the environment coming up, and this is the one message it owes.
@@ -677,12 +711,40 @@ class TheGate(FolderCase):
         text = self.caddyfile()
         self.assertIn(f"header_up {caddy.GATE_HEADER} {caddy.gate_secret()}", text)
         # And the ask comes first: the Caddy finds out who is calling before it
-        # hands anything to the WebApp.
-        self.assertLess(text.index("forward_auth"), text.index("reverse_proxy"))
+        # hands anything to the WebApp. O proxy do WebApp é o do NOME na rede —
+        # o do portal é o outro, e ele vem antes de tudo (`PORTAL`).
+        behind = f"reverse_proxy {env.container(env.WEBAPP)}:{env.WEBAPP_PORT}"
+        self.assertLess(text.index("forward_auth"), text.index(behind))
         self.assertIn(
             f"forward_auth {env.container(env.IDENTITY)}:{env.IDENTITY_PORT}", text)
         self.assertIn(f"uri {caddy.AUTH_URI}", text)
         self.assertIn("copy_headers Remote-User", text)
+
+    def test_the_portal_of_the_container_goes_around_the_ask(self):
+        # O `handle` do portal vai DIRETO no provedor — é a volta por fora da
+        # pergunta que fecha o laço do `431`, e é a única rota do site que não
+        # passa pelo `forward_auth`.
+        self.up()
+        text = self.caddyfile()
+        provider = f"{env.container(env.IDENTITY)}:{env.IDENTITY_PORT}"
+        self.assertIn(f"\t@portal path {caddy.PORTAL} {caddy.PORTAL}/*", text)
+        self.assertIn("\thandle @portal {", text)
+        portal = text[text.index("handle @portal {"):text.index("\thandle {")]
+        self.assertEqual(portal.count("reverse_proxy"), 1)
+        self.assertIn(f"reverse_proxy {provider}", portal)
+        self.assertNotIn("forward_auth", portal)
+        # O portal antes da pergunta: o `handle` casado vence o fallback.
+        self.assertLess(text.index("handle @portal"), text.index("forward_auth"))
+
+    def test_the_portal_the_caddy_routes_is_the_one_the_gate_sends_people_to(self):
+        # Uma fonte só para o endereço do portal (`portal_url`): o `authelia_url`
+        # que o portão emite e o caminho que a borda roteia não podem divergir —
+        # divergir é a pessoa ser mandada a um lugar que a borda não serve.
+        self.up()
+        self.assertIn(f"authelia_url: {env.portal_url()}", self.identity())
+        self.assertIn(f"\t@portal path {caddy.PORTAL} {caddy.PORTAL}/*",
+                      self.caddyfile())
+        self.assertTrue(env.portal_url().endswith(f"{caddy.PORTAL}/"))
 
     def test_without_a_podman_no_gate_is_drawn(self):
         # The folder that never took the container path has no gate, and a
@@ -853,7 +915,11 @@ class ThePrivateNetwork(FolderCase):
                           (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8"))
             identity = (env.state(env.IDENTITY) / env.IDENTITY_YAML).read_text(encoding="utf-8")
             self.assertIn("domain: host.example-tailnet.ts.net", identity)
-            self.assertIn("authelia_url: https://host.example-tailnet.ts.net:8443", identity)
+            # O portal segue o mesmo nome — e carrega o caminho dele, que é o
+            # endereço em que a borda o roteia fora do `forward_auth`.
+            self.assertIn(
+                f"authelia_url: https://host.example-tailnet.ts.net:8443"
+                f"{caddy.PORTAL}/", identity)
             # The name AT answers for points at where the edge actually is.
             self.assertIn("address=/at.local/100.64.0.1",
                           (env.state("dnsmasq") / "dnsmasq.conf").read_text(encoding="utf-8"))

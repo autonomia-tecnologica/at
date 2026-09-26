@@ -105,6 +105,21 @@ GATE_BYTES = 32
 AUTH_URI = "/api/authz/forward-auth"
 AUTH_HEADERS = ("Remote-User", "Remote-Groups", "Remote-Name", "Remote-Email")
 
+# The portal's own path on the site, and it is the one thing that keeps the gate
+# from looping over itself. **The gate authenticates by REDIRECT**: an
+# unauthenticated request is answered with a 302 to the portal, and the browser
+# comes back to the portal's URL. While that URL was the site's root, it went
+# through `forward_auth` like any other path — so the edge asked the provider
+# about the portal, the provider answered with another 302 appending `rd=`,
+# and the loop rewrote the URL until the request died in `431 Request Header
+# Fields Too Large`. Measured against the container, and nobody could get in.
+#
+# So the portal has a path of its own, and the edge routes it STRAIGHT to the
+# provider — before the ask, never through it. The provider is told the same
+# path (`server.address`, `_identity_conf`), and it is what its `authelia_url`
+# carries, so the redirect, the page and its assets all agree on one address.
+PORTAL = "/authelia"
+
 # The vendor's own word for each platform, which is what its release assets are
 # named with. `sys.platform` first, then the machine: a pair that is not here is
 # a platform whose Caddy this artifact does not carry, and that is said instead
@@ -306,6 +321,16 @@ def caddyfile(host: str, port: int, backend: int, gate: str | None = None,
     secret but no provider would otherwise ask a question with no answer and
     answer every request with a failure.
 
+    **With the ask comes the portal's way around it, and they are one block.**
+    The provider answers every unauthenticated request with a redirect to its
+    portal, so the portal itself cannot be asked about — asking is what sends
+    the browser there. The two `handle`s below are the whole of it: the portal's
+    path goes STRAIGHT to the provider, and everything else goes through the ask
+    and then to the WebApp. Caddy sorts a matched `handle` before the bare one,
+    which is the fallback, so the portal's path wins where it matches and the
+    rest of the site is untouched. The `handle`s exist only where there is a
+    gate to go around: a folder with no provider writes neither.
+
     `storage` is a path and not a decision (§7a), and it is the line that
     differs between the two paths because the folder is the one that does: the
     Caddy unpacked into it keeps its CA and its certificates there (§3, the
@@ -318,10 +343,12 @@ def caddyfile(host: str, port: int, backend: int, gate: str | None = None,
     container PUBLISHES.
     """
     behind = upstream or LOOPBACK
-    proxy = [f"\treverse_proxy {behind}:{backend}"]
-    if gate:
-        proxy[0] += " {"
-        proxy += [f"\t\theader_up {GATE_HEADER} {gate}", "\t}"]
+    # The portal's way around the ask exists exactly where the ask does, and it
+    # is what decides the indentation of everything below it: inside the
+    # `handle`s a directive sits one level deeper than at the site's root.
+    gated = bool(gate and auth)
+    indent = "\t\t" if gated else "\t"
+
     lines = [
         f"# {tr('caddy.file.header')}",
         "{",
@@ -351,17 +378,36 @@ def caddyfile(host: str, port: int, backend: int, gate: str | None = None,
         *([f"\tbind {bind}"] if bind else []),
         "\ttls internal",
     ]
-    if gate and auth:
-        # AT is ONE MORE APP here and not an exception (§7b): the same block
-        # that would stand in front of Sonarr stands in front of AT, and what
-        # makes it AT is only the secret on the line below.
+    if gated:
+        # The portal comes FIRST and OUTSIDE the ask: it is where the gate sends
+        # the browser, so asking the provider about it is what closes the loop
+        # (`PORTAL`). The matcher names the path with and without the trailing
+        # slash — the redirect lands on `/authelia/`, but a person typing the
+        # path without it must not be asked about it either.
         lines += [
-            f"\tforward_auth {auth} {{",
-            f"\t\turi {AUTH_URI}",
-            f"\t\tcopy_headers {' '.join(AUTH_HEADERS)}",
+            f"\t@portal path {PORTAL} {PORTAL}/*",
+            "\thandle @portal {",
+            f"\t\treverse_proxy {auth}",
             "\t}",
+            "\thandle {",
+            # AT is ONE MORE APP here and not an exception (§7b): the same block
+            # that would stand in front of Sonarr stands in front of AT, and what
+            # makes it AT is only the secret on the line below.
+            f"\t\tforward_auth {auth} {{",
+            f"\t\t\turi {AUTH_URI}",
+            f"\t\t\tcopy_headers {' '.join(AUTH_HEADERS)}",
+            "\t\t}",
         ]
-    lines += [*proxy, "}"]
+
+    proxy = [f"{indent}reverse_proxy {behind}:{backend}"]
+    if gate:
+        proxy[0] += " {"
+        proxy += [f"{indent}\theader_up {GATE_HEADER} {gate}", f"{indent}}}"]
+    lines += proxy
+
+    if gated:
+        lines.append("\t}")
+    lines.append("}")
     return "\n".join(lines) + "\n"
 
 

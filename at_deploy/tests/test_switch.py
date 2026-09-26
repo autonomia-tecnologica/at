@@ -62,7 +62,8 @@ class FakeProbes:
 
     Each claim of the proof has its own status, so a test can make ONE of them
     wrong and watch the switch refuse: the site answered by the gate, AT taking
-    the sealed identity, and the same identity refused without the secret.
+    the sealed identity, the same identity refused without the secret, and the
+    portal — the address the gate SENDS people to — answering.
     """
 
     def __init__(self, front: int | None = 401, sealed: int | None = 200,
@@ -75,7 +76,7 @@ class FakeProbes:
         self.asked.append((url, dict(headers)))
         if url == f"{switch.site()}/api/session":
             return self.front
-        if url == gate.portal():
+        if url == env.portal_url():
             return self.portal
         return self.sealed if caddy.GATE_HEADER in headers else self.unsealed
 
@@ -149,7 +150,7 @@ class TheProof(FolderCase):
         self.person()
         env.draw_gate()
 
-    def test_the_three_claims_together_are_what_proves_the_gate(self):
+    def test_the_four_claims_together_are_what_proves_the_gate(self):
         self.assertTrue(switch.proved(FakeProbes()))
 
     def test_an_edge_that_lets_bill_answer_is_not_a_gate(self):
@@ -166,6 +167,35 @@ class TheProof(FolderCase):
         # If a name alone opens the door, the secret is decoration — and the
         # switch would be committing a folder to a gate that is not one.
         self.assertFalse(switch.proved(FakeProbes(unsealed=200)))
+
+    def test_the_portal_must_answer_on_the_address_the_gate_sends_people_to(self):
+        # A quarta pergunta, e a que faltava: `in_front` se contenta com o 302,
+        # e um redirecionamento para uma página que não atende também responde
+        # 302 — era assim que a virada fechava com o portal em laço. A pergunta
+        # vai ao ENDEREÇO do portal, pela borda, que é onde o navegador pousa.
+        probes = FakeProbes()
+        self.assertTrue(switch.portal(probes))
+        self.assertIn(env.portal_url(), [url for url, _ in probes.asked])
+        # E é o endereço do SITE, com o caminho do portal — não o nome interno
+        # da rede, que só o WebApp alcança.
+        self.assertTrue(env.portal_url().startswith(switch.site()))
+
+    def test_a_portal_that_does_not_answer_does_not_prove_the_gate(self):
+        # 302 de novo é o laço; 431 é o laço depois de algumas voltas. Nenhum
+        # dos dois é a página — e um portal inalcançável não é o mesmo que um
+        # portal que responde.
+        for answer in (302, 431, 404, None):
+            with self.subTest(portal=answer):
+                self.assertFalse(switch.proved(FakeProbes(portal=answer)))
+
+    def test_the_redirect_in_front_is_not_the_portal_answering(self):
+        # **O estado real do ambiente medido**: a borda responde 302 — o portão
+        # na frente — e o portal não atende, porque o redirecionamento volta
+        # para a borda e é perguntado de novo. As duas coisas juntas, e só a
+        # segunda separa "algo está na frente" de "dá para entrar".
+        probes = FakeProbes(front=302, portal=431)
+        self.assertFalse(switch.proved(probes))
+        self.assertEqual(switch.unproved(probes), "services.switch.noportal")
 
     def test_the_sealed_request_carries_the_folders_own_secret(self):
         # The proof does not invent a secret: it carries the one the Caddyfile
@@ -276,6 +306,21 @@ class TheSwitch(FolderCase):
         self.assertTrue(fake.removed(env.WEBAPP))
         self.assertIn(["network", "rm", env.NETWORK], fake.calls)
         self.assertIn(i18n.tr("services.switch.unproved"), text)
+
+    def test_a_portal_that_does_not_answer_takes_everything_back(self):
+        # A frase é a do PORTAL, e não a do portão: dizer "o portão não foi
+        # provado" aqui culparia o provedor por uma borda que não roteia o
+        # portal — e a pessoa iria procurar o defeito no lugar errado.
+        self.person()
+        fake = self.runtime()
+        outcome, text = self.quiet(switch.to_gate, answer=FakeProbes(portal=431))
+        self.assertEqual(outcome, switch.FAILED)
+        self.assertFalse(gate.on_gate())
+        self.assertIn(i18n.tr("services.switch.noportal"), text)
+        self.assertNotIn(i18n.tr("services.switch.unproved"), text)
+        # E o ambiente que a virada subiu vai embora com ela.
+        self.assertTrue(fake.removed("caddy"))
+        self.assertIn(["network", "rm", env.NETWORK], fake.calls)
 
     def test_a_service_that_does_not_come_up_takes_everything_back(self):
         # The environment is not the switch, but the switch OWNS what it started:
@@ -468,7 +513,12 @@ class TheCli(FolderCase):
     def test_a_switch_that_did_not_close_is_a_refusal(self):
         self.person()
         self.runtime()
-        with mock.patch.object(switch, "proved", lambda answer=None: False):
+        # A costura é `unproved`: a virada pergunta as quatro uma vez só e a
+        # frase nomeia a que falhou, então é essa resposta que o teste troca —
+        # e nenhuma sonda sai deste processo.
+        with mock.patch.object(
+            switch, "unproved", lambda answer=None: "services.switch.unproved"
+        ):
             code, text = self.quiet(services, ["switch"])
         self.assertEqual(code, REFUSED)
         self.assertIn(i18n.tr("services.switch.unproved"), text)
@@ -476,7 +526,7 @@ class TheCli(FolderCase):
     def test_the_return_is_an_ok_and_leaves_the_folder_on_forms(self):
         self.person()
         self.runtime()
-        with mock.patch.object(switch, "proved", lambda answer=None: True):
+        with mock.patch.object(switch, "unproved", lambda answer=None: None):
             self.quiet(services, ["switch"])
         self.assertTrue(gate.on_gate())
         code, text = self.quiet(services, ["forms"])
@@ -493,6 +543,7 @@ class TheCli(FolderCase):
     def test_every_word_of_the_switch_is_written_in_both_languages(self):
         for key in ("services.switch.already", "services.switch.rolling_back",
                     "services.switch.failed", "services.switch.unproved",
+                    "services.switch.noportal",
                     "services.switch.nowitness", "services.switch.done",
                     "services.forms.already", "services.forms.done",
                     "services.gate.down",
