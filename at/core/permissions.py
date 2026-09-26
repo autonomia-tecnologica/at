@@ -29,9 +29,13 @@ all six as permissions: `secret` declares `read` and `edit`, its listing is
 not permissions it has. An object that is not a table declares the same thing in
 the same shape, one shelf up (`NARROWED`), because it has no schema to write it
 in — the settings answer `read` and `edit` there, and their `list` and `view` are
-the one read. What the narrowing is FOR is that the ceiling is read from one
-place — `needed` is what the route, the interpreter and the role all ask — so an
-object cannot declare itself narrow for the help and wide for a route.
+the one read. **And `NARROWED` is also where an ACT of the object's own is
+declared** — one the engine does not have, which a declaration could never name
+because it is held to the engine's six: the `job`'s run and its two answers live
+there, and so does the `secret`'s scan, which reads the folder and writes no row.
+What the narrowing is FOR is that the ceiling is read from one place — `needed`
+is what the route, the interpreter and the role all ask — so an object cannot
+declare itself narrow for the help and wide for a route.
 
 The labels are `i18n` keys like everything else (§3): this module writes no
 sentence, and a permission without a label of its own is composed out of the
@@ -70,6 +74,18 @@ SETTING = "setting"
 # the one that drifts.
 JOB = "job"
 
+# The name of the `secret` object — the table that carries what AT USES, sealed
+# (§4, item 14). It is here for the reason `JOB` is: the schema, the catalogue
+# and the dispatch all spell it, and a second spelling would be the one that
+# drifts.
+SECRET = "secret"
+
+# The act that is the SECRET's OWN — `at-cli secret scan` (item 51). It is not
+# one of the engine's six: the word reads the FOLDER and rewrites no row of any
+# table, so it is not a `create`, an `edit` nor a `cancel`, and it is declared in
+# `NARROWED` and nowhere else, exactly as the `job`'s own three acts are.
+SCAN = "scan"
+
 # The objects whose acts are THEIR OWN, narrowed here in the same shape a table
 # writes in its own declaration — permission → the actions it answers.
 #
@@ -88,6 +104,13 @@ JOB = "job"
 # is — so the help, the route, the dispatch and the role cannot disagree about
 # what the object answers: a second mapping beside this one would be the second
 # home this module refuses.
+#
+# **A table that keeps its declaration AND has an act of its own writes both**,
+# and `secret` is the case (item 51): its declaration narrows it to the engine's
+# `read` and `edit`, and the ONE act the engine does not have — its `scan` — is
+# named here. The two are COMPOSED and not one-or-the-other (`narrowed`), which
+# is what lets a table that answers two of the six keep reading its declaration
+# and still declare the seventh act under its own word.
 NARROWED: dict[str, dict[str, tuple[str, ...]]] = {
     SETTING: {"read": ("list", "view"), "edit": ("edit",)},
     JOB: {
@@ -96,6 +119,11 @@ NARROWED: dict[str, dict[str, tuple[str, ...]]] = {
         "approve": ("approve",),
         "refuse": ("refuse",),
     },
+    # `secret scan` reads the folder and reports what it found — it writes no
+    # row, so it is a read on §4's scale and it is nobody's approval but the
+    # administrator's. There is no second act under this object, and a closing
+    # and a deletion stay the two permissions the table does not have.
+    SECRET: {SCAN: (SCAN,)},
 }
 
 # The objects that are not a table, and the actions each one accepts. §4 names
@@ -154,6 +182,9 @@ RISK_BY_ACTION: dict[str, float] = {
     "edit": RISK_WRITE,
     "ask": RISK_WRITE,
     "run": RISK_WRITE,
+    # The scan READS the folder: it reports what it found and corrects nothing
+    # (`secrets scan`), so it is a read like a listing and it moves no ceiling.
+    "scan": RISK_READ,
     "cancel": RISK_REMOVE,
     "delete": RISK_REMOVE,
     # The two halves of the approval are ONE act with two outcomes, and they are
@@ -189,30 +220,37 @@ def risk(permission: str) -> float:
 def narrowed(table: str) -> dict[str, tuple[str, ...]]:
     """The permissions this object's declaration narrows it to, or `{}`.
 
-    The declaration is the TABLE's own (`data/schema/<table>.json`) when the
-    object is a table, and `NARROWED` when it is not — the settings are the one
-    object of the second kind, and both are read here, by the same door, so a
+    TWO SOURCES, and they are composed. The declaration is the TABLE's own
+    (`data/schema/<table>.json`), and what it names is held to the engine's six
+    — an action the engine does not have is not a permission that exists (§4).
+    `NARROWED` carries the rest: the objects that are not a table at all (the
+    settings), and the acts an object declares of its OWN — the ones the engine
+    does not have, like the `job`'s run and its two answers and the `secret`'s
+    scan. A table that has both writes both, and this is where they meet, so a
     word, a route and a role never read two answers.
 
     It is read the way every other declaration is, and answered the way every
     other read of a declaration answers: what is not there, or is not shaped the
     way the declaration is, is nothing — a hand-edited file is a table the
-    catalogue answers for with the engine's six, never a read that raises.
+    catalogue answers for with the engine's six, never a read that raises. What
+    `NARROWED` names is taken as it stands, and it wins a name both sources
+    spell: it is the object's own word for an act, and the one place the act
+    exists.
     """
-    held = NARROWED.get(table)
-    if held is not None:
-        return {permission: actions for permission, actions in held.items()}
+    found: dict[str, tuple[str, ...]] = {}
     declared = schema.of(table) or {}
     stated = declared.get(DECLARED)
-    if not isinstance(stated, dict):
-        return {}
-    found: dict[str, tuple[str, ...]] = {}
-    for permission, actions in stated.items():
-        if not isinstance(permission, str) or not isinstance(actions, list):
-            continue
-        kept = tuple(action for action in tables.ACTIONS if action in actions)
-        if kept:
-            found[permission] = kept
+    if isinstance(stated, dict):
+        for permission, actions in stated.items():
+            if not isinstance(permission, str) or not isinstance(actions, list):
+                continue
+            kept = tuple(action for action in tables.ACTIONS if action in actions)
+            if kept:
+                found[permission] = kept
+    held = NARROWED.get(table)
+    if held is not None:
+        for permission, actions in held.items():
+            found[permission] = tuple(actions)
     return found
 
 
@@ -223,11 +261,11 @@ def actions(table: str) -> tuple[str, ...]:
     the object does not answer is a word no surface spells. The engine's six come
     FIRST, in the engine's order, because the six are the engine's and a
     declaration does not reorder them; what the object declares of its own — the
-    acts the engine does not have, like the `job`'s run and its two answers —
-    comes after, in the order its narrowing names them. It answers for a table
-    and for an object that is not one alike, which is how the `setting` word is
-    declared: the tree reads its children from here and does not write them
-    down.
+    acts the engine does not have, like the `job`'s run and its two answers, and
+    the `secret`'s scan — comes after, in the order its narrowing names them. It
+    answers for a table and for an object that is not one alike, which is how the
+    `setting` word is declared: the tree reads its children from here and does
+    not write them down.
     """
     found = narrowed(table)
     if not found:

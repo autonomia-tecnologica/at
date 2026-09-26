@@ -66,6 +66,13 @@ they do not walk `run`: `job` is here, beside `setting`, and what it owns is the
 approval as a LINE — the person's word over the demand, separate from the job
 that waited — and the run, which is the engine performing the act with the via
 `engine` and the actor that owns the job.
+
+**And `scan` is the fourth, and the one that OWES nothing.** `secret scan` is
+also an act the engine does not have — it reads the folder and rewrites no row —
+so it does not walk `run` either. What makes it the odd one of the four is that
+it is a read, and §3 makes reading not doing: no line is written, nothing is
+versioned, and there is no actor nor via to name. What the door still owns is the
+sentence, which is what keeps the `cli` and a page after it reading one wording.
 """
 
 from __future__ import annotations
@@ -83,6 +90,7 @@ from at.core import (
     permissions,
     projects,
     risk,
+    scanner,
     settings,
     tables,
     versioning,
@@ -574,6 +582,68 @@ def _ran(row: dict) -> tuple[int, str]:
     if code == OK:
         jobs.done(row)
     return code, answer
+
+
+# -------------------------------------------------------------- the scan ---
+
+
+def scan(args: list[str]) -> tuple[int, str]:
+    """`secret scan` — the folder says what it carries that it should not (item 51).
+
+    **The act is the table's own, and it does not walk `run`.** `scan` is not one
+    of the engine's six: it reads the folder and rewrites no row of any table, so
+    it is no `create`, no `edit` and no `cancel`, and the engine has nothing to
+    do for it. What this door owns is the WORDS — the scanner answers in facts (a
+    state, the tool, the findings) and what a person reads is composed here, so
+    the `cli`, and any surface that comes after it, read one sentence.
+
+    **A read leaves nothing at all (§3).** There is no actor and no via in the
+    signature because there is no line to write and nothing to version: the scan
+    changes nothing, which is exactly what makes it a read. What it also does not
+    do is decide anything about the ceiling: the catalogue names `secret:scan`
+    and the role that carries it, and a surface that has to refuse without it —
+    the page's routes — writes that line itself, the way every other route does.
+    """
+    if args:
+        return USAGE, rejected(permissions.SCAN)
+    answer = scanner.scan()
+    if answer.state == scanner.NO_TOOL:
+        # The two ways out, and the whole of what AT does about a tool that is
+        # not on the machine: it says them and it installs NOTHING (§7a, the
+        # Podman the `certutil` word already follows).
+        return REFUSED, "\n".join(
+            (tr("secrets.scan.no_tool"), tr("secrets.scan.ways"))
+        )
+    if answer.state == scanner.FAILED:
+        return REFUSED, tr("secrets.scan.failed")
+    # The rule list said out loud: which scanner, and which version of it, stood
+    # behind what follows — the only honest answer to "a list that ages".
+    lines = [tr("secrets.scan.rules", tool=answer.tool)]
+    if answer.state == scanner.CLEAN:
+        lines.append(tr("secrets.scan.clean"))
+        return OK, "\n".join(lines)
+    lines.append(tr("secrets.scan.found"))
+    lines += [_shown(finding) for finding in answer.findings]
+    return OK, "\n".join(lines)
+
+
+def _shown(finding: scanner.Finding) -> str:
+    """One finding as a person reads it: the rule and WHERE — never the value.
+
+    The commit is cut to its short form because that is the spelling a person
+    pastes into `git show`, and the whole hash is noise on a line. A finding the
+    files as they are already carry has no commit, and the sentence says less
+    because there is less to say.
+    """
+    where = f"{finding.where}:{finding.line}" if finding.line else finding.where
+    if finding.commit:
+        return tr(
+            "secrets.scan.committed",
+            rule=finding.rule,
+            where=where,
+            commit=finding.commit[:7],
+        )
+    return tr("secrets.scan.finding", rule=finding.rule, where=where)
 
 
 # ------------------------------------------------------------- the settings ---

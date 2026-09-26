@@ -13,7 +13,8 @@
     "action.ask": "Perguntar",
     "action.run": "Executar",
     "action.approve": "Aprovar",
-    "action.refuse": "Recusar"
+    "action.refuse": "Recusar",
+    "action.scan": "Varrer"
   },
   "en_US": {
     "line": "{object}: {action}",
@@ -29,6 +30,7 @@
     "action.ask": "Ask",
     "action.run": "Run",
     "action.approve": "Approve",
-    "action.refuse": "Refuse"
+    "action.refuse": "Refuse",
+    "action.scan": "Scan"
   }
 }

@@ -819,6 +819,34 @@ def _backlog_order(ask: Ask | None) -> list[Report]:
     return report
 
 
+# The permission THIS release grows the catalogue by — what migration sixteen
+# grants. It is the act the `secret` declares of its OWN (item 51,
+# `permissions.NARROWED`): the word reads the folder and says what it found, and
+# a role born before this swap carries none of it — it was built from the
+# catalogue of its own day —, exactly as migrations seven, eight, eleven, twelve
+# and fourteen handed over theirs.
+#
+# It is the administrator's and nobody else's for now, and that is the same
+# answer §3 gives for `audit:read`: the ceiling is written once, and the screens
+# that move it (item 11) are the ones that hand it to another role.
+SCANNER_PERMISSIONS = ("secret:scan",)
+
+
+def _scanner(ask: Ask | None) -> list[Report]:
+    """Migration sixteen: `secret scan`, and the ceiling over it.
+
+    A folder that already exists is the one this is for: the word that says what
+    the folder carries is the administrator's, and the row it wears was written
+    from the catalogue of the day it was born — which did not name the act.
+
+    It does not ask: the row is AT's own, and the change only ever ADDS
+    (`_hand_over`). Nothing else about the folder changes — the act writes no row
+    and needs no declaration of its own, and the `gitleaks` it calls is the
+    person's machine's business and not the folder's.
+    """
+    return _hand_over(SCANNER_PERMISSIONS)
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, _legacy_instance),
     Migration(2, _capitalized_instance),
@@ -835,6 +863,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(13, _audit_threshold),
     Migration(14, _jobs),
     Migration(15, _backlog_order),
+    Migration(16, _scanner),
 )
 
 

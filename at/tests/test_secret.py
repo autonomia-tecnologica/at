@@ -23,6 +23,8 @@ Five things are measured, and each is a sentence held to the code:
 - **the table declares its own permissions.** `secret` answers `read` and
   `edit`, not the engine's six: a closing and a deletion are not permissions it
   has, and the name a route demands is the catalogue's (`permissions.needed`).
+  The seventh act under the word — `scan` (item 51) — is the object's OWN and is
+  measured in `test_scanner.py`, where the word it belongs to lives.
 - **the entry stays out of it.** A credential is proved with the phrase untyped,
   which is §4's sentence about why what is compared is hashed and not sealed.
 
@@ -346,7 +348,12 @@ class ThePermissions(SecretCase):
     """What the table declares to the engine, and the name a route demands."""
 
     def test_the_table_answers_read_and_edit(self):
-        self.assertEqual(permissions.catalogue().get("secret"), ("read", "edit"))
+        # And the seventh act of its own — `secret scan` — which is not one of
+        # the engine's six and is declared where every act of an object's own is
+        # (`permissions.NARROWED`). It is measured in `test_scanner.py`.
+        self.assertEqual(
+            permissions.catalogue().get("secret"), ("read", "edit", "scan")
+        )
         self.assertTrue(permissions.is_known("secret:read"))
         self.assertTrue(permissions.is_known("secret:edit"))
 
@@ -367,7 +374,10 @@ class ThePermissions(SecretCase):
 
     def test_the_help_offers_the_actions_the_table_answers(self):
         node = next(node for node in tree.table_nodes() if node.name == "secret")
-        self.assertEqual([child.name for child in node.children], ["list", "view", "create", "edit"])
+        self.assertEqual(
+            [child.name for child in node.children],
+            ["list", "view", "create", "edit", "scan"],
+        )
 
     def test_the_closing_and_the_deletion_are_not_words_of_this_table(self):
         # A word that dispatches is a word the help offers, and vice versa.
@@ -377,7 +387,8 @@ class ThePermissions(SecretCase):
 
     def test_the_administrator_carries_both(self):
         # The role is built from the catalogue, and the catalogue is what says
-        # the table answers these two.
+        # the table answers these two — and the scan of item 51, which is the
+        # third `secret:` entry the catalogue names today.
         role = actors.role_for_admin()
         self.assertEqual(
             sorted(
@@ -385,7 +396,7 @@ class ThePermissions(SecretCase):
                 for name in permissions.carried(role)
                 if name.startswith("secret:")
             ),
-            ["secret:edit", "secret:read"],
+            ["secret:edit", "secret:read", "secret:scan"],
         )
 
     def test_a_read_is_a_read_and_a_write_is_a_write(self):

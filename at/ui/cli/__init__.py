@@ -406,8 +406,24 @@ def _table(table: str, rest: list[str]) -> int:
     action = rest[0] if rest else "list"
     args = rest[1:] if rest else []
     if action not in tables.ACTIONS:
-        print(tr("table.error.unknown_action", action=action))
-        return USAGE
+        # An act the engine does not have is the object's OWN, and it does not
+        # walk `run`: `secret scan` reads the folder and writes nothing, so it
+        # records no line and versions nothing. It is the one such act a table
+        # declares today, and the catalogue (`permissions.actions`) is the closed
+        # list that says so.
+        #
+        # The engine's own words keep dispatching exactly as they always did,
+        # including the ones a narrowed table does not answer: `audit delete`
+        # reaches the engine and is refused by it, and the attempt is a line
+        # (§3). A word the table does not answer is a refusal to RECORD, and a
+        # dispatch that turned it into a usage error would be a wall with no
+        # trail behind it.
+        if table != permissions.SECRET or action != permissions.SCAN:
+            print(tr("table.error.unknown_action", action=action))
+            return USAGE
+        code, answer = door.scan(args)
+        print(answer)
+        return code
     try:
         # The actor of an act typed here is the first admin, and the via is the
         # terminal's: what the door records is WHO and HOW, and the `cli` is the
