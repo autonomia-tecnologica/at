@@ -248,6 +248,20 @@ class TheCaddyfile(FolderCase):
     def test_the_storage_lives_inside_the_folder(self):
         self.assertIn(f'storage file_system "{caddy.storage_dir()}"', self.written())
 
+    def test_the_authority_is_the_ones_the_local_ca_writes_inside_the_storage(self):
+        # A CA é do PRÓPRIO Caddy — `tls internal` emite contra ela —, e o
+        # caminho é dele e não uma decisão de AT: por isso ele é escrito uma vez,
+        # e quem tem de confiar no certificado (o navegador, ou o celular de
+        # §7f) importa ESTE arquivo.
+        self.assertEqual(caddy.authority_file(),
+                         caddy.storage_dir()
+                         / "pki" / "authorities" / "local" / "root.crt")
+        # E o mesmo caminho dentro de OUTRO storage: é assim que o caminho do
+        # container o lê, do `/data` que ele monta da pasta de estado do serviço.
+        other = Path("/tmp/outro-storage")
+        self.assertEqual(caddy.authority_file(other),
+                         other / "pki" / "authorities" / "local" / "root.crt")
+
     def test_no_gate_line_without_a_gate(self):
         self.assertNotIn(caddy.GATE_HEADER, self.written())
 

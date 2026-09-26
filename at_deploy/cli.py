@@ -22,7 +22,7 @@ import sys
 from collections.abc import Callable, Sequence
 
 from at import __version__
-from at.core import actors, boot, files, install, paths, tables
+from at.core import actors, boot, files, gate, install, paths, tables
 from at.i18n import tr
 
 from at_deploy import environment, tree
@@ -132,6 +132,7 @@ def services(
     rest: list[str],
     ask: Ask | None = None,
     secret: Ask | None = None,
+    answer: gate.Answer | None = None,
 ) -> int:
     """`at-deploy services` — the container environment (§7a).
 
@@ -168,6 +169,9 @@ def services(
 
     `ask` and `secret` are injectable the way `boot` takes its own: a test walks
     the whole offer, and the whole credential conversation, without a terminal.
+    And `answer` is the SEAM of the phone's proof — the same `gate.Answer` the
+    switch asks through —, so that the whole act, proof included, is provable
+    without a socket.
     """
     from at_deploy import notifier, switch
 
@@ -204,8 +208,10 @@ def services(
         # §7f's other end, and the person's act: the phone's credential is drawn
         # by the notifier, kept at `0600`, and PRINTED ONCE — it has to reach the
         # phone, and the only road there is the person's eyes. A second run does
-        # not print it again (`notifier.subscribe`).
-        outcome = notifier.subscribe()
+        # not print it again (`notifier.subscribe`). **E o ato prova a leitura
+        # pelo NOME**, com o token e sem ele: um token que existe num arquivo não
+        # é um celular que lê, e a palavra promete a leitura (`PHONE_UNPROVED`).
+        outcome = notifier.subscribe(answer)
         return OK if outcome in (notifier.PHONE_DRAWN, notifier.PHONE_HELD) else REFUSED
     if word == ARGUMENT:
         return _credential(args[0], ask, secret)

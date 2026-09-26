@@ -86,6 +86,7 @@ nas
 nesse
 nlu
 novamente
+ntfy
 não
 oidc
 ou

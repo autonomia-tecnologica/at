@@ -104,6 +104,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from at.core import actors, files, gate, paths, tables
 from at.core.migrations import is_yes
@@ -208,6 +209,12 @@ SYSCTL_FILE = Path("/proc/sys") / SYSCTL_PORTS.replace(".", "/")
 DNSMASQ_CONFIG = "/etc/dnsmasq.d"
 CADDY_CONFIG = "/etc/caddy"
 CADDY_DATA = "/data"
+
+# A pasta do SERVIÇO que o Caddy monta em `CADDY_DATA`: o storage dele, com a CA
+# local e os certificados emitidos contra ela. Ela é um nome e não a linha do
+# `Mount` porque DOIS lugares têm de concordar sobre ela — o que o container
+# monta, e onde a CA está para quem precisa confiar no certificado (`authority_file`).
+CADDY_STORAGE = "storage"
 IDENTITY_CONFIG = "/config"
 IDENTITY_DATA = "/data"
 
@@ -801,6 +808,26 @@ def _caddy_ports() -> tuple[Port, ...]:
     return (Port(PORT, address=vpn.address() or LOOP),)
 
 
+def authority_file() -> Path:
+    """A CA que o certificado da borda carrega — e o arquivo que o CELULAR importa (§7f).
+
+    A borda emite com `tls internal`, que é a CA do próprio Caddy, e é por isso
+    que o certificado de `ntfy.at.local` não é de autoridade pública nenhuma: §3
+    declara esse preço, e quem precisa confiar nele tem de ser apresentado à CA.
+    O arquivo é o MESMO para os dois caminhos — a linha do Caddy que o escreve é
+    dele e não muda (§ `caddy.authority_file`) —, e o que muda é onde ele está:
+    aqui é o storage do serviço, dentro da pasta de estado, que é a pasta que o
+    backup cobre.
+
+    **Ele é nomeado porque o app do celular não usa o cofre do aparelho.** Medido:
+    no Android um app moderno ignora a CA que a pessoa instalou no sistema, e o
+    app do ntfy tem a gestão de certificados DELE (desde a v1.22.1). Então o que
+    a pessoa importa é este arquivo, dentro do app — e sem esta linha ninguém
+    teria como saber qual arquivo é (`notifier.py` o diz na mensagem do celular).
+    """
+    return caddy_service.authority_file(state(CADDY) / CADDY_STORAGE)
+
+
 def draw_gate() -> str:
     """Draw the gate's secret, once, and answer with it — §7b's drawing.
 
@@ -1181,7 +1208,7 @@ SERVICES: tuple[Service, ...] = (
         # edge is what the person reaches, and everything else of the
         # environment is on the loop or on nothing at all.
         ports=_caddy_ports,
-        mounts=(Mount(CADDY_CONFIG), Mount(CADDY_DATA, host="storage")),
+        mounts=(Mount(CADDY_CONFIG), Mount(CADDY_DATA, host=CADDY_STORAGE)),
         writes=(("Caddyfile", _caddy_conf),),
     ),
     # §7f's notifier, and it comes up LAST: nothing the environment fronts
@@ -1506,14 +1533,58 @@ def inside(url: str, headers: dict[str, str]) -> int | None:
     return int(answered) if answered.isdigit() else None
 
 
-def _as_curl_config(headers: dict[str, str]) -> str:
+def through_edge(url: str, headers: dict[str, str]) -> int | None:
+    """Ask the EDGE by NAME, from inside the environment's network (§7f).
+
+    **A pergunta é por um NOME, e o nome tem de chegar à borda** — e é isto que
+    este transporte faz sem depender do resolver de quem roda o comando. O
+    `curl` roda num container descartável na rede do ambiente, e o `connect-to`
+    troca o ENDEREÇO da conexão mantendo o nome no SNI e no `Host`: o nome que a
+    pessoa digita continua sendo o que a borda vê e o que ela responde, e o
+    resolver da máquina — que não é o resolver do celular — fica de fora. Foi
+    MEDIDO: numa máquina cujo `resolv.conf` não é o do ambiente, o nome não
+    resolve e `gate.real` responderia "não deu para saber" sobre uma borda que
+    está de pé e serve o nome.
+
+    `-k` é o preço que o seam do portão já paga (`gate.real`): o certificado é
+    do AT e nenhuma máquina o conhece, e o que se pergunta aqui é QUAL NOME a
+    borda serve e o que a ACL responde — se ela não tivesse certificado para o
+    nome, o handshake não fecharia e a resposta não seria um número.
+
+    Tem a forma de `inside` e a mesma razão de ser: quem pergunta não está onde
+    as coisas estão, e o runtime é o que leva a pergunta até lá.
+    """
+    parts = urlsplit(url)
+    name = parts.hostname or ""
+    port = parts.port or PORT
+    asked = podman.run(
+        ["run", "--rm", "-i",
+         "--network", NETWORK,
+         "--entrypoint", "curl", _service(CADDY).image.reference(),
+         "-s", "-o", "/dev/null", "-w", "%{http_code}", "-k",
+         "-K", "-", url],
+        input=_as_curl_config(headers, connect=(name, port, container(CADDY))),
+    )
+    if asked.returncode != 0:
+        return None
+    answered = asked.stdout.strip()
+    return int(answered) if answered.isdigit() else None
+
+
+def _as_curl_config(headers: dict[str, str],
+                    connect: tuple[str, int, str] | None = None) -> str:
     """The headers as curl's own configuration, for its INPUT.
 
     A value is escaped so that a name carrying a quote is the name and not the
     syntax around it — the same care `_quoted` takes with a name on its way into
-    a YAML file.
+    a YAML file. `connect` adds the `connect-to` line, which is how a URL keeps a
+    name that nothing resolves while the connection goes to a container that the
+    environment's own network knows.
     """
     lines = []
+    if connect is not None:
+        name, port, target = connect
+        lines.append(f'connect-to = "{name}:{port}:{target}:{port}"')
     for name, value in headers.items():
         escaped = value.replace("\\", "\\\\").replace('"', '\\"')
         lines.append(f'header = "{name}: {escaped}"')

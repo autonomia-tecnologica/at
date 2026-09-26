@@ -16,6 +16,7 @@ acl
 admin
 agendador
 alpha
+android
 anytype
 apis
 app
@@ -48,6 +49,7 @@ bootstraps
 burnout
 by
 c
+ca
 cache
 caddy
 caddyfile
@@ -164,6 +166,7 @@ modulepreload
 nlu
 notebook
 notification
+ntfy
 obsidian
 oidc
 one
@@ -195,6 +198,7 @@ radarr
 rawg
 rbac
 re
+reemitido
 registra
 registrada
 registrado

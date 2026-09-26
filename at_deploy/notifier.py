@@ -41,6 +41,27 @@ is not printed a third time to be safe (`subscribe`). Its scope is the mirror of
 AT's — `read-only` on the topic, and nothing else — so the two tokens §6
 declares neither serve for the other's work nor for anything beyond the topic.
 
+**The road is a NAME, and the certificate on it is AT's own.** §7f's sentence
+that the notifier does not go behind the gate is what lets a headless phone
+connect at all; §7a's names are what it connects TO. The phone points at
+`ntfy.at.local`, on `443`, and the edge serves it with the certificate it issues
+per name (`tls internal`). **E quem precisa confiar nesse certificado é o APP e
+não o aparelho**, e isso é uma medição: no Android um app moderno ignora a CA
+que a pessoa instalou no sistema, e o app do ntfy tem a gestão de certificados
+DELE, com certificado próprio desde a v1.22.1. Então o que a pessoa importa é a
+CA do AT — `environment.authority_file` é nomeado por causa disto —, e a
+mensagem do celular diz qual arquivo é e onde ele se importa. O mesmo endereço
+que a pessoa vai digitar é o da prova: `phone_url` é o nome, e não o laço.
+
+**A leitura é PROVADA, e é o que a palavra do celular promete.** `reached` e
+`turned_away` são as duas metades — o tópico responde a quem traz o token do
+celular, e recusa quem não traz nenhum —, perguntadas pelo nome, na estrada que
+o celular vai usar. Uma prova que não alcança nada não é uma prova: `unproved`
+nomeia a metade que não fechou, e `subscribe` fecha `PHONE_UNPROVED` quando
+alguma não fecha. O token FICA — ele foi sorteado, e o arquivo é dele —, e o que
+não fechou é a leitura, dita com a estrada inteira à mostra para quem está com o
+celular na mão.
+
 **The service's own folder is where the token sits, and the container sees it.**
 That is the same place the configuration AT wrote for ntfy already lives, and
 the same shape as the identity provider's session secret beside its own
@@ -58,7 +79,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from at.core import files
+from at.core import files, gate
 from at.i18n import tr
 from at_deploy import environment, podman
 
@@ -92,6 +113,18 @@ TOKEN_FILE = "token"
 # back with BOTH ends of the ACL, which is what §3's backup promise costs.
 PHONE_FILE = "phone-token"
 
+# A leitura do celular, no vocabulário do PRÓPRIO ntfy: um `poll` do tópico
+# devolve o que está na memória dele e fecha. É o que o app faz ao abrir a
+# inscrição, e é por ele que a prova pergunta (`_close`).
+POLL = "json?poll=1"
+
+# As duas respostas que a prova lê. Com o token do celular o tópico responde;
+# sem token nenhum ele recusa, que é o que `auth-default-access: deny-all`
+# promete e o que faz do token a porta. Os dois números são MEDIDOS contra a
+# imagem do pino, como o escopo — o docstring do módulo conta a medição.
+READ = 200
+NO_TOKEN_REFUSED = 403
+
 # How much password AT draws for the account it creates. The value is handed
 # over and forgotten — nobody logs in with it, and the credential that matters
 # is the token below — so it only has to be a value nobody can guess.
@@ -119,6 +152,7 @@ DRAWN = "drawn"       # AT had none, and made one
 HELD = "held"         # AT already had one, and it was left alone
 PHONE_DRAWN = "phone_drawn"  # the phone had none, and got one — shown once
 PHONE_HELD = "phone_held"    # the phone already had one, and it is not shown
+PHONE_UNPROVED = "phone_unproved"  # the token is drawn, and the read is not proved
 SENT = "sent"         # the notifier took the alert
 NO_TOKEN = "no_token"  # nothing to authenticate with
 FAILED = "failed"     # it was asked and did not happen
@@ -196,6 +230,76 @@ def phone_token() -> str | None:
 def write_phone_token(value: str) -> Path:
     """Keep the phone's credential beside AT's, at the same `0600`."""
     return _keep(phone_file(), value)
+
+
+# ------------------------------------------------------ the phone's read ---
+
+def phone_url() -> str:
+    """O endereço que o CELULAR usa — o nome, na borda, e nunca o laço.
+
+    É o que vai para o aparelho (`notifier_public_url`) com o caminho da leitura
+    no vocabulário do ntfy (`POLL`). **A prova pergunta AQUI de propósito**: a
+    estrada que precisa ser provada é a do celular — o nome, na 443, com o
+    certificado da borda —, e o laço é a estrada do AT (`target`), que funciona
+    por construção e não diria nada sobre o aparelho.
+    """
+    return f"{environment.notifier_public_url()}/{TOPIC}/{POLL}"
+
+
+def _ask(headers: dict[str, str], answer: gate.Answer | None) -> int | None:
+    """A pergunta da prova, na estrada do celular e pelo transporte DA BORDA.
+
+    O transporte padrão é o do ambiente (`through_edge`) e não o do portão
+    (`gate.real`), e a diferença é MEDIDA: o nome que o celular digita não é
+    resolvido pela máquina que roda o comando — o resolver dela não é o do
+    aparelho —, então perguntar ao nome pelo `gate.real` responderia "não deu
+    para saber" sobre uma borda de pé. O que a estrada do celular tem de seu é o
+    NOME no SNI e no `Host`; o endereço da conexão é da rede do ambiente.
+    """
+    return gate.ask(phone_url(), headers, answer or environment.through_edge)
+
+
+def reached(answer: gate.Answer | None = None) -> bool:
+    """Com o token do celular, o tópico responde pelo nome — a primeira metade.
+
+    O token viaja no cabeçalho e nunca no argv, a mesma regra que a entrega
+    segue, e o que se lê é o STATUS — a resposta que o ntfy dá ao app. Um
+    "nada respondeu" (`None`) não é nem um nem outro: é "não deu para saber", e
+    é por isso que a comparação é com `READ` e não com "diferente de erro".
+    """
+    held = phone_token()
+    if held is None:
+        return False
+    return _ask({"Authorization": f"Bearer {held}"}, answer) == READ
+
+
+def turned_away(answer: gate.Answer | None = None) -> bool:
+    """Sem token nenhum, o tópico recusa — a outra metade, e a que faz a porta.
+
+    É o `auth-default-access: deny-all` medido: quem chega sem credencial leva
+    `NO_TOKEN_REFUSED`, e é isso que diz que a ACL por tópico é a autenticação
+    deste serviço. Um `200` aqui seria o notificador aberto a quem chegasse.
+    """
+    return _ask({}, answer) == NO_TOKEN_REFUSED
+
+
+def unproved(answer: gate.Answer | None = None) -> str | None:
+    """A sentença da metade que não fechou — ou `None` quando as duas fecham.
+
+    As duas são perguntadas na ordem em que o celular as encontra, e a caminhada
+    PARA na primeira que não fecha: perguntar a segunda depois de o token não
+    ler seria perguntar sobre uma porta que já não se sabe fechada.
+    """
+    if not reached(answer):
+        return "services.notifier.phone.unread"
+    if not turned_away(answer):
+        return "services.notifier.phone.unrefused"
+    return None
+
+
+def proved(answer: gate.Answer | None = None) -> bool:
+    """Se o celular lê o notificador pelo nome — as duas metades de uma vez."""
+    return unproved(answer) is None
 
 
 def target() -> str:
@@ -368,7 +472,27 @@ def provision() -> str:
     return DRAWN
 
 
-def subscribe() -> str:
+def _close(answer: gate.Answer | None) -> bool:
+    """Diz a prova da leitura, e responde se ela fechou.
+
+    **Uma prova que não alcança nada não é uma prova.** `unproved` nomeia qual
+    das duas metades não fechou, e o veredito sai com a estrada inteira à mostra
+    — a URL, o tópico e o arquivo da CA —, porque quem lê isto está com o
+    celular na mão e o que ele precisa saber é o que conferir no aparelho.
+    """
+    reason = unproved(answer)
+    if reason is None:
+        print(tr("services.notifier.phone.proved", url=phone_url(),
+                 topic=TOPIC))
+        return True
+    print(tr(reason, url=phone_url(), topic=TOPIC,
+             host=environment.notifier_host(),
+             authority=environment.authority_file(),
+             code=NO_TOKEN_REFUSED))
+    return False
+
+
+def subscribe(answer: gate.Answer | None = None) -> str:
     """Draw the phone's credential — the other end of the ACL, and PRINTS IT ONCE.
 
     §6 says it in one line: in `ntfy` the ACL is per topic, **AT publishes and
@@ -390,10 +514,19 @@ def subscribe() -> str:
     it cannot reach another one. An environment that already has the phone's
     credential is left alone, and the way to a new one is deleting the file and
     running this again, which is the rotation `_draw` starts clean for.
+
+    **A leitura é PROVADA no fim do ato, e é o que a palavra promete** (§7f): o
+    celular não é a máquina onde o ambiente roda, então "o token existe" não é a
+    mesma coisa que "o celular lê". As duas metades são perguntadas pelo NOME, na
+    borda (`_close`), e o ato termina `PHONE_UNPROVED` quando alguma não fecha —
+    o token fica, porque ele foi sorteado, e o que não fechou é a leitura. É a
+    mesma regra da entrega: `notify` também recusa quando o alerta não sai.
     """
     if phone_token() is not None:
-        print(tr("services.notifier.phone.held", where=phone_file()))
-        return PHONE_HELD
+        print(tr("services.notifier.phone.held", where=phone_file(),
+                 url=environment.notifier_public_url(), topic=TOPIC,
+                 authority=environment.authority_file()))
+        return PHONE_HELD if _close(answer) else PHONE_UNPROVED
     if not podman.present():
         # A machine with no runtime has no notifier to ask, and there is nothing
         # to wait for: `up` is what names the two ways out, and this word is the
@@ -412,5 +545,5 @@ def subscribe() -> str:
     write_phone_token(drawn)
     print(tr("services.notifier.phone.drawn", token=drawn, topic=TOPIC,
              scope=PHONE_SCOPE, url=environment.notifier_public_url(),
-             where=phone_file()))
-    return PHONE_DRAWN
+             authority=environment.authority_file(), where=phone_file()))
+    return PHONE_DRAWN if _close(answer) else PHONE_UNPROVED

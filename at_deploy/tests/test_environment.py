@@ -1041,6 +1041,42 @@ class TheProbe(FolderCase):
         with self.answered("200", returncode=1):
             self.assertIsNone(env.inside("http://x/y", {}))
 
+    def test_the_edge_probe_keeps_the_name_and_goes_to_the_container(self):
+        # §7f: a estrada do celular é um NOME, e o `connect-to` é o que deixa o
+        # nome no SNI e no `Host` enquanto a conexão vai para a borda — o
+        # resolver de quem roda o comando fica de fora, e o do celular é outro.
+        fake = self.runtime()
+        env.through_edge("https://ntfy.at.local/at/json?poll=1", {})
+        argv = fake.calls[0]
+        self.assertEqual(argv[:2], ["run", "--rm"])
+        self.assertIn(env.NETWORK, argv)
+        self.assertIn(_service(env.CADDY).image.reference(), argv)
+        self.assertIn("https://ntfy.at.local/at/json?poll=1", argv)
+        self.assertIn(f'connect-to = "ntfy.at.local:{env.PORT}:'
+                      f'{env.container(env.CADDY)}:{env.PORT}"',
+                      fake.given[0]["input"])
+
+    def test_the_edge_probe_carries_the_token_on_the_input_and_not_the_argv(self):
+        # A mesma regra do `inside`: um argv é um `ps` nesta máquina.
+        fake = self.runtime()
+        env.through_edge("https://ntfy.at.local/at/json?poll=1",
+                         {"Authorization": "Bearer tk_segredo"})
+        self.assertNotIn("tk_segredo", fake.calls[0])
+        self.assertIn('header = "Authorization: Bearer tk_segredo"',
+                      fake.given[0]["input"])
+
+    def test_the_edge_probe_answers_a_number_and_nothing_else(self):
+        for stdout, expected in (("200\n", 200), ("403", 403),
+                                 ("", None), ("curl: (7) refused", None)):
+            with self.subTest(stdout=stdout):
+                with self.answered(stdout):
+                    self.assertEqual(
+                        env.through_edge("https://ntfy.at.local/at/json?poll=1", {}),
+                        expected)
+        with self.answered("200", returncode=1):
+            self.assertIsNone(
+                env.through_edge("https://ntfy.at.local/at/json?poll=1", {}))
+
 
 class TheDown(FolderCase):
     """`down` takes the containers, and the folder stays where it is."""
@@ -1456,6 +1492,20 @@ class TheNotifier(FolderCase):
         # would make the token decorative.
         self.up()
         self.assertIn('auth-default-access: "deny-all"', self.conf())
+
+    def test_the_certificate_the_phone_imports_is_the_edges_own_ca(self):
+        # O certificado da borda é `tls internal` — a CA do próprio Caddy —, e o
+        # app do ntfy não usa o cofre de certificados do aparelho (medido): o que
+        # a pessoa importa é ESTE arquivo, e ele mora na pasta de estado do
+        # serviço, que é a pasta que o backup cobre (§3). É o mesmo storage que o
+        # container monta, e é o `notifier` quem o nomeia na mensagem do celular.
+        caddy_service = _service(env.CADDY)
+        self.assertEqual(caddy_service.mounts[1].host, env.CADDY_STORAGE)
+        self.assertEqual(env.authority_file(),
+                         env.state(env.CADDY) / env.CADDY_STORAGE
+                         / "pki" / "authorities" / "local" / "root.crt")
+        self.assertTrue(str(env.authority_file()).startswith(
+            str(env.state(env.CADDY))))
 
     def test_the_gate_does_not_front_the_notifier(self):
         # Measured in the retired environment and inherited: behind Authelia the

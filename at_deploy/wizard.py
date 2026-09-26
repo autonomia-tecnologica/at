@@ -131,7 +131,8 @@ STEPS: tuple[Step, ...] = (
 
 
 def run_step(word: str, ask: Ask | None = None, secret: Ask | None = None,
-             name: str | None = None) -> tuple[int, str]:
+             name: str | None = None,
+             answer: gate.Answer | None = None) -> tuple[int, str]:
     """Run ONE step and hand back what it said.
 
     **The step IS the `cli`'s word**, reached through the door the command line
@@ -155,7 +156,7 @@ def run_step(word: str, ask: Ask | None = None, secret: Ask | None = None,
 
     said = io.StringIO()
     with redirect_stdout(said):
-        code = cli.services(argv, ask, secret)
+        code = cli.services(argv, ask, secret, answer)
     return code, said.getvalue()
 
 
@@ -188,9 +189,10 @@ class Walk:
         return self.index == len(self.steps) - 1
 
     def run(self, ask: Ask | None = None, secret: Ask | None = None,
-            name: str | None = None) -> tuple[int, str]:
+            name: str | None = None,
+            answer: gate.Answer | None = None) -> tuple[int, str]:
         """Run the current step, and record whether it closed."""
-        code, said = self._run(self.step.word, ask, secret, name)
+        code, said = self._run(self.step.word, ask, secret, name, answer)
         self.closed = self.step.settled(code)
         return code, said
 
@@ -212,7 +214,8 @@ class Walk:
         return self.NEXT
 
 
-def build(root: object, ask: Ask | None = None, secret: Ask | None = None) -> Walk:
+def build(root: object, ask: Ask | None = None, secret: Ask | None = None,
+          answer: gate.Answer | None = None) -> Walk:
     """Draw the window on an existing `Tk` root, and answer with its `Walk`.
 
     Separate from `open_wizard` so a test can build the window and destroy it
@@ -266,7 +269,7 @@ def build(root: object, ask: Ask | None = None, secret: Ask | None = None) -> Wa
         )
 
     def on_run() -> None:
-        _, text = walk.run(ask, secret)
+        _, text = walk.run(ask, secret, answer=answer)
         said.delete("1.0", "end")
         said.insert("end", text)
         show()

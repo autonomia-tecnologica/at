@@ -38,6 +38,17 @@ from at_deploy.cli import OK, REFUSED, USAGE, main
 DRAWN_TOKEN = "tk_abcdefghijklmnopqrstuvwxyz012"
 TOKEN_LINE = f"token {DRAWN_TOKEN} created for user phone, never expires"
 
+
+def edge(url: str, headers: dict[str, str]) -> int:
+    """A borda, sem socket — o seam `gate.Answer` da prova do celular (§7f).
+
+    O que se prova aqui não é a PROVA — ela é do `test_operator` —, e sim que o
+    passo da janela a alcança: a palavra `phone` pergunta pelo nome ao fim do
+    ato, e um `Tk` não pode abrir um socket para responder.
+    """
+    return 200 if headers.get("Authorization") else 403
+
+
 CREDENTIAL = "uma-frase-bem-longa"
 NEW_CREDENTIAL = "outra-frase-bem-longa"
 
@@ -295,7 +306,7 @@ class TheStepsAreTheClisWords(unittest.TestCase):
         # text — the screen draws it and adds nothing.
         seen: list[list[str]] = []
 
-        def door(argv, ask=None, secret=None) -> int:
+        def door(argv, ask=None, secret=None, answer=None) -> int:
             seen.append(argv)
             print("o que a palavra disse")
             return USAGE
@@ -313,7 +324,7 @@ class TheStepsAreTheClisWords(unittest.TestCase):
         # nobody gave.
         seen: list[list[str]] = []
 
-        def door(argv, ask=None, secret=None) -> int:
+        def door(argv, ask=None, secret=None, answer=None) -> int:
             seen.append(argv)
             return OK
 
@@ -478,7 +489,8 @@ class TheWindow(FolderCase):
         fake = FakeTkinter()
         with mock.patch.object(env, "GRACE", 0.0), mock.patch.dict(
                 sys.modules, {"tkinter": fake}):
-            walk = wizard.build(fake.root, ask=lambda q: "", secret=lambda q: "")
+            walk = wizard.build(fake.root, ask=lambda q: "", secret=lambda q: "",
+                                answer=edge)
 
             fake.button(i18n.tr("deploy.wizard.run")).press()
             self.assertTrue(walk.closed, "`up` did not close over a standing machine")
@@ -492,7 +504,14 @@ class TheWindow(FolderCase):
                               token=DRAWN_TOKEN, topic=notifier.TOPIC,
                               scope=notifier.PHONE_SCOPE,
                               url=env.notifier_public_url(),
+                              authority=env.authority_file(),
                               where=notifier.phone_file()),
+                      fake.area().content)
+        # E a leitura sai provada na mesma tela: a palavra pergunta pelo nome ao
+        # fim do ato, e um `Tk` que não pudesse perguntar seria uma janela que
+        # promete menos do que a `cli`.
+        self.assertIn(i18n.tr("services.notifier.phone.proved",
+                              url=notifier.phone_url(), topic=notifier.TOPIC),
                       fake.area().content)
 
     def test_the_phone_token_is_shown_once_and_never_again(self):
@@ -501,8 +520,8 @@ class TheWindow(FolderCase):
         # the file's name and never the value.
         self.machine()
         with mock.patch.object(env, "GRACE", 0.0):
-            _, first = wizard.run_step("phone")
-            _, second = wizard.run_step("phone")
+            _, first = wizard.run_step("phone", answer=edge)
+            _, second = wizard.run_step("phone", answer=edge)
         self.assertIn(DRAWN_TOKEN, first)
         self.assertNotIn(DRAWN_TOKEN, second)
         self.assertIn(str(notifier.phone_file()), second)
@@ -513,7 +532,8 @@ class TheWindow(FolderCase):
         # shows is replaced on every run, so the second press of the button
         # reads the file's name and the value is gone with the run that drew it.
         self.machine()
-        fake, walk = self.window(ask=lambda q: "", secret=lambda q: "")
+        fake, walk = self.window(ask=lambda q: "", secret=lambda q: "",
+                                 answer=edge)
         walk.index = len(wizard.STEPS) - 1
         with mock.patch.object(env, "GRACE", 0.0):
             fake.button(i18n.tr("deploy.wizard.run")).press()

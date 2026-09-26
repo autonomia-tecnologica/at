@@ -59,6 +59,10 @@ SAID = (
     "deploy.services.credential.ask",
     "services.notifier.phone.drawn", "services.notifier.phone.held",
     "services.notifier.phone.at", "services.notifier.phone.absent",
+    # §7f's read, proved at the end of the word: what closing looks like, and the
+    # two sentences that name the half which did not close.
+    "services.notifier.phone.proved", "services.notifier.phone.unread",
+    "services.notifier.phone.unrefused",
     "services.credential.changed", "services.credential.hosted",
     "services.credential.unknown", "services.credential.pending",
     "services.credential.no_tty", "services.credential.secret",
@@ -114,6 +118,37 @@ class FakeRuntime:
     def streams(self) -> list[str]:
         """What travelled on a command's STDIN — the only place a value may go."""
         return [str(kw.get("input", "")) for _, kw in self.calls]
+
+
+class FakeEdge:
+    """A borda, sem socket — o seam `gate.Answer` da prova do celular (§7f).
+
+    Ela responde pelo NOME: o pedido que traz o token do celular no cabeçalho lê
+    o tópico, e o que não traz nenhum é recusado — as duas metades que a palavra
+    `phone` prova. Cada metade tem a sua resposta, para que os dois defeitos
+    possam ser encenados: um token que não lê, e um notificador que responde a
+    quem não traz token nenhum. `nothing` é a borda que não respondeu: "não deu
+    para saber", que não é prova de nada.
+    """
+
+    def __init__(self, read: int = 200, refused: int = 403,
+                 nothing: bool = False) -> None:
+        self.read = read
+        self.refused = refused
+        self.nothing = nothing
+        self.asked: list[tuple[str, dict[str, str]]] = []
+
+    def __call__(self, url: str, headers: dict[str, str]) -> int | None:
+        self.asked.append((url, dict(headers)))
+        if self.nothing:
+            return None
+        return self.read if headers.get("Authorization") else self.refused
+
+    def urls(self) -> list[str]:
+        return [url for url, _ in self.asked]
+
+    def headers(self) -> list[dict[str, str]]:
+        return [headers for _, headers in self.asked]
 
 
 class FolderCase(unittest.TestCase):
@@ -201,10 +236,11 @@ class TheReadToken(FolderCase):
         drawn.start()
         self.addCleanup(drawn.stop)
 
-    def subscribe(self, **kw):
+    def subscribe(self, edge: FakeEdge | None = None, **kw):
         fake = self.machine(**kw)
         with mock.patch.object(env, "GRACE", 0.0):
-            outcome, text = self.quiet(notifier.subscribe)
+            outcome, text = self.quiet(notifier.subscribe,
+                                       edge if edge is not None else FakeEdge())
         return fake, outcome, text
 
     def test_the_two_ends_of_the_acl_are_two_accounts_with_two_scopes(self):
@@ -240,6 +276,30 @@ class TheReadToken(FolderCase):
         # o AT publica e onde nenhum celular chega.
         self.assertIn(env.notifier_public_url(), text)
         self.assertNotIn(env.notifier_url(), text)
+
+    def test_the_message_names_the_certificate_the_app_must_import(self):
+        # **O certificado é do AT, e o app do ntfy não usa o cofre do aparelho**
+        # (medido: no Android um app moderno ignora a CA que a pessoa instalou no
+        # sistema, e o app do ntfy tem a gestão de certificados dele). Então a
+        # mensagem não diz só para onde apontar: ela diz QUAL arquivo importar, e
+        # onde — sem isso a pessoa chega no aparelho e leva um erro de TLS sem
+        # saber que arquivo é.
+        _, _, text = self.subscribe()
+        self.assertIn(str(env.authority_file()), text)
+        # E o arquivo é a CA que a borda emite, dentro da pasta de estado do
+        # serviço — a pasta que o backup cobre.
+        self.assertEqual(env.authority_file(),
+                         env.state(env.CADDY) / env.CADDY_STORAGE
+                         / "pki" / "authorities" / "local" / "root.crt")
+
+    def test_a_second_run_still_names_the_road_and_the_certificate(self):
+        # A segunda rodada não imprime o valor, e continua dizendo o que fazer no
+        # aparelho: quem reabre isto é quem está com o celular na mão.
+        self.subscribe()
+        _, outcome, text = self.subscribe()
+        self.assertEqual(outcome, notifier.PHONE_HELD)
+        self.assertIn(env.notifier_public_url(), text)
+        self.assertIn(str(env.authority_file()), text)
 
     def test_the_value_lands_in_a_file_at_0600_beside_the_notifiers_state(self):
         self.subscribe()
@@ -333,6 +393,122 @@ class TheReadToken(FolderCase):
         self.subscribe()
         self.assertIsNone(notifier.token())
         self.assertEqual(notifier.phone_token(), DRAWN_TOKEN)
+
+
+class TheReadProved(FolderCase):
+    """A leitura do celular, provada pelo NOME — com o token e sem ele.
+
+    `TheReadToken` prova que o token nasce e fica guardado; isto prova o que a
+    ponta da ACL precisa dizer, e que um arquivo com um token dentro não é a
+    mesma coisa: o celular não é a máquina onde o ambiente roda, então a palavra
+    `phone` pergunta à BORDA, pelo nome que o aparelho vai digitar, e diz o que
+    não fechou. As duas metades são o token lendo e o token sendo a porta.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.secret = "uma-senha-do-celular-que-ninguem-guarda"
+        drawn = mock.patch.object(notifier.secrets, "token_urlsafe",
+                                  lambda size: self.secret)
+        drawn.start()
+        self.addCleanup(drawn.stop)
+
+    def subscribe(self, edge: FakeEdge | None = None, **kw):
+        fake = self.machine(**kw)
+        edge = edge if edge is not None else FakeEdge()
+        with mock.patch.object(env, "GRACE", 0.0):
+            outcome, text = self.quiet(notifier.subscribe, edge)
+        return fake, edge, outcome, text
+
+    def test_without_a_seam_the_question_goes_through_the_edge(self):
+        # **O transporte padrão é o do AMBIENTE e não o do portão** (`gate.real`),
+        # e a diferença é medido: o nome do celular não é resolvido pela máquina
+        # que roda o comando — o resolver dela não é o do aparelho —, então o
+        # `gate.real` responderia "não deu para saber" sobre uma borda de pé.
+        asked: list[str] = []
+
+        def edge(url: str, headers: dict[str, str]) -> int:
+            asked.append(url)
+            return 200 if headers.get("Authorization") else 403
+
+        self.machine()
+        with mock.patch.object(env, "through_edge", edge), \
+                mock.patch.object(env, "GRACE", 0.0):
+            outcome, _ = self.quiet(notifier.subscribe)
+        self.assertEqual(outcome, notifier.PHONE_DRAWN)
+        self.assertEqual(asked, [notifier.phone_url()] * 2)
+
+    def test_the_two_halves_are_asked_by_the_name_and_never_on_the_loop(self):
+        # **A estrada que se prova é a do aparelho.** O laço é a estrada do AT
+        # (`target`), que funciona por construção e não diria nada sobre o
+        # celular; o nome, na borda, é o que a pessoa digita no app.
+        _, edge, _, _ = self.subscribe()
+        self.assertEqual(edge.urls(), [notifier.phone_url()] * 2)
+        for url in edge.urls():
+            self.assertTrue(url.startswith(env.notifier_public_url()), url)
+            self.assertNotIn(env.notifier_url(), url)
+
+    def test_the_token_travels_in_the_header_and_never_in_an_argv_or_a_url(self):
+        # A mesma regra da entrega: o argv é um `ps` na máquina, e uma URL vai
+        # parar no log de quem quer que esteja no caminho.
+        fake, edge, _, _ = self.subscribe()
+        self.assertEqual(edge.headers()[0].get("Authorization"),
+                         f"Bearer {DRAWN_TOKEN}")
+        self.assertEqual(edge.headers()[1], {})
+        self.assertNotIn(DRAWN_TOKEN, fake.said())
+        self.assertNotIn(DRAWN_TOKEN, "".join(edge.urls()))
+
+    def test_the_two_halves_closing_is_what_proves_the_read(self):
+        _, edge, outcome, text = self.subscribe()
+        self.assertEqual(outcome, notifier.PHONE_DRAWN)
+        self.assertTrue(notifier.proved(edge))
+        self.assertIn(i18n.tr("services.notifier.phone.proved",
+                              url=notifier.phone_url(), topic=notifier.TOPIC),
+                      text)
+
+    def test_a_token_that_does_not_read_is_said_and_the_word_is_a_refusal(self):
+        # O token fica — ele foi sorteado, e o arquivo é dele —, e o que não
+        # fechou é a leitura. A palavra promete a leitura, então ela recusa.
+        _, _, outcome, text = self.subscribe(FakeEdge(read=403))
+        self.assertEqual(outcome, notifier.PHONE_UNPROVED)
+        self.assertEqual(notifier.phone_token(), DRAWN_TOKEN)
+        self.assertIn(i18n.tr("services.notifier.phone.unread",
+                              url=notifier.phone_url(), topic=notifier.TOPIC,
+                              host=env.notifier_host(),
+                              authority=env.authority_file(),
+                              code=notifier.NO_TOKEN_REFUSED), text)
+
+    def test_a_notifier_that_answers_whoever_comes_is_not_a_door(self):
+        # Um `200` a quem não traz token nenhum é o notificador aberto, e é o
+        # defeito que a metade do `deny-all` existe para pegar: sem ela, "o
+        # celular lê" estaria provado num serviço que qualquer um lê.
+        _, _, outcome, text = self.subscribe(FakeEdge(refused=200))
+        self.assertEqual(outcome, notifier.PHONE_UNPROVED)
+        self.assertIn(i18n.tr("services.notifier.phone.unrefused",
+                              url=notifier.phone_url(), topic=notifier.TOPIC,
+                              code=notifier.NO_TOKEN_REFUSED), text)
+        self.assertNotIn(i18n.tr("services.notifier.phone.proved",
+                                 url=notifier.phone_url(), topic=notifier.TOPIC),
+                         text)
+
+    def test_an_edge_that_does_not_answer_proves_nothing(self):
+        # "Não deu para saber" não é "provado" — a mesma regra da virada (§6).
+        _, _, outcome, text = self.subscribe(FakeEdge(nothing=True))
+        self.assertEqual(outcome, notifier.PHONE_UNPROVED)
+        self.assertIn(i18n.tr("services.notifier.phone.unread",
+                              url=notifier.phone_url(), topic=notifier.TOPIC,
+                              host=env.notifier_host(),
+                              authority=env.authority_file(),
+                              code=notifier.NO_TOKEN_REFUSED), text)
+
+    def test_a_second_run_proves_the_read_again_and_prints_no_value(self):
+        self.subscribe()
+        _, _, outcome, text = self.subscribe()
+        self.assertEqual(outcome, notifier.PHONE_HELD)
+        self.assertNotIn(DRAWN_TOKEN, text)
+        self.assertIn(i18n.tr("services.notifier.phone.proved",
+                              url=notifier.phone_url(), topic=notifier.TOPIC),
+                      text)
 
 
 # ---------------------------------------------------------- the gate ---
@@ -477,7 +653,7 @@ class TheDoor(FolderCase):
     def test_the_phone_door_answers_ok_and_draws_the_credential(self):
         self.machine()
         with mock.patch.object(env, "GRACE", 0.0):
-            code, text = self.quiet(services, ["phone"])
+            code, text = self.quiet(services, ["phone"], answer=FakeEdge())
         self.assertEqual(code, OK)
         self.assertIn(DRAWN_TOKEN, text)
         self.assertEqual(notifier.phone_token(), DRAWN_TOKEN)
@@ -485,8 +661,20 @@ class TheDoor(FolderCase):
     def test_the_phone_door_is_a_refusal_when_the_credential_is_not_made(self):
         self.machine(fails=("access",))
         with mock.patch.object(env, "GRACE", 0.0):
-            code, _ = self.quiet(services, ["phone"])
+            code, _ = self.quiet(services, ["phone"], answer=FakeEdge())
         self.assertEqual(code, REFUSED)
+
+    def test_the_phone_door_is_a_refusal_when_the_read_is_not_proved(self):
+        # A palavra promete a LEITURA, e não o arquivo: um token que não lê pelo
+        # nome é uma credencial sorteada e um celular que não alcança o tópico —
+        # a mesma resposta que `notify` dá quando o alerta não sai.
+        self.machine()
+        with mock.patch.object(env, "GRACE", 0.0):
+            code, text = self.quiet(services, ["phone"],
+                                    answer=FakeEdge(read=403))
+        self.assertEqual(code, REFUSED)
+        self.assertIn(DRAWN_TOKEN, text)   # o valor saiu uma vez, e fica no arquivo
+        self.assertEqual(notifier.phone_token(), DRAWN_TOKEN)
 
     def test_the_credential_door_reads_it_twice_and_without_echo(self):
         # The two readers are the account's own (`at-cli admin`): the credential
@@ -581,7 +769,7 @@ class TheWords(unittest.TestCase):
         for code in i18n.SUPPORTED:
             text = i18n.text("services.notifier.phone.drawn", code)
             for placeholder in ("{token}", "{topic}", "{url}", "{where}",
-                                "{scope}"):
+                                "{scope}", "{authority}"):
                 with self.subTest(key=placeholder, language=code):
                     self.assertIn(placeholder, text)
 

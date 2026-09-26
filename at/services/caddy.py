@@ -212,6 +212,34 @@ def storage_dir() -> Path:
     return directory() / STORAGE
 
 
+# A autoridade que emite o certificado do AT, dentro de um storage do Caddy.
+# **É um caminho do PRÓPRIO Caddy e não uma decisão de AT** — `tls internal`
+# emite por nome contra uma CA local, e ele a guarda aqui —, então ele é escrito
+# uma vez só, e os dois caminhos o leem do seu storage: o hospedado, que é o
+# `App/caddy/storage`, e o container, cujo `/data` é montado da pasta de estado
+# do mesmo serviço (§7a).
+#
+# **Ele é o arquivo que quem precisa CONFIAR no certificado importa**, e é por
+# isso que ele é nomeado: um cliente que valida TLS contra a CA pública recusa o
+# certificado do AT, que é o preço declarado de não depender de um domínio
+# público (§3). Medido: o app do ntfy não usa o cofre de CAs do aparelho, então
+# o que o celular importa é ESTE arquivo, na gestão de certificados do app
+# (`at_deploy/notifier.py`).
+AUTHORITY = Path("pki") / "authorities" / "local" / "root.crt"
+
+
+def authority_file(root: Path | None = None) -> Path:
+    """A CA local do Caddy, dentro de um storage — o de dentro da pasta por
+    padrão, e o do container quando quem chama passa a raiz dele.
+
+    A raiz é um parâmetro porque são DOIS storages com o mesmo conteúdo: o
+    caminho hospedado usa o do `App/caddy`, e o container usa a pasta de estado
+    do serviço (§7a). O que os dois têm em comum é o que o Caddy escreve dentro,
+    e é isso que este arquivo nomeia.
+    """
+    return (root or storage_dir()) / AUTHORITY
+
+
 def unpacked() -> bool:
     """Whether the folder already carries the Caddy this platform runs."""
     if not binary().is_file() or not stamp_file().is_file():
