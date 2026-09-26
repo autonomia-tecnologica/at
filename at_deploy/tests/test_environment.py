@@ -265,8 +265,6 @@ class TheManifest(unittest.TestCase):
         alone = [service.name for service in env.SERVICES
                  if service.network == env.DMZ]
         self.assertEqual(alone, ["dnsmasq"])
-        self.assertEqual(env.ports_of(_service("dnsmasq")),
-                         (env.Port(53, "udp"), env.Port(53)))
 
     def test_every_service_reads_what_the_folder_is(self):
         # §7: every service's persistent state lives under `App/services/`, and
@@ -291,8 +289,17 @@ class TheManifest(unittest.TestCase):
                     )
 
     def test_the_dnsmasq_publishes_dns_on_both_protocols(self):
-        published = [port.published() for port in _service("dnsmasq").ports]
-        self.assertEqual(published, ["127.0.0.1:53:53/udp", "127.0.0.1:53:53/tcp"])
+        # UDP e TCP, na mesma porta, e o endereço é um dos dois que §7e permite:
+        # o laço quando a máquina não está em rede nenhuma, o dela quando está.
+        # O DNS é o segundo serviço a sair do laço, e é isso que torna os nomes
+        # do ambiente — `at.local`, `ntfy.at.local` — perguntáveis de fora da
+        # máquina. Onde cada endereço vale é o que `ThePrivateNetwork` e `TheUp`
+        # provam, com o agente fora do caminho; aqui a pergunta é outra.
+        ports = env.ports_of(_service("dnsmasq"))
+        self.assertEqual([(port.port, port.protocol) for port in ports],
+                         [(53, "udp"), (53, "tcp")])
+        for port in ports:
+            self.assertIn(port.address, (env.LOOP, env.vpn.address() or env.LOOP))
 
 
 def _service(name: str) -> env.Service:
@@ -399,7 +406,10 @@ class TheUp(FolderCase):
         _, text = self.quiet(env.up)
         self.assertNotIn("sha256:", text)
 
-    def test_the_dnsmasq_publishes_on_the_loop_and_mounts_its_own_folder(self):
+    def test_the_dnsmasq_publishes_dns_and_mounts_its_own_folder(self):
+        # O laço é o endereço de quem não tem rede privada — o estado suportado
+        # —, e o `podman run` é onde a decisão de §7e aparece: com rede, este
+        # mesmo argumento traz o endereço dela (`TheTwoNames`).
         fake = self.runtime()
         self.quiet(env.up)
         argv = _call(fake, "at-dnsmasq")
@@ -941,6 +951,15 @@ class ThePrivateNetwork(FolderCase):
             # §7e só vale se o endereço for o da rede.
             self.assertIn(f"100.64.0.1:{env.PORT}:{env.PORT}/tcp",
                           _call(fake, "at-caddy"))
+            # **E o DNS sai do laço pela outra metade da mesma razão**: os nomes
+            # que ele responde — `at.local` e `ntfy.at.local` — não existem em
+            # DNS público nenhum, então o navegador de outra máquina e o celular
+            # só os resolvem perguntando a ELE, e é para cá que o split-DNS do
+            # tailnet aponta. Sem isso o nome não resolve fora da máquina, e a
+            # URL que a pessoa digita não abre.
+            dns = _call(fake, "at-dnsmasq")
+            self.assertIn("100.64.0.1:53:53/udp", dns)
+            self.assertIn("100.64.0.1:53:53/tcp", dns)
 
     def test_without_a_network_the_site_is_bills_own_name(self):
         # O estado suportado, e não um degradado: a máquina não está em rede

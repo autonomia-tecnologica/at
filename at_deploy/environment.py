@@ -551,7 +551,7 @@ def elevate(ask: Ask | None = None, spend: Spend | None = None) -> str | None:
     happens **through an explicit request with the reason on display**, and that
     the closed list of what demands it is born with the implementation that asks
     for it. This is that implementation and this is the first entry of the list:
-    §7a's `dnsmasq` publishes DNS on `127.0.0.1:53`, and a machine that ships the
+    §7a's `dnsmasq` publishes DNS on `53`, and a machine that ships the
     kernel's low-port rule — every Linux does — refuses the bind to a user
     process.
 
@@ -748,6 +748,26 @@ def _dnsmasq_conf() -> str:
     lines = [f"# {tr('services.dnsmasq.file.header')}"]
     lines += [f"address=/{name}/{where}" for name in names()]
     return "\n".join(lines) + "\n"
+
+
+def _dnsmasq_ports() -> tuple[Port, ...]:
+    """A porta do DNS, no endereço onde a borda está.
+
+    **Quem pergunta por estes nomes não está na máquina.** `at.local` e
+    `ntfy.at.local` não existem em DNS público nenhum — são do ambiente, e este
+    `dnsmasq` é o único que os responde —, então publicá-lo no laço é responder
+    a quem já está dentro e a mais ninguém: o navegador de outra máquina e o
+    celular não têm a quem perguntar, e o split-DNS do tailnet não tem endereço
+    para onde apontar. O endereço é o mesmo da borda, pela mesma §7e: a rede
+    decide onde, e `_caddy_ports` já é esta expressão.
+
+    **É o segundo e último serviço que sai do laço, e ele sai pela mesma razão
+    que o primeiro**: o que a pessoa alcança tem que estar alcançável. O que ele
+    publica é um servidor de nomes do ambiente, na rede privada que a pessoa
+    escolheu, e não em todo endereço.
+    """
+    where = vpn.address() or LOOP
+    return (Port(53, "udp", address=where), Port(53, address=where))
 
 
 def _caddy_conf() -> str:
@@ -1156,7 +1176,7 @@ SERVICES: tuple[Service, ...] = (
             version="2.93",
             digest="sha256:b40fbaa3a9c3742d5943a4bec789dabc6c5c932b2db76a4e052c84f0b8d173a2",
         ),
-        ports=(Port(53, "udp"), Port(53)),
+        ports=_dnsmasq_ports,
         mounts=(Mount(DNSMASQ_CONFIG),),
         writes=(("dnsmasq.conf", _dnsmasq_conf),),
         # The one service of the environment that talks to nobody: it answers,
@@ -1203,10 +1223,12 @@ SERVICES: tuple[Service, ...] = (
             version="2.11.4",
             digest="sha256:0c994536bddb66445885237f1a5dcc1916bccea922661c76b4e9fc24061f9b52",
         ),
-        # The site's port, and it is the ONLY port the environment publishes
-        # outside the loop when the machine is on a private network (§7e): the
-        # edge is what the person reaches, and everything else of the
-        # environment is on the loop or on nothing at all.
+        # The site's port, and it is published outside the loop when the machine
+        # is on a private network (§7e): the edge is what the person reaches.
+        # The DNS's `53` is the other one, and it leaves the loop for the other
+        # half of the same reason — the names it answers exist nowhere else
+        # (`_dnsmasq_ports`). Everything else of the environment is on the loop
+        # or on nothing at all.
         ports=_caddy_ports,
         mounts=(Mount(CADDY_CONFIG), Mount(CADDY_DATA, host=CADDY_STORAGE)),
         writes=(("Caddyfile", _caddy_conf),),
@@ -1318,12 +1340,12 @@ def running(service: Service, pins: dict[str, dict]) -> Image:
 def ports_of(service: Service) -> tuple[Port, ...]:
     """The ports a service publishes, resolved NOW.
 
-    `ports` is a tuple for every service but one, and the exception is the
-    SITE's: what address the edge publishes on is §7e's, and §7e is measured
-    when the environment comes up — the machine's address on the private
-    network, or the loop. A value read at import would be a value that stopped
-    being true the moment the person joined a network. It is a callable for the
-    same reason `command` and `writes` are.
+    `ports` is a tuple for every service but two, and the exceptions are the
+    SITE's and the DNS's: what address each of them publishes on is §7e's, and
+    §7e is measured when the environment comes up — the machine's address on the
+    private network, or the loop. A value read at import would be a value that
+    stopped being true the moment the person joined a network. It is a callable
+    for the same reason `command` and `writes` are.
     """
     return service.ports() if callable(service.ports) else service.ports
 
