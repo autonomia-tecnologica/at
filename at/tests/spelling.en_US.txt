@@ -125,6 +125,7 @@ sni
 sonarr
 suas
 subcommand
+subdomain
 subproject
 subprojects
 subtree

@@ -95,6 +95,7 @@ dmz
 dns
 docker
 ei
+embaixo
 end
 esp
 estadunidense

@@ -366,8 +366,8 @@ class TheAdaptedGate(FolderCase):
         actors.create_admin("Rafael", "uma-frase-bem-longa")
         self.assertTrue(caddy.ensure(), "the payload of this platform is not here")
 
-    def routes(self, text: str) -> list[dict]:
-        """Os `handle` que o próprio Caddy lê do arquivo, na ordem dele."""
+    def adapted(self, text: str) -> dict[str, dict]:
+        """O que o Caddy de verdade leu do arquivo, servidor por servidor."""
         where = caddy.caddyfile_path()
         where.parent.mkdir(parents=True, exist_ok=True)
         where.write_text(text, encoding="utf-8")
@@ -377,7 +377,11 @@ class TheAdaptedGate(FolderCase):
             capture_output=True, text=True, check=False,
         )
         self.assertEqual(done.returncode, 0, done.stderr)
-        servers = json.loads(done.stdout)["apps"]["http"]["servers"]
+        return json.loads(done.stdout)["apps"]["http"]["servers"]
+
+    def routes(self, text: str) -> list[dict]:
+        """Os `handle` que o próprio Caddy lê do arquivo, na ordem dele."""
+        servers = self.adapted(text)
         return next(iter(servers.values()))["routes"][0]["handle"][0]["routes"]
 
     def test_the_gate_configuration_is_one_the_caddy_takes(self):
@@ -414,6 +418,38 @@ class TheAdaptedGate(FolderCase):
         routes = self.routes(text)
         self.assertEqual(len(routes), 1)
         self.assertIsNone(routes[0].get("match"))
+
+    def test_the_second_site_is_one_the_caddy_takes_and_does_not_ask_about(self):
+        # **O arquivo com dois nomes é um arquivo que o Caddy ACEITA**, e o que
+        # se lê aqui é o que ele ENTENDEU: os dois no mesmo servidor, na mesma
+        # porta, separados por casador de HOST — e o do notificador sem
+        # pergunta nenhuma, que é a medição que o mantém fora do portão
+        # (`subscribers=0` atrás do Authelia, `101` sem ele).
+        text = caddy.caddyfile(
+            "at.local", 443, 41234, gate="segredo-sorteado", auth="127.0.0.1:9091",
+            bind="0.0.0.0", upstream="at-webapp",
+            outside=(("ntfy.at.local", "at-notifier:2586"),),
+        )
+        servers = self.adapted(text)
+        # Um servidor só: os dois blocos dividem a porta e o `bind`, e é o
+        # casador de host que diz qual nome responde o quê.
+        self.assertEqual(len(servers), 1)
+        server = next(iter(servers.values()))
+        self.assertEqual(server["listen"], ["0.0.0.0:443"])
+        hosts = {tuple(route["match"][0]["host"]): route for route in server["routes"]}
+        self.assertEqual(sorted(hosts), [("at.local",), ("ntfy.at.local",)])
+        askless = json.dumps(hosts[("ntfy.at.local",)])
+        self.assertIn("at-notifier:2586", askless)
+        self.assertNotIn("forward_auth", askless)
+        self.assertNotIn("segredo-sorteado", askless)
+        # E o site continua com a pergunta e com o segredo — os dois nomes não
+        # se confundem. O Caddy escreve o `forward_auth` como um proxy com
+        # `rewrite` para o `uri` da pergunta, então é isso que se lê aqui.
+        asked = json.dumps(hosts[("at.local",)])
+        self.assertIn(caddy.AUTH_URI, asked)
+        self.assertIn("127.0.0.1:9091", asked)
+        self.assertIn("segredo-sorteado", asked)
+        self.assertIn("at-webapp:41234", asked)
 
 
 class TheExposedRun(FolderCase):

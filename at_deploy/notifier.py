@@ -202,9 +202,12 @@ def target() -> str:
     """Where an alert goes: the topic, at the address the notifier publishes on.
 
     Built from the environment's own constants — the loop and the port are the
-    ones the `Port` publishes and `server.yml` listens on — so a `base-url`
-    printed inside a notification cannot name one address while AT posts to
-    another.
+    ones the `Port` publishes and `server.yml` listens on. **E o laço é de
+    propósito**: quem lê o link de dentro do alerta é o celular, e é o
+    `base-url` que o monta (`notifier_public_url`); quem PUBLICA é o AT, e ele
+    fala com o serviço pelo laço, onde o alerta não depende do DNS interno, da
+    borda nem do certificado do AT. Os dois endereços são diferentes porque são
+    duas estradas diferentes.
     """
     return f"{environment.notifier_url()}/{TOPIC}"
 
@@ -408,6 +411,6 @@ def subscribe() -> str:
 
     write_phone_token(drawn)
     print(tr("services.notifier.phone.drawn", token=drawn, topic=TOPIC,
-             scope=PHONE_SCOPE, url=environment.notifier_url(),
+             scope=PHONE_SCOPE, url=environment.notifier_public_url(),
              where=phone_file()))
     return PHONE_DRAWN

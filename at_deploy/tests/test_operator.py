@@ -236,7 +236,10 @@ class TheReadToken(FolderCase):
         # What a person needs beside the value: where the alert comes from, and
         # which topic to subscribe to.
         self.assertIn(notifier.TOPIC, text)
-        self.assertIn(env.notifier_url(), text)
+        # O endereço que vai para o celular é o NOME — e não o laço, que é onde
+        # o AT publica e onde nenhum celular chega.
+        self.assertIn(env.notifier_public_url(), text)
+        self.assertNotIn(env.notifier_url(), text)
 
     def test_the_value_lands_in_a_file_at_0600_beside_the_notifiers_state(self):
         self.subscribe()

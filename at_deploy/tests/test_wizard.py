@@ -491,7 +491,7 @@ class TheWindow(FolderCase):
         self.assertIn(i18n.tr("services.notifier.phone.drawn",
                               token=DRAWN_TOKEN, topic=notifier.TOPIC,
                               scope=notifier.PHONE_SCOPE,
-                              url=env.notifier_url(),
+                              url=env.notifier_public_url(),
                               where=notifier.phone_file()),
                       fake.area().content)
 

@@ -785,10 +785,15 @@ class ThePermission(FolderCase):
 
     def test_what_is_blocked_is_asked_of_the_manifest(self):
         # Not a hand-written list: a service that starts publishing a low port
-        # tomorrow enters this question by existing.
+        # tomorrow enters this question by existing. **E a porta 443 entra por
+        # isso**: o site publica nela, ela é baixa, e a resposta não é tratada
+        # em lugar nenhum como um caso à parte — o piso se move UMA vez, para a
+        # mais baixa que o ambiente publica, e as duas passam a caber.
         with self.machine(1024):
-            self.assertEqual(env.blocked(), (53,))
-        with self.machine(54):
+            self.assertEqual(env.blocked(), (53, 443))
+        with self.machine(444):
+            self.assertEqual(env.blocked(), (53, 443))
+        with self.machine(443):
             self.assertEqual(env.blocked(), (53,))
         with self.machine(53):
             self.assertEqual(env.blocked(), ())
@@ -822,13 +827,13 @@ class ThePermission(FolderCase):
             )
         self.assertEqual(outcome, env.HOSTED)
         self.assertEqual(spent, [])
-        self.assertIn(i18n.tr("services.elevation.refused", ports="53"), text)
+        self.assertIn(i18n.tr("services.elevation.refused", ports="53, 443"), text)
 
     def test_with_no_terminal_the_permission_is_not_requested(self):
         with self.machine(1024):
             outcome, text = self.quiet(env.elevate)
         self.assertEqual(outcome, env.NO_ANSWER)
-        self.assertIn(i18n.tr("services.elevation.no_tty", ports="53"), text)
+        self.assertIn(i18n.tr("services.elevation.no_tty", ports="53, 443"), text)
 
     def test_a_machine_that_does_not_move_says_so_instead_of_announcing(self):
         # Asking and getting nothing is the one answer that must not be called a
@@ -837,7 +842,7 @@ class ThePermission(FolderCase):
             outcome, text = self.quiet(env.elevate, lambda question: "s",
                                        spend=lambda *argv: None)
         self.assertEqual(outcome, env.FAILED)
-        self.assertIn(i18n.tr("services.elevation.failed", ports="53"), text)
+        self.assertIn(i18n.tr("services.elevation.failed", ports="53, 443"), text)
 
     def test_up_asks_before_it_starts_anything_and_leaves_the_folder_alone(self):
         # A refusal is the folder's previous state untouched: no secret drawn, no
@@ -846,7 +851,7 @@ class ThePermission(FolderCase):
         with self.machine(1024):
             outcome, text = self.quiet(env.up, lambda question: "n")
         self.assertEqual(outcome, env.HOSTED)
-        self.assertIn(i18n.tr("services.elevation.refused", ports="53"), text)
+        self.assertIn(i18n.tr("services.elevation.refused", ports="53, 443"), text)
         self.assertFalse(caddy.gate_file().exists())
         self.assertEqual(fake.calls, [])
 
@@ -900,7 +905,15 @@ class ThePrivateNetwork(FolderCase):
         self.assertIsNone(vpn.name(self.agent('{"Self": {}}')))
         self.assertIsNone(vpn.address(self.agent("")))
 
-    def test_the_site_follows_the_network_when_there_is_one(self):
+    def test_the_network_changes_the_address_and_never_the_name(self):
+        # **A decisão desta fatia, e ela é uma linha**: a rede privada decide
+        # ONDE a borda publica e o que o DNS responde, e nunca QUAIS são os
+        # nomes. O nome da rede (`vpn.name`) nomeava o site enquanto ele era a
+        # única coisa que o ambiente tinha; agora que cada serviço tem o seu
+        # embaixo de um domínio só, um site que respondesse pelo nome da rede
+        # seria um segundo domínio, um segundo certificado, e um portão cujo
+        # `authelia_url` mandaria o celular para um nome que a rede não resolve.
+        #
         # O endereço da rede privada não existe nesta máquina — quem responde
         # por ele é o seam —, então quem responde pela PERGUNTA ao endereço
         # também: `TheAddress` prova a pergunta, e aqui o que se lê é o que a
@@ -908,35 +921,36 @@ class ThePrivateNetwork(FolderCase):
         with mock.patch.object(vpn, "name", lambda call=None: "host.example-tailnet.ts.net"), \
                 mock.patch.object(vpn, "address", lambda call=None: "100.64.0.1"), \
                 mock.patch.object(env, "address_ready", lambda address: True):
-            self.assertEqual(env.site_host(), "host.example-tailnet.ts.net")
+            self.assertEqual(env.site_host(), env.NAME)
             fake = self.runtime()
             self.quiet(env.up)
-            self.assertIn("https://host.example-tailnet.ts.net:8443",
-                          (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8"))
+            caddyfile = (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8")
+            self.assertIn(f"https://{env.NAME} {{", caddyfile)
+            self.assertNotIn("host.example-tailnet.ts.net", caddyfile)
             identity = (env.state(env.IDENTITY) / env.IDENTITY_YAML).read_text(encoding="utf-8")
-            self.assertIn("domain: host.example-tailnet.ts.net", identity)
+            self.assertIn(f"domain: {env.NAME}", identity)
             # O portal segue o mesmo nome — e carrega o caminho dele, que é o
             # endereço em que a borda o roteia fora do `forward_auth`.
             self.assertIn(
-                f"authelia_url: https://host.example-tailnet.ts.net:8443"
-                f"{caddy.PORTAL}/", identity)
+                f"authelia_url: https://{env.NAME}{caddy.PORTAL}/", identity)
             # The name AT answers for points at where the edge actually is.
-            self.assertIn("address=/at.local/100.64.0.1",
+            self.assertIn(f"address=/{env.NAME}/100.64.0.1",
                           (env.state("dnsmasq") / "dnsmasq.conf").read_text(encoding="utf-8"))
             # **E a porta do site é publicada no endereço DA REDE**, que é como a
             # pessoa chega: no caminho container quem publica é o container, e o
             # §7e só vale se o endereço for o da rede.
-            self.assertIn("100.64.0.1:8443:8443/tcp", _call(fake, "at-caddy"))
+            self.assertIn(f"100.64.0.1:{env.PORT}:{env.PORT}/tcp",
+                          _call(fake, "at-caddy"))
 
     def test_without_a_network_the_site_is_bills_own_name(self):
         # O estado suportado, e não um degradado: a máquina não está em rede
-        # privada nenhuma, e o site é o nome que o AT já responde (§7a) — um
+        # privada nenhuma, e o site é o nome que o AT responde (§7a) — um
         # NOME, e não o laço, porque o portão recusa um domínio de cookie sem
         # ponto e o TLS precisa de um nome para o SNI. Os dois foram medidos.
         self.assertEqual(env.site_host(), env.NAME)
         self.runtime()
         self.quiet(env.up)
-        self.assertIn(f"https://{env.NAME}:{env.PORT}",
+        self.assertIn(f"https://{env.NAME} {{",
                       (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8"))
         self.assertIn(f"address=/{env.NAME}/{env.LOOP}",
                       (env.state("dnsmasq") / "dnsmasq.conf").read_text(encoding="utf-8"))
@@ -1262,20 +1276,108 @@ class TheWebappBehindIt(FolderCase):
         self.runtime()
         self.quiet(env.up)
         text = (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8")
-        self.assertIn(f"https://{env.NAME}:{env.PORT}", text)
+        self.assertIn(f"https://{env.NAME} {{", text)
         self.assertIn(f"\tbind {env.ALL}", text)
         self.assertIn(
             f"reverse_proxy {env.container(env.WEBAPP)}:{env.WEBAPP_PORT}", text)
         self.assertNotIn(f"reverse_proxy {env.LOOP}:", text)
 
 
+class TheTwoNames(FolderCase):
+    """Os dois nomes do ambiente: o do site e o do notificador (§7a, §7f).
+
+    O ambiente responde por UM domínio (`at.local`) e cada serviço que é
+    alcançado por um nome pendura o dele embaixo: o site fica com o domínio, e o
+    notificador responde em `ntfy.at.local`. Quem responde os dois é o
+    `dnsmasq`, com o endereço onde a borda está de fato — e o que se lê aqui é
+    o que a subida ESCREVE, que é a única coisa que esta suíte pode ler.
+    """
+
+    def test_the_environment_owns_one_domain_and_the_services_hang_under_it(self):
+        self.assertEqual(env.NAME, "at.local")
+        self.assertEqual(env.site_host(), env.NAME)
+        self.assertEqual(env.notifier_host(), f"{env.NOTIFIER_HOST}.{env.NAME}")
+
+    def test_the_dns_answers_both_names_with_the_address_the_edge_is_at(self):
+        # **Nome a nome, e não um curinga.** `address=/.at.local/…` responderia
+        # por um nome que ninguém pediu — a borda não tem certificado para ele,
+        # e a pessoa levaria um erro de handshake em vez de "esse nome não
+        # existe". Uma linha por nome é o que o ambiente responde.
+        self.runtime()
+        self.quiet(env.up)
+        conf = (env.state("dnsmasq") / "dnsmasq.conf").read_text(encoding="utf-8")
+        for name in (env.site_host(), env.notifier_host()):
+            with self.subTest(name=name):
+                self.assertIn(f"address=/{name}/{env.LOOP}", conf)
+        self.assertNotIn("*", conf)
+        self.assertEqual(env.names(), (env.site_host(), env.notifier_host()))
+
+    def test_the_dns_follows_the_edge_and_not_the_loop_when_there_is_a_network(self):
+        # O endereço é o da rede quando há uma (§7e) — para os DOIS nomes, que é
+        # o que diz que a rede decide onde e não quais.
+        with mock.patch.object(vpn, "address", lambda call=None: "100.64.0.1"), \
+                mock.patch.object(env, "address_ready", lambda address: True):
+            self.runtime()
+            self.quiet(env.up)
+            conf = (env.state("dnsmasq") / "dnsmasq.conf").read_text(encoding="utf-8")
+        for name in env.names():
+            with self.subTest(name=name):
+                self.assertIn(f"address=/{name}/100.64.0.1", conf)
+
+    def test_the_edge_serves_the_second_name_with_its_own_certificate(self):
+        # A borda serve o nome do notificador num bloco de site dele, com o
+        # `tls internal` que emite o certificado POR NOME, e com o `bind` do
+        # container — a mesma razão do site: o nome não é um endereço que o
+        # container tenha.
+        self.runtime()
+        self.quiet(env.up)
+        text = (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8")
+        self.assertIn(f"https://{env.notifier_host()} {{", text)
+        self.assertIn(f"reverse_proxy {env.container(env.NOTIFIER)}:{env.NOTIFIER_PORT}",
+                      text)
+        # Dois blocos de site, e o segundo com o `tls internal` — o certificado
+        # de cada nome é emitido por nome.
+        self.assertEqual(text.count("\ttls internal"), 2)
+        self.assertEqual(text.count(f"\tbind {env.ALL}"), 2)
+
+    def test_the_notifier_name_never_goes_through_the_ask(self):
+        # A medição que esta fatia NÃO repete: atrás do portão o notificador
+        # responde `subscribers=0`, porque o app do celular pega o 302 e nunca
+        # conecta. O bloco dele é o único do arquivo sem pergunta nenhuma.
+        self.runtime()
+        self.quiet(env.up)
+        text = (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8")
+        block = text[text.index(f"https://{env.notifier_host()} {{"):]
+        self.assertNotIn("forward_auth", block)
+        self.assertNotIn(caddy.GATE_HEADER, block)
+        # E a pergunta continua no site: os dois nomes não se confundem.
+        self.assertIn("forward_auth", text[:text.index(f"https://{env.notifier_host()} {{")])
+
+    def test_the_public_url_of_the_notifier_is_its_name(self):
+        # O `base-url` que o ntfy devolve dentro de cada alerta é o que o
+        # CELULAR abre, então é o nome — e não o laço, que é onde o AT publica.
+        self.assertEqual(env.notifier_public_url(),
+                         f"https://{env.notifier_host()}")
+        self.assertIn(env.notifier_host(), env.notifier_public_url())
+        self.assertNotEqual(env.notifier_public_url(), env.notifier_url())
+
+    def test_the_default_port_is_not_written_and_another_one_is(self):
+        # `https://at.local` e `https://at.local:443` são o mesmo endereço, e o
+        # primeiro é o que a pessoa digita; outro porto aparece, porque aí ele é
+        # a informação.
+        self.assertEqual(caddy.address(env.site_host(), env.PORT),
+                         f"https://{env.site_host()}")
+        self.assertEqual(caddy.address("at.local", 8443), "https://at.local:8443")
+
+
 class TheNotifier(FolderCase):
     """§7f's notifier: the service, the memory it keeps, and the rule it inherits.
 
-    The notifier is the one service of §7 that no edge fronts, and the rule that
-    keeps it out of the gate is a MEASUREMENT and not a preference — which is why
-    it is read here as the absence of the gate in everything the environment
-    writes around it.
+    The notifier is the one service of §7 the edge fronts WITHOUT asking about,
+    and the rule that keeps it out of the gate is a MEASUREMENT and not a
+    preference — which is why it is read here as the absence of the gate in
+    everything the environment writes around it: no `forward_auth`, no gate
+    secret, and no line of it in the provider's access rule.
     """
 
     def up(self) -> FakeRuntime:
@@ -1331,13 +1433,22 @@ class TheNotifier(FolderCase):
 
     def test_it_listens_where_it_publishes_and_says_where_it_is(self):
         # The port is decided once, in the `Port` the container publishes and in
-        # the line ntfy reads — and the URL the config hands back is the same
-        # address, because a `base-url` naming another one would put a dead link
-        # in every notification.
+        # the line ntfy reads. **E o endereço que ele DEVOLVE é outro de
+        # propósito**: quem lê o link de dentro do alerta é o celular, então é o
+        # NOME; quem publica é o AT, e ele fala com o serviço pelo laço
+        # (`notifier_url`), onde o alerta não depende do DNS nem da borda.
         self.up()
         text = self.conf()
         self.assertIn(f'listen-http: ":{env.NOTIFIER_PORT}"', text)
-        self.assertIn(f'base-url: "http://{env.LOOP}:{env.NOTIFIER_PORT}"', text)
+        self.assertIn(f'base-url: "{env.notifier_public_url()}"', text)
+        self.assertNotIn(f"base-url: \"http://{env.LOOP}", text)
+
+    def test_the_edge_in_front_of_it_is_declared_to_ntfy(self):
+        # O ntfy exige `behind-proxy` quando há um proxy na frente — sem a
+        # linha, ele lê todo pedido como vindo do endereço da borda, e a
+        # limitação por visitante vira um balde só para todo mundo.
+        self.up()
+        self.assertIn("behind-proxy: true", self.conf())
 
     def test_the_door_is_shut_to_whoever_brings_no_token(self):
         # §6: "No `ntfy`, isso é a ACL por tópico: o AT publica, o celular lê,
@@ -1350,18 +1461,21 @@ class TheNotifier(FolderCase):
         # Measured in the retired environment and inherited: behind Authelia the
         # notifier answered `subscribers=0` — the gate authenticates by redirect
         # and session cookie, and the phone app takes the 302 and never connects
-        # —, and `101` without it. So the edge does not name it, the gate's rule
-        # does not name it, and nothing of the gate is handed to its container.
+        # —, and `101` without it. **A borda passa a servi-lo, e a porta que ela
+        # não abre é a pergunta**: o bloco dele é um site sem `forward_auth` e
+        # sem o segredo, e a regra de acesso do provedor não o nomeia. Quem
+        # chega nele continua batendo na ACL por tópico.
         fake = self.up()
         caddyfile = (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8")
+        block = caddyfile[caddyfile.index(f"https://{env.notifier_host()} {{"):]
+        self.assertNotIn("forward_auth", block)
+        self.assertNotIn(caddy.GATE_HEADER, block)
         identity = (env.state(env.IDENTITY) / env.IDENTITY_YAML).read_text(encoding="utf-8")
-        for text, where in ((caddyfile, "Caddyfile"), (identity, env.IDENTITY_YAML)):
-            with self.subTest(file=where):
-                # O NOME que o ambiente dá ao serviço, e não a palavra: o
-                # `notifier` do Authelia é uma chave DELE — é assim que ele diz
-                # o que tem a contar a alguém —, e não §7f entrando na borda.
-                self.assertNotIn(env.container(env.NOTIFIER), text)
-                self.assertNotIn(str(env.NOTIFIER_PORT), text)
+        # O NOME que o ambiente dá ao serviço, e não a palavra: o `notifier` do
+        # Authelia é uma chave DELE — é assim que ele diz o que tem a contar a
+        # alguém —, e não §7f entrando na borda.
+        self.assertNotIn(env.container(env.NOTIFIER), identity)
+        self.assertNotIn(env.notifier_host(), identity)
         argv = _call(fake, env.container(env.NOTIFIER))
         self.assertNotIn(env.GATE_ENV, argv)
         self.assertNotIn(caddy.GATE_HEADER, argv)

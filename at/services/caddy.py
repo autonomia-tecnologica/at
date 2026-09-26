@@ -120,6 +120,12 @@ AUTH_HEADERS = ("Remote-User", "Remote-Groups", "Remote-Name", "Remote-Email")
 # carries, so the redirect, the page and its assets all agree on one address.
 PORTAL = "/authelia"
 
+# The port HTTPS is served on when nobody says otherwise, and the ONE port a URL
+# does not spell: `https://at.local` and `https://at.local:443` are the same
+# address, and the first is what a person types. Caddy reads a site address with
+# no port the same way, so the omission is one on both sides of the file.
+HTTPS = 443
+
 # The vendor's own word for each platform, which is what its release assets are
 # named with. `sys.platform` first, then the machine: a pair that is not here is
 # a platform whose Caddy this artifact does not carry, and that is said instead
@@ -294,13 +300,19 @@ def address(host: str, port: int) -> str:
     local CA issues for `localhost`, for a hostname and for an address alike, so
     exposing to the local network means naming the address the person reaches —
     `--host 192.168.1.10` — and not opening every one of them.
+
+    **The default port is not written**: a URL and a Caddyfile both read
+    `https://at.local` as the address on `443`, and a `:443` in the middle of it
+    is noise that says nothing — the port is there when it is another one, which
+    is exactly when a person has to read it.
     """
-    return f"https://{host}:{port}"
+    return f"https://{host}" if port == HTTPS else f"https://{host}:{port}"
 
 
 def caddyfile(host: str, port: int, backend: int, gate: str | None = None,
               storage: str | Path | None = None, auth: str | None = None,
-              bind: str | None = None, upstream: str | None = None) -> str:
+              bind: str | None = None, upstream: str | None = None,
+              outside: tuple[tuple[str, str], ...] = ()) -> str:
     """The Caddyfile AT generates: TLS in front, the WebApp behind.
 
     `backend` is the WebApp's own port, and `upstream` is the HOST the Caddy
@@ -310,6 +322,22 @@ def caddyfile(host: str, port: int, backend: int, gate: str | None = None,
     secret to carry, and `admin off` is not decoration — an admin endpoint would
     be a local port that rewrites the running configuration with no credential
     at all.
+
+    **`outside` is what the edge serves BESIDE the site, and never through the
+    ask**: each pair is a `(name, upstream)` and each becomes a site of its own,
+    with its own certificate (`tls internal` issues per name) and nothing of the
+    gate in it — no `forward_auth`, no `header_up`. §7f's notifier is the one
+    that exists, and it is there because a measurement put it there: the gate
+    authenticates by redirect and session cookie, and a headless phone app takes
+    the 302 and never connects (`subscribers=0` behind Authelia, `101` without
+    it). A service the edge fronts with a certificate and no question is the
+    same door its own token ACL already guards.
+
+    **A site of its own and not a host matcher inside the one above**, and the
+    reason is the certificate and the `handle`s: two names in one block share
+    the ordering that keeps the portal out of the ask, and a name added there
+    would be one more thing between the person and the door. Two blocks cannot
+    interfere, and the site's block stays exactly what it was.
 
     **The two gate lines travel together, and both are §7b.** `forward_auth` is
     the Caddy asking the identity provider who is calling, before it hands
@@ -340,7 +368,8 @@ def caddyfile(host: str, port: int, backend: int, gate: str | None = None,
     container path: the name the certificate carries is the private network's
     (§7e) and the container holds no address of that name, so the site listens
     on everything the container has and what makes it reachable is the port the
-    container PUBLISHES.
+    container PUBLISHES. Every site `outside` binds the same way, for the same
+    reason.
     """
     behind = upstream or LOOPBACK
     # The portal's way around the ask exists exactly where the ask does, and it
@@ -408,6 +437,18 @@ def caddyfile(host: str, port: int, backend: int, gate: str | None = None,
     if gated:
         lines.append("\t}")
     lines.append("}")
+
+    # And the sites the edge serves BESIDE the one above: no ask, no portal, no
+    # secret — a name, its certificate, and the service behind it.
+    for name, target in outside:
+        lines += [
+            "",
+            f"{address(name, port)} {{",
+            *([f"\tbind {bind}"] if bind else []),
+            "\ttls internal",
+            f"\treverse_proxy {target}",
+            "}",
+        ]
     return "\n".join(lines) + "\n"
 
 
