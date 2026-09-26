@@ -382,6 +382,10 @@ class TheAdaptedGate(FolderCase):
 
     def adapted(self, text: str) -> dict[str, dict]:
         """O que o Caddy de verdade leu do arquivo, servidor por servidor."""
+        return self.everything(text)["apps"]["http"]["servers"]
+
+    def everything(self, text: str) -> dict:
+        """A configuração inteira que o Caddy entendeu — servidores e TLS."""
         where = caddy.caddyfile_path()
         where.parent.mkdir(parents=True, exist_ok=True)
         where.write_text(text, encoding="utf-8")
@@ -391,7 +395,7 @@ class TheAdaptedGate(FolderCase):
             capture_output=True, text=True, check=False,
         )
         self.assertEqual(done.returncode, 0, done.stderr)
-        return json.loads(done.stdout)["apps"]["http"]["servers"]
+        return json.loads(done.stdout)
 
     def routes(self, text: str) -> list[dict]:
         """Os `handle` que o próprio Caddy lê do arquivo, na ordem dele."""
@@ -464,6 +468,43 @@ class TheAdaptedGate(FolderCase):
         self.assertIn("127.0.0.1:9091", asked)
         self.assertIn("segredo-sorteado", asked)
         self.assertIn("at-webapp:41234", asked)
+
+    def test_the_file_site_is_one_the_caddy_takes_and_serves_one_file(self):
+        # **O terceiro nome não tem serviço atrás: tem um ARQUIVO** — a CA do
+        # AT —, e o que se lê aqui é o que o Caddy ENTENDEU: um site com
+        # certificado próprio, o pedido reescrito sobre o caminho do arquivo e o
+        # `file_server` que o devolve. Sem pergunta e sem o segredo, como o
+        # notificador: quem precisa da CA ainda não confia no certificado que
+        # responderia à pergunta.
+        text = caddy.caddyfile(
+            "at.local", 443, 41234, gate="segredo-sorteado", auth="127.0.0.1:9091",
+            bind="0.0.0.0", upstream="at-webapp",
+            outside=(("ntfy.at.local", "at-notifier:2586"),),
+            files=(("cert.at.local", "/data/pki/authorities/local/root.crt"),),
+        )
+        everything = self.everything(text)
+        servers = everything["apps"]["http"]["servers"]
+        self.assertEqual(len(servers), 1)
+        server = next(iter(servers.values()))
+        hosts = {tuple(route["match"][0]["host"]): route for route in server["routes"]}
+        self.assertEqual(sorted(hosts),
+                         [("at.local",), ("cert.at.local",), ("ntfy.at.local",)])
+        # **E o certificado é emitido POR NOME, os três**: a política do `tls
+        # internal` nomeia cada um deles, que é o que faz o handshake do
+        # `cert.at.local` responder com um certificado dele.
+        policies = everything["apps"]["tls"]["automation"]["policies"]
+        self.assertEqual(sorted(policies[0]["subjects"]),
+                         ["at.local", "cert.at.local", "ntfy.at.local"])
+        served = json.dumps(hosts[("cert.at.local",)])
+        self.assertIn("/data/pki/authorities/local/root.crt", served)
+        self.assertIn("file_server", served)
+        self.assertNotIn("forward_auth", served)
+        self.assertNotIn("segredo-sorteado", served)
+        # **E a pasta em volta nunca é servida**: o `root` é a raiz do container
+        # e o `rewrite` põe todo pedido sobre o arquivo, então não há caminho que
+        # alcance `root.key`, que mora ao lado do certificado.
+        self.assertIn('"root": "/"', served)
+        self.assertNotIn('"root": "/data"', served)
 
 
 class TheExposedRun(FolderCase):
@@ -664,6 +705,57 @@ class TheRealTls(FolderCase):
             self.assertEqual(answer.status, 200)
             self.assertEqual(answer.headers["Content-Security-Policy"], webapp.CSP)
             self.assertIn(b"<div id=", answer.read())
+
+    def test_the_ca_comes_out_by_name_and_without_a_question(self):
+        # **O arquivo, pela borda, com TLS emitido PARA ELE.** O aparelho que
+        # precisa da CA ainda não confia nela — é por isso que a busca —, então
+        # o que se prova aqui é a estrada inteira: o handshake para um nome que
+        # não é o do site (o certificado é emitido por nome), e o corpo que
+        # chega é o arquivo, byte a byte, sem `forward_auth` nenhum no caminho.
+        name = "cert.at.local"
+        carried = self.root / "root.crt"
+        carried.write_bytes(
+            b"-----BEGIN CERTIFICATE-----\nat\n-----END CERTIFICATE-----\n"
+        )
+        where = caddy.caddyfile_path()
+        where.parent.mkdir(parents=True, exist_ok=True)
+        where.write_text(
+            caddy.caddyfile("localhost", self.port, self.server.server_address[1],
+                            files=((name, str(carried)),)),
+            encoding="utf-8",
+        )
+        self.process = caddy.start(where, log=False)
+        self.wait_for_tls()
+
+        answer = self.asked(name)
+        self.assertTrue(answer.startswith(b"HTTP/1.1 200"), answer[:200])
+        self.assertIn(carried.read_bytes(), answer)
+        # **E o `200` é DAQUELE nome**: um nome que a borda não serve não
+        # completa o handshake — é o certificado por nome recusando o que não
+        # tem —, então o corpo acima não veio de "qualquer site" do arquivo.
+        with self.assertRaises(ssl.SSLError):
+            self.asked("nada.at.local")
+
+    def asked(self, name: str, path: str = "/") -> bytes:
+        """O que a borda responde àquele NOME — a conexão vai para o laço e o
+        nome vai no handshake, que é o que o navegador manda depois de resolver
+        (§7a). Um `urlopen` levaria o nome ao resolvedor desta máquina, e o que
+        se prova aqui é a BORDA: é o `server_hostname` que o Caddy lê para
+        escolher o site e o certificado.
+        """
+        context = ssl.create_default_context()
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
+        with socket.create_connection(("localhost", self.port), timeout=10) as raw:
+            with context.wrap_socket(raw, server_hostname=name) as tls:
+                tls.sendall(
+                    f"GET {path} HTTP/1.1\r\nHost: {name}\r\n"
+                    f"Connection: close\r\n\r\n".encode()
+                )
+                answer = b""
+                while chunk := tls.recv(65536):
+                    answer += chunk
+        return answer
 
     def wait_for_tls(self, timeout: float = 20.0) -> None:
         """Wait until the Caddy answers a handshake, or fail on the reason why.

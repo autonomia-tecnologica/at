@@ -290,6 +290,13 @@ NOTIFIER_PORT = 2586
 # notificador ganha o dele no mesmo domínio em vez de uma rota.
 NOTIFIER_HOST = "ntfy"
 
+# O TERCEIRO nome do ambiente, e o único que serve um ARQUIVO: a CA do AT, para
+# quem precisa confiar no certificado e não tem como buscá-lo (§7a, item 49).
+# Aqui o nome não é marca nem papel de serviço — é o que ele ENTREGA —, porque
+# não há serviço nenhum atrás dele: quem responde é a borda, e o que ela devolve
+# é o `root.crt` que ela mesma emitiu.
+CERT_HOST = "cert"
+
 # What the notifier's container sees of its own state folder: the configuration
 # AT writes, and the ONE folder where everything it REMEMBERS lives. **The
 # paths are the decision**, and not decoration: ntfy's `cache-file` has no
@@ -701,6 +708,30 @@ def notifier_host() -> str:
     return f"{NOTIFIER_HOST}.{NAME}"
 
 
+def cert_host() -> str:
+    """§7a's CA by name — `cert.at.local`, under the environment's domain.
+
+    **There is no service behind this name, and that is what it is.** The other
+    two names front a container; this one fronts a FILE — the `root.crt` the
+    edge itself issued (`caddy.AUTHORITY`) —, and the reason it exists is that
+    the person who has to trust AT's certificate has no way to carry the file to
+    the device that has to trust it. A phone does not read the machine's disk;
+    it reads a URL.
+
+    It is outside the ask for the notifier's reason and one more: whoever needs
+    the CA is a device that does not trust the CA yet, so a `forward_auth` here
+    would be a question the certificate is what would have to answer — the
+    device takes the 302 before it has any reason to believe the redirect is
+    real. The first visit still asks for the browser's click-through, and that
+    is inherent: it is TLS without a trusted CA.
+
+    It is a function for the same reason the other two are: the files that have
+    to agree about it — the DNS and the Caddyfile — are written when the
+    environment comes up.
+    """
+    return f"{CERT_HOST}.{NAME}"
+
+
 def portal_url() -> str:
     """Where the portal is reached — the site, plus the portal's own path (§7b).
 
@@ -724,18 +755,25 @@ def names() -> tuple[str, ...]:
     the domain's own, the notifier hangs its under it — and the services the
     edge and the WebApp reach by their container names (the gate, the WebApp
     itself) have none, because nobody types them.
+
+    **`cert_host` is the one that hangs under the domain without fronting a
+    service**, and it enters here for the same reason the notifier does: the
+    device that needs it has to RESOLVE it, and what resolves the names of the
+    environment is `_dnsmasq_conf`, which reads this. A name the DNS does not
+    answer is a name nobody reaches, whatever the edge would serve on it.
     """
-    return (site_host(), notifier_host())
+    return (site_host(), notifier_host(), cert_host())
 
 
 def _dnsmasq_conf() -> str:
     """The names the environment answers for, in dnsmasq's words.
 
     §7a gives this service one job — customizing the access URLs — and the names
-    are the environment's: `at.local`, which is the site, and `ntfy.at.local`,
-    which is §7f's notifier. The ADDRESS it answers with is where the edge
-    actually is: the private network's when the machine is on one (§7e), the
-    loop otherwise — the network decides WHERE, never WHAT the names are.
+    are the environment's: `at.local`, which is the site, `ntfy.at.local`, which
+    is §7f's notifier, and `cert.at.local`, which is the CA the edge serves. The
+    ADDRESS it answers with is where the edge actually is: the private network's
+    when the machine is on one (§7e), the loop otherwise — the network decides
+    WHERE, never WHAT the names are.
 
     **Nome a nome, e não um curinga.** `address=/.at.local/…` responderia por
     qualquer nome embaixo do domínio — inclusive um que ninguém pediu, que é uma
@@ -753,13 +791,13 @@ def _dnsmasq_conf() -> str:
 def _dnsmasq_ports() -> tuple[Port, ...]:
     """A porta do DNS, no endereço onde a borda está.
 
-    **Quem pergunta por estes nomes não está na máquina.** `at.local` e
-    `ntfy.at.local` não existem em DNS público nenhum — são do ambiente, e este
-    `dnsmasq` é o único que os responde —, então publicá-lo no laço é responder
-    a quem já está dentro e a mais ninguém: o navegador de outra máquina e o
-    celular não têm a quem perguntar, e o split-DNS do tailnet não tem endereço
-    para onde apontar. O endereço é o mesmo da borda, pela mesma §7e: a rede
-    decide onde, e `_caddy_ports` já é esta expressão.
+    **Quem pergunta por estes nomes não está na máquina.** `at.local`,
+    `ntfy.at.local` e `cert.at.local` não existem em DNS público nenhum — são do
+    ambiente, e este `dnsmasq` é o único que os responde —, então publicá-lo no
+    laço é responder a quem já está dentro e a mais ninguém: o navegador de
+    outra máquina e o celular não têm a quem perguntar, e o split-DNS do tailnet
+    não tem endereço para onde apontar. O endereço é o mesmo da borda, pela
+    mesma §7e: a rede decide onde, e `_caddy_ports` já é esta expressão.
 
     **É o segundo e último serviço que sai do laço, e ele sai pela mesma razão
     que o primeiro**: o que a pessoa alcança tem que estar alcançável. O que ele
@@ -798,6 +836,14 @@ def _caddy_conf() -> str:
     what the notifier joins the environment's network for, and what keeps the
     `subscribers=0` measurement respected: the edge fronting it is not the
     gate asking about it.
+
+    **E o TERCEIRO nome é o único que não tem serviço atrás**: `cert.at.local` é
+    a CA do AT num site de um arquivo só (`files`), e o arquivo é o `root.crt`
+    que está no storage que este container já monta em `CADDY_DATA` — o mesmo
+    que a borda emite o certificado contra, e o mesmo que a pessoa importa no
+    aparelho. Ele é escrito com o caminho ABSOLUTO do container e não com o
+    caminho da pasta: quem lê o arquivo é o Caddy de dentro, e a pasta de
+    estado vira `/data` lá dentro (é o `Mount` logo abaixo).
     """
     return caddy_service.caddyfile(
         site_host(), PORT, WEBAPP_PORT,
@@ -807,6 +853,7 @@ def _caddy_conf() -> str:
         bind=ALL,
         upstream=container(WEBAPP),
         outside=((notifier_host(), f"{container(NOTIFIER)}:{NOTIFIER_PORT}"),),
+        files=((cert_host(), str(caddy_service.authority_file(CADDY_DATA))),),
     )
 
 

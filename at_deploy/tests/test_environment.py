@@ -1338,22 +1338,26 @@ class TheWebappBehindIt(FolderCase):
         self.assertNotIn(f"reverse_proxy {env.LOOP}:", text)
 
 
-class TheTwoNames(FolderCase):
-    """Os dois nomes do ambiente: o do site e o do notificador (§7a, §7f).
+class TheNames(FolderCase):
+    """Os nomes do ambiente: o do site, o do notificador e o da CA (§7a, §7f).
 
     O ambiente responde por UM domínio (`at.local`) e cada serviço que é
-    alcançado por um nome pendura o dele embaixo: o site fica com o domínio, e o
-    notificador responde em `ntfy.at.local`. Quem responde os dois é o
-    `dnsmasq`, com o endereço onde a borda está de fato — e o que se lê aqui é
-    o que a subida ESCREVE, que é a única coisa que esta suíte pode ler.
+    alcançado por um nome pendura o dele embaixo: o site fica com o domínio, o
+    notificador responde em `ntfy.at.local`, e a CA do AT em `cert.at.local` —
+    o único que não tem serviço atrás, e que existe para o aparelho que precisa
+    confiar no certificado poder BUSCÁ-lo em vez de receber um caminho de
+    arquivo. Quem responde os três é o `dnsmasq`, com o endereço onde a borda
+    está de fato — e o que se lê aqui é o que a subida ESCREVE, que é a única
+    coisa que esta suíte pode ler.
     """
 
     def test_the_environment_owns_one_domain_and_the_services_hang_under_it(self):
         self.assertEqual(env.NAME, "at.local")
         self.assertEqual(env.site_host(), env.NAME)
         self.assertEqual(env.notifier_host(), f"{env.NOTIFIER_HOST}.{env.NAME}")
+        self.assertEqual(env.cert_host(), f"{env.CERT_HOST}.{env.NAME}")
 
-    def test_the_dns_answers_both_names_with_the_address_the_edge_is_at(self):
+    def test_the_dns_answers_every_name_with_the_address_the_edge_is_at(self):
         # **Nome a nome, e não um curinga.** `address=/.at.local/…` responderia
         # por um nome que ninguém pediu — a borda não tem certificado para ele,
         # e a pessoa levaria um erro de handshake em vez de "esse nome não
@@ -1361,14 +1365,15 @@ class TheTwoNames(FolderCase):
         self.runtime()
         self.quiet(env.up)
         conf = (env.state("dnsmasq") / "dnsmasq.conf").read_text(encoding="utf-8")
-        for name in (env.site_host(), env.notifier_host()):
+        for name in env.names():
             with self.subTest(name=name):
                 self.assertIn(f"address=/{name}/{env.LOOP}", conf)
         self.assertNotIn("*", conf)
-        self.assertEqual(env.names(), (env.site_host(), env.notifier_host()))
+        self.assertEqual(env.names(),
+                         (env.site_host(), env.notifier_host(), env.cert_host()))
 
     def test_the_dns_follows_the_edge_and_not_the_loop_when_there_is_a_network(self):
-        # O endereço é o da rede quando há uma (§7e) — para os DOIS nomes, que é
+        # O endereço é o da rede quando há uma (§7e) — para os TRÊS nomes, que é
         # o que diz que a rede decide onde e não quais.
         with mock.patch.object(vpn, "address", lambda call=None: "100.64.0.1"), \
                 mock.patch.object(env, "address_ready", lambda address: True):
@@ -1390,22 +1395,54 @@ class TheTwoNames(FolderCase):
         self.assertIn(f"https://{env.notifier_host()} {{", text)
         self.assertIn(f"reverse_proxy {env.container(env.NOTIFIER)}:{env.NOTIFIER_PORT}",
                       text)
-        # Dois blocos de site, e o segundo com o `tls internal` — o certificado
-        # de cada nome é emitido por nome.
-        self.assertEqual(text.count("\ttls internal"), 2)
-        self.assertEqual(text.count(f"\tbind {env.ALL}"), 2)
+        # Três blocos de site, e cada um com o `tls internal` — o certificado de
+        # cada nome é emitido por nome.
+        self.assertEqual(text.count("\ttls internal"), 3)
+        self.assertEqual(text.count(f"\tbind {env.ALL}"), 3)
+
+    def test_the_edge_serves_the_ca_of_the_at_out_of_a_file(self):
+        # **O terceiro nome não tem serviço atrás: ele tem um ARQUIVO.** Quem
+        # responde é a borda, e o que ela devolve é o `root.crt` que ela mesma
+        # emitiu — o MESMO arquivo que a pessoa importa no aparelho
+        # (`authority_file`), dito aqui com o caminho de DENTRO do container, que
+        # é quem lê o arquivo: a pasta de estado vira `/data` lá dentro.
+        self.runtime()
+        self.quiet(env.up)
+        text = (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8")
+        self.assertIn(f"https://{env.cert_host()} {{", text)
+        authority = caddy.authority_file(env.CADDY_DATA)
+        self.assertEqual(authority, Path(env.CADDY_DATA) / caddy.AUTHORITY)
+        self.assertIn(f"\trewrite * {authority}", text)
+        self.assertIn("\tfile_server", text)
+
+    def test_the_ca_is_not_a_folder_and_neither_name_goes_through_the_ask(self):
+        # **A pasta da CA carrega a CHAVE PRIVADA ao lado do certificado** —
+        # `root.key`, `intermediate.key` —, então o site é o ARQUIVO e nunca o
+        # diretório: todo pedido é reescrito sobre ele, e não há caminho que
+        # alcance o resto do storage. E a pergunta fica fora dos DOIS: quem
+        # precisa da CA é um aparelho que ainda não confia nela, e um
+        # `forward_auth` ali seria uma pergunta cujo certificado é a resposta.
+        self.runtime()
+        self.quiet(env.up)
+        text = (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8")
+        block = text[text.index(f"https://{env.cert_host()} {{"):]
+        self.assertNotIn("forward_auth", block)
+        self.assertNotIn(caddy.GATE_HEADER, block)
+        self.assertNotIn("reverse_proxy", block)
+        self.assertNotIn(f"\troot * {env.CADDY_DATA}", block)
 
     def test_the_notifier_name_never_goes_through_the_ask(self):
         # A medição que esta fatia NÃO repete: atrás do portão o notificador
         # responde `subscribers=0`, porque o app do celular pega o 302 e nunca
-        # conecta. O bloco dele é o único do arquivo sem pergunta nenhuma.
+        # conecta. O bloco dele é um dos que não têm pergunta nenhuma.
         self.runtime()
         self.quiet(env.up)
         text = (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8")
-        block = text[text.index(f"https://{env.notifier_host()} {{"):]
+        start = text.index(f"https://{env.notifier_host()} {{")
+        block = text[start:text.index(f"https://{env.cert_host()} {{")]
         self.assertNotIn("forward_auth", block)
         self.assertNotIn(caddy.GATE_HEADER, block)
-        # E a pergunta continua no site: os dois nomes não se confundem.
+        # E a pergunta continua no site: os nomes não se confundem.
         self.assertIn("forward_auth", text[:text.index(f"https://{env.notifier_host()} {{")])
 
     def test_the_public_url_of_the_notifier_is_its_name(self):

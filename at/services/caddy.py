@@ -340,7 +340,8 @@ def address(host: str, port: int) -> str:
 def caddyfile(host: str, port: int, backend: int, gate: str | None = None,
               storage: str | Path | None = None, auth: str | None = None,
               bind: str | None = None, upstream: str | None = None,
-              outside: tuple[tuple[str, str], ...] = ()) -> str:
+              outside: tuple[tuple[str, str], ...] = (),
+              files: tuple[tuple[str, str], ...] = ()) -> str:
     """The Caddyfile AT generates: TLS in front, the WebApp behind.
 
     `backend` is the WebApp's own port, and `upstream` is the HOST the Caddy
@@ -366,6 +367,22 @@ def caddyfile(host: str, port: int, backend: int, gate: str | None = None,
     the ordering that keeps the portal out of the ask, and a name added there
     would be one more thing between the person and the door. Two blocks cannot
     interfere, and the site's block stays exactly what it was.
+
+    **`files` is what the edge serves out of a FILE — and it is a file and not a
+    folder.** Each pair is a `(name, path)` and each becomes a site of its own,
+    with its own certificate and, like `outside`, nothing of the gate: §7a's
+    `cert.at.local` is the one that exists, and it is outside the ask for the
+    same reason the notifier is and one more — whoever needs it is a device that
+    does not trust AT yet, and a `forward_auth` in front of a CA is a question
+    asked by the certificate that CA would have to sign.
+
+    **Every request is rewritten onto the ONE path, and the folder is never
+    served.** The path is inside the Caddy's own storage (`AUTHORITY`), which
+    holds the CA's certificate **beside its private key** — `root.key`,
+    `intermediate.key` —, and a `root` at that folder would hand the key to
+    anyone who guessed the name beside the file. Naming the file makes the rest
+    of the storage unreachable by construction: there is no path a request can
+    carry that is not rewritten onto it.
 
     **The two gate lines travel together, and both are §7b.** `forward_auth` is
     the Caddy asking the identity provider who is calling, before it hands
@@ -475,6 +492,21 @@ def caddyfile(host: str, port: int, backend: int, gate: str | None = None,
             *([f"\tbind {bind}"] if bind else []),
             "\ttls internal",
             f"\treverse_proxy {target}",
+            "}",
+        ]
+
+    # E os que ela serve de um ARQUIVO: a mesma forma, e o `rewrite` que faz de
+    # qualquer pedido o ÚNICO arquivo — a pasta em volta nunca é servida, e é
+    # ali que a chave privada da CA mora ao lado do certificado.
+    for name, path in files:
+        lines += [
+            "",
+            f"{address(name, port)} {{",
+            *([f"\tbind {bind}"] if bind else []),
+            "\ttls internal",
+            "\troot * /",
+            f"\trewrite * {path}",
+            "\tfile_server",
             "}",
         ]
     return "\n".join(lines) + "\n"
