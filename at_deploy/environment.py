@@ -94,12 +94,15 @@ is the one that undoes itself.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import secrets
+import shutil
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -192,6 +195,42 @@ PREFIX = "at-"
 # The label every container of this environment carries, for whoever reads the
 # runtime by hand and wants to know whose it is.
 LABEL = "at.service"
+
+# O DIRETÓRIO DE EXECUÇÃO: o que o container LÊ, materializado fora da Pasta de
+# Trabalho (item 50). **A pasta de estado é a FONTE, e ele é a cópia que serve a
+# subida** — o `up` o escreve para cada serviço e o `down` o apaga —, e ele mora
+# onde morre: o `XDG_RUNTIME_DIR` da máquina quando ele existe (permissão `0700`,
+# `tmpfs`, apagado no logout), e o temporário do sistema quando não existe. **É
+# por aqui que um arquivo selado volta a ser lido sem a Frase de Acesso no
+# processo**: quem abre o envelope é o `up`, uma vez, com a Frase que a subida
+# digitou, e o que o container monta é a cópia clara (`_materialize`).
+#
+# **O nome carrega o id da pasta e nunca o nome dela**: dois ambientes nesta
+# máquina não se cruzam, e o nome da pasta de ninguém aparece num diretório
+# compartilhado. O prefixo é o mesmo das imagens e dos containers: `at-`.
+RUN_ENV = "XDG_RUNTIME_DIR"
+RUN_ID = 12
+
+# A pasta do diretório de execução que espelha a dos serviços, e a do portão.
+# O diretório de execução é um `App/` em miniatura — `<run>/services/<serviço>/`
+# é o que aquele serviço lê, e `<run>/caddy/gate` é a cópia clara do segredo do
+# portão —, e as duas usam o MESMO nome que a pasta usa, para que quem olha um
+# reconheça o outro.
+RUN_SERVICES = "services"
+
+# A cópia materializada do portão, montada no WebApp (§7b). Ele é o TERCEIRO dos
+# leitores que o cofre nomeia e o único que não é o dono do arquivo: o Caddy lê
+# o portão dentro do `Caddyfile` que AT escreve, o provedor lê os dele no
+# `configuration.yml`, e o WebApp o lê pela pasta INTEIRA que monta (`Mirror`) —
+# onde o arquivo é o da PASTA, que o selo vai fechar. Então ele recebe a cópia
+# clara como uma montagem própria, e o `at-cli` é TOLD onde ela está pela
+# variável que o próprio Caddy declara (`caddy.GATE_PATH_ENV`), exatamente como
+# já é told o nome do provedor (`GATE_ENV`).
+#
+# É um ARQUIVO e não uma pasta: o que o WebApp precisa é de um valor, e a pasta
+# em volta não tem nada que lhe sirva.
+GATE_DIR = "caddy"
+GATE_MOUNT = "/run/at/gate"
 
 # The address a service publishes on when it declares none: the loop, because
 # that is what closes the LAN (measured — see the module's docstring).
@@ -437,20 +476,28 @@ class Mount:
     — and empty means the folder itself: §7 puts every service's persistent
     state there, so a service whose state does not fit is a service that does
     not enter, and what it mounts is always inside what the backup covers.
+
+    **Which of the two folders it mounts is what `host` decides, and it is the
+    item-50 line.** With no `host` it is the folder AT MATERIALIZES — the
+    service's own, which the container only READS —, and what the volume points
+    at is the copy in the run directory, outside the person's folder. With a
+    `host` it is a folder the CONTAINER fills — the provider's database, the
+    Caddy's storage, the notifier's memory —, and it stays in the state folder:
+    what a container writes has to outlive it for the backup to bring it back.
     """
 
     container: str
     host: str = ""
 
-    def volume(self, where: Path) -> str:
+    def volume(self, where: Path, materialized: Path) -> str:
         """The argument the runtime reads, with the SELinux label it needs.
 
         `:Z` is podman's word for "give this folder a private label": without it
         an enforcing host stops the container at the first read, and where there
-        is no SELinux it is ignored. It is the state folder AT created, so the
+        is no SELinux it is ignored. Both sources are folders AT created, so the
         relabel touches nothing of the person's.
         """
-        source = where / self.host if self.host else where
+        source = where / self.host if self.host else materialized
         return f"{source}:{self.container}:Z"
 
 
@@ -466,13 +513,36 @@ class Mirror:
     beyond that mount is reachable from inside.
 
     It answers the same `volume` as `Mount` so that the argv has one way of
-    asking, and it ignores the state folder it is handed: this folder is not the
+    asking, and it ignores both folders it is handed: this folder is not the
     service's, it is the person's.
     """
 
-    def volume(self, where: Path) -> str:
+    def volume(self, where: Path, materialized: Path) -> str:
         root = paths.working_folder()
         return f"{root}:{root}:Z"
+
+
+@dataclass(frozen=True)
+class Gate:
+    """O portão materializado, montado para o leitor que o lê por outro caminho.
+
+    §7b's secret has three readers, and only one of them is inside a container
+    (§ `GATE_MOUNT`): the Caddy reads it inside the `Caddyfile` AT writes, the
+    provider never reads it — §7b is explicit that the gate is the Caddy's and
+    the WebApp's, and that Authelia never sees it —, and the WebApp reads it
+    beside every other file of the folder, through the `Mirror`. That is the
+    file of the FOLDER, and the day the vault seals it nobody inside the
+    container opens it. So the run directory carries the clear copy and this
+    mounts it, and `at-cli` is told where it is (`caddy.GATE_PATH_ENV`).
+
+    It is a FILE and not a folder, and it answers the same `volume` as `Mount`
+    for the same reason `Mirror` does: the argv has one way of asking.
+    """
+
+    container: str
+
+    def volume(self, where: Path, materialized: Path) -> str:
+        return f"{gate_materialized()}:{self.container}:Z"
 
 
 def binary() -> str:
@@ -629,8 +699,12 @@ def _webapp_env() -> tuple[tuple[str, str], ...]:
     """What §7c's WebApp is TOLD: where its gate is, and where its folder is.
 
     The gate, because a container cannot see the host's loop and the name is the
-    environment's to say (`GATE_ENV`). And the FOLDER, which is the same lesson
-    as the address and was measured the same way: run from a checkout, the
+    environment's to say (`GATE_ENV`), **and the gate's FILE, because the one
+    the WebApp would read by the folder is the folder's** (`GATE_MOUNT`, item
+    50): the container gets the copy the `up` materialized, and the variable is
+    how the `at-cli` inside it is told where that copy is — the same shape as
+    the address above and for the same reason. And the FOLDER, which is the same
+    lesson as the address and was measured the same way: run from a checkout, the
     artifact this container executes sits in `<folder>/dist/at-cli`, and an app
     that read its folder from where its binary is — the `install` rule, §3 —
     would take `<folder>/dist` for the person's folder, find no `App/`, and ask
@@ -646,6 +720,7 @@ def _webapp_env() -> tuple[tuple[str, str], ...]:
     return (
         (GATE_ENV, f"{container(IDENTITY)}:{IDENTITY_PORT}"),
         (paths.ROOT_ENV, str(paths.working_folder())),
+        (caddy_service.GATE_PATH_ENV, GATE_MOUNT),
     )
 
 
@@ -1246,7 +1321,19 @@ SERVICES: tuple[Service, ...] = (
         # provider is the Caddy (`forward_auth`) and the WebApp (its own check),
         # and both reach it by name on the network — so the loop door it used to
         # hold, for a Caddy that shared the host's, is gone.
-        mounts=(Mount(IDENTITY_CONFIG), Mount(IDENTITY_DATA, host="data")),
+        mounts=(
+            Mount(IDENTITY_CONFIG),
+            # O aviso que o provedor ESCREVE, e ele é uma PASTA: o arquivo de
+            # configuração o aponta para `/config/notifications`, e a cópia
+            # materializada de `/config` morre com o ambiente — o aviso tem de
+            # sobreviver a ele, e quem o guarda é a pasta de estado (§3, a
+            # promessa do backup). Por isso ele tem `host`, e por isso é uma
+            # montagem própria dentro de `/config`: o que o container enche não
+            # vem para o diretório de execução.
+            Mount(f"{IDENTITY_CONFIG}/{IDENTITY_NOTIFICATIONS}",
+                  host=IDENTITY_NOTIFICATIONS),
+            Mount(IDENTITY_DATA, host="data"),
+        ),
         writes=((IDENTITY_YAML, _identity_conf), (IDENTITY_USERS, _identity_users)),
     ),
     # §7c's WebApp, and it comes up after the gate and before the edge: the gate
@@ -1258,7 +1345,7 @@ SERVICES: tuple[Service, ...] = (
         # No published port: the door of this container is the network and the
         # edge that stands on it, and a port on the machine would be a second
         # door — one the gate's secret would have to keep closed on its own.
-        mounts=(Mirror(),),
+        mounts=(Mirror(), Gate(GATE_MOUNT)),
         command=_webapp_command,
         env=_webapp_env,
     ),
@@ -1306,6 +1393,39 @@ SERVICES: tuple[Service, ...] = (
 def state(name: str) -> Path:
     """`App/services/<serviço>/` — where that service's state lives (§7)."""
     return paths.services_dir() / name
+
+
+def run_dir() -> Path:
+    """O diretório de execução da pasta: o que o container lê (§ `RUN_ENV`).
+
+    Fora da Pasta de Trabalho por definição — é a metade que morre com o
+    ambiente —, e resolvido a cada chamada, como a própria pasta: o
+    `XDG_RUNTIME_DIR` que estiver de pé naquele momento é o de lá.
+    """
+    root = os.environ.get(RUN_ENV, "").strip()
+    base = Path(root) if root and Path(root).is_dir() else Path(tempfile.gettempdir())
+    return base / f"{PREFIX}{_folder_id()}"
+
+
+def _folder_id() -> str:
+    """A pasta, reduzida a um id — dois ambientes nesta máquina não se cruzam.
+
+    O CAMINHO da pasta e não o nome dela: duas pastas de mesmo nome em lugares
+    diferentes são dois ambientes, e o que decide qual é qual tem de ser o que
+    as distingue de fato.
+    """
+    name = str(paths.working_folder()).encode("utf-8")
+    return hashlib.sha256(name).hexdigest()[:RUN_ID]
+
+
+def materialized(name: str) -> Path:
+    """`<run>/services/<serviço>/` — a cópia que aquele container monta."""
+    return run_dir() / RUN_SERVICES / name
+
+
+def gate_materialized() -> Path:
+    """`<run>/caddy/gate` — a cópia clara do portão, para quem o lê montado."""
+    return run_dir() / GATE_DIR / caddy_service.GATE_FILE
 
 
 def pin_file() -> Path:
@@ -1465,7 +1585,8 @@ def run_argv(service: Service, image: Image) -> list[str]:
     for port in ports_of(service):
         argv += ["--publish", port.published()]
     for mount in service.mounts:
-        argv += ["--volume", mount.volume(state(service.name))]
+        argv += ["--volume",
+                 mount.volume(state(service.name), materialized(service.name))]
     for key, value in env_of(service):
         argv += ["--env", f"{key}={value}"]
     argv.append(image.reference())
@@ -1481,18 +1602,84 @@ def _prepare(service: Service) -> Path:
     writer that reads what another one wrote depends on — and each writer is the
     service's own (§ `Service.writes`), so nothing here knows what a Caddyfile
     or an Authelia configuration is.
+
+    **And what it wrote is materialized for the container** (`_materialize`), in
+    the same act: the folder is the source and the run directory is the copy
+    that serves the boot, and a call site that wrote one and forgot the other
+    would be a container reading yesterday's file.
     """
     where = state(service.name)
     where.mkdir(parents=True, exist_ok=True)
     for mount in service.mounts:
         # Only the service's OWN folders are born here: a `Mirror` mounts the
         # Working Folder, which exists — creating it would be AT writing in
-        # the person's folder for no reason.
+        # the person's folder for no reason —, and a `Gate` mounts a file, whose
+        # folder is the run directory's and born with the copy.
         if isinstance(mount, Mount) and mount.host:
             (where / mount.host).mkdir(parents=True, exist_ok=True)
     for name, body in service.writes:
         files.atomic_write_text(where / name, body())
+    _materialize(service)
     return where
+
+
+def _materialize(service: Service) -> Path:
+    """A cópia que o container LÊ, fora da pasta (§ `RUN_ENV`, item 50).
+
+    **A pasta de estado é a FONTE e este é o diretório de execução**: o `up`
+    escreve na pasta e copia para cá, e o `--volume` do serviço aponta para cá.
+    Nada é transformado ainda — a cópia sai com os mesmos bytes —, e é esta
+    função que a fatia do selo vai mudar: ela é quem abre o envelope do cofre,
+    uma vez, com a Frase que a subida digitou, e escreve o valor claro que o
+    container monta (item 50, pergunta 2).
+
+    O que NÃO vem para cá são as pastas que o container enche: elas continuam na
+    pasta de estado, que é a que o backup leva, e um `Mount` com `host` não
+    passa por aqui. E o que não é lido por container nenhum também não: as duas
+    credenciais do notificador (`notifier.token_file`) moram na pasta de estado
+    e quem as lê é o AT, do lado de fora — o container do notificador monta só o
+    `server.yml`.
+    """
+    where = materialized(service.name)
+    if not service.writes:
+        # Um serviço que não lê arquivo nenhum da pasta não tem o que copiar: o
+        # WebApp (§7c) lê a pasta INTEIRA que monta, e o que o alcança é o
+        # `Mirror`. Um diretório vazio no diretório de execução não seria o que
+        # ele monta, e sim um resto.
+        return where
+    where.mkdir(parents=True, exist_ok=True)
+    for name, _ in service.writes:
+        body = (state(service.name) / name).read_text(encoding="utf-8")
+        files.atomic_write_text(where / name, body)
+    return where
+
+
+def _materialize_gate() -> Path:
+    """A cópia clara do portão, para o leitor que a lê montada (§ `GATE_MOUNT`).
+
+    O portão é escrito na pasta pelo `draw_gate` e lido de lá pelos dois leitores
+    de fora do container — o Caddy que AT gera, que o carrega dentro do
+    `Caddyfile`, e o próprio AT. O WebApp é o terceiro e o único de dentro, e
+    ele o lê por uma montagem própria; esta é a cópia, e ela é o mesmo valor (a
+    fatia do selo é que a torna a versão ABERTA do envelope).
+    """
+    where = gate_materialized()
+    where.parent.mkdir(parents=True, exist_ok=True)
+    body = caddy_service.gate_file().read_text(encoding="utf-8")
+    files.atomic_write_text(where, body)
+    return where
+
+
+def _clear_run_dir() -> None:
+    """O diretório de execução nasce vazio, e o `up` o reescreve inteiro.
+
+    Ele é a cópia que serve ESTA subida: um serviço que saiu do manifesto não
+    pode deixar a cópia dele para trás, e o que sobrou de uma subida anterior não
+    é estado — estado é o que a pasta guarda. O `down` usa a mesma porta, e é por
+    isso que ele é a metade que MORRE: o que o container enche está na pasta de
+    estado, e o que se perde aqui é só a cópia.
+    """
+    shutil.rmtree(run_dir(), ignore_errors=True)
 
 
 def networks() -> tuple[str, ...]:
@@ -1747,6 +1934,13 @@ def up(ask: Ask | None = None) -> str:
     if fresh:
         print(tr("services.gate.drawn", where=caddy_service.gate_file()))
 
+    # O diretório de execução é reescrito inteiro a cada subida — ele é a cópia
+    # que serve ESTA —, e o portão entra nele antes de qualquer serviço: o
+    # WebApp o lê de lá (§ `GATE_MOUNT`), e o `_prepare` do WebApp não é quem o
+    # escreve, porque o portão não é arquivo de serviço nenhum (`draw_gate`).
+    _clear_run_dir()
+    _materialize_gate()
+
     pins = held()
     _networks()
     for service in SERVICES:
@@ -1916,6 +2110,10 @@ def down(say: bool = True) -> None:
         podman.run(["rm", "--force", container(service.name)])
     for name in networks():
         podman.run(["network", "rm", name])
+    # E a cópia que servia a subida vai junto: o diretório de execução é a
+    # metade que morre com o ambiente (`_clear_run_dir`). O que o container
+    # encheu está na pasta de estado, que não é tocada.
+    _clear_run_dir()
     if say:
         print(tr("services.down.done", where=paths.services_dir()))
 

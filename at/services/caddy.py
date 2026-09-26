@@ -92,6 +92,15 @@ LOOPBACK = "127.0.0.1"
 GATE_HEADER = "X-AT-Gate"
 GATE_FILE = "gate"
 
+# A variável com que o AMBIENTE diz onde está a cópia do portão, quando o
+# arquivo da pasta não é o que se lê (item 50). O container monta o portão
+# materializado fora da pasta — a pasta de estado é a FONTE e o que o WebApp
+# monta é a cópia que serve a subida (`at_deploy/environment.py`) —, e a
+# variável é o nome que o `at-deploy` diz, do mesmo jeito que já diz o nome do
+# provedor (`AT_GATE`). Fora do container nada é entregue, e o que se lê é o
+# arquivo da pasta.
+GATE_PATH_ENV = "AT_GATE_FILE"
+
 # How much secret AT draws. It is a value no person types and no person
 # remembers — a header carries it — so it costs what `token_urlsafe` carries in
 # bytes, and it says nothing about the folder it belongs to.
@@ -288,8 +297,26 @@ def ensure() -> Path | None:
 
 
 def gate_file() -> Path:
-    """`App/caddy/gate` — the secret's file, drawn by `at-deploy` (§7b)."""
+    """`App/caddy/gate` — the secret's file, drawn by `at-deploy` (§7b).
+
+    É o arquivo da PASTA, e é ele que o `draw_gate` escreve — o desenho tem um
+    lugar só. Quem lê pode estar lendo outro arquivo (`gate_handed` e
+    `gate_secret`), e é por isso que este nome e a leitura são duas coisas.
+    """
     return directory() / GATE_FILE
+
+
+def gate_handed() -> Path | None:
+    """A cópia do portão que o AMBIENTE entregou — ou `None`, fora do container.
+
+    Item 50: o que o container monta é a cópia que o `up` materializou fora da
+    pasta, e a pasta guarda a FONTE. O WebApp é o leitor que a recebe, e a
+    variável é o nome que o ambiente diz (`GATE_PATH_ENV`). Sem ela — o AT
+    rodando da pasta, no caminho hospedado — não há cópia entregue, e o que se
+    lê é o arquivo da pasta.
+    """
+    handed = os.environ.get(GATE_PATH_ENV, "").strip()
+    return Path(handed) if handed else None
 
 
 def gate_secret() -> str | None:
@@ -300,9 +327,14 @@ def gate_secret() -> str | None:
     and refused by AT to whoever does not bring it (`ui/webapp/app.py`). The
     line in the Caddyfile is this file's, and it is written only when the secret
     is there — a hosted folder with no gate has no file and gets no line.
+
+    **O que ele lê é a cópia que o ambiente entregou, quando há uma**
+    (`gate_handed`), e o arquivo da pasta quando não há: é esta função que faz
+    do portão materializado o que o WebApp de dentro do container prova.
     """
+    where = gate_handed() or gate_file()
     try:
-        secret = gate_file().read_text(encoding="utf-8").strip()
+        secret = where.read_text(encoding="utf-8").strip()
     except FileNotFoundError:
         return None
     return secret or None

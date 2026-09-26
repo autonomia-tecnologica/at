@@ -130,8 +130,15 @@ class FolderCase(unittest.TestCase):
     def setUp(self):
         self.scratch = tempfile.TemporaryDirectory()
         self.root = Path(self.scratch.name)
+        # **E o diretório de execução tem o rascunho dele**, porque ele mora fora
+        # da Pasta de Trabalho por definição: sem um `XDG_RUNTIME_DIR` próprio, o
+        # que cada teste materializa cairia no diretório de execução de quem roda
+        # a suíte, com o id de uma pasta temporária que já não existe.
+        self.execution = tempfile.TemporaryDirectory()
         self.env = mock.patch.dict(
-            os.environ, {"AT_ROOT": str(self.root), "AT_LANG": "pt_BR"}
+            os.environ,
+            {"AT_ROOT": str(self.root), "AT_LANG": "pt_BR",
+             env.RUN_ENV: self.execution.name},
         )
         self.env.start()
         i18n.reset()
@@ -165,6 +172,7 @@ class FolderCase(unittest.TestCase):
     def tearDown(self):
         self.env.stop()
         i18n.reset()
+        self.execution.cleanup()
         self.scratch.cleanup()
 
     def runtime(self, fails: tuple[str, ...] = (), running: str = "true") -> FakeRuntime:
@@ -416,7 +424,10 @@ class TheUp(FolderCase):
         self.assertIn("--network", argv)
         self.assertIn(env.DMZ, argv)
         self.assertIn("127.0.0.1:53:53/udp", argv)
-        self.assertIn(f"{env.state('dnsmasq')}:{env.DNSMASQ_CONFIG}:Z", argv)
+        # O que o container LÊ vem do diretório de execução: a pasta de estado é
+        # a fonte, e o que ele monta é a cópia que serve a subida (item 50).
+        self.assertIn(f"{env.materialized('dnsmasq')}:{env.DNSMASQ_CONFIG}:Z", argv)
+        self.assertNotIn(f"{env.state('dnsmasq')}:{env.DNSMASQ_CONFIG}:Z", argv)
 
     def test_the_caddy_joins_the_network_and_publishes_the_site(self):
         # A borda é um container como os outros, e as duas coisas que a fazem a
@@ -427,7 +438,10 @@ class TheUp(FolderCase):
         argv = _call(fake, "at-caddy")
         self.assertIn(env.NETWORK, argv)
         self.assertIn(f"{env.LOOP}:{env.PORT}:{env.PORT}/tcp", argv)
-        self.assertIn(f"{env.state('caddy')}:{env.CADDY_CONFIG}:Z", argv)
+        # O `Caddyfile` sai do diretório de execução e o storage da CA NÃO: o
+        # primeiro o container só lê, e o segundo é o que ele ENCHE — e o que
+        # ele enche tem de sobreviver ao container (item 50).
+        self.assertIn(f"{env.materialized('caddy')}:{env.CADDY_CONFIG}:Z", argv)
         self.assertIn(f"{env.state('caddy') / 'storage'}:{env.CADDY_DATA}:Z", argv)
 
     def test_the_containers_are_named_and_labeled_as_bills(self):
@@ -1661,6 +1675,11 @@ DRAWN_PHONE = "tk_zyxwvutsrqponmlkjihgfedcba9876"
 FILLED_BY_CONTAINERS = (
     (env.CADDY, env.CADDY_STORAGE),
     (env.IDENTITY, "data"),
+    # O aviso que o provedor dá, e ele é do container como os outros: o arquivo
+    # de configuração o aponta para `/config/notifications`, e é a pasta de
+    # estado que o guarda porque a cópia materializada de `/config` morre com a
+    # subida (`Mount` com `host`).
+    (env.IDENTITY, env.IDENTITY_NOTIFICATIONS),
     (env.NOTIFIER, "data"),
 )
 
@@ -1816,6 +1835,109 @@ class TheClearState(FolderCase):
             with self.subTest(where=where):
                 self.assertTrue(where.is_dir())
                 self.assertEqual(list(where.iterdir()), [])
+
+
+class TheRunDirectory(FolderCase):
+    """A fatia 2 do item 50: o que o container lê sai da pasta da pessoa.
+
+    O `--volume` de cada serviço apontava para `App/services/<serviço>/`, a pasta
+    dela — e é isso que impedia o selo: um arquivo selado na pasta seria um
+    arquivo que o container não consegue abrir. O que esta classe prova é a
+    ESTRADA: o `up` materializa o que cada serviço lê num diretório de execução
+    FORA da Pasta de Trabalho e aponta o `--volume` para lá, e a pasta de estado
+    segue sendo a fonte.
+
+    **O que ela NÃO prova é o selo** — ele é a fatia seguinte. Aqui os dois
+    lados têm os mesmos bytes, de propósito: se o diretório de execução nasce com
+    o texto aberto e a pasta continua com o texto aberto, esta fatia entregou o
+    que prometeu, e é a cópia que a fatia do selo troca pela versão aberta do
+    envelope — uma linha de cada vez, e é este catálogo que diz qual.
+    """
+
+    def up(self) -> FakeRuntime:
+        fake = self.runtime()
+        self.quiet(env.up)
+        return fake
+
+    def test_the_run_directory_lives_outside_the_working_folder(self):
+        # A pasta de trabalho é a da pessoa, e a cópia que serve a subida não é
+        # dela: é FORA que ela mora, e é isso que a faz morrer com o ambiente.
+        self.up()
+        where = env.run_dir()
+        self.assertTrue(where.is_dir())
+        self.assertFalse(where.is_relative_to(env.paths.working_folder()))
+
+    def test_every_file_a_service_reads_is_copied_for_it(self):
+        # O que o container lê é a CÓPIA, e ela sai dos mesmos bytes da fonte:
+        # cada arquivo que o deploy escreveu na pasta sai igual no diretório de
+        # execução, com o mesmo nome.
+        self.up()
+        for service in env.SERVICES:
+            for name, _ in service.writes:
+                with self.subTest(service=service.name, file=name):
+                    self.assertEqual(
+                        (env.materialized(service.name) / name).read_bytes(),
+                        (env.state(service.name) / name).read_bytes(),
+                    )
+
+    def test_the_volume_of_the_read_side_comes_from_the_run_directory(self):
+        # **A classificação é MEDIDA, e não repetida**: o teste caminha o
+        # manifesto. Uma pasta que o container só lê vira uma montagem do
+        # diretório de execução; uma pasta que ele ENCHE fica na pasta de estado,
+        # porque o que ele escreve tem de sobreviver ao container.
+        fake = self.up()
+        for service in env.SERVICES:
+            argv = _call(fake, env.container(service.name))
+            with self.subTest(service=service.name):
+                for mount in service.mounts:
+                    if not isinstance(mount, env.Mount):
+                        continue
+                    source = (env.state(service.name) / mount.host if mount.host
+                              else env.materialized(service.name))
+                    self.assertIn(f"{source}:{mount.container}:Z", argv)
+
+    def test_a_service_that_reads_no_file_gets_no_copy(self):
+        # O WebApp não lê arquivo nenhum do serviço DELE — o que o alcança é a
+        # pasta inteira (`Mirror`, §7c) —, e um diretório vazio no diretório de
+        # execução não seria o que ele monta, e sim um resto.
+        self.up()
+        self.assertFalse(env.materialized(env.WEBAPP).exists())
+
+    def test_the_gate_is_materialized_and_handed_to_the_webapp(self):
+        # O WebApp é o TERCEIRO leitor do portão e o único de dentro do
+        # container: ele o lê pela pasta inteira que monta (`Mirror`), e o
+        # `App/caddy/gate` de lá é o arquivo da PASTA — o que o selo vai fechar.
+        # Então ele recebe a cópia clara como uma montagem própria, e o `at-cli`
+        # de dentro é told onde ela está.
+        fake = self.up()
+        argv = _call(fake, env.container(env.WEBAPP))
+        self.assertIn(f"{env.gate_materialized()}:{env.GATE_MOUNT}:Z", argv)
+        self.assertIn(f"{caddy.GATE_PATH_ENV}={env.GATE_MOUNT}", argv)
+        self.assertEqual(env.gate_materialized().read_text(encoding="utf-8"),
+                         caddy.gate_file().read_text(encoding="utf-8"))
+
+    def test_the_credentials_of_the_notifier_are_read_by_no_container(self):
+        # §7f's two ends are read by AT, from OUTSIDE, and by no container: they
+        # stay in the state folder and get no copy — and the state folder is no
+        # longer mounted whole into the notifier, which is what put them inside
+        # it. Quem as lê é o `notify`, e é a pasta que as guarda.
+        fake = self.up()
+        notifier.write_phone_token(DRAWN_PHONE)
+        argv = _call(fake, env.container(env.NOTIFIER))
+        self.assertFalse((env.materialized(env.NOTIFIER) / notifier.TOKEN_FILE).exists())
+        self.assertFalse((env.materialized(env.NOTIFIER) / notifier.PHONE_FILE).exists())
+        self.assertNotIn(f"{env.state(env.NOTIFIER)}:{env.NOTIFIER_CONFIG}:Z", argv)
+        self.assertTrue(notifier.token_file().is_file())
+
+    def test_down_takes_the_run_directory_with_it(self):
+        # O diretório de execução é a metade que MORRE: o que o container encheu
+        # está na pasta de estado, e é ela que fica.
+        self.up()
+        self.assertTrue(env.run_dir().is_dir())
+        self.runtime()
+        self.quiet(env.down)
+        self.assertFalse(env.run_dir().exists())
+        self.assertTrue(env.state(env.NOTIFIER).is_dir())
 
 
 class TheWords(unittest.TestCase):

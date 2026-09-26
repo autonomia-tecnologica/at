@@ -115,8 +115,14 @@ class FolderCase(unittest.TestCase):
         self.scratch = tempfile.TemporaryDirectory()
         self.root = Path(self.scratch.name)
         self.lar = tempfile.TemporaryDirectory()
+        # E o diretório de execução tem o rascunho dele: ele mora fora da Pasta
+        # de Trabalho por definição, e sem um `XDG_RUNTIME_DIR` próprio o que o
+        # `up` materializa cairia no de quem roda a suíte.
+        self.execution = tempfile.TemporaryDirectory()
         self.env = mock.patch.dict(
-            os.environ, {"AT_ROOT": str(self.root), "AT_LANG": "pt_BR"}
+            os.environ,
+            {"AT_ROOT": str(self.root), "AT_LANG": "pt_BR",
+             env.RUN_ENV: self.execution.name},
         )
         self.env.start()
         i18n.reset()
@@ -136,6 +142,7 @@ class FolderCase(unittest.TestCase):
     def tearDown(self):
         self.env.stop()
         i18n.reset()
+        self.execution.cleanup()
         self.scratch.cleanup()
         self.lar.cleanup()
 

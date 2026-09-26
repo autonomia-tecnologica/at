@@ -202,6 +202,27 @@ class TheSecret(FolderCase):
         self.assertIsNone(caddy.gate_secret())
         self.assertFalse(caddy.gate_file().exists())
 
+    def test_the_handed_copy_is_what_is_read_when_there_is_one(self):
+        # **Item 50, pergunta 2, do lado do leitor.** Dentro do container o
+        # WebApp lê a cópia que o `up` materializou FORA da pasta, e a pasta
+        # guarda a FONTE: o dia em que a fonte for o envelope do cofre, é esta
+        # cópia que continua aberta — e é o ambiente que diz onde ela está.
+        drawn_gate("o-portao-da-pasta")
+        guard = tempfile.TemporaryDirectory()
+        self.addCleanup(guard.cleanup)
+        handed = Path(guard.name) / "gate"
+        handed.write_text("o-portao-materializado\n", encoding="utf-8")
+        with mock.patch.dict(os.environ, {caddy.GATE_PATH_ENV: str(handed)}):
+            self.assertEqual(caddy.gate_handed(), handed)
+            self.assertEqual(caddy.gate_secret(), "o-portao-materializado")
+
+    def test_with_no_copy_handed_the_folder_is_what_is_read(self):
+        # O caminho hospedado e a suíte: sem ambiente entregando nada, o arquivo
+        # da pasta é o portão.
+        drawn = drawn_gate()
+        self.assertIsNone(caddy.gate_handed())
+        self.assertEqual(caddy.gate_secret(), drawn)
+
 
 class TheCaddyfile(FolderCase):
     """The text AT generates — what the browser is about to be served."""
