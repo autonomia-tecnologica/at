@@ -37,7 +37,7 @@ from unittest import mock
 from at import i18n
 from at.core import actors, boot, paths, settings
 from at.services import caddy
-from at.tests import drawn_gate
+from at.tests import POLL, drawn_gate
 from at.ui.webapp import app as webapp
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -621,7 +621,10 @@ class TheRealTls(FolderCase):
         super().setUp()
         self.port = free_port()
         self.server = webapp.make_server(0)
-        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread = threading.Thread(
+            target=self.server.serve_forever,
+            kwargs={"poll_interval": POLL}, daemon=True,
+        )
         self.thread.start()
         self.process = None
         self.assertTrue(caddy.ensure(), "the payload of this platform is not here")

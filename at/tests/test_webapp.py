@@ -38,7 +38,7 @@ from at.core import (
 )
 from at.data import schema, store
 from at.services import caddy
-from at.tests import drawn_gate
+from at.tests import POLL, drawn_gate
 from at.ui.webapp import app as webapp
 
 
@@ -72,7 +72,10 @@ class ServerCase(unittest.TestCase):
 
         self.server = webapp.make_server(0)
         self.port = self.server.server_address[1]
-        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread = threading.Thread(
+            target=self.server.serve_forever,
+            kwargs={"poll_interval": POLL}, daemon=True,
+        )
         self.thread.start()
 
     def tearDown(self):
@@ -990,7 +993,10 @@ class TheEntrance(ServerCase):
         cookie = self.open_session()
         other = webapp.make_server(0)
         port = other.server_address[1]
-        thread = threading.Thread(target=other.serve_forever, daemon=True)
+        thread = threading.Thread(
+            target=other.serve_forever,
+            kwargs={"poll_interval": POLL}, daemon=True,
+        )
         thread.start()
         try:
             request = urllib.request.Request(

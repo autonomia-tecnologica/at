@@ -19,6 +19,12 @@ from at.services import caddy
 # leaves behind, and never imports the deploy to produce it.
 DRAWN_GATE = "segredo-sorteado"
 
+# `serve_forever` looks at its queue every `poll_interval` — half a second by
+# default — and `shutdown` WAITS for that look-up. A server brought up per test
+# paid 500ms of pure waiting to come down, which was most of the suite's clock.
+# The wait is the same wait; what changes is how often the thread looks.
+POLL = 0.01
+
 
 def drawn_gate(secret: str = DRAWN_GATE) -> str:
     """Leave `App/caddy/gate` as `up` would have left it, and answer the secret."""
