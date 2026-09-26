@@ -1633,6 +1633,191 @@ class TheNotifier(FolderCase):
         ), text)
 
 
+# --------------------------------------------------- the state, in the clear ---
+
+# The names the catalogue below uses for the values the deploy DRAWS — each one a
+# value a service signs or proves with, kept in the folder so that it outlives
+# the container (§7b). They are names and not values: what the catalogue says is
+# WHICH of them each file carries, and `TheClearState` reads the values back to
+# PROVE the claim — a classification nobody measures is a comment.
+GATE = "the gate's secret"
+SESSION = "the provider's session secret"
+ENCRYPTION = "the provider's storage key"
+SIGNATURE = "the provider's reset-password signature"
+TOKEN = "AT's notifier credential"
+PHONE = "the phone's notifier credential"
+
+# Nobody's phone credential: the shape is ntfy's own, and what the catalogue
+# reads is that the deploy keeps it at 0600 — the one value it also SAYS, once,
+# because a phone is not the machine and the only road there is a person's eyes
+# (`notifier.subscribe`).
+DRAWN_PHONE = "tk_zyxwvutsrqponmlkjihgfedcba9876"
+
+# The three folders a CONTAINER fills and the deploy only creates: the Caddy's
+# storage (the local CA, and the private keys of it), the provider's `data` (its
+# database) and the notifier's (the auth database). What lands in them is the
+# container's act and not AT's write — which is the whole reason they are
+# asserted EMPTY below, and the reason the audit of item 50 names them apart.
+FILLED_BY_CONTAINERS = (
+    (env.CADDY, env.CADDY_STORAGE),
+    (env.IDENTITY, "data"),
+    (env.NOTIFIER, "data"),
+)
+
+
+def _catalogue() -> tuple[tuple[Path, int | None, frozenset[str]], ...]:
+    """What the deploy writes into the folder: the file, the mode, the secrets.
+
+    **This is item 50's audit, turned into a gate.** The philosophy of the folder
+    is that it is copied WITHOUT encryption and that what a PERSON writes in it is
+    theirs — so what the AT creates is the part that has to stop being readable in
+    a copy, and this is the measurement of what that part is today: `at_deploy/`
+    writes it, every line of it is still IN THE CLEAR, and the scanner does not
+    delimit it: measured on a folder the deploy filled, `gitleaks 8.30.1` flags
+    ONE of these files — the provider's YAML, where each value has its keyword on
+    the line — and is BLIND to the Caddyfile, to the three bare-valued files and
+    to the two notifier credentials, because its default rules read a keyword
+    beside the value and those six are the value and nothing else. So the scan
+    confirms a leak and never delimits one; the delimitation is this list.
+
+    The mode is `None` where the writer left it to the umask — which is every
+    file but the two notifier credentials, and that is the finding: the deploy
+    already knows how to keep a secret to itself at `0600` (`notifier._keep`) and
+    does it in one place only.
+
+    What the file is FOR is the next slice: a file that stops being written in
+    the clear stops matching this line, and the line is what makes that a
+    deliberate act instead of a drift.
+    """
+    identity = env.state(env.IDENTITY)
+    return (
+        # §7b's gate: drawn by the deploy at installation, read by the Caddy (the
+        # line it attaches to every request) and by AT (the check that makes an
+        # identity an identity). Two files, one value.
+        (caddy.gate_file(), None, frozenset({GATE})),
+        (env.state(env.CADDY) / "Caddyfile", None, frozenset({GATE})),
+        # The provider's three, drawn once and kept beside the file that carries
+        # them; the YAML is the same three values inline, which is why it names
+        # all of them.
+        (identity / env.IDENTITY_SESSION, None, frozenset({SESSION})),
+        (identity / env.IDENTITY_ENCRYPTION, None, frozenset({ENCRYPTION})),
+        (identity / env.IDENTITY_JWT, None, frozenset({SIGNATURE})),
+        (identity / env.IDENTITY_YAML, None,
+         frozenset({SESSION, ENCRYPTION, SIGNATURE})),
+        # The people of the folder: the DERIVATION of each credential and not the
+        # credential (§4) — a value that is only ever compared, and nothing that
+        # could be turned back into one.
+        (identity / env.IDENTITY_USERS, None, frozenset()),
+        # No secret at all: the names the DNS answers, the image the folder is
+        # pinned at, and the notifier's own configuration (paths and the posture).
+        (env.state("dnsmasq") / "dnsmasq.conf", None, frozenset()),
+        (env.pin_file(), None, frozenset()),
+        (env.state(env.NOTIFIER) / env.NOTIFIER_YAML, None, frozenset()),
+        # §7f's two ends of the ACL: AT's credential and the phone's, the one
+        # pair the deploy keeps to itself — a `0600` file, never in an argv and
+        # never printed.
+        (notifier.token_file(), 0o600, frozenset({TOKEN})),
+        (notifier.phone_file(), 0o600, frozenset({PHONE})),
+    )
+
+
+class TheClearState(FolderCase):
+    """What the deploy writes into the folder, and with what mode (item 50).
+
+    The audit of the vault's first slice, held as a gate: the folder is copied
+    without encryption, so the files below are the ones a copy of the folder
+    hands over — and the day one of them stops being written in the clear, this
+    is what has to be told, one line at a time.
+    """
+
+    def up(self) -> None:
+        """The environment up — the whole of the deploy's writing happens here.
+
+        One stand-in: §7f draws the phone's credential in `subscribe`, which
+        needs the notifier standing for real. Its writer is called directly, so
+        what is proved is the mode and the place and not the door.
+        """
+        self.runtime()
+        self.quiet(env.up)
+        notifier.write_phone_token(DRAWN_PHONE)
+
+    def secrets(self) -> dict[str, str]:
+        """The values the deploy drew, read back from the files it wrote.
+
+        Read from the files and not from a second draw: a value drawn again by
+        the test would be a value that proves nothing about the file.
+        """
+        identity = env.state(env.IDENTITY)
+        return {
+            GATE: caddy.gate_secret(),
+            SESSION: (identity / env.IDENTITY_SESSION).read_text(encoding="utf-8").strip(),
+            ENCRYPTION: (identity / env.IDENTITY_ENCRYPTION).read_text(encoding="utf-8").strip(),
+            SIGNATURE: (identity / env.IDENTITY_JWT).read_text(encoding="utf-8").strip(),
+            TOKEN: notifier.token(),
+            PHONE: notifier.phone_token(),
+        }
+
+    def written(self) -> set[Path]:
+        """Every file the deploy wrote, by the path it wrote it at."""
+        found = {where for where in env.pin_file().parent.rglob("*") if where.is_file()}
+        found.add(caddy.gate_file())
+        return found
+
+    def umask(self) -> int:
+        """The machine's umask, read without changing it."""
+        now = os.umask(0o022)
+        os.umask(now)
+        return now
+
+    def test_the_deploy_writes_exactly_what_the_catalogue_names(self):
+        # Nothing new appears unclassified and nothing classified disappears: a
+        # writer that lands a file nobody said carries a secret fails HERE.
+        self.up()
+        self.assertEqual(self.written(), {where for where, _, _ in _catalogue()})
+
+    def test_every_secret_a_file_carries_is_there_and_no_other_one_is(self):
+        # The classification is MEASURED and not repeated: what the catalogue
+        # says a file carries has to be in it, and a secret that turns up in a
+        # file the catalogue does not name is a leak the catalogue missed.
+        self.up()
+        values = self.secrets()
+        for where, _, carries in _catalogue():
+            text = where.read_text(encoding="utf-8")
+            with self.subTest(where=where):
+                for name in carries:
+                    self.assertIn(values[name], text)
+                for name, value in values.items():
+                    if name not in carries:
+                        self.assertNotIn(value, text)
+
+    def test_the_mode_of_every_file_is_the_one_the_catalogue_declares(self):
+        # `None` is the umask's, and it is what the deploy leaves for every
+        # secret but the two credentials — the finding the audit is for.
+        self.up()
+        umask = self.umask()
+        for where, mode, _ in _catalogue():
+            expected = mode if mode is not None else 0o666 & ~umask
+            with self.subTest(where=where):
+                self.assertEqual(
+                    stat.S_IMODE(where.stat().st_mode), expected,
+                    f"{where.name} is {stat.S_IMODE(where.stat().st_mode):o}, "
+                    f"and the catalogue says {expected:o}",
+                )
+
+    def test_the_folders_a_container_fills_are_born_empty(self):
+        # The CA's private keys, the provider's database and the notifier's are
+        # in the folder and are NOT AT's write: the deploy creates the folder
+        # and the container fills it. Asserted empty because that is what says
+        # whose act each secret is — and the audit names them so that the slice
+        # that seals does not forget the one thing the deploy cannot write.
+        self.up()
+        for service, folder in FILLED_BY_CONTAINERS:
+            where = env.state(service) / folder
+            with self.subTest(where=where):
+                self.assertTrue(where.is_dir())
+                self.assertEqual(list(where.iterdir()), [])
+
+
 class TheWords(unittest.TestCase):
     """Every sentence of the environment, written in both languages.
 
