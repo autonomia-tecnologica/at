@@ -58,6 +58,7 @@ frontend
 functionalities
 fundador
 github
+gitleaks
 glibc
 headscale
 horizonte

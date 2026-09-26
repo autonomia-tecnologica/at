@@ -275,10 +275,19 @@ class TheDeclaration(unittest.TestCase):
         self.assertEqual(sorted(payload), ["at-cli", "at-deploy"])
         for artifact in ("at-cli", "at-deploy"):
             with self.subTest(artifact=artifact):
-                self.assertEqual(
-                    payload[artifact],
-                    ["LICENSE.md", "LICENSE.txt", "COPYING.txt", "manifest.json"],
-                )
+                self.assertIn("manifest.json", payload[artifact])
+        # E o `at-cli` promete um a mais: o tarball do `gitleaks`, que só ele
+        # carrega (item 32, fatia 2). O nome é o do fornecedor INTEIRO, com a
+        # plataforma dentro, porque esta declaração já é de uma plataforma só —
+        # o piso é um `glibc`, e quem mede é o `objdump` do construtor. Um
+        # release para outra plataforma traz a declaração dele.
+        self.assertEqual(payload["at-deploy"],
+                         ["LICENSE.md", "LICENSE.txt", "COPYING.txt", "manifest.json"])
+        self.assertEqual(
+            payload["at-cli"],
+            ["LICENSE.md", "LICENSE.txt", "COPYING.txt", "manifest.json",
+             "gitleaks_8.30.1_linux_x64.tar.gz"],
+        )
 
 
 if __name__ == "__main__":

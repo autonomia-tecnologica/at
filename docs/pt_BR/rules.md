@@ -159,11 +159,11 @@
 
 - Dependência a pacotes e imagens são fixadas em versão e hashing — seja de pacotes, seja de imagens externas.
 
-- O Caddy é a exceção declarada, e não por descuido: ele vai embarcado no binário, então quem o pina é o próprio binário, com o SemVer do AT.
+- O Caddy e o `gitleaks` são as exceções declaradas, e não por descuido: os dois vão embarcados no binário, então quem os pina é o próprio binário, com o SemVer do AT.
 
 - **O que pode viajar dentro do artefato é uma questão de licença, e a licença viaja junto.** Um terceiro só entra no binário se a licença dele permitir, e o que ela exigir vem com ele — o aviso de `copyright` e o texto. Como o artefato é UM arquivo e não uma pasta, o aviso não fica ao lado: fica dentro, e sai pela palavra `license` de cada artefato (`at-cli license`, `at-deploy license`), que diz o que AQUELE artefato carrega e nunca o que o outro carrega. A licença do produto é a `MIT` (`LICENSE.md`), e é ela que permite embarcar assim; um terceiro cuja licença não o permita fica de fora, e a decisão de embarcar é tomada com o preço em disco dito.
 
-- **A declaração é uma só, e cada texto é o arquivo do próprio fornecedor.** `at/vendor/licenses/manifest.json` diz, por componente, o nome, a versão, o identificador `SPDX`, quais artefatos o carregam e onde o texto mora; nada é declarado à mão em dois lugares, e é dela que o `SBOM` (item 46) gera as linhas de licença. O que viaja é o arquivo do fornecedor, nunca uma paráfrase — o `LICENSE` de dentro do tarball do Caddy é o mesmo que o projeto guarda ao lado —, e o release promete esses avisos: uma build que perca qualquer um deles é recusada.
+- **A declaração é uma só, e cada texto é o arquivo do próprio fornecedor.** `at/vendor/licenses/manifest.json` diz, por componente, o nome, a versão, o identificador `SPDX`, quais artefatos o carregam e onde o texto mora; nada é declarado à mão em dois lugares, e é dela que o `SBOM` (item 46) gera as linhas de licença. O que viaja é o arquivo do fornecedor, nunca uma paráfrase — o `LICENSE` de dentro do tarball do Caddy e o do `gitleaks` são os mesmos que o projeto guarda ao lado —, e o release promete esses avisos: uma build que perca qualquer um deles é recusada.
 
 - **A máquina onde o release é construído também é dependência, e é pinada como uma.** Um binário congelado carrega a máquina que o construiu: as extensões do interpretador viajam com o artefato, e cada uma guarda a versão da biblioteca contra a qual foi ligada — então o piso de glibc do release é propriedade de ONDE ele foi construído, e não do código. O release declara esse piso, é construído na base que a declaração pina, e é recusado quando o artefato precisa de mais do que prometeu.
 

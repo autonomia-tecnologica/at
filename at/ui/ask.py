@@ -97,6 +97,7 @@ from at.core import (
 )
 from at.data import schema
 from at.i18n import tr
+from at.services import gitleaks
 from at.ui import words
 
 # The two tables the tree is read off, named once: the `--project` filter and
@@ -597,22 +598,31 @@ def scan(args: list[str]) -> tuple[int, str]:
     state, the tool, the findings) and what a person reads is composed here, so
     the `cli`, and any surface that comes after it, read one sentence.
 
-    **A read leaves nothing at all (§3).** There is no actor and no via in the
-    signature because there is no line to write and nothing to version: the scan
-    changes nothing, which is exactly what makes it a read. What it also does not
-    do is decide anything about the ceiling: the catalogue names `secret:scan`
-    and the role that carries it, and a surface that has to refuse without it —
-    the page's routes — writes that line itself, the way every other route does.
+    **A read leaves nothing of the person's (§3).** There is no actor and no via
+    in the signature because there is no line to write and nothing to version:
+    the scan changes nothing of the folder it reads, which is exactly what makes
+    it a read. The one thing it can write is AT's own — `App/gitleaks/`, where
+    the scanner the artifact carries is unpacked the first time it is asked for
+    (`scanner.found`) — and that is AT's tool in AT's folder, the same sense
+    `App/caddy/` is. What it also does not do is decide anything about the
+    ceiling: the catalogue names `secret:scan` and the role that carries it, and a
+    surface that has to refuse without it — the page's routes — writes that line
+    itself, the way every other route does.
     """
     if args:
         return USAGE, rejected(permissions.SCAN)
     answer = scanner.scan()
     if answer.state == scanner.NO_TOOL:
-        # The two ways out, and the whole of what AT does about a tool that is
-        # not on the machine: it says them and it installs NOTHING (§7a, the
-        # Podman the `certutil` word already follows).
+        # The ways out, and the whole of what AT does about a scanner that is not
+        # there: it says them and it installs NOTHING (§7a, the Podman the
+        # `certutil` word already follows). What failed is the EXTRACTION — the
+        # `gitleaks` travels inside the binary —, so the platform is named: it is
+        # what tells "this artifact is not mine" from "this folder is not mine".
         return REFUSED, "\n".join(
-            (tr("secrets.scan.no_tool"), tr("secrets.scan.ways"))
+            (
+                tr("secrets.scan.no_tool", platform=gitleaks.label()),
+                tr("secrets.scan.ways"),
+            )
         )
     if answer.state == scanner.FAILED:
         return REFUSED, tr("secrets.scan.failed")

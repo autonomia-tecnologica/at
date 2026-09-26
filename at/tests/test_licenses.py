@@ -16,9 +16,9 @@ is the gate over that promise, and it is the only place the declaration
    gathers, or the word answers nothing on the machine of whoever downloaded it;
 3. **the two artifacts declare different sets.** The `at-deploy` carries no
    typeface, no Vue bundle and no Caddy, and it may not claim them;
-4. **the one text that is a copy is held equal to its source** — the Caddy's,
-   which also travels inside the vendor's own tarball —, so the two can never
-   drift apart;
+4. **the texts that are copies are held equal to their source** — the Caddy's and
+   the gitleaks', each of which also travels inside its vendor's own tarball —,
+   so no copy can drift apart from what it copies;
 5. **the word answers.** The product's own MIT, every component of THIS artifact,
    and the vendors' texts only when they are asked for.
 
@@ -42,7 +42,7 @@ from unittest import mock
 
 from at import i18n
 from at.core import boot, licenses, paths
-from at.services import caddy
+from at.services import caddy, gitleaks
 from at.ui.cli import main as cli_main
 from at_deploy.cli import main as deploy_main
 
@@ -165,11 +165,13 @@ class TheArtifacts(unittest.TestCase):
 
     def test_the_deploy_declares_what_the_app_does_not(self):
         # The two lists are not the same list, and the difference is the app's:
-        # the typefaces, the Vue bundle and the Caddy travel in `at-cli` only.
+        # the typefaces, the Vue bundle and the two programs the app embeds — the
+        # Caddy and the `gitleaks` — travel in `at-cli` only.
         app = {component.key for component in licenses.declared(paths.ARTIFACT)}
         deploy = {component.key for component in licenses.declared(paths.DEPLOY)}
         self.assertTrue(deploy < app, "the deploy's list is the shorter one")
         self.assertIn("caddy", app - deploy)
+        self.assertIn("gitleaks", app - deploy)
         self.assertIn("vue", app - deploy)
         self.assertTrue({key for key in app - deploy if key.startswith("font-")})
 
@@ -188,19 +190,21 @@ class TheArtifacts(unittest.TestCase):
         }
         self.assertEqual(pinned, declared)
 
-    def test_the_caddy_copy_is_the_vendors_own_member(self):
-        # The one text that is a COPY: the tarball carries its own LICENSE, and
-        # `at-cli license` answers from a copy so it does not unpack 17 MB to say
-        # a licence. Held equal, so the copy cannot rot.
-        payload = caddy.payload()
-        assert payload is not None
-        with tarfile.open(payload, "r:gz") as archive:
-            inside = archive.extractfile("LICENSE")
-            assert inside is not None
-            self.assertEqual(
-                inside.read(),
-                (ROOT / "at" / "vendor" / "licenses" / "caddy" / "LICENSE").read_bytes(),
-            )
+    def test_the_copies_are_the_vendors_own_member(self):
+        # The texts that are COPIES: each tarball carries its own LICENSE, and
+        # `at-cli license` answers from the copy so it does not unpack megabytes
+        # to say a licence. Held equal, so a copy cannot rot.
+        for key, service in (("caddy", caddy), ("gitleaks", gitleaks)):
+            with self.subTest(component=key):
+                payload = service.payload()
+                assert payload is not None
+                with tarfile.open(payload, "r:gz") as archive:
+                    inside = archive.extractfile("LICENSE")
+                    assert inside is not None
+                    self.assertEqual(
+                        inside.read(),
+                        (ROOT / "at" / "vendor" / "licenses" / key / "LICENSE").read_bytes(),
+                    )
 
 
 class TheWord(unittest.TestCase):

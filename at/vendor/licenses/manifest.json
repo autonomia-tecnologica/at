@@ -1,6 +1,6 @@
 {
   "note": "What the two artifacts carry from outside, and under which terms. This is the ONE place that declares it (§3, External dependency): the repository's own rule is that a third party only travels inside an artifact if its licence permits, and that whatever the licence demands travels WITH it. The artifact is a single file with no folder beside it, so the texts live inside it and come out through `at-cli license`. The SBOM (item 46) generates its licence lines from here and is never written by hand.",
-  "license_texts": "Each value of `text` is a repository-relative path to a file that exists. `license` is the SPDX identifier, and each text carries a marker that proves the identifier — verified by at/tests/test_licenses.py. The five typefaces keep their files where the WebApp's own vendor manifest pins them (at/ui/webapp/vendor/), and the Caddy's is a copy of the member inside the vendor's tarball, held equal to it by the same test.",
+  "license_texts": "Each value of `text` is a repository-relative path to a file that exists. `license` is the SPDX identifier, and each text carries a marker that proves the identifier — verified by at/tests/test_licenses.py. The five typefaces keep their files where the WebApp's own vendor manifest pins them (at/ui/webapp/vendor/), and the Caddy's and the gitleaks' are copies of the member inside each vendor's own tarball, held equal to it by the same test.",
   "components": {
     "caddy": {
       "name": "Caddy",
@@ -52,6 +52,14 @@
       "license": "OFL-1.1",
       "artifacts": ["at-cli"],
       "text": "at/ui/webapp/vendor/licenses/unifrakturmaguntia-LICENSE"
+    },
+    "gitleaks": {
+      "name": "gitleaks",
+      "version": "8.30.1",
+      "license": "MIT",
+      "artifacts": ["at-cli"],
+      "text": "at/vendor/licenses/gitleaks/LICENSE",
+      "note": "The scanner `secret scan` walks the folder with (item 32). The vendor's tarball travels byte for byte in at/vendor/gitleaks/, and the tarball carries its own LICENSE beside the binary; this copy is the same bytes, so the CLI can answer without unpacking an 8 MB archive."
     },
     "libsodium": {
       "name": "libsodium",

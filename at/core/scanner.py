@@ -8,15 +8,29 @@ copy, to the versioning and to wherever the copy goes, and this module is the
 honest answer to that same philosophy: AT does not hide what is the person's, and
 says what it found.
 
-**The rule list is `gitleaks`' own, and AT carries none.** A scanner IS a list of
-rules that ages, and an embedded list that ages warns badly: it would keep saying
-"nothing found" after the world moved. So the word calls the established tool —
-`gitleaks`, the one the person named — and the rules it serves itself from are
-that tool's default list, which is SAID OUT LOUD in the answer (`rules`). The
-precedent is Podman, the one this product already follows for `certutil`
-(`at_deploy/trust.py`): the tool is CHECKED FOR, its absence is said with the two
-ways out, and AT installs nothing on the person's machine (§3, Dependência
-externa). Nothing here reaches a network, and nothing here is a model.
+**The rule list is `gitleaks`' own, and AT writes none of it.** A scanner IS a
+list of rules that ages, and a list AT maintained would age badly: it would keep
+saying "nothing found" after the world moved. So the tool is `gitleaks` — the one
+the person named, the established one —, and the rules it serves itself from are
+that tool's default list, which is SAID OUT LOUD in the answer (`rules`, with the
+version that answered).
+
+**And AT carries the tool, so nothing is installed on the person's machine.** The
+vendor's tarball travels inside `at-cli` (§3, Dependência externa) and
+`at/services/gitleaks.py` unpacks it into `App/gitleaks/`; `found` answers THAT
+path. **The embedded one wins, and the machine's PATH is never consulted.** A
+`gitleaks` the person installed would be a dependency nobody pinned — and the
+version this module names is honest only because there is exactly one candidate:
+the one the binary carries, which is the same on every machine that runs it. Two
+people with one artifact scan one folder the same way, and the answer's version
+is a fact about the release and not about the machine. The precedent is the
+Caddy's, which travels this way for this same reason. What is LEFT of the old
+external-dependency shape is the refusal: the Podman one `certutil` follows
+(`at_deploy/trust.py`) — where the tool is not there AT says so and installs
+NOTHING —, and the state that remains for it is the extraction that failed: the
+artifact carries no gitleaks for this platform, the tarball is not one AT can
+unpack, or `App/` could not be written. Nothing here reaches a network, and
+nothing here is a model.
 
 **What it walks: the folder, and the history it carries.** The files as they are
 — the tables and everything in `Arquivos/` — and, when the folder carries a
@@ -42,10 +56,10 @@ own about it. **Measured** against the tool the person named, `gitleaks 8.30.1`
 with its default list: a folder carrying a sealed row scans CLEAN, so the
 exemption is a fact about the envelope and not a hope about the rules.
 
-**The seam is one.** `found` answers where the tool is, and `run` is the only
-call to it, like `certutil` and `git`: the arguments are composed here and the
-binary is resolved there, so a machine without `gitleaks` is a state the suite
-proves without one byte of the program.
+**The seam is one.** `found` answers where the tool is — the one unpacked out of
+the artifact —, and `run` is the only call to it: the arguments are composed here
+and the binary is resolved there, so a scanner that could not be unpacked is a
+state the suite proves without one byte of the program.
 
 **The report never lands in the folder.** The tool writes its JSON where AT tells
 it to, and that place is a temporary directory OUTSIDE the Working Folder: a scan
@@ -56,7 +70,6 @@ was asked to look for.
 from __future__ import annotations
 
 import json
-import shutil
 import subprocess
 import tempfile
 from collections.abc import Sequence
@@ -64,9 +77,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from at.core import paths, versioning
+from at.services import gitleaks as embedded
 
-# The tool, and the only one AT knows for this. It is checked for and never
-# installed: the answer to a machine without it is the two ways out (`at/ui`).
+# The tool, and the only one AT knows for this. It travels inside the artifact
+# (`at/services/gitleaks.py`), which is what unpacks it into the folder; it is
+# never installed on the person's machine, and the PATH is never consulted.
 BINARY = "gitleaks"
 
 # The report the tool is asked for, and the only shape this module reads. JSON is
@@ -88,6 +103,9 @@ QUIET = (0, 1)
 # The states of a scan, and the whole of what a door has to draw apart.
 CLEAN = "clean"
 FOUND = "found"
+# The name survived the tool moving into the artifact: what it means now is that
+# the scanner is not there — the extraction that failed (`found`) —, which is the
+# same thing to the person and a different thing to the code.
 NO_TOOL = "no_tool"
 FAILED = "failed"
 
@@ -123,13 +141,31 @@ class Report:
 
 
 def found() -> str | None:
-    """Where `gitleaks` is, or `None` — the question that decides everything.
+    """Where the AT's own `gitleaks` is, or `None` — the question that decides
+    everything.
 
     A path and not a boolean, for the reason `versioning.found` and
-    `trust.found` answer one: what the person reads is WHICH program was
-    found, and `which` is the same question the shell answers.
+    `trust.found` answer one: what the person reads is WHICH program was found.
+
+    **It answers the unpacked one and never the machine's PATH.** The scanner is
+    the artifact's, like the Caddy is (§3, Dependência externa): `ensure` unpacks
+    the vendor's tarball into `App/gitleaks/` — once, and only when the platform
+    stamp disagrees — and answers where it landed. A `gitleaks` the person
+    installed is not consulted even when it is newer: it is a dependency nobody
+    pinned, and the version this module says stood behind a scan is only a fact
+    while there is one candidate to say it about.
+
+    `None` is the extraction that did not happen, and there are three ways for it
+    to: the artifact carries no gitleaks for this platform, the tarball is not one
+    AT can unpack, or the folder could not be written. They are one state because
+    they are one thing to the person — the scanner is not there —, and the door
+    says so with the ways out instead of a dry refusal.
     """
-    return shutil.which(BINARY)
+    try:
+        where = embedded.ensure()
+    except (embedded.GitleaksError, OSError):
+        return None
+    return str(where) if where is not None else None
 
 
 def run(args: Sequence[str]) -> subprocess.CompletedProcess:
@@ -140,11 +176,16 @@ def run(args: Sequence[str]) -> subprocess.CompletedProcess:
     captured because AT answers in its own words (§3): the text of a diagnostic
     program is for whoever is diagnosing, and it is not passed on.
 
-    A missing binary is the caller's to prevent (`found`): this raises
-    `FileNotFoundError` like any `subprocess.run`.
+    A missing binary is the caller's to prevent (`found`), and it does — `scan`
+    never gets here without one —, so this raises `FileNotFoundError` rather than
+    falling back to the PATH: a fallback would run a `gitleaks` this module did
+    not choose, and the answer would name a version that is not the artifact's.
     """
+    where = found()
+    if where is None:
+        raise FileNotFoundError(BINARY)
     return subprocess.run(  # noqa: S603 — the tool's own binary, resolved above
-        [found() or BINARY, *(str(part) for part in args)],
+        [where, *(str(part) for part in args)],
         capture_output=True,
         text=True,
     )
@@ -174,8 +215,9 @@ def scan() -> Report:
     """Walk the folder, and answer what it carries that it should not.
 
     The order of the two questions is the one that decides: the tool first,
-    because without it there is no walk at all — and the absence is a state of
-    its own so the door can say the two ways out instead of a dry refusal.
+    because without it there is no walk at all — and its absence is a state of
+    its own so the door can say the ways out instead of a dry refusal. The first
+    question is also what unpacks the scanner, once, the first time it is asked.
     """
     if found() is None:
         return Report(NO_TOOL, BINARY)

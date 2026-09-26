@@ -10,7 +10,7 @@
   },
   "floor": "2.35",
   "payload": {
-    "at-cli": ["LICENSE.md", "LICENSE.txt", "COPYING.txt", "manifest.json"],
+    "at-cli": ["LICENSE.md", "LICENSE.txt", "COPYING.txt", "manifest.json", "gitleaks_8.30.1_linux_x64.tar.gz"],
     "at-deploy": ["LICENSE.md", "LICENSE.txt", "COPYING.txt", "manifest.json"]
   }
 }

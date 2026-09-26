@@ -123,6 +123,7 @@ gerenciar
 ghostwriter
 git
 github
+gitleaks
 glibc
 go
 gênero

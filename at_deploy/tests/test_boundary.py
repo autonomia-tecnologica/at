@@ -32,10 +32,12 @@ ROOT = Path(__file__).resolve().parents[2]
 APP = ROOT / "at"
 DEPLOY = ROOT / "at_deploy"
 
-# The one module `at` keeps of what used to be §7's package: the Caddy the
-# BINARY carries, which is the HOSTED path's TLS and not the environment's. The
-# environment's Caddy is a container of the deploy's manifest.
-KEPT = {"caddy"}
+# What `at` keeps of what used to be §7's package, and neither is the
+# environment's. The Caddy the BINARY carries is the HOSTED path's TLS — the
+# environment's Caddy is a container of the deploy's manifest — and the
+# `gitleaks` is the scanner `secret scan` walks the folder with (item 32). Both
+# are third parties the artifact embeds, which is §3's way of pinning a package.
+KEPT = {"caddy", "gitleaks"}
 
 
 def sources(package: Path) -> list[Path]:
@@ -92,8 +94,9 @@ class TheAppCannotAsk(unittest.TestCase):
 
     def test_the_environment_left_the_binary_whole(self):
         # `at/services/` is what survives of the package §7 used to be, and it
-        # is one file: the hosted Caddy. Every other module of the environment —
-        # the runtime, the VPN, the orchestration, the switch — is the deploy's.
+        # is two files — the hosted Caddy and the scanner —, neither of them the
+        # environment's. Every other module of §7 — the runtime, the VPN, the
+        # orchestration, the switch — is the deploy's.
         left = {path.stem for path in sources(APP / "services") if path.stem != "__init__"}
         self.assertEqual(left, KEPT)
 

@@ -67,6 +67,12 @@ DATAS = [
     # from a checkout gets the same payload, unpacked by `services/caddy.py` on
     # demand, so both paths extract from one place.
     ("at/vendor/caddy", "at/vendor/caddy"),
+    # O `gitleaks` que a pasta varre quando alguém pede `secret scan` (item 32).
+    # Ele viaja pelo mesmo motivo e pela mesma forma que o Caddy acima — o
+    # tarball do fornecedor, byte a byte, e não o binário desempacotado —, e
+    # só neste artefato: o `at-deploy` não tem palavra de varredura, e embarcar
+    # ali pagaria os megabytes por uma porta que ninguém bate.
+    ("at/vendor/gitleaks", "at/vendor/gitleaks"),
     # The notices of everything above, and of everything the import graph brings
     # on its own (item 27). The artifact is ONE file, so a third party's licence
     # has nowhere to sit beside it: the texts travel INSIDE, and `at-cli license`

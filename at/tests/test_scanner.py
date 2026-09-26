@@ -11,10 +11,13 @@ What this module measures, in the order the item decided it:
   the engine's six, so it is declared where every act of an object's own is
   (`permissions.NARROWED`), the help offers it and the dispatch takes it, and the
   administrator's role carries it — born with it, or handed it by migration.
-- **the tool is external and is never installed.** The rules are `gitleaks`' own
-  and the answer names them; a machine without the tool is told the two ways out,
-  nothing is run, and the exit code says the word did not close — the Podman
-  precedent `certutil` already follows (§7a).
+- **the tool travels inside the artifact and is never installed.** The rules are
+  `gitleaks`' own and the answer names them; the AT's own is the one that scans,
+  and the machine's PATH is never consulted — a dependency nobody pinned, and a
+  version the answer could not honestly name. What is left of the old shape is
+  the refusal: where the scanner is not there — the extraction that failed — the
+  person is told the ways out, nothing is run, and the exit code says the word
+  did not close (§7a).
 - **the walk is the folder and its history**, and the report lands outside the
   folder: a scan that wrote into the folder it audits would be writing what it
   was asked to look for.
@@ -25,7 +28,9 @@ What this module measures, in the order the item decided it:
 
 Every test aims AT at a throwaway folder with `AT_ROOT`, and the `gitleaks` is a
 fake behind the module's one seam (`scanner.run`): no byte of the program is
-executed, and the suite runs on a machine that has never seen it.
+executed, and the suite runs on a machine that has never seen it. The one class
+that touches the real payload (`TheScannerATCarries`) unpacks it the way the
+product does and stops there — it never runs what came out.
 """
 
 from __future__ import annotations
@@ -33,6 +38,7 @@ from __future__ import annotations
 import io
 import json
 import os
+import shutil
 import socket
 import subprocess
 import tempfile
@@ -57,6 +63,7 @@ from at.core import (
 )
 from at.data import schema, store
 from at.i18n import tr
+from at.services import gitleaks
 from at.ui.cli import main, tree
 
 # The secret a report carries, and the one thing no surface may ever draw. It is
@@ -166,14 +173,18 @@ class ScannerCase(unittest.TestCase):
         self.scratch.cleanup()
 
     def tool(self, *walks: list[dict] | None, **kw) -> FakeGitleaks:
-        """A `gitleaks` standing at the seam, and the tool is found at it."""
+        """A `gitleaks` standing at the seam, and the tool is found at it.
+
+        The path answered is the one the product answers — inside the folder —
+        so a test that reads it reads what the unpacking would have left there.
+        """
         fake = FakeGitleaks(*walks, **kw)
-        self.under(mock.patch.object(scanner, "found", return_value="/usr/bin/gitleaks"))
+        self.under(mock.patch.object(scanner, "found", return_value=str(gitleaks.binary())))
         self.under(mock.patch.object(scanner, "run", new=fake))
         return fake
 
     def absent(self) -> mock.Mock:
-        """A machine with no `gitleaks` at all — and a `run` nobody may call."""
+        """A scanner that is not there — and a `run` nobody may call."""
         self.under(mock.patch.object(scanner, "found", return_value=None))
         never = mock.Mock(side_effect=AssertionError("no gitleaks, no call"))
         self.under(mock.patch.object(scanner, "run", new=never))
@@ -341,7 +352,7 @@ class TheAnswer(ScannerCase):
         never = self.absent()
         code, text = self.scan()
         self.assertEqual(code, 1)
-        self.assertIn(tr("secrets.scan.no_tool"), text)
+        self.assertIn(tr("secrets.scan.no_tool", platform=gitleaks.label()), text)
         self.assertIn(tr("secrets.scan.ways"), text)
         never.assert_not_called()
 
@@ -390,6 +401,58 @@ class TheAnswer(ScannerCase):
                     i18n.reset()
                     for key in SAID:
                         self.assertNotEqual(tr(key), key)
+
+
+class TheScannerATCarries(ScannerCase):
+    """The tool is the artifact's, and the machine's PATH is never consulted.
+
+    This is the decision of slice 2, and it is a decision: a `gitleaks` the
+    person installed may well be newer than the one the release froze, and it is
+    still not the one that scans. It would be a dependency nobody pinned — and
+    the version this module says stood behind a scan is a fact about the release
+    only while there is one candidate to say it about. The Caddy's precedent, and
+    the reason the answer reads the same on two machines.
+    """
+
+    def test_the_scan_finds_the_one_the_artifact_carries(self):
+        # The real payload, unpacked for real: the Caddy's class does the same,
+        # and it is what keeps the tarball honest — a placeholder would land a
+        # file that fails everything below.
+        self.assertEqual(scanner.found(), str(gitleaks.binary()))
+        self.assertTrue(gitleaks.binary().is_file())
+        self.assertEqual(gitleaks.stamp_file().read_text(encoding="utf-8").strip(),
+                         gitleaks.platform_name())
+
+    def test_the_path_is_never_consulted(self):
+        # A machine that already answers `which gitleaks` must not change what
+        # runs. The guard is the call itself: any lookup on the PATH from here
+        # down is a regression, and it fails rather than passing quietly.
+        with mock.patch.object(
+            shutil, "which", side_effect=AssertionError("the PATH is not the source")
+        ):
+            self.assertEqual(scanner.found(), str(gitleaks.binary()))
+
+    def test_the_extraction_that_failed_is_the_no_tool_state(self):
+        # The artifact carries none for this platform — one of the three ways the
+        # extraction fails, and the one a person hits by running the wrong
+        # release. It is the state `no_tool` names, with the ways out beside it.
+        with mock.patch.object(scanner.embedded, "ensure", return_value=None):
+            self.assertIsNone(scanner.found())
+            code, text = self.scan()
+        self.assertEqual(code, 1)
+        self.assertIn(tr("secrets.scan.no_tool", platform=gitleaks.label()), text)
+        self.assertIn(tr("secrets.scan.ways"), text)
+
+    def test_a_payload_it_cannot_unpack_is_the_same_state(self):
+        # The other way: the tarball is there and is not one AT can read. It is
+        # the same thing to the person — the scanner is not there —, so it is the
+        # same state, and the door says the same ways out.
+        with mock.patch.object(
+            scanner.embedded,
+            "ensure",
+            side_effect=gitleaks.GitleaksError("carries no gitleaks"),
+        ):
+            self.assertIsNone(scanner.found())
 
 
 class TheMigration(ScannerCase):

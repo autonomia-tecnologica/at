@@ -9,8 +9,9 @@ Build it from the repository root, with the PyInstaller version the README pins:
 artifact: it names the entry point, the payloads and the exclusions, and the two
 artifacts differ in all three. Written apart, the difference is readable — what
 travels inside each one is a list somebody can read — and the deploy's list is
-deliberately SHORT, because the deploy carries no WebApp, no interpreter and no
-Caddy: it is a command line and the environment it orchestrates.
+deliberately SHORT, because the deploy carries no WebApp, no interpreter and
+neither of the two programs the app embeds — no Caddy, no `gitleaks` (item 32):
+it is a command line and the environment it orchestrates.
 
 **The shared core travels in both, and it is one source.** `paths`, `i18n`,
 `files` and the table engine live in `at/`, the deploy imports them, and
@@ -21,11 +22,11 @@ artifact — `at` cannot ask for elevation, because the code that does is not in
 it.
 
 **What does NOT travel here.** The WebApp's payloads (`assets`, `dist`,
-`vendor`) and the Caddy's tarball are `at`'s, and no import of this package
-reaches them. The `vocabulary` — the interpreter's word list — is `at`'s too:
-the deploy neither reads a sentence nor proposes one. A payload left out of a
-build fails silently, so each one left out is named here rather than omitted in
-silence.
+`vendor`) and the two third-party programs the app carries — the Caddy's tarball
+and the `gitleaks`' (item 32) — are `at`'s, and no import of this package reaches
+them. The `vocabulary` — the interpreter's word list — is `at`'s too: the deploy
+neither reads a sentence nor proposes one. A payload left out of a build fails
+silently, so each one left out is named here rather than omitted in silence.
 
 **Tcl/Tk does NOT travel here, and it is the Wizard's absence.** The deploy's
 Wizard (`at_deploy/wizard.py`) is the front §6 declares for this artifact, and
