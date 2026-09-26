@@ -110,6 +110,18 @@ class TheBundle(unittest.TestCase):
         ])
         self.assertEqual(floor.pieces(where), [self.elf])
 
+    def test_the_promise_is_about_what_the_bundle_is_made_of(self):
+        # O defeito que isto tranca: a promessa era conferida contra o que LIGA,
+        # e os avisos dos terceiros são DADOS — um release que perdesse um
+        # `LICENSE` passava pelo portão em silêncio. `pieces` continua sendo o
+        # que o piso mede; `carried` é o que o artefato É.
+        where = self.manifest([
+            ("libpython.so", str(self.elf), "BINARY"),
+            ("LICENSE.txt", str(self.data), "DATA"),
+        ])
+        self.assertEqual(floor.pieces(where), [self.elf])
+        self.assertEqual(floor.carried(where), [self.elf, self.data])
+
     def test_a_manifest_nobody_can_read_is_an_error_and_not_a_pass(self):
         where = self.root / floor.MANIFEST
         where.write_text("não é um manifesto\n", encoding="utf-8")
@@ -192,6 +204,24 @@ class TheGate(unittest.TestCase):
                                 wanted={"at-deploy": ["libtcl"]})
         self.assertTrue(held)
 
+    def test_a_notice_the_release_promised_and_lost_fails_the_gate(self):
+        # §3: o que a licença de um terceiro exige viaja com ele, e o release
+        # promete os avisos. Distribuir o trabalho de alguém sem os termos dele
+        # é o defeito que isto tranca — e ele é de DADO, não de binário.
+        notice = self.root / "LICENSE.txt"
+        notice.write_text("MIT", encoding="utf-8")
+        self.bundle("at-cli", [
+            ("pc.so", str(self.elf), "EXTENSION"),
+            ("LICENSE.txt", str(notice), "DATA"),
+        ])
+        with mock.patch.object(floor, "measure", lambda paths: {self.elf: (2, 35)}):
+            kept = floor.report(self.root, (2, 35), out=io.StringIO(),
+                                wanted={"at-cli": ["LICENSE.txt"]})
+            lost = floor.report(self.root, (2, 35), out=io.StringIO(),
+                                wanted={"at-cli": ["COPYING.txt"]})
+        self.assertTrue(kept)
+        self.assertFalse(lost)
+
     def test_the_command_refuses_a_floor_that_is_not_one(self):
         # A medida é lida da DECLARAÇÃO e não da linha de comando: uma versão
         # digitada em dois lugares é uma versão que discorda de si mesma.
@@ -235,14 +265,20 @@ class TheDeclaration(unittest.TestCase):
         self.assertIn("binutils", said)
 
     def test_the_release_declares_what_each_artifact_promises(self):
-        # A promessa existe e hoje está VAZIA: o `Tk` saiu de cena nos dois
-        # artefatos (item 9, e o `at-deploy` junto), então o runtime do Wizard
-        # não viaja — e o que não viaja não se promete. Quando ele voltar, volta
-        # nomeado aqui, e o portão volta a cobrá-lo.
+        # A promessa do `Tk` continua VAZIA — ele saiu de cena nos dois artefatos
+        # (item 9, e o `at-deploy` junto), então o runtime do Wizard não viaja, e
+        # o que não viaja não se promete. O que esta promessa passou a carregar
+        # (item 27) são os AVISOS: o artefato é um arquivo só, a licença de cada
+        # terceiro viaja dentro dele, e o portão recusa um release que os perdeu
+        # — cada substring é um nome de arquivo que o `PKG-00.toc` tem de trazer.
         payload = self.declared()["payload"]
         self.assertEqual(sorted(payload), ["at-cli", "at-deploy"])
-        self.assertEqual(payload["at-cli"], [])
-        self.assertEqual(payload["at-deploy"], [])
+        for artifact in ("at-cli", "at-deploy"):
+            with self.subTest(artifact=artifact):
+                self.assertEqual(
+                    payload[artifact],
+                    ["LICENSE.md", "LICENSE.txt", "COPYING.txt", "manifest.json"],
+                )
 
 
 if __name__ == "__main__":

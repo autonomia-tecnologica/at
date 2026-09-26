@@ -1,0 +1,96 @@
+{
+  "note": "What the two artifacts carry from outside, and under which terms. This is the ONE place that declares it (§3, External dependency): the repository's own rule is that a third party only travels inside an artifact if its licence permits, and that whatever the licence demands travels WITH it. The artifact is a single file with no folder beside it, so the texts live inside it and come out through `at-cli license`. The SBOM (item 46) generates its licence lines from here and is never written by hand.",
+  "license_texts": "Each value of `text` is a repository-relative path to a file that exists. `license` is the SPDX identifier, and each text carries a marker that proves the identifier — verified by at/tests/test_licenses.py. The five typefaces keep their files where the WebApp's own vendor manifest pins them (at/ui/webapp/vendor/), and the Caddy's is a copy of the member inside the vendor's tarball, held equal to it by the same test.",
+  "components": {
+    "caddy": {
+      "name": "Caddy",
+      "version": "2.11.4",
+      "license": "Apache-2.0",
+      "artifacts": ["at-cli"],
+      "text": "at/vendor/licenses/caddy/LICENSE",
+      "note": "The vendor's tarball travels byte for byte in at/vendor/caddy/, and the tarball carries its own LICENSE beside the binary; this copy is the same bytes, so the CLI can answer without unpacking a 17 MB archive."
+    },
+    "cffi": {
+      "name": "cffi",
+      "version": "2.1.1",
+      "license": "MIT-0",
+      "artifacts": ["at-cli", "at-deploy"],
+      "text": "at/vendor/licenses/cffi/LICENSE",
+      "note": "It is MIT No Attribution, and not MIT: the text names that licence and omits the attribution clause."
+    },
+    "font-eb-garamond": {
+      "name": "EB Garamond",
+      "version": "5.3.0",
+      "license": "OFL-1.1",
+      "artifacts": ["at-cli"],
+      "text": "at/ui/webapp/vendor/licenses/eb-garamond-LICENSE"
+    },
+    "font-inter": {
+      "name": "Inter",
+      "version": "5.3.0",
+      "license": "OFL-1.1",
+      "artifacts": ["at-cli"],
+      "text": "at/ui/webapp/vendor/licenses/inter-LICENSE"
+    },
+    "font-open-sans": {
+      "name": "Open Sans",
+      "version": "5.3.0",
+      "license": "OFL-1.1",
+      "artifacts": ["at-cli"],
+      "text": "at/ui/webapp/vendor/licenses/open-sans-LICENSE"
+    },
+    "font-silkscreen": {
+      "name": "Silkscreen",
+      "version": "5.3.0",
+      "license": "OFL-1.1",
+      "artifacts": ["at-cli"],
+      "text": "at/ui/webapp/vendor/licenses/silkscreen-LICENSE"
+    },
+    "font-unifrakturmaguntia": {
+      "name": "UnifrakturMaguntia",
+      "version": "5.3.0",
+      "license": "OFL-1.1",
+      "artifacts": ["at-cli"],
+      "text": "at/ui/webapp/vendor/licenses/unifrakturmaguntia-LICENSE"
+    },
+    "libsodium": {
+      "name": "libsodium",
+      "version": null,
+      "license": "ISC",
+      "artifacts": ["at-cli", "at-deploy"],
+      "text": "at/vendor/licenses/libsodium/LICENSE",
+      "note": "The version is the one PyNaCl 1.6.2 bundles and compiles into nacl/_sodium.abi3.so — AT does not pin it and cannot read it back from the extension, so the declaration says so instead of inventing a number. The text comes from the same wheel."
+    },
+    "pyinstaller": {
+      "name": "PyInstaller",
+      "version": "6.22.3",
+      "license": "GPL-2.0-or-later WITH Bootloader-exception",
+      "artifacts": ["at-cli", "at-deploy"],
+      "text": "at/vendor/licenses/pyinstaller/COPYING.txt",
+      "note": "It is the bootloader that travels inside the frozen artifact, and the exception is what permits the distribution. The file carries the SPDX identifier itself."
+    },
+    "pynacl": {
+      "name": "PyNaCl",
+      "version": "1.6.2",
+      "license": "Apache-2.0",
+      "artifacts": ["at-cli", "at-deploy"],
+      "text": "at/vendor/licenses/pynacl/LICENSE"
+    },
+    "python": {
+      "name": "Python",
+      "version": "3.14",
+      "license": "PSF-2.0",
+      "artifacts": ["at-cli", "at-deploy"],
+      "text": "at/vendor/licenses/python/LICENSE.txt",
+      "note": "The frozen artifact carries the interpreter itself, and the PSF licence is the one it is distributed under. The patch level is not declared because it changes with every rebuild of the pinned base and the licence does not."
+    },
+    "vue": {
+      "name": "Vue",
+      "version": "3.5.43",
+      "license": "MIT",
+      "artifacts": ["at-cli"],
+      "text": "at/vendor/licenses/vue/LICENSE",
+      "note": "What travels is the DERIVATION — the bundle at at/ui/webapp/dist/ —, and not the package tree it was built from."
+    }
+  }
+}

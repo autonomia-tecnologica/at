@@ -21,6 +21,7 @@ from at.core import (
     files,
     install,
     jobs,
+    licenses,
     migrations,
     paths,
     permissions,
@@ -75,6 +76,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _reject(word)
         print(tr("cli.version.line", version=__version__))
         return OK
+
+    if word == "license":
+        return _license(rest)
 
     if word == "webapp":
         return _webapp(rest)
@@ -158,6 +162,32 @@ def _webapp(rest: list[str]) -> int:
             return _reject("webapp")
 
     return webapp.run(port, host=host, include_caddy=include_caddy)
+
+
+# ---------------------------------------------------------------- the licence ---
+
+def _license(rest: list[str], texts: bool = False) -> int:
+    """`at-cli license` — what this artifact carries from outside, and its terms.
+
+    The word is the notices' only door: the artifact is ONE file, so there is no
+    folder beside it for a third party's licence to sit in, and what the licence
+    demands has to come out of the artifact itself. What comes out by default is
+    the summary — what the AT is licensed as, and one line per component —,
+    because the vendors' texts are tens of kilobytes of legalese and nobody
+    asking what the binary carries is asking to read them; `--include-texts` is
+    how whoever needs them reaches them, and the help says the flag, like every
+    other flag of the product.
+
+    Nothing here is about the Working Folder, so there is no permission and no
+    folder to read: the same place `version` and `help` answer from.
+    """
+    for flag in rest:
+        if flag == "--include-texts":
+            texts = True
+            continue
+        return _reject("license")
+    print(licenses.report(paths.ARTIFACT, texts=texts))
+    return OK
 
 
 # ------------------------------------------------------------ the first admin ---

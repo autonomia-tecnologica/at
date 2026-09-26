@@ -67,6 +67,15 @@ DATAS = [
     # from a checkout gets the same payload, unpacked by `services/caddy.py` on
     # demand, so both paths extract from one place.
     ("at/vendor/caddy", "at/vendor/caddy"),
+    # The notices of everything above, and of everything the import graph brings
+    # on its own (item 27). The artifact is ONE file, so a third party's licence
+    # has nowhere to sit beside it: the texts travel INSIDE, and `at-cli license`
+    # is the door out — §3 requires what a licence demands to travel with the
+    # thing it licenses, and `at/tests/test_licenses.py` holds the declaration to
+    # what actually travels. `LICENSE.md` lands at the bundle's root, which is
+    # the same `parents[2]` a checkout gives (`at/core/licenses.py`).
+    ("LICENSE.md", "."),
+    ("at/vendor/licenses", "at/vendor/licenses"),
     ("at/ui/webapp/assets", "at/ui/webapp/assets"),
     ("at/ui/webapp/dist", "at/ui/webapp/dist"),
     ("at/ui/webapp/vendor", "at/ui/webapp/vendor"),

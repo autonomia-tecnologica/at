@@ -10,7 +10,7 @@
   },
   "floor": "2.35",
   "payload": {
-    "at-cli": [],
-    "at-deploy": []
+    "at-cli": ["LICENSE.md", "LICENSE.txt", "COPYING.txt", "manifest.json"],
+    "at-deploy": ["LICENSE.md", "LICENSE.txt", "COPYING.txt", "manifest.json"]
   }
 }

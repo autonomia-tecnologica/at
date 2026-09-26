@@ -56,6 +56,12 @@ WORDS: tuple[Node, ...] = (
     # the file and where it sits, not the folder.
     Node("install", "cli.install.about"),
     Node("uninstall", "cli.uninstall.about"),
+    # The last two are about the FILE, like `install` above and unlike everything
+    # else here: `version` says which build this is, and `license` says what that
+    # build carries from outside and under which terms (§3, item 27). Neither is
+    # about the folder, so neither asks a permission — and `license` is the only
+    # door the notices have out of a single-file artifact (`at/core/licenses.py`).
+    Node("license", "cli.license.about"),
     Node("help", "cli.help.about"),
     Node("version", "cli.version.about"),
 )

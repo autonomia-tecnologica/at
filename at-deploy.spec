@@ -70,6 +70,16 @@ DATAS = [
     # deploy confirms the Working Folder exactly as `at` does, so it has to be
     # able to make one.
     ("at/data/defaults", "at/data/defaults"),
+    # The notices of the third parties THIS artifact carries (item 27), and the
+    # product's own licence with them: the frozen binary holds the interpreter,
+    # PyInstaller's bootloader and the crypto binding, so it owes their terms —
+    # and `at-deploy license` is the door out, exactly as `at-cli license` is on
+    # the other side. The list is shorter here for the same reason the payload
+    # list above is: no typeface, no Vue bundle, no Caddy travels in this one,
+    # and a licence declared for something the artifact does not hold would be a
+    # lie the declaration itself refuses (`at/core/licenses.py`).
+    ("LICENSE.md", "."),
+    ("at/vendor/licenses", "at/vendor/licenses"),
 ]
 
 a = Analysis(

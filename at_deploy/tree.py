@@ -62,6 +62,12 @@ WORDS: tuple[Node, ...] = (
     # has it for §7 alone.
     Node("install", "deploy.install.about"),
     Node("uninstall", "deploy.uninstall.about"),
+    # About the FILE, like the pair above and like `at-cli`'s own: this artifact
+    # carries the interpreter, the bootloader and the crypto binding, so the
+    # licences of those travel inside it too — and this word is the only door
+    # they have out of a single file (`at/core/licenses.py`). It answers with
+    # what THIS artifact carries, which is not what the other one carries.
+    Node("license", "deploy.license.about"),
     Node("help", "deploy.help.about"),
     Node("version", "deploy.version.about"),
 )

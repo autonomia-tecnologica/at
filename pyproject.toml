@@ -7,6 +7,13 @@ name = "at"
 description = "A deterministic task engine that bootstraps its own environment"
 dynamic = ["version"]
 requires-python = ">=3.14.7"
+# The product's own licence, and the file it is written in — the same one the
+# build collects into the artifact and `at-cli license` prints (§3, item 27).
+# The metadata says what the root says; the third parties' terms are NOT here,
+# because they are not the product's, and their one home is
+# `at/vendor/licenses/manifest.json`.
+license = "MIT"
+license-files = ["LICENSE.md"]
 # The product's one runtime dependency: the binding of `libsodium`, which the
 # hashed field's derivation needs (§4, item 8). The version is named here and in
 # `requirements.txt`, with the hashing; a test fails when the two drift.

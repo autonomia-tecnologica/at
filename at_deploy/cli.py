@@ -22,7 +22,7 @@ import sys
 from collections.abc import Callable, Sequence
 
 from at import __version__
-from at.core import actors, boot, files, gate, install, paths, tables
+from at.core import actors, boot, files, gate, install, licenses, paths, tables
 from at.i18n import tr
 
 from at_deploy import environment, tree
@@ -99,6 +99,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _reject(word)
         print(tr("deploy.version.line", version=__version__))
         return OK
+
+    if word == "license":
+        return _license(rest)
 
     if word == "services":
         return services(rest)
@@ -359,6 +362,24 @@ def _readers() -> tuple[Ask | None, Ask | None]:
 def _reader() -> Ask | None:
     """A line reader, when there is a terminal to ask a YES/NO question in."""
     return _readers()[0]
+
+
+def _license(rest: list[str], texts: bool = False) -> int:
+    """`at-deploy license` — the same door `at-cli`'s licence word opens.
+
+    It is the same answer and a different list: this artifact carries the
+    interpreter, the bootloader and the crypto binding, and none of the WebApp's
+    payload — no typeface, no Vue bundle, no Caddy —, so what it declares is what
+    it holds. The reading is `at/core/licenses.py`'s, shared by both artifacts,
+    and the flag is the same one.
+    """
+    for flag in rest:
+        if flag == "--include-texts":
+            texts = True
+            continue
+        return _reject("license")
+    print(licenses.report(paths.DEPLOY, texts=texts))
+    return OK
 
 
 def _reject(word: str) -> int:

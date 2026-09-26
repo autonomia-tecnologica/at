@@ -66,7 +66,12 @@ DOOR = ROOT / "README.md"
 # keep it out. The root `README.md` says it MAY exist and never what is inside it
 # (§0), so the gate has to let it sit beside the door: a file the repository does
 # not carry cannot be checked for a pair, and the suite may not depend on it.
-RUNTIME = {ROOT / "AGENT.md", ROOT / "INSTANCE.md"}
+# `LICENSE.md` is the third, and it is not state: it is a legal instrument whose
+# text is not the product's prose. It is spelled by the MIT's own words, it has
+# no language and no pair — a licence is not translated, and translating it would
+# be forging it —, and it sits at the root because that is where a licence is
+# looked for (§3, item 27).
+RUNTIME = {ROOT / "AGENT.md", ROOT / "INSTANCE.md", ROOT / "LICENSE.md"}
 
 # Documents of the WORK, not for the reader: they have a language and no pair.
 WORKING = {"backlog"}

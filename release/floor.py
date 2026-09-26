@@ -87,24 +87,20 @@ def shown(version: Version) -> str:
     return f"{version[0]}.{version[1]}"
 
 
-def pieces(manifest: Path) -> list[Path]:
-    """Every ELF the bundle carries, read off the build's own manifest.
+def entries(manifest: Path) -> list[tuple[str, str, str]]:
+    """The `(name, where it came from, kind)` the build wrote, read back.
 
     PyInstaller writes `build/<name>/PKG-00.toc` when it packs: a tuple of
     eleven fields, and the entries are ONE of them — a list whose items are
-    `(name, where it came from, kind)`. The source is what matters here: the
-    artifact IS those files, so reading the manifest is reading the bundle
-    without unpacking it, and measuring the source is measuring what will run.
-
-    The entries are FOUND and not indexed: eleven fields is one release's shape,
-    the list of three-tuples is what an entry IS, and a reader that pinned the
-    position would break in silence on the version that moved it.
+    three-tuples. They are FOUND and not indexed: eleven fields is one release's
+    shape, the list of three-tuples is what an entry IS, and a reader that pinned
+    the position would break in silence on the version that moved it.
     """
     try:
         data = ast.literal_eval(manifest.read_text(encoding="utf-8"))
     except (OSError, ValueError, SyntaxError) as error:
         raise FloorError(f"cannot read {manifest}: {error}") from error
-    entries = next(
+    found = next(
         (
             part
             for part in data
@@ -114,16 +110,45 @@ def pieces(manifest: Path) -> list[Path]:
         ),
         None,
     )
-    if entries is None:
+    if found is None:
         raise FloorError(f"{manifest} carries no list of entries to read")
+    return [(str(name), str(source), str(kind)) for name, source, kind in found]
+
+
+def pieces(manifest: Path) -> list[Path]:
+    """Every ELF the bundle carries, read off the build's own manifest.
+
+    The source is what matters here: the artifact IS those files, so reading the
+    manifest is reading the bundle without unpacking it, and measuring the source
+    is measuring what will run.
+    """
     found: list[Path] = []
-    for _, source, kind in entries:
+    for _, source, kind in entries(manifest):
         if kind not in OPAQUE or not source:
             continue
         where = Path(source)
         if where.is_file():
             found.append(where)
     return found
+
+
+def carried(manifest: Path) -> list[Path]:
+    """Every file the bundle is MADE OF, and not only the ones that link.
+
+    The floor is measured on what can link (`pieces`): a Python source, a block
+    of JSON and a WebApp asset ask the machine for nothing. The release's
+    PROMISE is about something else — what the artifact carries —, and a third
+    party's licence text is data that asks for nothing and is still something the
+    release said it would carry. Checking the promise against the ELF alone left
+    the notices outside the gate; they are inside it now, which is the only way
+    the sentence "the artifact carries the terms of what it distributes" is a
+    promise somebody can falsify.
+    """
+    return [
+        where
+        for _, source, _ in entries(manifest)
+        if source and (where := Path(source)).is_file()
+    ]
 
 
 def measure(paths) -> dict[Path, Version]:
@@ -188,8 +213,7 @@ def report(root: Path, ceiling: Version, out=sys.stdout,
     held = True
     for manifest in sorted(root.glob(f"*/{MANIFEST}")):
         where = manifest.parent.name
-        carried = pieces(manifest)
-        measured = measure(carried)
+        measured = measure(pieces(manifest))
         if not measured:
             # Finding nothing to measure is not the same as finding nothing
             # wrong: a bundle nobody could read is a bundle nobody proved, and
@@ -203,7 +227,7 @@ def report(root: Path, ceiling: Version, out=sys.stdout,
         # O que cada artefato promete é o que o SPEC dele promete, e os dois não
         # são o mesmo: `at-deploy` nomeia `tkinter` (`hiddenimports`) pelo
         # Wizard que ele carrega sem chamar, e `at-cli` não carrega Tk nenhum.
-        absent = missing(carried, (wanted or {}).get(where, []))
+        absent = missing(carried(manifest), (wanted or {}).get(where, []))
         where_worst = max(measured, key=lambda path: measured[path])
         print(f"{where}: floor {shown(worst)} ({where_worst.name}), "
               f"{len(measured)} piece(s) measured", file=out)

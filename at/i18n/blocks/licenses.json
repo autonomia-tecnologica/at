@@ -1,0 +1,14 @@
+{
+  "pt_BR": {
+    "title": "AT {version} — a licença",
+    "product": "O AT é MIT, e este é o texto que viaja no artefato:",
+    "no_product": "(o `LICENSE.md` não viajou neste artefato)",
+    "carried": "Este artefato carrega {count} componentes de terceiros, cada um sob a licença do dono:"
+  },
+  "en_US": {
+    "title": "AT {version} — the license",
+    "product": "AT is MIT, and this is the text that travels inside the artifact:",
+    "no_product": "(`LICENSE.md` did not travel inside this artifact)",
+    "carried": "This artifact carries {count} third-party components, each under its owner's license:"
+  }
+}
