@@ -34,7 +34,7 @@ from pathlib import Path
 from unittest import mock
 
 from at import i18n
-from at.core import actors, boot
+from at.core import actors, boot, paths, settings
 from at.services import caddy
 from at.tests import drawn_gate
 from at.ui.webapp import app as webapp
@@ -328,6 +328,15 @@ class TheExposedRun(FolderCase):
         _, built, _ = self.probe(include_caddy=True)
         built.assert_called_once_with(0, webapp.HOST)
 
+    def test_with_the_flag_the_address_is_the_name_and_not_the_folders_choice(self):
+        # With the Caddy in front, `--host` is the NAME the certificate is issued
+        # for (§3) and the WebApp answers on the loop behind it: the folder's
+        # address is an ADDRESS, and here an address is not what is being named.
+        settings.save({**settings.load(), webapp.HOST_KEY: "0.0.0.0"})
+        self.probe(include_caddy=True)
+        self.assertIn("https://localhost:12399 {",
+                      caddy.caddyfile_path().read_text(encoding="utf-8"))
+
     def test_the_caddyfile_names_the_backend_the_webapp_took(self):
         self.probe(include_caddy=True)
         text = caddy.caddyfile_path().read_text(encoding="utf-8")
@@ -364,43 +373,62 @@ class TheExposedRun(FolderCase):
         self.assertFalse(caddy.caddyfile_path().exists())
 
 
-class TheLoop(FolderCase):
-    """Without the flag there is no TLS, so there is no leaving the loop (§3)."""
+class TheAddress(FolderCase):
+    """The address AT answers on: the folder's choice, and the loop as default.
+
+    **Leaving the loop is not refused**, and the reason is that the same address
+    means two different things: a container's `0.0.0.0` is inside a network,
+    behind the edge and the gate (§7b, §7c), and a machine's is on a LAN. An app
+    that cannot tell them apart would refuse the container or wave the machine
+    through — so what it does is SAY where it answers, and what leaving the loop
+    costs is the environment's security note's to say.
+    """
 
     def setUp(self):
         super().setUp()
         actors.create_admin("Rafael", "uma-frase-bem-longa")
 
-    def test_the_loop_answers_by_name_and_by_address(self):
-        for host in ("127.0.0.1", "::1", "localhost", "127.0.0.2"):
-            with self.subTest(host=host):
-                self.assertTrue(webapp.loops_back(host))
+    def chose(self, value: object) -> None:
+        """The folder's choice, written where only the folder writes."""
+        settings.save({**settings.load(), webapp.HOST_KEY: value})
 
-    def test_anything_else_is_not_the_loop(self):
-        # A name is not a loopback address just because it resolves to one: AT
-        # does not ask a resolver for permission to be exposed.
-        for host in ("0.0.0.0", "::", "192.168.1.10", "at.local", "example.com"):
-            with self.subTest(host=host):
-                self.assertFalse(webapp.loops_back(host))
-
-    def test_a_refused_address_leaves_the_port_untaken(self):
-        output = io.StringIO()
+    def served(self, **kw) -> mock.Mock:
+        """The server AT would build, taken away — the address is what is read."""
         built = mock.Mock()
         with mock.patch.object(webapp, "make_server", built):
-            with redirect_stdout(output):
-                code = webapp.run(12399, host="0.0.0.0")
-        self.assertEqual(code, 1)
-        self.assertIn(i18n.tr("caddy.outside_loopback"), output.getvalue())
-        built.assert_not_called()
-
-    def test_an_address_of_the_loop_is_served_as_always(self):
-        output = io.StringIO()
-        built = mock.Mock()
-        with mock.patch.object(webapp, "make_server", built):
-            with redirect_stdout(output):
-                code = webapp.run(12399, host="127.0.0.1")
+            with redirect_stdout(io.StringIO()):
+                code = webapp.run(12399, **kw)
         self.assertEqual(code, 0)
-        built.assert_called_once_with(12399, "127.0.0.1")
+        return built
+
+    def test_the_loop_is_the_default_and_what_the_product_recommends(self):
+        self.assertEqual(webapp.chosen_host(), webapp.HOST)
+        self.served().assert_called_once_with(12399, webapp.HOST)
+
+    def test_the_folder_may_name_another_address(self):
+        # The door is `settings.json`, on the same shelf `basic_auth` sits on:
+        # an adjustment of the installation, and never a credential.
+        self.chose("0.0.0.0")
+        self.assertEqual(webapp.chosen_host(), "0.0.0.0")
+        self.served().assert_called_once_with(12399, "0.0.0.0")
+
+    def test_the_command_line_says_it_for_one_run(self):
+        self.chose("0.0.0.0")
+        self.served(host="192.168.1.10").assert_called_once_with(12399, "192.168.1.10")
+
+    def test_a_value_that_is_not_a_name_answers_the_default(self):
+        for value in (7, "", "   ", True, ["0.0.0.0"]):
+            with self.subTest(value=value):
+                self.chose(value)
+                self.assertEqual(webapp.chosen_host(), webapp.HOST)
+
+    def test_a_settings_file_nobody_can_read_answers_the_default(self):
+        # The same side `gate.mode` falls on, for the same reason: a folder whose
+        # settings are broken is not a folder that moved its address.
+        where = paths.settings_file()
+        where.parent.mkdir(parents=True, exist_ok=True)
+        where.write_text("{ this is not JSON", encoding="utf-8")
+        self.assertEqual(webapp.chosen_host(), webapp.HOST)
 
 
 class TheBlink(unittest.TestCase):

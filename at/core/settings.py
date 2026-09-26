@@ -84,6 +84,7 @@ VERSIONING = "versioning_interval"
 KNOWN = (
     "interpreter",
     "basic_auth",
+    "webapp_host",
     THRESHOLD,
     BY_ACTION,
     "authenticator",

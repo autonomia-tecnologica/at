@@ -77,6 +77,13 @@ STAMP = "platform"
 CADDYFILE = "Caddyfile"
 STORAGE = "storage"
 
+# Where the Caddy reaches its backend when nobody says otherwise: the loop, and
+# it is the right answer exactly when the Caddy and the WebApp are the same
+# machine — the hosted path. On the container path they are two containers, and
+# a container's `127.0.0.1` is itself, so the address is passed in (`caddyfile`,
+# §7c).
+LOOPBACK = "127.0.0.1"
+
 # The header Caddy attaches to the requests it carries an identity on, and the
 # file the secret is drawn into. The file sits beside the Caddyfile that is the
 # only thing reading it — the Caddy's own folder, and not `App/services/`, which
@@ -277,32 +284,41 @@ def address(host: str, port: int) -> str:
 
 
 def caddyfile(host: str, port: int, backend: int, gate: str | None = None,
-              storage: str | Path | None = None, auth: str | None = None) -> str:
+              storage: str | Path | None = None, auth: str | None = None,
+              bind: str | None = None, upstream: str | None = None) -> str:
     """The Caddyfile AT generates: TLS in front, the WebApp behind.
 
-    `backend` is the WebApp's own port, always on the loop: exposing moves the
-    port the person reaches, never the address the WebApp listens on. The gate
-    lines exist only when there is a secret to carry, and `admin off` is not
-    decoration — an admin endpoint would be a local port that rewrites the
-    running configuration with no credential at all.
+    `backend` is the WebApp's own port, and `upstream` is the HOST the Caddy
+    reaches it at — the loop by default, and the WebApp's name on the network
+    when the Caddy is a container too (§7c): a container's `127.0.0.1` is itself,
+    and the app's door is the network. The gate lines exist only when there is a
+    secret to carry, and `admin off` is not decoration — an admin endpoint would
+    be a local port that rewrites the running configuration with no credential
+    at all.
 
     **The two gate lines travel together, and both are §7b.** `forward_auth` is
     the Caddy asking the identity provider who is calling, before it hands
     anything to the WebApp; `header_up` is the Caddy telling the WebApp, in the
     secret only it and AT know, that the request came through here. `auth` is
-    the provider's address — `host:port`, where the container path publishes it
-    — and without it there is nobody to ask, so the block is not written: a
-    hosted folder with a secret but no provider would otherwise ask a question
-    with no answer and answer every request with a failure.
+    the provider's address — `host:port`, which on the container path is the
+    provider's name on the network and not a published port — and without it
+    there is nobody to ask, so the block is not written: a hosted folder with a
+    secret but no provider would otherwise ask a question with no answer and
+    answer every request with a failure.
 
-    `storage` is the ONE line that differs between the two paths, and it differs
-    because a path is not a decision: the Caddy unpacked into the folder keeps
-    its CA and its certificates there (§3, the backup promise), and the Caddy
-    running as a container keeps them in the container's own data directory,
-    which is a folder of the instance mounted into it (§7a). Every other line is
-    the same Caddy answering the same questions, so it is written once.
+    `storage` is a path and not a decision (§7a), and it is the line that
+    differs between the two paths because the folder is the one that does: the
+    Caddy unpacked into it keeps its CA and its certificates there (§3, the
+    backup promise), and the Caddy running as a container keeps them in the
+    container's own data directory, which is a folder of the instance mounted
+    into it. **`bind` is an ADDRESS and not a name**, and it exists for the
+    container path: the name the certificate carries is the private network's
+    (§7e) and the container holds no address of that name, so the site listens
+    on everything the container has and what makes it reachable is the port the
+    container PUBLISHES.
     """
-    proxy = [f"\treverse_proxy 127.0.0.1:{backend}"]
+    behind = upstream or LOOPBACK
+    proxy = [f"\treverse_proxy {behind}:{backend}"]
     if gate:
         proxy[0] += " {"
         proxy += [f"\t\theader_up {GATE_HEADER} {gate}", "\t}"]
@@ -329,6 +345,10 @@ def caddyfile(host: str, port: int, backend: int, gate: str | None = None,
         "}",
         "",
         f"{address(host, port)} {{",
+        # The line that says WHERE the site listens, when the name it carries is
+        # not an address this process holds. It goes first because it is about
+        # the server and not about a request.
+        *([f"\tbind {bind}"] if bind else []),
         "\ttls internal",
     ]
     if gate and auth:

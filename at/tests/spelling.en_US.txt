@@ -44,6 +44,7 @@ deseja
 detectado
 dev
 diff
+dmz
 dns
 documento
 encontrado
@@ -66,8 +67,10 @@ http
 indisponível
 infraestrutura
 instalar
+ip
 iso
 json
+lan
 languagetool
 llm
 llms
@@ -118,6 +121,7 @@ sessão
 seção
 sha
 smartphones
+sni
 sonarr
 suas
 subcommand

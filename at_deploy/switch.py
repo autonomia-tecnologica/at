@@ -23,6 +23,15 @@ without the secret must be refused (`webapp.gate_refused`) — that is the M2M
 being more than a header somebody wrote. A probe that cannot reach anything is a
 failure like any other, because "could not tell" is not "proved".
 
+**Where each probe stands is the PATH's and not a preference.** The first is
+asked from the HOST, because the host is what reaches the edge. The other two ask
+AT directly, and on the container path "directly" means from INSIDE the network:
+the WebApp answers there and nowhere else (§7c), so the deploy asks through a
+throwaway container of its own (`environment.inside`), on the network the edge
+and the app share. A probe standing on the host would reach nothing and would
+read "the identity was not taken" from a gate that is working — which is why the
+road is written down here instead of left to whoever calls.
+
 **The switch lives in `at-deploy` and not in `at-cli`.** It is an environment act
 and the transactional one is the environment's (item 27); what `at-cli` keeps is
 the other half of the same record — reading `authenticator` and refusing to serve
@@ -78,9 +87,25 @@ def site() -> str:
     return caddy.address(environment.site_host(), environment.PORT)
 
 
-def _loop(path: str) -> str:
-    """AT's own address, on the loop, where only the Caddy reaches it."""
-    return f"http://{environment.WEBAPP_HOST}:{environment.WEBAPP_PORT}{path}"
+def _inside(path: str, headers: dict[str, str],
+            answer: gate.Answer | None = None) -> int | None:
+    """Ask the WebApp from INSIDE the network — the two probes of the sealed identity.
+
+    **The road is this piece's other half, and it is measured.** The WebApp
+    answers on the network and on nothing else (§7c): a probe standing on the
+    host reaches nothing at all, and "reached nothing" is not a status — reading
+    it as "the identity was not taken" would blame a gate that is working. So
+    the probe stands where the edge stands, and the environment is what knows how
+    to stand there (`environment.inside`, which asks a throwaway container on the
+    same network).
+
+    The URL is AT's own name on the network. It is built HERE because the PATH is
+    what this file knows; the host is the environment's declaration, and reading
+    it from there is what keeps the two from drifting.
+    """
+    url = (f"http://{environment.container(environment.WEBAPP)}"
+           f":{environment.WEBAPP_PORT}{path}")
+    return gate.ask(url, headers, answer or environment.inside)
 
 
 # --------------------------------------------------------------- the proof ---
@@ -126,8 +151,8 @@ def sealed(answer: gate.Answer | None = None) -> bool:
     if who is None:
         return False
     name, secret = who
-    status = gate.ask(_loop("/api/state"),
-                      {IDENTITY_HEADER: name, caddy.GATE_HEADER: secret}, answer)
+    status = _inside("/api/state",
+                     {IDENTITY_HEADER: name, caddy.GATE_HEADER: secret}, answer)
     return status == TAKEN
 
 
@@ -141,7 +166,7 @@ def unsealed(answer: gate.Answer | None = None) -> bool:
     if who is None:
         return False
     name, _ = who
-    return gate.ask(_loop("/api/state"), {IDENTITY_HEADER: name}, answer) == REFUSED
+    return _inside("/api/state", {IDENTITY_HEADER: name}, answer) == REFUSED
 
 
 def proved(answer: gate.Answer | None = None) -> bool:

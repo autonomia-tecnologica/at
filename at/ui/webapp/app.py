@@ -94,9 +94,19 @@ says exposing demands authentication and TLS, that the TLS is Caddy's, and that
 Caddy travels inside this binary — so `at-cli webapp --include-caddy` puts that
 Caddy in front (`services/caddy.py`), and the WebApp behind it listens where it
 always did, `127.0.0.1`, on a port nobody types. What the person reaches is the
-Caddy's port, with AT's own certificate. Without the flag there is no TLS to
-be had, so there is no exposure: asking for an address that is not the local
-loop is refused here, before a port is taken (`loops_back`).
+Caddy's port, with AT's own certificate.
+
+**The address is a choice of the folder's, and the loop is what it gets by
+default.** `--host` says it for one run and `settings.json` says it for the
+folder (`HOST_KEY`, `chosen_host`); with neither, AT answers on `127.0.0.1`,
+which is the address this product recommends and the one it uses for itself.
+**Leaving the loop is not refused here**, and the reason is that the same
+address means two different things and this module cannot tell them apart: a
+container's `0.0.0.0` is inside a network, behind the edge and the gate (§7b,
+§7c), and a machine's `0.0.0.0` is on a LAN — and an app that guessed would
+refuse the first or wave the second through. What answers for an address is the
+network around it, and the environment's security note is where that is
+evaluated.
 """
 
 from __future__ import annotations
@@ -104,7 +114,6 @@ from __future__ import annotations
 import base64
 import errno
 import hashlib
-import ipaddress
 import json
 import os
 import secrets
@@ -137,10 +146,17 @@ DEFAULT_PORT = 12345
 DEFAULT_THEME = "at"
 
 # The face of the loop, by name. It is the host the person reaches by default,
-# and the only NAME that counts as the loop: any other name is resolved by the
-# resolver and not by AT, and AT does not ask a resolver for permission to
-# be exposed (`loops_back`).
+# and it is the only NAME this module answers for itself: with the Caddy in
+# front, the name is what the certificate is issued for (§3), and `localhost` is
+# the name that needs no resolver to mean this machine.
 LOOPBACK_NAME = "localhost"
+
+# The key of `settings.json` that carries the address the folder answers on. It
+# is the same shelf `basic_auth` sits on — an adjustment of the installation and
+# never a credential — and it is the door for the person who wants AT to listen
+# somewhere else: `127.0.0.1` is the default and what this product recommends,
+# and what leaving it costs is the environment's security note's to say.
+HOST_KEY = "webapp_host"
 
 # The permission that lets an actor come in through Basic (§3, Configurações
 # gerais). It is a KEY of `settings.json` and never a credential: the file holds
@@ -1505,20 +1521,27 @@ class Server(ThreadingHTTPServer):
         self.sessions = session.Sessions()
 
 
-def loops_back(host: str) -> bool:
-    """Whether that address is the local loop and nothing else (§3).
+def chosen_host() -> str:
+    """The address the folder answers on — `HOST` when it chose none.
 
-    `localhost` counts by name; everything else has to BE a loopback address,
-    because a `127.0.0.1` spelled as a name is a name a resolver could answer
-    with anything tomorrow — and AT refusing exposure is not a question it
-    delegates to whatever `/etc/hosts` or a DNS server says today.
+    `HOST_KEY` holds it, and it is an ADJUSTMENT of the installation: no
+    credential, nothing proved. A folder that never wrote it answers on
+    `127.0.0.1`, which is the default and what this product recommends; a person
+    who wants AT somewhere else says it there, or says it for one run with
+    `--host`.
+
+    **A record nobody can read answers the default**, the same way `gate.mode`
+    reads a broken one as the safe side: a settings file that will not parse is
+    not a folder that moved its address, and a value that is not a name is not a
+    name. What is NOT asked here is whether the address is the loop — that
+    question has no answer this module could act on (the docstring says why),
+    and asking it would be inventing a rule to enforce.
     """
-    if host == LOOPBACK_NAME:
-        return True
     try:
-        return ipaddress.ip_address(host).is_loopback
-    except ValueError:
-        return False
+        held = settings.get(HOST_KEY)
+    except settings.SettingsError:
+        return HOST
+    return held.strip() if isinstance(held, str) and held.strip() else HOST
 
 
 def make_server(port: int = DEFAULT_PORT, host: str = HOST) -> Server:
@@ -1527,14 +1550,16 @@ def make_server(port: int = DEFAULT_PORT, host: str = HOST) -> Server:
 
 def run(port: int = DEFAULT_PORT, host: str | None = None,
         include_caddy: bool = False) -> int:
-    """Put AT on a port — in HTTP on the loop, or behind the Caddy's TLS.
+    """Put AT on a port — in HTTP, or behind the Caddy's TLS.
 
-    Two refusals live here rather than in `make_server`, and both are the same
-    promise from §3: exposing demands TLS, the TLS is the Caddy's, and without
-    the flag there is no TLS at all — so an address outside the loop is refused,
-    and so is the one address a certificate cannot be issued for. The raw server
-    is what the route tests build, and it is not a hole: it is the folder that
-    asks nothing, and `_asks` is where that is decided.
+    **One refusal lives here, and it is not a rule about exposure: it is the
+    certificate.** `tls internal` is issued FOR A NAME (§3), and "every address"
+    is the absence of one — a Caddy that took `0.0.0.0` would start and never
+    finish a handshake. The address itself is the folder's choice
+    (`chosen_host`), and the default is the loop; where the address is asked
+    about and where it is not is the module docstring's. The raw server is what
+    the route tests build, and it is not a hole: it is the folder that asks
+    nothing, and `_asks` is where that is decided.
     """
     from at.i18n import tr
 
@@ -1545,16 +1570,10 @@ def run(port: int = DEFAULT_PORT, host: str | None = None,
         print(tr("webapp.no_admin"))
         return 1
 
-    where = host or (LOOPBACK_NAME if include_caddy else HOST)
+    where = host or (LOOPBACK_NAME if include_caddy else chosen_host())
 
     if include_caddy and caddy.wildcard(where):
         print(tr("caddy.address_needs_name", host=where))
-        return 1
-
-    if not include_caddy and not loops_back(where):
-        # Without the flag, reaching beyond the loop would be HTTP with no TLS,
-        # which §3 forbids in the same sentence that demands authentication.
-        print(tr("caddy.outside_loopback"))
         return 1
 
     # Exposed, the WebApp takes an EPHEMERAL port on the loop and the Caddy holds

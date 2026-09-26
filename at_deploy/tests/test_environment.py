@@ -99,12 +99,18 @@ class FakeRuntime:
 
     def __init__(self, fails: tuple[str, ...] = (), running: str = "true") -> None:
         self.calls: list[list[str]] = []
+        # **Os argumentos NOMEADOS de cada chamada, e eles são a metade da
+        # pergunta.** O segredo que a prova carrega não pode entrar no argv, e
+        # onde ele entra é no `input` do comando — um argv é um `ps` nesta
+        # máquina. Sem esta lista, o que os testes leem é só a metade visível.
+        self.given: list[dict] = []
         self.fails = set(fails)
         self.running = running
 
     def run(self, args, **kw) -> SimpleNamespace:
         call = [str(part) for part in args]
         self.calls.append(call)
+        self.given.append(kw)
         failed = bool(call) and call[0] in self.fails
         said = ""
         if call[:2] == ["container", "inspect"]:
@@ -232,23 +238,35 @@ class TheManifest(unittest.TestCase):
         nothing = env.Image("docker.io/library/caddy", "2.11.4", "")
         self.assertFalse(nothing.at_the_pin())
 
-    def test_the_loop_is_where_every_service_publishes(self):
-        # Measured in the retired environment and inherited: a host deny-list
-        # does not cover a published container port — the port goes through DNAT
-        # and the `input` hook never sees it — so what closes the LAN is
-        # publishing on loopback, never a firewall rule.
+    def test_every_port_is_published_on_the_loop_or_on_the_private_network(self):
+        # Medido no ambiente aposentado e herdado: uma deny-list do host não
+        # cobre uma porta publicada de container — a porta passa por DNAT e o
+        # hook `input` nunca a vê —, então o que fecha a LAN é publicar no laço.
+        # A exceção é a porta do SITE, e ela é o §7e: o endereço da rede privada
+        # quando a máquina está numa, o laço quando não está. `0.0.0.0` não é
+        # nenhum dos dois, e é o que esta linha existe para proibir.
         for service in env.SERVICES:
-            for port in service.ports:
+            for port in env.ports_of(service):
                 with self.subTest(service=service.name, port=port.port):
-                    self.assertEqual(port.address, env.LOOP)
+                    self.assertIn(port.address, (env.LOOP, env.vpn.address() or env.LOOP))
+                    self.assertNotIn(port.address, ("0.0.0.0", "::"))
 
-    def test_the_caddy_is_the_edge_and_has_no_port_of_its_own(self):
-        # It shares the host's network: what it publishes is AT's own address,
-        # and what it proxies to is the loop, which a container on a network of
-        # its own cannot see.
+    def test_the_caddy_publishes_the_site_and_the_environment_nothing_else(self):
+        # A borda é o que a pessoa alcança: ela publica a porta do SITE, e o
+        # resto do ambiente fica no laço ou em nada. O que decide a rede de cada
+        # serviço é só com quem ele fala (o módulo diz por quê).
         caddy = _service("caddy")
-        self.assertEqual(caddy.network, env.HOST_NETWORK)
-        self.assertEqual(caddy.ports, ())
+        self.assertEqual(caddy.network, env.NETWORK)
+        self.assertEqual([port.port for port in env.ports_of(caddy)], [env.PORT])
+
+    def test_the_dns_is_the_one_service_of_the_dmz(self):
+        # O dnsmasq é o único que não fala com ninguém, e é o único sozinho na
+        # rede que não tem rota para a do ambiente.
+        alone = [service.name for service in env.SERVICES
+                 if service.network == env.DMZ]
+        self.assertEqual(alone, ["dnsmasq"])
+        self.assertEqual(env.ports_of(_service("dnsmasq")),
+                         (env.Port(53, "udp"), env.Port(53)))
 
     def test_every_service_reads_what_the_folder_is(self):
         # §7: every service's persistent state lives under `App/services/`, and
@@ -386,16 +404,19 @@ class TheUp(FolderCase):
         self.quiet(env.up)
         argv = _call(fake, "at-dnsmasq")
         self.assertIn("--network", argv)
-        self.assertIn(env.NETWORK, argv)
+        self.assertIn(env.DMZ, argv)
         self.assertIn("127.0.0.1:53:53/udp", argv)
         self.assertIn(f"{env.state('dnsmasq')}:{env.DNSMASQ_CONFIG}:Z", argv)
 
-    def test_the_caddy_shares_the_host_network_and_mounts_its_state(self):
+    def test_the_caddy_joins_the_network_and_publishes_the_site(self):
+        # A borda é um container como os outros, e as duas coisas que a fazem a
+        # borda são a rede em que ela está — onde o WebApp e o portão estão — e
+        # a única porta que ela publica.
         fake = self.runtime()
         self.quiet(env.up)
         argv = _call(fake, "at-caddy")
-        self.assertIn(env.HOST_NETWORK, argv)
-        self.assertNotIn("--publish", argv)
+        self.assertIn(env.NETWORK, argv)
+        self.assertIn(f"{env.LOOP}:{env.PORT}:{env.PORT}/tcp", argv)
         self.assertIn(f"{env.state('caddy')}:{env.CADDY_CONFIG}:Z", argv)
         self.assertIn(f"{env.state('caddy') / 'storage'}:{env.CADDY_DATA}:Z", argv)
 
@@ -509,12 +530,12 @@ class TheIdentityProvider(FolderCase):
     def secret(self) -> str:
         return (env.state(env.IDENTITY) / env.IDENTITY_SESSION).read_text(encoding="utf-8")
 
-    def test_the_provider_is_published_on_the_loop_and_mounts_its_state(self):
-        # The Caddy shares the host's network, so how it reaches the provider is
-        # the loop — and publishing there is what keeps the LAN closed (§7a).
+    def test_the_provider_publishes_nothing_and_mounts_its_state(self):
+        # Quem chega no provedor é o Caddy (`forward_auth`) e o WebApp (a
+        # checagem dele) — e os dois o alcançam pelo NOME na rede, então a porta
+        # no laço que ele mantinha para um Caddy no host não existe mais.
         service = _service(env.IDENTITY)
-        self.assertEqual([port.published() for port in service.ports],
-                         ["127.0.0.1:9091:9091/tcp"])
+        self.assertEqual(env.ports_of(service), ())
         hosts = [mount.host for mount in service.mounts]
         self.assertIn("", hosts)       # `/config`: what AT wrote for it
         self.assertIn("data", hosts)   # `/data`: what the provider keeps itself
@@ -525,9 +546,9 @@ class TheIdentityProvider(FolderCase):
         self.up()
         text = self.conf()
         self.assertIn("default_policy: deny", text)
-        self.assertIn(f"    - domain: {env.HOST}", text)
+        self.assertIn(f"    - domain: {env.NAME}", text)
         self.assertIn("      policy: one_factor", text)
-        self.assertIn(f"authelia_url: https://{env.HOST}:{env.PORT}", text)
+        self.assertIn(f"authelia_url: https://{env.NAME}:{env.PORT}", text)
 
     def test_the_storage_and_the_users_are_where_bill_mounts_them(self):
         # §7: the persistent state of the service lives in the folder, and this
@@ -546,6 +567,43 @@ class TheIdentityProvider(FolderCase):
         # exist. It enters with the first service that speaks OIDC.
         self.up()
         self.assertNotIn("identity_providers", self.conf())
+
+    def test_the_secrets_the_provider_needs_are_drawn_once_and_kept(self):
+        # **Medido contra o container**: o Authelia recusa subir sem a chave com
+        # que ele CIFRA os próprios registros e sem o segredo com que ele assina
+        # um token de validação de identidade. Os dois são da INSTALAÇÃO e não de
+        # uma subida — desenhados por subida, o que ele já escreveu ficaria
+        # ilegível —, então moram na pasta de estado, como o da sessão.
+        self.up()
+        drawn = {name: (env.state(env.IDENTITY) / name).read_text(encoding="utf-8").strip()
+                 for name in (env.IDENTITY_ENCRYPTION, env.IDENTITY_JWT)}
+        text = self.conf()
+        for name, value in drawn.items():
+            with self.subTest(secret=name):
+                self.assertTrue(value, f"{name} nao foi sorteado")
+                self.assertIn(f'"{value}"', text)
+        self.up()
+        for name, value in drawn.items():
+            with self.subTest(secret=name):
+                self.assertEqual(
+                    (env.state(env.IDENTITY) / name).read_text(encoding="utf-8").strip(),
+                    value)
+
+    def test_the_notifier_the_provider_needs_is_a_file_in_the_folder(self):
+        # O Authelia exige um notificador — um smtp ou um arquivo — porque ele
+        # tem de poder contar alguma coisa a alguém, e o caso do dia é uma
+        # identidade validando um segundo fator. §7 não tem smtp, então é um
+        # arquivo, e ele mora na pasta de estado, que é a pasta do backup (§3).
+        self.up()
+        self.assertIn(f"filename: {env.IDENTITY_CONFIG}/{env.IDENTITY_NOTIFICATIONS}",
+                      self.conf())
+
+    def test_the_provider_listens_on_the_container_and_not_on_a_publication(self):
+        # O endereço do container, e não uma publicação: o que sai dele é o que
+        # o runtime mapeia (§7a) — e o NOME do serviço é como a borda e o WebApp
+        # o alcançam.
+        self.up()
+        self.assertIn(f'address: "tcp://{env.ALL}:{env.IDENTITY_PORT}"', self.conf())
 
     def test_the_session_secret_is_drawn_once_and_kept(self):
         # Authelia signs its cookie with it: drawn per start, every session
@@ -621,7 +679,8 @@ class TheGate(FolderCase):
         # And the ask comes first: the Caddy finds out who is calling before it
         # hands anything to the WebApp.
         self.assertLess(text.index("forward_auth"), text.index("reverse_proxy"))
-        self.assertIn(f"forward_auth {env.LOOP}:{env.IDENTITY_PORT}", text)
+        self.assertIn(
+            f"forward_auth {env.container(env.IDENTITY)}:{env.IDENTITY_PORT}", text)
         self.assertIn(f"uri {caddy.AUTH_URI}", text)
         self.assertIn("copy_headers Remote-User", text)
 
@@ -780,10 +839,15 @@ class ThePrivateNetwork(FolderCase):
         self.assertIsNone(vpn.address(self.agent("")))
 
     def test_the_site_follows_the_network_when_there_is_one(self):
+        # O endereço da rede privada não existe nesta máquina — quem responde
+        # por ele é o seam —, então quem responde pela PERGUNTA ao endereço
+        # também: `TheAddress` prova a pergunta, e aqui o que se lê é o que a
+        # subida ESCREVE.
         with mock.patch.object(vpn, "name", lambda call=None: "host.example-tailnet.ts.net"), \
-                mock.patch.object(vpn, "address", lambda call=None: "100.64.0.1"):
+                mock.patch.object(vpn, "address", lambda call=None: "100.64.0.1"), \
+                mock.patch.object(env, "address_ready", lambda address: True):
             self.assertEqual(env.site_host(), "host.example-tailnet.ts.net")
-            self.runtime()
+            fake = self.runtime()
             self.quiet(env.up)
             self.assertIn("https://host.example-tailnet.ts.net:8443",
                           (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8"))
@@ -793,14 +857,20 @@ class ThePrivateNetwork(FolderCase):
             # The name AT answers for points at where the edge actually is.
             self.assertIn("address=/at.local/100.64.0.1",
                           (env.state("dnsmasq") / "dnsmasq.conf").read_text(encoding="utf-8"))
+            # **E a porta do site é publicada no endereço DA REDE**, que é como a
+            # pessoa chega: no caminho container quem publica é o container, e o
+            # §7e só vale se o endereço for o da rede.
+            self.assertIn("100.64.0.1:8443:8443/tcp", _call(fake, "at-caddy"))
 
-    def test_without_a_network_nothing_moves(self):
-        # The supported state, and not a degraded one: the loop, exactly as
-        # before §7e existed.
-        self.assertEqual(env.site_host(), env.HOST)
+    def test_without_a_network_the_site_is_bills_own_name(self):
+        # O estado suportado, e não um degradado: a máquina não está em rede
+        # privada nenhuma, e o site é o nome que o AT já responde (§7a) — um
+        # NOME, e não o laço, porque o portão recusa um domínio de cookie sem
+        # ponto e o TLS precisa de um nome para o SNI. Os dois foram medidos.
+        self.assertEqual(env.site_host(), env.NAME)
         self.runtime()
         self.quiet(env.up)
-        self.assertIn(f"https://{env.HOST}:{env.PORT}",
+        self.assertIn(f"https://{env.NAME}:{env.PORT}",
                       (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8"))
         self.assertIn(f"address=/{env.NAME}/{env.LOOP}",
                       (env.state("dnsmasq") / "dnsmasq.conf").read_text(encoding="utf-8"))
@@ -833,6 +903,63 @@ class TheAddress(FolderCase):
             "services.up.no_address", service=i18n.tr("services.dnsmasq.name"),
             address=NOBODY,
         ), text)
+
+
+class TheProbe(FolderCase):
+    """`environment.inside` — como o deploy pergunta a um serviço de dentro da rede.
+
+    Os serviços respondem na rede e em lugar nenhum mais (§7c), então uma
+    pergunta feita do host não alcança nada. Esta é a estrada, e o que se lê aqui
+    é o argv do container que ela usa — e o fato de o segredo nunca entrar nele.
+    """
+
+    def answered(self, stdout: str, returncode: int = 0):
+        """Uma resposta do runtime sem runtime: só o que a leitura consome."""
+        answer = SimpleNamespace(returncode=returncode, stdout=stdout, stderr="")
+        return mock.patch.object(podman, "run", lambda args, **kw: answer)
+
+    def test_the_probe_stands_on_the_environments_network_and_goes_away(self):
+        fake = self.runtime()
+        env.inside("http://at-webapp:12345/api/state", {})
+        argv = fake.calls[0]
+        self.assertEqual(argv[:2], ["run", "--rm"])
+        self.assertIn(env.NETWORK, argv)
+        self.assertIn("--entrypoint", argv)
+        self.assertIn(_service(env.CADDY).image.reference(), argv)
+
+    def test_the_headers_never_enter_the_argv(self):
+        # Um argv é um `ps` nesta máquina, e os dois headers da identidade selada
+        # são o segredo do portão e um nome. O que os carrega é a ENTRADA do
+        # comando — a mesma regra que a senha do notificador segue.
+        fake = self.runtime()
+        env.inside("http://at-webapp:12345/api/state",
+                   {"Remote-User": "Rafael", caddy.GATE_HEADER: "segredo"})
+        argv = fake.calls[0]
+        self.assertNotIn("segredo", argv)
+        self.assertNotIn("Rafael", argv)
+        self.assertIn(f'header = "{caddy.GATE_HEADER}: segredo"',
+                      fake.given[0]["input"])
+        self.assertIn('header = "Remote-User: Rafael"', fake.given[0]["input"])
+
+    def test_a_name_with_a_quote_is_the_name_and_not_the_syntax(self):
+        fake = self.runtime()
+        env.inside("http://x/y", {"Remote-User": 'Rafael "chefe"'})
+        self.assertIn('header = "Remote-User: Rafael \\"chefe\\""',
+                      fake.given[0]["input"])
+
+    def test_the_status_comes_back_as_a_number(self):
+        for stdout, expected in (("403\n", 403), ("200", 200),
+                                 ("", None), ("curl: (7) refused", None)):
+            with self.subTest(stdout=stdout):
+                with self.answered(stdout):
+                    self.assertEqual(env.inside("http://x/y", {}), expected)
+
+    def test_a_probe_that_could_not_run_is_not_a_status(self):
+        # "Não deu para saber" não é "foi recusado": um runtime que não conseguiu
+        # rodar o container responde nada, e quem pergunta trata isso como a
+        # própria falha — e nunca como uma recusa inventada.
+        with self.answered("200", returncode=1):
+            self.assertIsNone(env.inside("http://x/y", {}))
 
 
 class TheDown(FolderCase):
@@ -985,15 +1112,18 @@ class TheWebappContainer(FolderCase):
         self.quiet(env.up)
         return fake
 
-    def test_the_webapp_publishes_on_the_loop_at_bills_own_port(self):
-        # The pair cannot drift from the WebApp's OWN constants: the port the
-        # container publishes is the one the WebApp listens on, and the loop is
-        # where the Caddy's `reverse_proxy` reaches it (§7a's measured rule).
+    def test_the_webapp_publishes_nothing_and_answers_on_the_networks_address(self):
+        # **O defeito que isto tranca, medido**: com o app no laço, nem a porta
+        # publicada nem a borda o alcançam — a porta publicada entrega no
+        # endereço de rede do container, e a borda é outro container cujo
+        # `127.0.0.1` é ela mesma. Então o app atende na rede.
+        #
+        # A porta é a do PRÓPRIO app (§7c): o que a exposição move é o endereço
+        # que a PESSOA alcança, nunca o que o WebApp ouve.
         service = _service(env.WEBAPP)
-        self.assertEqual([port.published() for port in service.ports],
-                         ["127.0.0.1:12345:12345/tcp"])
-        self.assertEqual((env.WEBAPP_HOST, env.WEBAPP_PORT),
-                         (webapp.HOST, webapp.DEFAULT_PORT))
+        self.assertEqual(env.ports_of(service), ())
+        self.assertEqual(env.WEBAPP_PORT, webapp.DEFAULT_PORT)
+        self.assertEqual(env.WEBAPP_HOST, env.ALL)
 
     def test_the_container_mounts_the_working_folder_at_the_same_path(self):
         # §7a's contract, measured in the retired environment and inherited: the
@@ -1006,12 +1136,13 @@ class TheWebappContainer(FolderCase):
 
     def test_what_runs_inside_is_the_artifact_the_folder_carries(self):
         # §7c: the container is not a second AT. What it executes is the
-        # binary this folder holds, told to serve the WebApp on the loop.
+        # binary this folder holds, told to serve the WebApp on the network.
         fake = self.up()
         argv = _call(fake, env.container(env.WEBAPP))
-        self.assertEqual(argv[-4:],
-                         [env.binary(), "webapp", "--port", str(env.WEBAPP_PORT)])
-        self.assertTrue(argv[-4].startswith(str(env.paths.working_folder())))
+        self.assertEqual(argv[-6:],
+                         [env.binary(), "webapp", "--port", str(env.WEBAPP_PORT),
+                          "--host", env.WEBAPP_HOST])
+        self.assertTrue(argv[-6].startswith(str(env.paths.working_folder())))
 
     def test_the_image_carries_nothing_of_bills_and_is_pinned(self):
         # The blast radius §7c is about: what the container can reach is the
@@ -1036,6 +1167,17 @@ class TheWebappContainer(FolderCase):
         self.assertIn(f"{env.GATE_ENV}={env.container(env.IDENTITY)}:{env.IDENTITY_PORT}",
                       argv)
 
+    def test_the_webapp_is_told_which_folder_it_serves(self):
+        # **O defeito que isto tranca, medido num ensaio**: rodando de um
+        # checkout, o artefato que o container executa mora em
+        # `<pasta>/dist/at-cli`, e o app que lesse a pasta de onde o binário
+        # está tomaria `<pasta>/dist` pela pasta da pessoa — sem `App/`, ele
+        # pediria confirmação de uma Pasta de Trabalho nova, e um container não
+        # tem terminal para responder. É um WebApp que nunca serve.
+        fake = self.up()
+        argv = _call(fake, env.container(env.WEBAPP))
+        self.assertIn(f"{env.paths.ROOT_ENV}={env.paths.working_folder()}", argv)
+
     def test_a_service_that_needs_nothing_is_told_nothing(self):
         fake = self.up()
         for name in ("dnsmasq", env.IDENTITY, "caddy", env.NOTIFIER):
@@ -1046,12 +1188,19 @@ class TheWebappContainer(FolderCase):
 class TheWebappBehindIt(FolderCase):
     """The Caddy publishes the WebApp, and this is where that pair cannot drift."""
 
-    def test_the_site_the_container_caddy_serves_is_bills_and_on_the_loop(self):
+    def test_the_site_the_container_caddy_serves_is_bills_and_reaches_it_by_name(self):
+        # O site continua sendo o do §7e, e o que muda é o que "127.0.0.1" quer
+        # dizer deste lado: o backend é o NOME do WebApp na rede, e o site se
+        # liga em todos os endereços do container — porque o nome que o
+        # certificado carrega não é um endereço que o container tenha.
         self.runtime()
         self.quiet(env.up)
         text = (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8")
-        self.assertIn(f"https://{env.HOST}:{env.PORT}", text)
-        self.assertIn(f"reverse_proxy 127.0.0.1:{env.WEBAPP_PORT}", text)
+        self.assertIn(f"https://{env.NAME}:{env.PORT}", text)
+        self.assertIn(f"\tbind {env.ALL}", text)
+        self.assertIn(
+            f"reverse_proxy {env.container(env.WEBAPP)}:{env.WEBAPP_PORT}", text)
+        self.assertNotIn(f"reverse_proxy {env.LOOP}:", text)
 
 
 class TheNotifier(FolderCase):
@@ -1142,7 +1291,10 @@ class TheNotifier(FolderCase):
         identity = (env.state(env.IDENTITY) / env.IDENTITY_YAML).read_text(encoding="utf-8")
         for text, where in ((caddyfile, "Caddyfile"), (identity, env.IDENTITY_YAML)):
             with self.subTest(file=where):
-                self.assertNotIn(env.NOTIFIER, text)
+                # O NOME que o ambiente dá ao serviço, e não a palavra: o
+                # `notifier` do Authelia é uma chave DELE — é assim que ele diz
+                # o que tem a contar a alguém —, e não §7f entrando na borda.
+                self.assertNotIn(env.container(env.NOTIFIER), text)
                 self.assertNotIn(str(env.NOTIFIER_PORT), text)
         argv = _call(fake, env.container(env.NOTIFIER))
         self.assertNotIn(env.GATE_ENV, argv)

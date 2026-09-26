@@ -102,7 +102,8 @@ class TheDoor(SettingsCase):
         # the folders decision.
         keys = settings.keys()
         self.assertEqual(keys[: len(settings.KNOWN)], list(settings.KNOWN))
-        for name in ("interpreter", "basic_auth", "risk_threshold", "authenticator"):
+        for name in ("interpreter", "basic_auth", "webapp_host", "risk_threshold",
+                     "authenticator"):
             with self.subTest(key=name):
                 self.assertIn(name, keys)
 

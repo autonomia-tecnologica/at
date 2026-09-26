@@ -178,6 +178,39 @@ class TheProof(FolderCase):
         self.assertEqual(sealed[0][caddy.GATE_HEADER], caddy.gate_secret())
         self.assertEqual(sealed[0][switch.IDENTITY_HEADER], "Rafael")
 
+    def test_the_sealed_identity_is_asked_inside_the_network_by_name(self):
+        # O WebApp responde na rede e em lugar nenhum mais (§7c), então a
+        # pergunta vai ao NOME dele na rede — e não ao laço do host, que é
+        # exatamente o defeito que este pedaço conserta.
+        probes = FakeProbes()
+        switch.proved(probes)
+        sealed = [url for url, headers in probes.asked if caddy.GATE_HEADER in headers]
+        self.assertEqual(sealed, [
+            f"http://{env.container(env.WEBAPP)}:{env.WEBAPP_PORT}/api/state"])
+
+    def test_the_real_transport_is_the_environments_own_probe(self):
+        # Sem costura, quem pergunta é `environment.inside` — o container
+        # descartável na rede. O teste troca o transporte por um seam da MESMA
+        # forma (`gate.Answer`) para provar que é ele que fica no lugar.
+        seen: list[tuple[str, dict[str, str]]] = []
+
+        def transport(url: str, headers: dict[str, str]) -> int:
+            seen.append((url, dict(headers)))
+            return 200
+
+        with mock.patch.object(env, "inside", transport):
+            self.assertTrue(switch.sealed())
+        self.assertEqual(seen, [(
+            f"http://{env.container(env.WEBAPP)}:{env.WEBAPP_PORT}/api/state",
+            {switch.IDENTITY_HEADER: "Rafael",
+             caddy.GATE_HEADER: caddy.gate_secret()},
+        )])
+
+    def test_a_probe_that_reaches_nothing_is_not_a_refusal(self):
+        # "Não deu para saber" não é "foi recusado": nada respondeu, e uma prova
+        # que lesse isso como recusa estaria culpando um portão que funciona.
+        self.assertFalse(switch.proved(FakeProbes(sealed=None, unsealed=None)))
+
     def test_with_nobody_to_prove_there_is_nothing_to_prove(self):
         # The proof speaks AS somebody: an identity is a row of `actor`, and a
         # folder with no row has no name to receive.
@@ -323,7 +356,8 @@ class TheSwitch(FolderCase):
         self.runtime()
         self.quiet(switch.to_gate, answer=FakeProbes(sealed=403))
         self.assertFalse(gate.on_gate())
-        self.assertTrue(webapp.loops_back(webapp.HOST))
+        # E o endereço do caminho hospedado é o de sempre: o laço.
+        self.assertEqual(webapp.chosen_host(), webapp.HOST)
         # And the folder kept its people: the rollback moves nothing of the
         # person's (§3, the backup promise).
         self.assertTrue(actors.admins())

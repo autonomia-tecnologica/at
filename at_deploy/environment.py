@@ -27,16 +27,31 @@ publishing on loopback**, never a firewall rule; and a container published on an
 address the machine does not have yet comes up **running and without its port**,
 so the orchestrator waits for the address to exist before it binds.
 
+**How the services reach each other is the NETWORK, and there is one of them.**
+A container's `127.0.0.1` is itself and nobody else, and two podman networks do
+not reach each other at all — no route, and the name only resolves inside the
+network that gave it. So what decides where a service stands is nothing but WHO
+IT HAS TO TALK TO: the Caddy reaches the WebApp (its `reverse_proxy`), the
+WebApp reaches the gate (its own "is my portal standing"), and the Caddy reaches
+the gate (`forward_auth`) — the three stand together, and whoever has business
+with them stands with them. The DNS is the one service that talks to nobody, and
+it is the one service on `DMZ`; separating anything else would buy nothing, and
+what keeps the WebApp closed on a network it shares is the gate secret (§7b),
+not the segment.
+
 **What each service runs.** `dnsmasq` is up: its configuration is the
 environment's own, the names of access (§7a's own words for it). The `caddy` is
 up as the edge that publishes AT — the same Caddyfile generator the hosted path
-reads, because it is the same Caddy answering the same questions, and the ONE
-thing that differs between the two paths is the storage: the folder's, or the
-container's. The `identity-provider` is up as §7b's gate: Authelia, configured by
-AT to be the one that proves who is calling, with AT standing behind it as an
-app and not as an exception — and the gate secret, drawn at installation, is the
-line that says the request came through it. And the `webapp` is up as §7c's
-container: the WebApp, moved off the person's machine and behind the gate. And
+reads, because it is the same Caddy answering the same questions, and what the
+two paths answer DIFFERENTLY is what an address means on each side: the storage
+is a path and not a decision (§7a), and the backend, the provider and the bind
+are the container path's (`_caddy_conf`). The `identity-provider` is up as §7b's
+gate: Authelia, configured by AT to be the one that proves who is calling, with
+AT standing behind it as an app and not as an exception — and the gate secret,
+drawn at installation, is the line that says the request came through it. And
+the `webapp` is up as §7c's container: the WebApp, moved off the person's
+machine and behind the gate, answering on the network because the loop is a
+place nobody in the environment can reach. And
 §7f's `notifier` is up as the LAST of them: ntfy, configured by AT to keep
 everything it remembers inside its own state folder, published on the loop, and
 **out of the gate** — the one thing §7f inherits instead of deciding.
@@ -120,30 +135,44 @@ CREDENTIAL_CHANGED = "changed"   # the row, the derivation and the provider
 CREDENTIAL_UNKNOWN = "unknown"   # nobody in this folder wears that name
 CREDENTIAL_PENDING = "pending"   # the folder has it; the gate does not yet
 
-# Where the site is, and it is AT's own (§3, §6): the environment's Caddy
-# publishes AT's site, and it publishes it on the loop until the gate exists —
-# exposure demands authentication, and the container path's is the gate (§7b).
-HOST = "localhost"
-# The alternative HTTPS port, and not 443: the Caddy is the edge and shares the
-# HOST's network (it publishes the machine's own address and proxies to the
-# loop), so 443 would be the host's privileged port — and §3 spends elevation
-# only on an explicit request. This is what the person types.
+# The alternative HTTPS port, and not 443: the Caddy is the edge, and its port is
+# the ONE the environment publishes outside the loop (§7e) — and a rootless
+# container publishes nothing below the kernel's floor without the elevation §3
+# spends only on an explicit request. This is what the person types.
 PORT = 8443
-# The WebApp behind it: on the loop, at the port AT serves by default (§6),
-# which §7c keeps even after moving it into a container — exposing moves the
-# address the person reaches, never the one the WebApp listens on. The Caddy
-# shares the host's network and proxies to the loop, so publishing there is what
-# lets the edge reach the container too; `test_environment` holds this pair to
-# the WebApp's OWN constants, so the declaration cannot drift from the thing it
-# names.
-WEBAPP_HOST = "127.0.0.1"
+# Where the WebApp answers inside its container. **The address is the fix of
+# this piece, and it is measured**: an app on the container's own loop is
+# reached by nobody — the published port lands on the container's network
+# address and finds nothing there, and the edge is another container whose
+# `127.0.0.1` is itself. So the app answers on the container's addresses, and
+# what keeps that from being an exposure is the network and the gate secret
+# (`GATE_ENV`, §7b): who reaches it and brings no secret is refused with 403.
+#
+# The PORT is unchanged, and §7c is why: exposing moves the address the person
+# reaches, never the one the WebApp listens on. `test_environment` holds the
+# port to the WebApp's OWN constant, so the declaration cannot drift from the
+# thing it names.
+ALL = "0.0.0.0"
+WEBAPP_HOST = ALL
 WEBAPP_PORT = 12345
 
-# The environment's network — what the services that are not on the host's talk
-# over. The Caddy is not in it: it is the edge, and what it proxies to is the
-# host's own loop.
+# The environment's network — the one the services of the environment talk over.
+# **It is ONE network, and a second one buys almost nothing here**, which is a
+# measurement and not a preference: two podman networks do not reach each other
+# at all (no route, and the name only resolves inside the network that gave it),
+# so what decides a service's network is nothing but WHO IT HAS TO TALK TO. The
+# Caddy reaches the WebApp (its `reverse_proxy`), the WebApp reaches the gate
+# (its own "is my portal standing"), and the Caddy reaches the gate
+# (`forward_auth`) — so those three stand together, and whoever has business
+# with them stands with them.
 NETWORK = "at"
-HOST_NETWORK = "host"
+
+# The network of the service that talks to NOBODY. A DMZ by what it is: the only
+# thing it holds is the DNS, which answers and asks nothing, and what a service
+# there cannot do is reach the WebApp — no route to the environment's network.
+# Separating anything else would cost more than it buys: the notifier has
+# business with the WebApp (§7f), and the edge has business with everything.
+DMZ = "at-dmz"
 
 # The prefix of every container AT creates. A container is named for the
 # service it runs, and the name is AT's: `down` removes what the name says,
@@ -189,6 +218,26 @@ IDENTITY_PORT = 9091
 IDENTITY_YAML = "configuration.yml"
 IDENTITY_USERS = "users.yml"
 IDENTITY_SESSION = "session"
+
+# The other two secrets the provider needs, and they are the same kind of value
+# as the session's: they belong to the INSTALLATION and not to a start. The
+# first is what it ENCRYPTS its own records with — one drawn per start would
+# make everything it had already written unreadable —, and the second is what it
+# signs an identity-validation token with.
+IDENTITY_ENCRYPTION = "encryption"
+IDENTITY_JWT = "jwt"
+
+# Where the provider writes what it has to TELL somebody, and the everyday case
+# is an identity validating a second factor. §7 has no smtp to give it, so it is
+# a FILE — inside the service's own state folder, which is the folder the backup
+# covers (§3) and what makes the notice recoverable instead of lost.
+IDENTITY_NOTIFICATIONS = "notifications"
+
+# §7a's edge, by the name the manifest gives it — and by the name the deploy's
+# own probes ask the environment for the image they run in (`inside`): it is the
+# one image of the manifest that carries an HTTP client, and it is already
+# pulled by the time anything asks.
+CADDY = "caddy"
 
 # The WebApp as a container (§7c), and what runs inside it is THIS artifact: the
 # module's docstring holds the decision, and the test is what keeps it true —
@@ -446,7 +495,7 @@ def blocked() -> tuple[int, ...]:
         return ()
     below = floor()
     ports = {port.port for service in SERVICES
-             for port in service.ports if port.port < below}
+             for port in ports_of(service) if port.port < below}
     return tuple(sorted(ports))
 
 
@@ -523,13 +572,40 @@ def container(name: str) -> str:
 
 
 def _webapp_command() -> tuple[str, ...]:
-    """What §7c's container runs: the artifact, serving the WebApp on the loop.
+    """What §7c's container runs: the artifact, serving the WebApp on the network.
 
-    The port is the WebApp's own default, and it is the one the `Port` above
-    publishes and the Caddyfile proxies to — the three are the same number, and
-    `test_environment` is what holds them together.
+    The address is the container's own (`WEBAPP_HOST`) and it is the whole point
+    of the command being written here: the app's default is the loop, and on the
+    loop nobody inside the environment reaches it. The port is the WebApp's own
+    default, and it is the one the Caddyfile proxies to — the two are the same
+    number, and `test_environment` is what holds them together.
     """
-    return (binary(), "webapp", "--port", str(WEBAPP_PORT))
+    return (binary(), "webapp",
+            "--port", str(WEBAPP_PORT), "--host", WEBAPP_HOST)
+
+
+def _webapp_env() -> tuple[tuple[str, str], ...]:
+    """What §7c's WebApp is TOLD: where its gate is, and where its folder is.
+
+    The gate, because a container cannot see the host's loop and the name is the
+    environment's to say (`GATE_ENV`). And the FOLDER, which is the same lesson
+    as the address and was measured the same way: run from a checkout, the
+    artifact this container executes sits in `<folder>/dist/at-cli`, and an app
+    that read its folder from where its binary is — the `install` rule, §3 —
+    would take `<folder>/dist` for the person's folder, find no `App/`, and ask
+    to confirm a new Working Folder that no terminal in a container can answer.
+    It is a WebApp that never serves.
+
+    **Frozen it lands right, and that is the worst kind of right**: the artifact
+    sits at the folder's root, the inference agrees, and the defect waits for
+    the first run from a checkout. `AT_ROOT` is the contract the image already
+    declares in its own words (`Containerfile`), and naming it here costs one
+    variable.
+    """
+    return (
+        (GATE_ENV, f"{container(IDENTITY)}:{IDENTITY_PORT}"),
+        (paths.ROOT_ENV, str(paths.working_folder())),
+    )
 
 
 def _notifier_command() -> tuple[str, ...]:
@@ -546,13 +622,20 @@ def _notifier_command() -> tuple[str, ...]:
 
 
 def site_host() -> str:
-    """The name the environment's edge serves — the private network's, or the loop's.
+    """The NAME the environment's edge serves — the private network's, or AT's own.
 
     §7e is what this reads, and it is asked of the manifest's own machine and not
     of a setting: when the machine is on a private network, the network answers
     for a NAME (`vpn.name`), and that name is what the Caddy is issued a
-    certificate for and what the person types. With no network the site is
-    `HOST`, the loop — which is the supported state and not a degraded one.
+    certificate for and what the person types. **With no network the site is
+    AT's own name for this machine (`NAME`), and it is a name — which was
+    measured twice, once against each half of the environment.** The gate refuses
+    a cookie domain without a dot that is not an IP, so the word `localhost` is
+    out; and TLS needs a NAME for the SNI — a client connecting to an ADDRESS
+    sends none, and the Caddy answers the handshake with `internal error` because
+    it has no certificate it can serve. `at.local` is a name with a dot, and the
+    DNS of the environment is what answers for it (§7a): that service exists for
+    precisely this.
 
     **It is a function and not a constant because it is measured at the moment
     the environment comes up**, and every file that has to agree on it is written
@@ -560,7 +643,7 @@ def site_host() -> str:
     the URL the switch says. A name read once at import would be a name that
     stopped being true the moment the person joined a network.
     """
-    return vpn.name() or HOST
+    return vpn.name() or NAME
 
 
 def _dnsmasq_conf() -> str:
@@ -589,13 +672,42 @@ def _caddy_conf() -> str:
     lines of the gate come along when there is a secret, and §7b is what draws
     it: the Caddy asks the identity provider who is calling, and tells the
     WebApp that the request came through here.
+
+    **Four things are the container path's and not the hosted path's**, and each
+    is an address that means something else on this side of the network. The
+    backend is the WebApp's NAME on the network and not the host's loop, which
+    the edge cannot see. The provider is reached the same way, for the same
+    reason. The site BINDS everything the container has, because the name the
+    certificate carries is not an address this container holds — what makes the
+    site reachable is the port the container publishes (§7e). And the site is
+    the site: `site_host` is §7e's, and it is the same on both paths.
     """
     return caddy_service.caddyfile(
         site_host(), PORT, WEBAPP_PORT,
         gate=caddy_service.gate_secret(),
         storage=CADDY_DATA,
-        auth=f"{LOOP}:{IDENTITY_PORT}",
+        auth=f"{container(IDENTITY)}:{IDENTITY_PORT}",
+        bind=ALL,
+        upstream=container(WEBAPP),
     )
+
+
+def _caddy_ports() -> tuple[Port, ...]:
+    """The site's port, on the address §7e puts the site at.
+
+    It is the port the person reaches, and it is published on the machine's
+    PRIVATE NETWORK address when there is one — the same expression the DNS's
+    own answer uses — and on the loop when there is not, which is the supported
+    state and not a degraded one. **It is not `0.0.0.0`**: a port published on
+    every address is a port on the LAN, and what §7a measured and this product
+    promises is that nothing of AT's is out there except the edge on the network
+    the person chose.
+
+    It is a function and not a constant for the same reason `site_host` is: the
+    address is measured when the environment comes up, and a value read at
+    import would stop being true the moment the person joined a network.
+    """
+    return (Port(PORT, address=vpn.address() or LOOP),)
 
 
 def draw_gate() -> str:
@@ -658,14 +770,23 @@ def _quoted(value: str) -> str:
 def _identity_conf() -> str:
     """Authelia's configuration — the gate, declared by AT (§7b).
 
-    Three things are decided here and nothing else. The **storage** is the
-    container's data folder, which is a folder of the instance mounted into it,
-    so the sessions and the registrations live in the folder the backup covers
-    (§3). The **access control** denies by default and names AT's own site as
-    `one_factor`: AT comes in as one more app behind the gate, and the app not
-    named is the app that does not enter. And the **session secret** is drawn by
-    AT and kept beside this file, because it belongs to the installation and
-    not to the process.
+    **Everything here was read off a REFUSAL, and that is the point.** The
+    provider measures its own configuration and refuses to start without six
+    things, none of which is a preference: the storage and the key it encrypts
+    its records with; a notifier — an smtp or a file — because it has to be able
+    to tell somebody something; the secret it signs an identity-validation token
+    with; the access control, which denies by default and names AT's own site as
+    `one_factor`, because AT comes in as one more app behind the gate and the
+    app not named is the app that does not enter; the session secret; and the
+    cookie's DOMAIN, which is the site and which the provider refuses without a
+    dot unless it is an IP — and that last one is why the site on the loop is an
+    ADDRESS and not the word `localhost` (`site_host`).
+
+    Each secret is drawn once and kept beside this file (`_drawn`), because they
+    belong to the installation and not to a start: one drawn per start would
+    drop every session on the floor and make every record it had written
+    unreadable. The notifier's file lives in the state folder, which is the
+    folder the backup covers (§3), so a notice survives a copied folder.
 
     **No OIDC provider is declared, and that is a decision and not an omission.**
     §7b has Authelia speaking OIDC with whoever speaks OIDC and forward-auth
@@ -678,28 +799,31 @@ def _identity_conf() -> str:
     slice's to write.
     """
     session = _drawn(IDENTITY, IDENTITY_SESSION)
+    encryption = _drawn(IDENTITY, IDENTITY_ENCRYPTION)
+    signature = _drawn(IDENTITY, IDENTITY_JWT)
+    site = site_host()
     lines = [
         f"# {tr('services.identity-provider.file.header')}",
         "---",
         "theme: auto",
-        # The container's own bind, and not a publication: what leaves the
-        # container is the port the runtime maps onto the loop (§7a's measured
-        # rule — what closes the LAN is publishing on loopback).
-        "host: 0.0.0.0",
-        f"port: {IDENTITY_PORT}",
+        # O endereço do container, e não uma publicação: o que sai dele é o que
+        # o runtime mapeia (§7a) — e o NOME do serviço é como a borda e o WebApp
+        # o alcançam, os dois na mesma rede.
+        "server:",
+        f"  address: {_quoted(f'tcp://{ALL}:{IDENTITY_PORT}')}",
         "log:",
         "  level: info",
         "session:",
         f"  secret: {_quoted(session)}",
         "  cookies:",
-        # The domain and the URL are the SITE's — the name the person is at when
-        # the portal hands them the cookie (§7e: the private network's name, when
-        # there is one). A cookie issued for another name is a cookie the browser
-        # will not send back, and a portal that redirects elsewhere is a login
-        # that lands outside the edge.
-        f"    - domain: {site_host()}",
-        f"      authelia_url: {caddy_service.address(site_host(), PORT)}",
+        # O domínio e a URL são os do SITE — o nome em que a pessoa está quando
+        # o portal lhe entrega o cookie (§7e). Um cookie emitido para outro nome
+        # é um cookie que o navegador não devolve, e um portal que redireciona
+        # para fora é um login que pousa fora da borda.
+        f"    - domain: {site}",
+        f"      authelia_url: {caddy_service.address(site, PORT)}",
         "storage:",
+        f"  encryption_key: {_quoted(encryption)}",
         "  local:",
         f"    path: {IDENTITY_DATA}/db.sqlite3",
         "authentication_backend:",
@@ -708,8 +832,14 @@ def _identity_conf() -> str:
         "access_control:",
         "  default_policy: deny",
         "  rules:",
-        f"    - domain: {site_host()}",
+        f"    - domain: {site}",
         "      policy: one_factor",
+        "notifier:",
+        "  filesystem:",
+        f"    filename: {IDENTITY_CONFIG}/{IDENTITY_NOTIFICATIONS}",
+        "identity_validation:",
+        "  reset_password:",
+        f"    jwt_secret: {_quoted(signature)}",
     ]
     return "\n".join(lines) + "\n"
 
@@ -811,15 +941,18 @@ class Service:
     name: str
     label: str
     image: Image
-    ports: tuple[Port, ...] = ()
+    # A tuple, or a callable that answers one when the environment comes up —
+    # the SITE's is the second, and `ports_of` is the one reader that knows.
+    ports: Callable[[], tuple[Port, ...]] | tuple[Port, ...] = ()
     mounts: tuple[Mount | Mirror, ...] = ()
     command: Callable[[], tuple[str, ...]] | None = None
     # What the service is TOLD about the environment it is part of — the
     # environment's own words, handed to the container as its variables. A
     # container cannot see the host's loop, so a service that has to reach
     # another one is told the name to use instead of guessing (§7c's WebApp and
-    # its gate).
-    env: tuple[tuple[str, str], ...] = ()
+    # its gate). It is a callable for the same reason `ports` is, where a value
+    # is not a word but a path: what one of them names is the folder.
+    env: Callable[[], tuple[tuple[str, str], ...]] | tuple[tuple[str, str], ...] = ()
     writes: tuple[tuple[str, Callable[[], str]], ...] = ()
     network: str = NETWORK
 
@@ -867,6 +1000,10 @@ SERVICES: tuple[Service, ...] = (
         ports=(Port(53, "udp"), Port(53)),
         mounts=(Mount(DNSMASQ_CONFIG),),
         writes=(("dnsmasq.conf", _dnsmasq_conf),),
+        # The one service of the environment that talks to nobody: it answers,
+        # and what it asks of the environment is nothing. That is why it is the
+        # one service alone on `DMZ` — and why nothing else is.
+        network=DMZ,
     ),
     # §7b's gate, and it comes up BEFORE the Caddy on purpose: the edge asks it
     # about every request, and an edge whose provider is not standing yet
@@ -879,7 +1016,10 @@ SERVICES: tuple[Service, ...] = (
             version="4.39.28",
             digest="sha256:bd97cff4fcbf715b5ff1f9ae286afbe6033afce385302520b0368122d43a6f54",
         ),
-        ports=(Port(IDENTITY_PORT),),
+        # Nothing is published, and that is not an omission: who reaches the
+        # provider is the Caddy (`forward_auth`) and the WebApp (its own check),
+        # and both reach it by name on the network — so the loop door it used to
+        # hold, for a Caddy that shared the host's, is gone.
         mounts=(Mount(IDENTITY_CONFIG), Mount(IDENTITY_DATA, host="data")),
         writes=((IDENTITY_YAML, _identity_conf), (IDENTITY_USERS, _identity_users)),
     ),
@@ -889,29 +1029,28 @@ SERVICES: tuple[Service, ...] = (
         name=WEBAPP,
         label=f"services.{WEBAPP}.name",
         image=WEBAPP_IMAGE,
-        ports=(Port(WEBAPP_PORT),),
+        # No published port: the door of this container is the network and the
+        # edge that stands on it, and a port on the machine would be a second
+        # door — one the gate's secret would have to keep closed on its own.
         mounts=(Mirror(),),
         command=_webapp_command,
-        # The gate, reached the only way a container can reach it: by the name
-        # the environment gave the provider, on the network the two share. The
-        # host's loop is not visible from here, and `127.0.0.1` inside this
-        # container is this container (`gate.GATE_ENV`).
-        env=((GATE_ENV, f"{container(IDENTITY)}:{IDENTITY_PORT}"),),
+        env=_webapp_env,
     ),
     Service(
-        name="caddy",
+        name=CADDY,
         label="services.caddy.name",
         image=Image(
             repo="docker.io/library/caddy",
             version="2.11.4",
             digest="sha256:0c994536bddb66445885237f1a5dcc1916bccea922661c76b4e9fc24061f9b52",
         ),
-        # No published port: the Caddy is the edge, it shares the host's network
-        # and binds AT's own address itself (the site's port). What it proxies
-        # to is the loop, which a container on a network of its own cannot see.
+        # The site's port, and it is the ONLY port the environment publishes
+        # outside the loop when the machine is on a private network (§7e): the
+        # edge is what the person reaches, and everything else of the
+        # environment is on the loop or on nothing at all.
+        ports=_caddy_ports,
         mounts=(Mount(CADDY_CONFIG), Mount(CADDY_DATA, host="storage")),
         writes=(("Caddyfile", _caddy_conf),),
-        network=HOST_NETWORK,
     ),
     # §7f's notifier, and it comes up LAST: nothing the environment fronts
     # depends on it — no edge proxies to it and no gate asks it anything — and
@@ -1017,9 +1156,28 @@ def running(service: Service, pins: dict[str, dict]) -> Image:
 
 # ---------------------------------------------------------- the environment ---
 
+def ports_of(service: Service) -> tuple[Port, ...]:
+    """The ports a service publishes, resolved NOW.
+
+    `ports` is a tuple for every service but one, and the exception is the
+    SITE's: what address the edge publishes on is §7e's, and §7e is measured
+    when the environment comes up — the machine's address on the private
+    network, or the loop. A value read at import would be a value that stopped
+    being true the moment the person joined a network. It is a callable for the
+    same reason `command` and `writes` are.
+    """
+    return service.ports() if callable(service.ports) else service.ports
+
+
+def env_of(service: Service) -> tuple[tuple[str, str], ...]:
+    """The variables a service is handed, resolved NOW — the same shape, the same
+    reason (`ports_of`): what one of them names is the folder."""
+    return service.env() if callable(service.env) else service.env
+
+
 def addresses(service: Service) -> tuple[str, ...]:
     """The host addresses this service publishes on, in the order declared."""
-    return tuple(dict.fromkeys(port.address for port in service.ports))
+    return tuple(dict.fromkeys(port.address for port in ports_of(service)))
 
 
 def address_ready(address: str) -> bool:
@@ -1076,11 +1234,11 @@ def run_argv(service: Service, image: Image) -> list[str]:
         "--label", f"{LABEL}={service.name}",
         "--network", service.network,
     ]
-    for port in service.ports:
+    for port in ports_of(service):
         argv += ["--publish", port.published()]
     for mount in service.mounts:
         argv += ["--volume", mount.volume(state(service.name))]
-    for key, value in service.env:
+    for key, value in env_of(service):
         argv += ["--env", f"{key}={value}"]
     argv.append(image.reference())
     if service.command is not None:
@@ -1109,10 +1267,21 @@ def _prepare(service: Service) -> Path:
     return where
 
 
-def _network() -> None:
-    """The environment's network, created if this machine does not have it."""
-    if not podman.ok(["network", "exists", NETWORK]):
-        podman.run(["network", "create", NETWORK])
+def networks() -> tuple[str, ...]:
+    """Every network the manifest's services are on, in the order declared.
+
+    It is asked of the manifest and never written by hand, the way `blocked` is:
+    a service that moves to another network tomorrow enters this question by
+    existing, and a network nobody is on is a network nothing creates.
+    """
+    return tuple(dict.fromkeys(service.network for service in SERVICES))
+
+
+def _networks() -> None:
+    """The environment's networks, created if this machine does not have them."""
+    for name in networks():
+        if not podman.ok(["network", "exists", name]):
+            podman.run(["network", "create", name])
 
 
 def _state_of(service: Service) -> str:
@@ -1166,6 +1335,57 @@ def published(host: str, port: int) -> bool:
             return True
     except OSError:
         return False
+
+
+def inside(url: str, headers: dict[str, str]) -> int | None:
+    """Ask a service from INSIDE the environment's network — the deploy's probe.
+
+    **The services answer on the network and nowhere else**, which is the fix the
+    container path needed (§7c: an app on a container's own loop is reached by
+    nobody) — and it has a consequence for whoever asks a question: a process on
+    the host reaches nothing, so the question has to be asked from where the
+    services are. A throwaway container on the network comes up, runs one `curl`
+    and goes away — `--rm`, so nothing is left standing.
+
+    The image is the EDGE's (`CADDY`), the one image of the manifest that carries
+    an HTTP client — measured: `curl`, `wget` and `nc` — and it is already pulled
+    by the time anything asks.
+
+    **The headers travel on the command's INPUT and never on its argv**, the rule
+    the notifier's password follows (`services/notifier.py`) and for the same
+    reason: an argv is a `ps` on this machine. A status comes back as a number;
+    everything else — no network, no image, a container that did not come up — is
+    `None`, which is the honest "could not tell" and never an invented refusal.
+
+    It has the shape `core/gate.Answer`, so whoever asks through the gate's seam
+    hands it over as the transport.
+    """
+    asked = podman.run(
+        ["run", "--rm", "-i",
+         "--network", NETWORK,
+         "--entrypoint", "curl", _service(CADDY).image.reference(),
+         "-s", "-o", "/dev/null", "-w", "%{http_code}",
+         "-K", "-", url],
+        input=_as_curl_config(headers),
+    )
+    if asked.returncode != 0:
+        return None
+    answered = asked.stdout.strip()
+    return int(answered) if answered.isdigit() else None
+
+
+def _as_curl_config(headers: dict[str, str]) -> str:
+    """The headers as curl's own configuration, for its INPUT.
+
+    A value is escaped so that a name carrying a quote is the name and not the
+    syntax around it — the same care `_quoted` takes with a name on its way into
+    a YAML file.
+    """
+    lines = []
+    for name, value in headers.items():
+        escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+        lines.append(f'header = "{name}: {escaped}"')
+    return "\n".join(lines) + "\n"
 
 
 def _start(service: Service, pins: dict[str, dict]) -> bool:
@@ -1256,7 +1476,7 @@ def up(ask: Ask | None = None) -> str:
         print(tr("services.gate.drawn", where=caddy_service.gate_file()))
 
     pins = held()
-    _network()
+    _networks()
     for service in SERVICES:
         if not _start(service, pins):
             return FAILED
@@ -1422,7 +1642,8 @@ def down(say: bool = True) -> None:
         return
     for service in SERVICES:
         podman.run(["rm", "--force", container(service.name)])
-    podman.run(["network", "rm", NETWORK])
+    for name in networks():
+        podman.run(["network", "rm", name])
     if say:
         print(tr("services.down.done", where=paths.services_dir()))
 
@@ -1463,7 +1684,7 @@ def status() -> None:
     # answers, and an address that answers nothing is not said at all — it is
     # not the report's business to name a door that is not there.
     host = site_host()
-    served = host != HOST and published(host, PORT)
+    served = published(host, PORT)
     if served:
         print(tr("services.status.site",
                  url=caddy_service.address(host, PORT)))
