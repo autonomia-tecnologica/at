@@ -14,6 +14,8 @@
 
 - Podman é o escolhido para containers. `dnsmasq` e o Caddy são os primeiros serviços. O primeiro para customizar as urls de acesso e o segundo para publicar o AT, agora em container, pelo isolamento.
 
+- **O site é um NOME, e o DNS do ambiente é o que responde por ele.** O `dnsmasq` responde `at.local` com o endereço onde a borda está de fato, e é `at.local` que o Caddy serve quando a máquina não está em rede privada nenhuma. Um nome, e não o laço, por duas medidas: o portão recusa um domínio de cookie sem ponto que não seja um IP, e o TLS precisa de um nome para o SNI — um cliente que se liga a um ENDEREÇO não manda nenhum, e a borda responde o handshake com erro porque não tem certificado que possa servir. O que a pessoa digita é o nome, então a máquina precisa usar esse DNS.
+
 #### b. Instalar provedor de identidade como container (obrigatório)
 
 - O AT tem autenticador próprio, e no caminho container ele é o portão: um provedor de identidade externo, aqui o Authelia, à frente de tudo. Ele fica responsável pela autenticação de todos os serviços existentes aqui, e o AT entra como mais um app — não como exceção.
@@ -35,6 +37,12 @@
 #### c. Instalar WebApp como container (obrigatório)
 
 - O WebApp, principal forma de usar o AT, é instalado como um container. Visa diminuir o raio de explosão em uma aplicação web comprometida.
+
+- **O WebApp responde na rede do container, e a borda o alcança pelo nome.** Isto é medido e não preferência: um app escutando no laço do próprio container não é alcançado por ninguém — a porta publicada entrega no endereço de rede do container e não encontra nada lá, e a borda é outro container, cujo `127.0.0.1` é ele mesmo. Então o app escuta nos endereços do container, e o que impede isso de ser uma exposição é o segredo do portão (§7b): quem o alcança sem trazer o segredo leva `403`.
+
+- **A rede do ambiente é uma, e o que decide o lugar de um serviço nela é com quem ele precisa falar.** O `127.0.0.1` de um container é ele mesmo e mais ninguém, e duas redes não se alcançam de forma alguma — medido, não há rota nem nome —, então o Caddy (que faz o proxy para o WebApp e pergunta ao portão a cada requisição), o WebApp (que pergunta ao portão se o portal dele está de pé) e o portão ficam juntos. O DNS é o único serviço que não fala com ninguém, e é o único serviço no DMZ do ambiente, onde ele não alcança o WebApp.
+
+- **A porta do WebApp é a que o AT serve por padrão, e ela não é publicada.** Expor move o endereço que a pessoa alcança, nunca o que o WebApp escuta — e quem o alcança é a borda, na rede que os dois dividem, ou ninguém.
 
 #### d. Instalar corretor ortográfico e gramatical como container (opcional)
 

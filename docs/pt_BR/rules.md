@@ -7,8 +7,8 @@
 - O isolamento é do caminho container. No caminho hospedado o AT é um processo na máquina, sem container nenhum em volta, e isso é declarado — não há promessa de conter o raio de explosão de um comprometimento. O que o caminho hospedado oferece em troca é escutar só o laço local por padrão, e exigir autenticação e TLS para sair dele.
 
 - Decisões vigentes. A linha é a decisão; o detalhe vive onde o link aponta:
-  - Sem autenticação, o AT só escuta `127.0.0.1`; exposto exige autenticação — [Acesso e exposição](#acesso-e-exposição).
-  - Exposto exige TLS, e TLS só existe com o Caddy: `at-cli webapp` sem a bandeira é HTTP em laço local — [Acesso e exposição](#acesso-e-exposição).
+  - O AT responde em `127.0.0.1` por padrão, e é isso que este produto recomenda; outro endereço é ajuste da pasta, e o que ele custa é o que a nota de segurança do ambiente avalia — [Acesso e exposição](#acesso-e-exposição).
+  - Exposto exige TLS, e TLS só existe com o Caddy: `at-cli webapp` sem a bandeira serve HTTP, e quem sai do laço é o Caddy — [Acesso e exposição](#acesso-e-exposição).
   - O AT tem autenticador próprio, com quatro formas de entrar, todas terminando num ator: Forms local, Basic, credencial de máquina e a identidade afirmada pelo portão — [Interfaces](interfaces.md), [Tabelas](architecture.md#tabelas).
   - A credencial do ator mora hasheada na própria linha dele, com `libsodium`; Basic e Forms são a **mesma** credencial, e o que os separa é o transporte — [Tabelas](architecture.md#tabelas).
   - Nenhum segredo mora no `settings.json`: ele guarda permissão e ajuste, nunca credencial — [Configurações gerais](architecture.md#configurações-gerais).
@@ -39,9 +39,9 @@
 
 ### Acesso e exposição
 
-- Sem nenhuma forma de autenticação configurada, o AT escuta apenas `127.0.0.1`. Não há exceção, e não há modo "só nesta rede interna": ou há autenticação, ou o AT não sai do laço local.
+- O AT responde em `127.0.0.1`, e esse é o padrão que este produto recomenda e o endereço que ele usa para si. O endereço é um ajuste da instalação — a chave `webapp_host` do `settings.json`, ou o `--host` de uma execução — e **o AT não recusa ouvir fora do laço**. **O motivo de não recusar é que o mesmo endereço significa duas coisas e o app não tem como distingui-las**: o `0.0.0.0` de um container está dentro de uma rede, atrás da borda e do portão (§7b, §7c), e o `0.0.0.0` de uma máquina está numa LAN. Quem responde por um endereço é a rede em volta dele, e é a nota de segurança do ambiente que avalia isso; ouvir fora do laço não é o que este produto recomenda.
 
-- Expor exige autenticação **e** TLS. Como o TLS é do Caddy, e o Caddy é embarcado (§3, Código e delivery), a exposição no caminho hospedado acontece por `at-cli webapp --include-caddy`: sem a bandeira, o comando serve o WebApp em HTTP, e só em laço local. No caminho container quem fica na borda é o Caddy em container, pelo isolamento.
+- Expor exige autenticação **e** TLS. Como o TLS é do Caddy, e o Caddy é embarcado (§3, Código e delivery), a exposição no caminho hospedado acontece por `at-cli webapp --include-caddy`: o Caddy termina o TLS e publica o AT, e o WebApp responde no laço atrás dele. No caminho container quem fica na borda é o Caddy em container, pelo isolamento.
 
 - O AT não entrega HSTS, por motivo óbvio: ele serve com certificado próprio, e HSTS transformaria o aviso do navegador em erro sem saída. É o preço de não depender de um domínio público, e de não poder garantir TLS confiável.
 

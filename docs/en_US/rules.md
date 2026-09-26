@@ -7,8 +7,8 @@
 - Isolation belongs to the container path. On the hosted path AT is a process on the machine, with no container around it, and that is declared — there is no promise of containing the blast radius of a compromise. What the hosted path offers in exchange is listening only on the local loop by default, and demanding authentication and TLS to leave it.
 
 - Decisions in force. The line is the decision; the detail lives where the link points:
-  - Without authentication, AT listens only on `127.0.0.1`; exposed demands authentication — [Access and exposure](#access-and-exposure).
-  - Exposed demands TLS, and TLS only exists with Caddy: `at-cli webapp` without the flag is HTTP on the local loop — [Access and exposure](#access-and-exposure).
+  - AT answers on `127.0.0.1` by default, and that is what this product recommends; another address is an adjustment of the folder, and what it costs is what the environment's security note evaluates — [Access and exposure](#access-and-exposure).
+  - Exposed demands TLS, and TLS only exists with Caddy: `at-cli webapp` without the flag serves HTTP, and who leaves the loop is the Caddy — [Access and exposure](#access-and-exposure).
   - AT has an authenticator of its own, with four ways in, all of them ending at an actor: local Forms, Basic, machine credential and the identity the gate asserts — [Interfaces](interfaces.md), [Tables](architecture.md#tables).
   - The actor's credential lives hashed in its own row, with `libsodium`; Basic and Forms are the **same** credential, and what separates them is the transport — [Tables](architecture.md#tables).
   - No secret lives in `settings.json`: it holds permission and adjustment, never a credential — [General settings](architecture.md#general-settings).
@@ -39,9 +39,9 @@
 
 ### Access and exposure
 
-- With no form of authentication configured, AT listens only on `127.0.0.1`. There is no exception, and there is no "only on this internal network" mode: either there is authentication, or AT does not leave the local loop.
+- AT answers on `127.0.0.1`, and that is the default this product recommends and the address it uses for itself. The address is an adjustment of the installation — the `webapp_host` key of `settings.json`, or `--host` for a single run — and **AT does not refuse to listen outside the loop**. **The reason it does not refuse is that the same address means two different things and the app has no way to tell them apart**: a container's `0.0.0.0` is inside a network, behind the edge and the gate (§7b, §7c), and a machine's `0.0.0.0` is on a LAN. What answers for an address is the network around it, and the environment's security note is where that is evaluated; listening outside the loop is not what this product recommends.
 
-- Exposing demands authentication **and** TLS. Since the TLS is Caddy's, and Caddy is embedded (§3, Code and delivery), exposure on the hosted path happens through `at-cli webapp --include-caddy`: without the flag, the command serves the WebApp over HTTP, and only on the local loop. On the container path, whoever sits at the edge is the Caddy in a container, for the isolation.
+- Exposing demands authentication **and** TLS. Since the TLS is Caddy's, and Caddy is embedded (§3, Code and delivery), exposure on the hosted path happens through `at-cli webapp --include-caddy`: the Caddy terminates the TLS and publishes AT, and the WebApp answers on the loop behind it. On the container path, whoever sits at the edge is the Caddy in a container, for the isolation.
 
 - AT does not deliver HSTS, for an obvious reason: it serves with its own certificate, and HSTS would turn the browser's warning into an error with no way out. That is the price of not depending on a public domain, and of not being able to guarantee trusted TLS.
 

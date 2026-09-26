@@ -14,6 +14,8 @@
 
 - Podman is the choice for containers. `dnsmasq` and Caddy are the first services. The first to customize the access urls and the second to publish AT, now in a container, for the isolation.
 
+- **The site is a NAME, and the DNS of the environment is what answers for it.** `dnsmasq` answers `at.local` with the address the edge is actually at, and `at.local` is what the Caddy serves when the machine is on no private network. A name, and not the loop, because of two measurements: the gate refuses a cookie domain without a dot that is not an IP, and TLS needs a name to put in the SNI — a client connecting to an ADDRESS sends none, and the edge answers the handshake with an error because it has no certificate it can serve. What the person types is the name, so the machine has to use that DNS.
+
 #### b. Install the identity provider as a container (required)
 
 - AT has an authenticator of its own, and on the container path it is the gate: an external identity provider, here Authelia, in front of everything. It becomes responsible for the authentication of all the services existing here, and AT comes in as one more app — not as an exception.
@@ -35,6 +37,12 @@
 #### c. Install the WebApp as a container (required)
 
 - The WebApp, the main way of using AT, is installed as a container. It aims to reduce the blast radius in a compromised web application.
+
+- **The WebApp answers on the container's network, and the edge reaches it by name.** This is measured and not a preference: an app listening on its own container's loop is reached by nobody — the published port lands on the container's network address and finds nothing there, and the edge is another container, whose `127.0.0.1` is itself. So the app listens on the container's addresses, and what keeps that from being an exposure is the gate secret (§7b): whoever reaches it and brings no secret is refused with `403`.
+
+- **The environment's network is one, and what decides a service's place in it is who it has to talk to.** A container's `127.0.0.1` is itself and nobody else, and two networks do not reach each other at all — measured, no route and no name — so the Caddy (which proxies to the WebApp and asks the gate about every request), the WebApp (which asks the gate whether its portal is standing) and the gate stand together. The DNS is the one service that talks to nobody, and it is the one service on the environment's DMZ, where it cannot reach the WebApp.
+
+- **The WebApp's port is the one AT serves by default, and it is not published.** Exposing moves the address the person reaches, never the one the WebApp listens on — and who reaches it is the edge, on the network the two share, or nobody at all.
 
 #### d. Install the spelling and grammar checker as a container (optional)
 
