@@ -241,6 +241,33 @@ class TheProof(FolderCase):
         # que lesse isso como recusa estaria culpando um portão que funciona.
         self.assertFalse(switch.proved(FakeProbes(sealed=None, unsealed=None)))
 
+    def test_the_edge_answering_nothing_is_said_by_the_road_and_not_by_the_gate(self):
+        # **O caso que se repete**: a primeira pergunta não recebe NADA. Ela tem
+        # duas causas, e elas se consertam em lugares diferentes — o nome que não
+        # resolve nesta máquina (o DNS do ambiente é §7a, e a máquina precisa
+        # usá-lo) e o ambiente que não está de pé —, então a frase diz qual das
+        # duas. Antes desta linha as duas viravam "o portão não foi provado", que
+        # manda a pessoa procurar num lugar que não tem nada de errado.
+        with mock.patch.object(switch, "reaches", lambda host: False):
+            self.assertEqual(switch.unproved(FakeProbes(front=None)),
+                             "services.switch.unresolved")
+        with mock.patch.object(switch, "reaches", lambda host: True):
+            self.assertEqual(switch.unproved(FakeProbes(front=None)),
+                             "services.switch.unreachable")
+
+    def test_the_first_claim_is_asked_once_and_the_machine_is_asked_its_name(self):
+        # Duas coisas da mesma frase: a primeira pergunta é feita UMA vez (a
+        # estrada sai do mesmo número que a recusa do portão, e uma pergunta a
+        # mais é uma espera a mais), e a pergunta à máquina é sobre o NOME do
+        # site — é ele que o DNS do ambiente responde (§7a).
+        probes = FakeProbes(front=None)
+        asked: list[str] = []
+        with mock.patch.object(switch, "reaches",
+                               lambda host: asked.append(host) or True):
+            switch.unproved(probes)
+        self.assertEqual(len(probes.asked), 1)
+        self.assertEqual(asked, [env.site_host()])
+
     def test_with_nobody_to_prove_there_is_nothing_to_prove(self):
         # The proof speaks AS somebody: an identity is a row of `actor`, and a
         # folder with no row has no name to receive.
@@ -321,6 +348,20 @@ class TheSwitch(FolderCase):
         # E o ambiente que a virada subiu vai embora com ela.
         self.assertTrue(fake.removed("caddy"))
         self.assertIn(["network", "rm", env.NETWORK], fake.calls)
+
+    def test_a_name_this_machine_does_not_resolve_is_said_with_its_name(self):
+        # O que a pessoa lê quando o nome não resolve daqui: a frase da estrada,
+        # com o nome, e não "o portão não foi provado". É a rodada de `up` e
+        # `switch` que esta frase existe para não repetir.
+        self.person()
+        self.runtime()
+        with mock.patch.object(switch, "reaches", lambda host: False):
+            outcome, text = self.quiet(switch.to_gate, answer=FakeProbes(front=None))
+        self.assertEqual(outcome, switch.FAILED)
+        self.assertFalse(gate.on_gate())
+        self.assertIn(
+            i18n.tr("services.switch.unresolved", host=env.site_host()), text)
+        self.assertNotIn(i18n.tr("services.switch.unproved"), text)
 
     def test_a_service_that_does_not_come_up_takes_everything_back(self):
         # The environment is not the switch, but the switch OWNS what it started:

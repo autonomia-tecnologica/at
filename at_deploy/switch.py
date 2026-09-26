@@ -33,7 +33,11 @@ failed.** `unproved` walks the four in the order the person meets them and
 answers with the sentence of the first that did not close; `proved` is the same
 walk collapsed to a boolean. The portal failing is NOT "the gate is unproved" —
 that sentence blames the provider for an edge that never routes it — so it has
-words of its own (`services.switch.noportal`).
+words of its own (`services.switch.noportal`). **And so does the first question
+with no answer at all** (`services.switch.unresolved` and
+`services.switch.unreachable`): "could not tell" is not "refused", and the name
+this machine does not resolve and the environment that is not up are fixed in
+two different places.
 
 **Where each probe stands is the PATH's and not a preference.** The two that
 speak to the EDGE — the site in front, and the portal it sends the browser to —
@@ -54,6 +58,8 @@ record itself is ONE file, and `gate.remember` is the one door that writes it.
 """
 
 from __future__ import annotations
+
+import socket
 
 from at.core import actors, files, gate, migrations
 from at.i18n import tr
@@ -151,6 +157,36 @@ def witness() -> tuple[str, str] | None:
     return None
 
 
+def reaches(host: str) -> bool:
+    """Whether this machine resolves `host` — the seam of the question below.
+
+    **A name that does not resolve and a road with nothing behind it are two
+    different failures with two different owners**, and the sentence the switch
+    prints is the one that says which way to look: the DNS of the environment is
+    §7a's, and pointing the machine at it is the person's act; an environment
+    that is down is AT's to bring up. It is a function so that the suite can take
+    the resolver away, the way it takes the agent away (`vpn.run`): a test that
+    asked the machine's real DNS would answer differently on the machine where
+    the name happens to resolve.
+    """
+    try:
+        socket.getaddrinfo(host, None)
+    except OSError:
+        return False
+    return True
+
+
+def edge_status(answer: gate.Answer | None = None) -> int | None:
+    """The ONE probe of the first claim: what the SITE answers through the edge.
+
+    It is called once and only once per walk — `unproved` reads the status and
+    `in_front` is the same reading collapsed to a boolean —, because the two
+    sentences of a failed first claim are told apart BY this number: `None` is
+    the road, and anything else is the gate.
+    """
+    return gate.ask(f"{site()}/api/session", {}, answer)
+
+
 def in_front(answer: gate.Answer | None = None) -> bool:
     """Whether the gate answers for AT — the edge in front, through the site.
 
@@ -158,7 +194,7 @@ def in_front(answer: gate.Answer | None = None) -> bool:
     needs before anybody is in): without the gate in front, AT answers it with
     its own 200 page; with the gate there, the answer is Authelia's refusal.
     """
-    return gate.ask(f"{site()}/api/session", {}, answer) in IN_FRONT
+    return edge_status(answer) in IN_FRONT
 
 
 def sealed(answer: gate.Answer | None = None) -> bool:
@@ -212,8 +248,20 @@ def unproved(answer: gate.Answer | None = None) -> str | None:
     that is already refused. The three that are about AT share one sentence
     ("the gate was not proved"); the portal has its own, because it is not the
     provider that failed — it is the edge that never routes it.
+
+    **A primeira pergunta que não recebe resposta NENHUMA tem frase própria**, e
+    por uma razão medida: ela é a que acontece com mais frequência, e as duas
+    causas dela se parecem por dentro e não se parecem por fora. O nome pode não
+    resolver nesta máquina — e aí o que falta é apontá-la ao DNS do ambiente
+    (§7a) —, ou o ambiente pode não estar de pé. Dizer "o portão não foi provado"
+    para as duas manda a pessoa procurar no lugar errado, que foi o que custou
+    uma rodada de `up` e `switch` a quem escreveu isto.
     """
-    if not (in_front(answer) and sealed(answer) and unsealed(answer)):
+    status = edge_status(answer)
+    if status is None:
+        return ("services.switch.unresolved" if not reaches(environment.site_host())
+                else "services.switch.unreachable")
+    if not (status in IN_FRONT and sealed(answer) and unsealed(answer)):
         return "services.switch.unproved"
     if not portal(answer):
         return "services.switch.noportal"
@@ -270,7 +318,9 @@ def to_gate(ask: environment.Ask | None = None,
     # and its own words for a portal the edge never routes (`unproved`).
     reason = unproved(answer)
     if reason is not None:
-        _rollback(reason)
+        # As duas frases da estrada nomeiam o que a pessoa procura: a URL que
+        # não respondeu, e o nome que a máquina não resolve.
+        _rollback(reason, url=site(), host=environment.site_host())
         return FAILED
 
     # The commit, and the only line that changes what this folder IS. A folder
@@ -288,7 +338,7 @@ def to_gate(ask: environment.Ask | None = None,
     return SWITCHED
 
 
-def _rollback(reason: str) -> None:
+def _rollback(reason: str, **fields: str) -> None:
     """Undo everything the switch did — the environment, and nothing else.
 
     The mode was never written, so there is nothing to put back there: a folder
@@ -299,7 +349,7 @@ def _rollback(reason: str) -> None:
     """
     print(tr("services.switch.rolling_back"))
     environment.down(say=False)
-    print(tr(reason))
+    print(tr(reason, **fields))
 
 
 def to_forms() -> str:
