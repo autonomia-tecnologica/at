@@ -29,12 +29,17 @@ from unittest import mock
 
 from at import i18n
 from at.core import actors, boot, files, gate
+from at.encryption import vault
 from at.services import caddy
 from at.ui.webapp import app as webapp
 
 from at_deploy import environment as env
 from at_deploy import podman, switch, vpn
 from at_deploy.cli import OK, REFUSED, USAGE, services, main
+
+# A Frase de Acesso que a suíte digita (item 50, §4). A virada é uma das portas
+# por onde alguém sobe o ambiente, e é ela que sela o que a subida sorteia.
+PHRASE = "a frase de acesso da suite, e ela nao abre nada de ninguem"
 
 
 class FakeRuntime:
@@ -116,6 +121,9 @@ class FolderCase(unittest.TestCase):
         self.no_vpn = mock.patch.object(vpn, "run", side_effect=FileNotFoundError)
         self.no_vpn.start()
         self.addCleanup(self.no_vpn.stop)
+        # **E a pessoa digita a Frase**: o `up` a lê de um leitor sem eco, e a
+        # suíte entrega o dela — é o `getpass` do terminal que ela substitui.
+        self.phrase = lambda question: PHRASE
         with redirect_stdout(io.StringIO()):
             boot.create_working_folder()
 
@@ -155,7 +163,12 @@ class TheProof(FolderCase):
     def setUp(self):
         super().setUp()
         self.person()
-        env.draw_gate()
+        # **O ambiente de pé, que é o que a prova pergunta**: ele sorteia o
+        # portão, o SELA na pasta e monta a cópia aberta no diretório de
+        # execução — e é a cópia que a prova carrega no cabeçalho, porque é ela
+        # que o WebApp de dentro do container compara (item 50).
+        self.runtime()
+        self.quiet(env.up, secret=self.phrase)
 
     def test_the_four_claims_together_are_what_proves_the_gate(self):
         self.assertTrue(switch.proved(FakeProbes()))
@@ -212,7 +225,7 @@ class TheProof(FolderCase):
         sealed = [headers for _, headers in probes.asked
                   if caddy.GATE_HEADER in headers]
         self.assertEqual(len(sealed), 1)
-        self.assertEqual(sealed[0][caddy.GATE_HEADER], caddy.gate_secret())
+        self.assertEqual(sealed[0][caddy.GATE_HEADER], env.gate_opened())
         self.assertEqual(sealed[0][switch.IDENTITY_HEADER], "Rafael")
 
     def test_the_sealed_identity_is_asked_inside_the_network_by_name(self):
@@ -240,7 +253,7 @@ class TheProof(FolderCase):
         self.assertEqual(seen, [(
             f"http://{env.container(env.WEBAPP)}:{env.WEBAPP_PORT}/api/state",
             {switch.IDENTITY_HEADER: "Rafael",
-             caddy.GATE_HEADER: caddy.gate_secret()},
+             caddy.GATE_HEADER: env.gate_opened()},
         )])
 
     def test_a_probe_that_reaches_nothing_is_not_a_refusal(self):
@@ -286,13 +299,18 @@ class TheProof(FolderCase):
         # reach: a role that cannot read the probe's route answers 403, and 403
         # is the status the proof reads as "the identity was not taken". So the
         # witness is chosen by the permission the ROUTE is about to demand.
-        self.assertEqual(switch.witness(), ("Rafael", caddy.gate_secret()))
+        self.assertEqual(switch.witness(), ("Rafael", env.gate_opened()))
         with mock.patch.object(actors, "may", lambda row, permission: False):
             self.assertIsNone(switch.witness())
 
-    def test_a_folder_with_no_gate_secret_proves_nothing(self):
-        caddy.gate_file().unlink()
+    def test_a_folder_whose_gate_the_container_cannot_read_proves_nothing(self):
+        # **O portão que a prova manda é a cópia ABERTA do diretório de
+        # execução** (item 50), e sem ela não há prova: é ela que o WebApp
+        # compara, e o arquivo da pasta é o envelope — uma prova que mandasse o
+        # envelope acusaria o portão de recusar a identidade que ele aceita.
+        env.gate_materialized().unlink()
         self.assertFalse(switch.proved(FakeProbes()))
+        self.assertIsNone(switch.witness())
 
 
 # ------------------------------------------------------------- the switch ---
@@ -304,7 +322,7 @@ class TheSwitch(FolderCase):
         self.person()
         fake = self.runtime()
         probes = FakeProbes()
-        outcome, text = self.quiet(switch.to_gate, answer=probes)
+        outcome, text = self.quiet(switch.to_gate, secret=self.phrase, answer=probes)
         self.assertEqual(outcome, switch.SWITCHED)
         self.assertTrue(gate.on_gate())
         # And it was proved BEFORE the commit: the mode is written after the
@@ -325,13 +343,13 @@ class TheSwitch(FolderCase):
             seen.append(gate.mode())
             return FakeProbes()(url, headers)
 
-        self.quiet(switch.to_gate, answer=watch)
+        self.quiet(switch.to_gate, secret=self.phrase, answer=watch)
         self.assertEqual(set(seen), {gate.FORMS})
 
     def test_a_proof_that_does_not_close_takes_everything_back(self):
         self.person()
         fake = self.runtime()
-        outcome, text = self.quiet(switch.to_gate, answer=FakeProbes(sealed=403))
+        outcome, text = self.quiet(switch.to_gate, secret=self.phrase, answer=FakeProbes(sealed=403))
         self.assertEqual(outcome, switch.FAILED)
         # The folder is exactly what it was: Forms on, and the environment the
         # switch brought up is gone with its containers and its network.
@@ -347,7 +365,7 @@ class TheSwitch(FolderCase):
         # portal — e a pessoa iria procurar o defeito no lugar errado.
         self.person()
         fake = self.runtime()
-        outcome, text = self.quiet(switch.to_gate, answer=FakeProbes(portal=431))
+        outcome, text = self.quiet(switch.to_gate, secret=self.phrase, answer=FakeProbes(portal=431))
         self.assertEqual(outcome, switch.FAILED)
         self.assertFalse(gate.on_gate())
         self.assertIn(i18n.tr("services.switch.noportal"), text)
@@ -363,7 +381,7 @@ class TheSwitch(FolderCase):
         self.person()
         self.runtime()
         with mock.patch.object(switch, "reaches", lambda host: False):
-            outcome, text = self.quiet(switch.to_gate, answer=FakeProbes(front=None))
+            outcome, text = self.quiet(switch.to_gate, secret=self.phrase, answer=FakeProbes(front=None))
         self.assertEqual(outcome, switch.FAILED)
         self.assertFalse(gate.on_gate())
         self.assertIn(
@@ -375,7 +393,7 @@ class TheSwitch(FolderCase):
         # a half-done environment is undone before the person is told.
         self.person()
         fake = self.runtime(fails=("pull",))
-        outcome, text = self.quiet(switch.to_gate, answer=FakeProbes())
+        outcome, text = self.quiet(switch.to_gate, secret=self.phrase, answer=FakeProbes())
         self.assertEqual(outcome, env.FAILED)
         self.assertFalse(gate.on_gate())
         self.assertTrue(fake.removed("caddy"))
@@ -387,7 +405,7 @@ class TheSwitch(FolderCase):
         self.person()
         fake = self.runtime()
         with mock.patch.object(switch, "witness", lambda: None):
-            outcome, text = self.quiet(switch.to_gate, answer=FakeProbes())
+            outcome, text = self.quiet(switch.to_gate, secret=self.phrase, answer=FakeProbes())
         self.assertEqual(outcome, switch.FAILED)
         self.assertFalse(gate.on_gate())
         self.assertIn(i18n.tr("services.switch.nowitness"), text)
@@ -402,7 +420,7 @@ class TheSwitch(FolderCase):
         refused = files.ReadOnly(env.pin_file())
         with mock.patch.object(gate.settings, "save", side_effect=refused):
             with self.assertRaises(files.ReadOnly):
-                self.quiet(switch.to_gate, answer=FakeProbes())
+                self.quiet(switch.to_gate, secret=self.phrase, answer=FakeProbes())
         self.assertFalse(gate.on_gate())
         self.assertIn(["network", "rm", env.NETWORK], fake.calls)
 
@@ -415,27 +433,27 @@ class TheSwitch(FolderCase):
         broken = OSError("no space left on device")
         with mock.patch.object(env.files, "atomic_write_text", side_effect=broken):
             with self.assertRaises(OSError):
-                self.quiet(switch.to_gate, answer=FakeProbes())
+                self.quiet(switch.to_gate, secret=self.phrase, answer=FakeProbes())
         self.assertFalse(gate.on_gate())
         self.assertIn(["network", "rm", env.NETWORK], fake.calls)
 
     def test_a_folder_already_on_the_container_path_has_nothing_to_switch(self):
         self.person()
         self.runtime()
-        self.quiet(switch.to_gate, answer=FakeProbes())
-        _, text = self.quiet(switch.to_gate, answer=FakeProbes())
+        self.quiet(switch.to_gate, secret=self.phrase, answer=FakeProbes())
+        _, text = self.quiet(switch.to_gate, secret=self.phrase, answer=FakeProbes())
         self.assertIn(i18n.tr("services.switch.already"), text)
         self.assertTrue(gate.on_gate())
 
     def test_without_a_podman_the_two_ways_out_come_back_unchanged(self):
         # §7a's sentence, and neither way wrote anything: there is nothing to
         # roll back and nothing to commit.
-        outcome, text = self.quiet(switch.to_gate)
+        outcome, text = self.quiet(switch.to_gate, secret=self.phrase)
         self.assertEqual(outcome, env.NO_ANSWER)
         self.assertFalse(gate.on_gate())
         self.assertFalse(env.pin_file().exists())
 
-        outcome, text = self.quiet(switch.to_gate, ask=lambda question: "n")
+        outcome, text = self.quiet(switch.to_gate, secret=self.phrase, ask=lambda question: "n")
         self.assertEqual(outcome, env.HOSTED)
         self.assertIn(i18n.tr("services.no_podman.hosted"), text)
         self.assertFalse(gate.on_gate())
@@ -447,7 +465,7 @@ class TheSwitch(FolderCase):
         # to refuse it.
         self.person()
         self.runtime()
-        self.quiet(switch.to_gate, answer=FakeProbes(sealed=403))
+        self.quiet(switch.to_gate, secret=self.phrase, answer=FakeProbes(sealed=403))
         self.assertFalse(gate.on_gate())
         # E o endereço do caminho hospedado é o de sempre: o laço.
         self.assertEqual(webapp.chosen_host(), webapp.HOST)
@@ -464,7 +482,7 @@ class TheForms(FolderCase):
     def on_gate(self) -> FakeRuntime:
         self.person()
         fake = self.runtime()
-        self.quiet(switch.to_gate, answer=FakeProbes())
+        self.quiet(switch.to_gate, secret=self.phrase, answer=FakeProbes())
         assert gate.on_gate()
         return fake
 
@@ -485,7 +503,7 @@ class TheForms(FolderCase):
         # there to take anything down.
         self.person()
         self.runtime()
-        self.quiet(switch.to_gate, answer=FakeProbes())
+        self.quiet(switch.to_gate, secret=self.phrase, answer=FakeProbes())
         with mock.patch.object(podman, "present", lambda: False):
             _, text = self.quiet(switch.to_forms)
         self.assertEqual(gate.mode(), gate.FORMS)
@@ -494,7 +512,7 @@ class TheForms(FolderCase):
     def test_the_read_only_folder_refuses_the_return_and_moves_nothing(self):
         self.person()
         fake = self.runtime()
-        self.quiet(switch.to_gate, answer=FakeProbes())
+        self.quiet(switch.to_gate, secret=self.phrase, answer=FakeProbes())
         calls = len(fake.calls)
         with mock.patch.dict(os.environ, {"AT_READONLY": "1"}):
             with self.assertRaises(files.ReadOnly):
@@ -509,7 +527,7 @@ class TheMissingEnvironment(FolderCase):
     def on_gate(self) -> None:
         self.person()
         self.runtime()
-        self.quiet(switch.to_gate, answer=FakeProbes())
+        self.quiet(switch.to_gate, secret=self.phrase, answer=FakeProbes())
         assert gate.on_gate()
 
     def test_the_question_is_asked_where_the_absent_podman_is_noticed(self):
@@ -567,7 +585,7 @@ class TheCli(FolderCase):
         with mock.patch.object(
             switch, "unproved", lambda answer=None: "services.switch.unproved"
         ):
-            code, text = self.quiet(services, ["switch"])
+            code, text = self.quiet(services, ["switch"], secret=self.phrase)
         self.assertEqual(code, REFUSED)
         self.assertIn(i18n.tr("services.switch.unproved"), text)
 
@@ -575,7 +593,7 @@ class TheCli(FolderCase):
         self.person()
         self.runtime()
         with mock.patch.object(switch, "unproved", lambda answer=None: None):
-            self.quiet(services, ["switch"])
+            self.quiet(services, ["switch"], secret=self.phrase)
         self.assertTrue(gate.on_gate())
         code, text = self.quiet(services, ["forms"])
         self.assertEqual(code, OK)

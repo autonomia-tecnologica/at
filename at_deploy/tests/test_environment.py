@@ -32,6 +32,7 @@ from unittest import mock
 
 from at import i18n
 from at.core import actors, boot, files, tables
+from at.encryption import vault
 from at.services import caddy
 from at.ui.webapp import app as webapp
 
@@ -58,6 +59,13 @@ SAID = (
     "services.status.head.service", "services.status.head.state",
     "services.status.head.image",
     "services.dnsmasq.file.header", "services.gate.drawn",
+    # §4's Access Phrase, pedida pela subida (item 50): a pergunta, a segunda
+    # leitura da primeira vez, e as três recusas. **A da frase curta é do
+    # COFRE** — `secrets.error.phrase`, a mesma sentença que o `core.secrets`
+    # diz —, e ela entra aqui porque quem a imprime é esta superfície.
+    "services.phrase", "services.phrase.again", "services.phrase.mismatch",
+    "services.phrase.no_tty", "services.phrase.unopened",
+    "secrets.error.phrase",
     "services.elevation.ask", "services.elevation.refused",
     "services.elevation.no_tty", "services.elevation.failed",
     "services.elevation.spent",
@@ -85,6 +93,12 @@ SAID = (
 # one. The shape is ntfy's own — `tk_` and 32 characters — and the value is
 # nobody's: what the tests read is that it was KEPT, at 0600, and never printed.
 DRAWN_TOKEN = "tk_abcdefghijklmnopqrstuvwxyz012"
+
+# A Frase de Acesso que a suíte digita (item 50, §4). **Ela é quem sela o que a
+# pasta guarda e quem o abre**, e é por isso que ela é uma só em toda esta
+# suíte: um teste que lesse o valor selado com OUTRA Frase não leria nada — que
+# é exatamente o que a conferência da Frase prova, no teste que a prova.
+PHRASE = "a frase de acesso da suite, e ela nao abre nada de ninguem"
 
 
 class FakeRuntime:
@@ -157,6 +171,12 @@ class FolderCase(unittest.TestCase):
         self.floor = mock.patch.object(env, "floor", lambda: 0)
         self.floor.start()
         self.addCleanup(self.floor.stop)
+        # **E a pessoa digita a Frase**, pelo mesmo desenho: o `up` a lê de um
+        # leitor sem eco, e a suíte entrega o dela — é o `getpass` do terminal
+        # que ela substitui. Uma subida sem leitor nenhum é o caso que os testes
+        # da recusa exercitam, e eles passam `secret=None` de propósito.
+        self.phrase = lambda question: PHRASE
+        self._vault_key: bytes | None = None
         # And the machine is on NO private network, by the same rule again: the
         # day this suite runs on a machine that is, half of these tests would be
         # writing the tailnet's name into the files they compare (§7e).
@@ -192,6 +212,70 @@ class FolderCase(unittest.TestCase):
         with redirect_stdout(output):
             result = call(*args, **kw)
         return result, output.getvalue()
+
+    def phrase_key(self) -> bytes:
+        """A Chave do Cofre da Frase da suíte — derivada uma vez por teste.
+
+        `vault.vault_key` é a derivação de uma frase e custa o que ela custa
+        (§4); a mesma Frase dentro do mesmo teste é a mesma Chave.
+        """
+        if self._vault_key is None:
+            self._vault_key = vault.vault_key(PHRASE)
+        return self._vault_key
+
+    def value(self, where: Path, scope: str) -> str:
+        """O valor CLARO que um arquivo da pasta guarda SELADO (item 50).
+
+        Ele é lido ABRINDO o envelope com a Frase da suíte, e nunca de um
+        segundo sorteio: um valor sorteado de novo não provaria nada sobre o
+        arquivo, e é o arquivo que estes testes leem.
+        """
+        envelope = where.read_text(encoding="utf-8").strip()
+        return vault.unseal(envelope, vault.derived_key(self.phrase_key(), scope))
+
+    def secrets(self) -> dict[str, str]:
+        """Os valores que o deploy sorteou, em CLARO, lidos da própria pasta.
+
+        Os quatro que o AT sela são lidos ABRINDO o envelope que a pasta guarda
+        (`value`), e nunca de um segundo sorteio: um valor sorteado de novo pelo
+        teste não provaria nada sobre o arquivo. As duas pontas do notificador
+        ainda são lidas em claro, que é como a pasta as guarda até o corte
+        seguinte do item 50.
+        """
+        values = {name: self.value(where, scope)
+                  for name, (where, scope) in _sealed_values().items()}
+        values[TOKEN] = notifier.token()
+        values[PHONE] = notifier.phone_token()
+        return values
+
+    def marks(self) -> dict[str, str]:
+        """O texto que IDENTIFICA cada valor dentro da pasta.
+
+        Para os quatro que o AT sela é o ENVELOPE — a pasta guarda o selo, e é
+        ele que a linha do catálogo promete —, e para as duas pontas do
+        notificador, que ainda estão em claro, é o próprio valor.
+        """
+        marks = {name: where.read_text(encoding="utf-8").strip()
+                 for name, (where, _) in _sealed_values().items()}
+        marks[TOKEN] = notifier.token() or ""
+        marks[PHONE] = notifier.phone_token() or ""
+        return marks
+
+    def copy_of(self, where: Path) -> Path | None:
+        """A cópia que o diretório de execução fez de um arquivo da pasta.
+
+        `App/services/<serviço>/<arquivo>` vira `<run>/services/<serviço>/<arquivo>`,
+        e o portão — que não é arquivo de serviço nenhum — tem cópia com nome
+        próprio (`gate_materialized`). O que não é lido por container nenhum
+        responde `None`: não há cópia nenhuma dele.
+        """
+        if where == caddy.gate_file():
+            return env.gate_materialized()
+        try:
+            service = where.relative_to(env.paths.services_dir()).parts[0]
+        except ValueError:
+            return None
+        return env.materialized(service) / where.name
 
 
 class TheManifest(unittest.TestCase):
@@ -361,32 +445,32 @@ class TheOffer(FolderCase):
 
     def test_with_no_terminal_neither_way_is_taken(self):
         # §3: a decision made where nobody could answer is not one.
-        outcome, text = self.quiet(env.up)
+        outcome, text = self.quiet(env.up, secret=self.phrase)
         self.assertEqual(outcome, env.NO_ANSWER)
         self.assertIn(i18n.tr("services.no_podman.no_tty"), text)
 
     def test_the_two_ways_are_both_in_the_question(self):
         said = []
-        outcome, text = self.quiet(env.up, ask=lambda question: (said.append(question), "n")[1])
+        outcome, text = self.quiet(env.up, secret=self.phrase, ask=lambda question: (said.append(question), "n")[1])
         self.assertEqual(outcome, env.HOSTED)
         self.assertIn(i18n.tr("services.no_podman.hosted"), text)
         self.assertEqual(len(said), 1)
 
     def test_installing_is_the_persons_act_and_bill_only_says_how(self):
-        outcome, text = self.quiet(env.up, ask=lambda question: "s")
+        outcome, text = self.quiet(env.up, secret=self.phrase, ask=lambda question: "s")
         self.assertEqual(outcome, env.INSTALL)
         self.assertIn(i18n.tr("services.no_podman.install"), text)
 
     def test_neither_way_out_writes_anything(self):
         for answer in ("s", "n"):
             with self.subTest(answer=answer):
-                self.quiet(env.up, ask=lambda question, answer=answer: answer)
+                self.quiet(env.up, secret=self.phrase, ask=lambda question, answer=answer: answer)
         self.assertFalse(env.pin_file().exists())
         self.assertFalse(env.state("dnsmasq").exists())
 
     def test_nothing_is_asked_of_the_runtime_without_a_podman(self):
         with mock.patch.object(podman, "run", mock.Mock()) as called:
-            self.quiet(env.up)
+            self.quiet(env.up, secret=self.phrase)
         called.assert_not_called()
 
 
@@ -395,7 +479,7 @@ class TheUp(FolderCase):
 
     def test_every_service_runs_the_image_at_the_pin(self):
         fake = self.runtime()
-        outcome, text = self.quiet(env.up)
+        outcome, text = self.quiet(env.up, secret=self.phrase)
         self.assertEqual(outcome, env.UP)
         for service in env.SERVICES:
             with self.subTest(service=service.name):
@@ -411,7 +495,7 @@ class TheUp(FolderCase):
         # para onde ele é OBRIGATÓRIO — o `podman run` e o registro da pasta, que
         # o teste acima prova —, e some de toda frase que uma pessoa lê.
         self.runtime()
-        _, text = self.quiet(env.up)
+        _, text = self.quiet(env.up, secret=self.phrase)
         self.assertNotIn("sha256:", text)
 
     def test_the_dnsmasq_publishes_dns_and_mounts_its_own_folder(self):
@@ -419,7 +503,7 @@ class TheUp(FolderCase):
         # —, e o `podman run` é onde a decisão de §7e aparece: com rede, este
         # mesmo argumento traz o endereço dela (`TheTwoNames`).
         fake = self.runtime()
-        self.quiet(env.up)
+        self.quiet(env.up, secret=self.phrase)
         argv = _call(fake, "at-dnsmasq")
         self.assertIn("--network", argv)
         self.assertIn(env.DMZ, argv)
@@ -434,7 +518,7 @@ class TheUp(FolderCase):
         # borda são a rede em que ela está — onde o WebApp e o portão estão — e
         # a única porta que ela publica.
         fake = self.runtime()
-        self.quiet(env.up)
+        self.quiet(env.up, secret=self.phrase)
         argv = _call(fake, "at-caddy")
         self.assertIn(env.NETWORK, argv)
         self.assertIn(f"{env.LOOP}:{env.PORT}:{env.PORT}/tcp", argv)
@@ -446,7 +530,7 @@ class TheUp(FolderCase):
 
     def test_the_containers_are_named_and_labeled_as_bills(self):
         fake = self.runtime()
-        self.quiet(env.up)
+        self.quiet(env.up, secret=self.phrase)
         for service in env.SERVICES:
             with self.subTest(service=service.name):
                 argv = _call(fake, env.container(service.name))
@@ -455,7 +539,7 @@ class TheUp(FolderCase):
 
     def test_the_configuration_lands_in_the_state_folder(self):
         self.runtime()
-        self.quiet(env.up)
+        self.quiet(env.up, secret=self.phrase)
         self.assertIn("address=/", (env.state("dnsmasq") / "dnsmasq.conf").read_text(encoding="utf-8"))
         self.assertIn("reverse_proxy", (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8"))
 
@@ -463,14 +547,14 @@ class TheUp(FolderCase):
         # §7a: the same Caddy, the same generator — and the one line that is a
         # path and not a decision is where the folder is inside the container.
         self.runtime()
-        self.quiet(env.up)
+        self.quiet(env.up, secret=self.phrase)
         text = (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8")
         self.assertIn(f'storage file_system "{env.CADDY_DATA}"', text)
         self.assertNotIn(str(self.root / "App" / "caddy" / "storage"), text)
 
     def test_the_pin_is_recorded_once_the_service_is_up(self):
         self.runtime()
-        self.quiet(env.up)
+        self.quiet(env.up, secret=self.phrase)
         recorded = env.held()
         for service in env.SERVICES:
             with self.subTest(service=service.name):
@@ -480,12 +564,12 @@ class TheUp(FolderCase):
     def test_a_service_already_there_is_replaced_and_not_refused(self):
         # Two containers cannot share a name, and the name is the service.
         fake = self.runtime()
-        self.quiet(env.up)
+        self.quiet(env.up, secret=self.phrase)
         self.assertIn(["rm", "--force", "at-caddy"], fake.calls)
 
     def test_an_image_that_does_not_arrive_stops_the_service(self):
         fake = self.runtime(fails=("pull",))
-        outcome, text = self.quiet(env.up)
+        outcome, text = self.quiet(env.up, secret=self.phrase)
         self.assertEqual(outcome, env.FAILED)
         self.assertIn("dnsmasq", text)
         self.assertNotIn("run", fake.verbs())
@@ -500,7 +584,7 @@ class TheUp(FolderCase):
             json.dumps({"dnsmasq": ahead}), encoding="utf-8"
         )
         fake = self.runtime()
-        outcome, text = self.quiet(env.up)
+        outcome, text = self.quiet(env.up, secret=self.phrase)
         self.assertEqual(outcome, env.UP)
         self.assertIn(i18n.tr(
             "services.up.ahead", service=i18n.tr("services.dnsmasq.name"),
@@ -513,7 +597,7 @@ class TheUp(FolderCase):
 
     def test_the_network_is_created_when_the_machine_does_not_have_it(self):
         fake = self.runtime(fails=("network",))
-        self.quiet(env.up)
+        self.quiet(env.up, secret=self.phrase)
         self.assertIn(["network", "exists", env.NETWORK], fake.calls)
         self.assertIn(["network", "create", env.NETWORK], fake.calls)
 
@@ -521,7 +605,7 @@ class TheUp(FolderCase):
         self.runtime()
         with mock.patch.dict(os.environ, {"AT_READONLY": "1"}):
             with self.assertRaises(files.ReadOnly):
-                self.quiet(env.up)
+                self.quiet(env.up, secret=self.phrase)
 
 
 def _call(fake: FakeRuntime, name: str) -> list[str]:
@@ -542,7 +626,7 @@ class TheIdentityProvider(FolderCase):
 
     def up(self) -> FakeRuntime:
         fake = self.runtime()
-        self.quiet(env.up)
+        self.quiet(env.up, secret=self.phrase)
         return fake
 
     def conf(self) -> str:
@@ -703,7 +787,7 @@ class TheGate(FolderCase):
 
     def up(self) -> FakeRuntime:
         fake = self.runtime()
-        self.quiet(env.up)
+        self.quiet(env.up, secret=self.phrase)
         return fake
 
     def caddyfile(self) -> str:
@@ -716,7 +800,7 @@ class TheGate(FolderCase):
         # §7b: "um valor sorteado pelo AT na instalação". The installation is
         # the environment coming up, and this is the one message it owes.
         self.runtime()
-        _, text = self.quiet(env.up)
+        _, text = self.quiet(env.up, secret=self.phrase)
         self.assertTrue(caddy.gate_secret())
         self.assertIn(i18n.tr("services.gate.drawn", where=caddy.gate_file()), text)
 
@@ -726,7 +810,7 @@ class TheGate(FolderCase):
         # from the same file.
         self.up()
         held = caddy.gate_secret()
-        _, text = self.quiet(env.up)
+        _, text = self.quiet(env.up, secret=self.phrase)
         self.assertEqual(caddy.gate_secret(), held)
         self.assertNotIn(i18n.tr("services.gate.drawn", where=caddy.gate_file()), text)
 
@@ -773,7 +857,7 @@ class TheGate(FolderCase):
     def test_without_a_podman_no_gate_is_drawn(self):
         # The folder that never took the container path has no gate, and a
         # secret drawn for a path nobody took would be a file nobody reads.
-        self.quiet(env.up)
+        self.quiet(env.up, secret=self.phrase)
         self.assertFalse(caddy.gate_file().exists())
 
 
@@ -873,7 +957,7 @@ class ThePermission(FolderCase):
         # network created, no service started.
         fake = self.runtime()
         with self.machine(1024):
-            outcome, text = self.quiet(env.up, lambda question: "n")
+            outcome, text = self.quiet(env.up, secret=self.phrase, ask=lambda question: "n")
         self.assertEqual(outcome, env.HOSTED)
         self.assertIn(i18n.tr("services.elevation.refused", ports="53, 443"), text)
         self.assertFalse(caddy.gate_file().exists())
@@ -882,7 +966,7 @@ class ThePermission(FolderCase):
     def test_a_machine_that_already_allows_it_goes_straight_to_the_services(self):
         fake = self.runtime()
         with self.machine(0):
-            outcome, _ = self.quiet(env.up)
+            outcome, _ = self.quiet(env.up, secret=self.phrase)
         self.assertEqual(outcome, env.UP)
         self.assertTrue(fake.calls)
 
@@ -947,7 +1031,7 @@ class ThePrivateNetwork(FolderCase):
                 mock.patch.object(env, "address_ready", lambda address: True):
             self.assertEqual(env.site_host(), env.NAME)
             fake = self.runtime()
-            self.quiet(env.up)
+            self.quiet(env.up, secret=self.phrase)
             caddyfile = (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8")
             self.assertIn(f"https://{env.NAME} {{", caddyfile)
             self.assertNotIn("host.example-tailnet.ts.net", caddyfile)
@@ -982,7 +1066,7 @@ class ThePrivateNetwork(FolderCase):
         # ponto e o TLS precisa de um nome para o SNI. Os dois foram medidos.
         self.assertEqual(env.site_host(), env.NAME)
         self.runtime()
-        self.quiet(env.up)
+        self.quiet(env.up, secret=self.phrase)
         self.assertIn(f"https://{env.NAME} {{",
                       (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8"))
         self.assertIn(f"address=/{env.NAME}/{env.LOOP}",
@@ -1010,7 +1094,7 @@ class TheAddress(FolderCase):
         self.runtime()
         with mock.patch.object(env, "SERVICES", (lost,)), \
                 mock.patch.object(env, "GRACE", 0.0):
-            outcome, text = self.quiet(env.up)
+            outcome, text = self.quiet(env.up, secret=self.phrase)
         self.assertEqual(outcome, env.FAILED)
         self.assertIn(i18n.tr(
             "services.up.no_address", service=i18n.tr("services.dnsmasq.name"),
@@ -1125,7 +1209,7 @@ class TheDown(FolderCase):
 
     def test_the_folder_is_not_touched(self):
         self.runtime()
-        self.quiet(env.up)
+        self.quiet(env.up, secret=self.phrase)
         before = (env.state("dnsmasq") / "dnsmasq.conf").read_text(encoding="utf-8")
         self.quiet(env.down)
         self.assertEqual((env.state("dnsmasq") / "dnsmasq.conf").read_text(encoding="utf-8"), before)
@@ -1238,7 +1322,7 @@ class TheStatus(FolderCase):
         # §7f: what a person needs to know is that the credential exists and
         # WHERE it lives — the value is a secret and is never printed.
         self.runtime()
-        self.quiet(env.up)
+        self.quiet(env.up, secret=self.phrase)
         _, text = self.quiet(env.status)
         self.assertIn(i18n.tr(
             "services.notifier.credential.at", where=notifier.token_file(),
@@ -1258,7 +1342,7 @@ class TheWebappContainer(FolderCase):
 
     def up(self) -> FakeRuntime:
         fake = self.runtime()
-        self.quiet(env.up)
+        self.quiet(env.up, secret=self.phrase)
         return fake
 
     def test_the_webapp_publishes_nothing_and_answers_on_the_networks_address(self):
@@ -1343,7 +1427,7 @@ class TheWebappBehindIt(FolderCase):
         # liga em todos os endereços do container — porque o nome que o
         # certificado carrega não é um endereço que o container tenha.
         self.runtime()
-        self.quiet(env.up)
+        self.quiet(env.up, secret=self.phrase)
         text = (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8")
         self.assertIn(f"https://{env.NAME} {{", text)
         self.assertIn(f"\tbind {env.ALL}", text)
@@ -1377,7 +1461,7 @@ class TheNames(FolderCase):
         # e a pessoa levaria um erro de handshake em vez de "esse nome não
         # existe". Uma linha por nome é o que o ambiente responde.
         self.runtime()
-        self.quiet(env.up)
+        self.quiet(env.up, secret=self.phrase)
         conf = (env.state("dnsmasq") / "dnsmasq.conf").read_text(encoding="utf-8")
         for name in env.names():
             with self.subTest(name=name):
@@ -1392,7 +1476,7 @@ class TheNames(FolderCase):
         with mock.patch.object(vpn, "address", lambda call=None: "100.64.0.1"), \
                 mock.patch.object(env, "address_ready", lambda address: True):
             self.runtime()
-            self.quiet(env.up)
+            self.quiet(env.up, secret=self.phrase)
             conf = (env.state("dnsmasq") / "dnsmasq.conf").read_text(encoding="utf-8")
         for name in env.names():
             with self.subTest(name=name):
@@ -1404,7 +1488,7 @@ class TheNames(FolderCase):
         # container — a mesma razão do site: o nome não é um endereço que o
         # container tenha.
         self.runtime()
-        self.quiet(env.up)
+        self.quiet(env.up, secret=self.phrase)
         text = (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8")
         self.assertIn(f"https://{env.notifier_host()} {{", text)
         self.assertIn(f"reverse_proxy {env.container(env.NOTIFIER)}:{env.NOTIFIER_PORT}",
@@ -1421,7 +1505,7 @@ class TheNames(FolderCase):
         # (`authority_file`), dito aqui com o caminho de DENTRO do container, que
         # é quem lê o arquivo: a pasta de estado vira `/data` lá dentro.
         self.runtime()
-        self.quiet(env.up)
+        self.quiet(env.up, secret=self.phrase)
         text = (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8")
         self.assertIn(f"https://{env.cert_host()} {{", text)
         authority = caddy.authority_file(env.CADDY_DATA)
@@ -1437,7 +1521,7 @@ class TheNames(FolderCase):
         # precisa da CA é um aparelho que ainda não confia nela, e um
         # `forward_auth` ali seria uma pergunta cujo certificado é a resposta.
         self.runtime()
-        self.quiet(env.up)
+        self.quiet(env.up, secret=self.phrase)
         text = (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8")
         block = text[text.index(f"https://{env.cert_host()} {{"):]
         self.assertNotIn("forward_auth", block)
@@ -1450,7 +1534,7 @@ class TheNames(FolderCase):
         # responde `subscribers=0`, porque o app do celular pega o 302 e nunca
         # conecta. O bloco dele é um dos que não têm pergunta nenhuma.
         self.runtime()
-        self.quiet(env.up)
+        self.quiet(env.up, secret=self.phrase)
         text = (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8")
         start = text.index(f"https://{env.notifier_host()} {{")
         block = text[start:text.index(f"https://{env.cert_host()} {{")]
@@ -1488,7 +1572,7 @@ class TheNotifier(FolderCase):
 
     def up(self) -> FakeRuntime:
         fake = self.runtime()
-        self.quiet(env.up)
+        self.quiet(env.up, secret=self.phrase)
         return fake
 
     def conf(self) -> str:
@@ -1509,7 +1593,7 @@ class TheNotifier(FolderCase):
         # help and exits, which is a notifier that never comes up. So the
         # subcommand is a decision of AT's and not the image's.
         fake = self.runtime()
-        self.quiet(env.up)
+        self.quiet(env.up, secret=self.phrase)
         argv = _call(fake, env.container(env.NOTIFIER))
         self.assertEqual(argv[-1], "serve")
         self.assertEqual(argv[-2], _service(env.NOTIFIER).image.reference())
@@ -1607,7 +1691,7 @@ class TheNotifier(FolderCase):
         # service, and AT's own credential inside it — the account, the scope,
         # and the token (`services/notifier.py`).
         self.runtime()
-        _, text = self.quiet(env.up)
+        _, text = self.quiet(env.up, secret=self.phrase)
         self.assertEqual(notifier.token(), DRAWN_TOKEN)
         self.assertIn(i18n.tr(
             "services.notifier.drawn", where=notifier.token_file(),
@@ -1639,7 +1723,7 @@ class TheNotifier(FolderCase):
         # environment up again — the same rule the gate's secret follows.
         self.up()
         held = notifier.token()
-        _, text = self.quiet(env.up)
+        _, text = self.quiet(env.up, secret=self.phrase)
         self.assertEqual(notifier.token(), held)
         self.assertNotIn(i18n.tr(
             "services.notifier.drawn", where=notifier.token_file(),
@@ -1647,7 +1731,7 @@ class TheNotifier(FolderCase):
         ), text)
 
 
-# --------------------------------------------------- the state, in the clear ---
+# ------------------------------------------------------ the state, sealed ---
 
 # The names the catalogue below uses for the values the deploy DRAWS — each one a
 # value a service signs or proves with, kept in the folder so that it outlives
@@ -1684,15 +1768,37 @@ FILLED_BY_CONTAINERS = (
 )
 
 
+def _sealed_values() -> dict[str, tuple[Path, str]]:
+    """Onde cada valor que o AT SELA mora, e o escopo da chave que o abre (item 50).
+
+    São os QUATRO desta fatia — o portão, que é do Caddy, e os três do provedor
+    —, e o par `(arquivo, escopo)` é o que a subida usa para os abrir: o escopo é
+    o serviço dono do valor (§4), e é o nome dele que a pasta não precisa
+    carregar porque o arquivo já o diz.
+
+    As duas pontas do notificador NÃO estão aqui: elas são o corte seguinte do
+    item 50, e até lá a pasta as guarda em claro, a `0600`.
+    """
+    return {
+        GATE: (caddy.gate_file(), env.CADDY),
+        SESSION: (env.state(env.IDENTITY) / env.IDENTITY_SESSION, env.IDENTITY),
+        ENCRYPTION: (env.state(env.IDENTITY) / env.IDENTITY_ENCRYPTION,
+                     env.IDENTITY),
+        SIGNATURE: (env.state(env.IDENTITY) / env.IDENTITY_JWT, env.IDENTITY),
+    }
+
+
 def _catalogue() -> tuple[tuple[Path, int | None, frozenset[str]], ...]:
     """What the deploy writes into the folder: the file, the mode, the secrets.
 
     **This is item 50's audit, turned into a gate.** The philosophy of the folder
     is that it is copied WITHOUT encryption and that what a PERSON writes in it is
     theirs — so what the AT creates is the part that has to stop being readable in
-    a copy, and this is the measurement of what that part is today: `at_deploy/`
-    writes it, every line of it is still IN THE CLEAR, and the scanner does not
-    delimit it: measured on a folder the deploy filled, `gitleaks 8.30.1` flags
+    a copy, and this is the measurement of what that part is today: **os quatro
+    valores que o AT sorteia saem daqui como o envelope do cofre** (o corte do
+    selo), **e as duas pontas do notificador ainda saem em claro**, a `0600`.
+    The scanner does not delimit it: measured on a folder the deploy filled,
+    `gitleaks 8.30.1` flags
     ONE of these files — the provider's YAML, where each value has its keyword on
     the line — and is BLIND to the Caddyfile, to the three bare-valued files and
     to the two notifier credentials, because its default rules read a keyword
@@ -1704,9 +1810,10 @@ def _catalogue() -> tuple[tuple[Path, int | None, frozenset[str]], ...]:
     already knows how to keep a secret to itself at `0600` (`notifier._keep`) and
     does it in one place only.
 
-    What the file is FOR is the next slice: a file that stops being written in
-    the clear stops matching this line, and the line is what makes that a
-    deliberate act instead of a drift.
+    **A linha não mudou com o selo, e é isso que a faz um gate**: o que mudou
+    foi o que ela CARREGA — o envelope no lugar do valor —, e `marks` é quem o
+    lê. Um arquivo que parasse de ser escrito, ou um valor que aparecesse em
+    claro num deles, continua sendo uma linha do catálogo que falha.
     """
     identity = env.state(env.IDENTITY)
     return (
@@ -1743,10 +1850,17 @@ def _catalogue() -> tuple[tuple[Path, int | None, frozenset[str]], ...]:
 class TheClearState(FolderCase):
     """What the deploy writes into the folder, and with what mode (item 50).
 
-    The audit of the vault's first slice, held as a gate: the folder is copied
-    without encryption, so the files below are the ones a copy of the folder
-    hands over — and the day one of them stops being written in the clear, this
-    is what has to be told, one line at a time.
+    The audit of the vault's first slice, held as a gate — e o que ele tranca
+    mudou com o selo, que é o que esta fatia veio fazer. A folder is copied
+    without encryption, so the files below are the ones a copy hands over:
+    **os quatro valores que o AT sorteia chegam à pasta como o envelope do
+    cofre** e o valor claro não está em arquivo nenhum dela; as duas pontas do
+    notificador continuam em claro, a `0600`, até o corte que as sela; e o resto
+    não é segredo nenhum.
+
+    O catálogo é a linha por arquivo, e ele é o mesmo depois do selo: o que
+    mudou é o que cada linha carrega, e é por isso que `marks` existe — a
+    classificação continua sendo MEDIDA, arquivo a arquivo, e não repetida.
     """
 
     def up(self) -> None:
@@ -1757,24 +1871,8 @@ class TheClearState(FolderCase):
         what is proved is the mode and the place and not the door.
         """
         self.runtime()
-        self.quiet(env.up)
+        self.quiet(env.up, secret=self.phrase)
         notifier.write_phone_token(DRAWN_PHONE)
-
-    def secrets(self) -> dict[str, str]:
-        """The values the deploy drew, read back from the files it wrote.
-
-        Read from the files and not from a second draw: a value drawn again by
-        the test would be a value that proves nothing about the file.
-        """
-        identity = env.state(env.IDENTITY)
-        return {
-            GATE: caddy.gate_secret(),
-            SESSION: (identity / env.IDENTITY_SESSION).read_text(encoding="utf-8").strip(),
-            ENCRYPTION: (identity / env.IDENTITY_ENCRYPTION).read_text(encoding="utf-8").strip(),
-            SIGNATURE: (identity / env.IDENTITY_JWT).read_text(encoding="utf-8").strip(),
-            TOKEN: notifier.token(),
-            PHONE: notifier.phone_token(),
-        }
 
     def written(self) -> set[Path]:
         """Every file the deploy wrote, by the path it wrote it at."""
@@ -1796,18 +1894,33 @@ class TheClearState(FolderCase):
 
     def test_every_secret_a_file_carries_is_there_and_no_other_one_is(self):
         # The classification is MEASURED and not repeated: what the catalogue
-        # says a file carries has to be in it, and a secret that turns up in a
-        # file the catalogue does not name is a leak the catalogue missed.
+        # says a file carries has to be in it — o ENVELOPE, para os quatro que o
+        # AT sela, e o próprio valor para as duas pontas do notificador —, e um
+        # segredo que apareça num arquivo que o catálogo não nomeia é um
+        # vazamento que o catálogo perdeu.
         self.up()
-        values = self.secrets()
+        marks = self.marks()
         for where, _, carries in _catalogue():
             text = where.read_text(encoding="utf-8")
             with self.subTest(where=where):
                 for name in carries:
-                    self.assertIn(values[name], text)
-                for name, value in values.items():
+                    self.assertIn(marks[name], text)
+                for name, mark in marks.items():
                     if name not in carries:
-                        self.assertNotIn(value, text)
+                        self.assertNotIn(mark, text)
+
+    def test_the_clear_value_of_a_sealed_one_is_in_no_file_of_the_folder(self):
+        # **A promessa desta fatia, medida**: o que o AT sorteia não se lê numa
+        # cópia da pasta. O envelope está lá, e o valor não — em arquivo nenhum
+        # dela, nem no que o catálogo não nomeia.
+        self.up()
+        sealed = _sealed_values()
+        for name, value in self.secrets().items():
+            if name not in sealed or not value:
+                continue
+            for where, _, _ in _catalogue():
+                with self.subTest(value=name, where=where):
+                    self.assertNotIn(value, where.read_text(encoding="utf-8"))
 
     def test_the_mode_of_every_file_is_the_one_the_catalogue_declares(self):
         # `None` is the umask's, and it is what the deploy leaves for every
@@ -1837,26 +1950,154 @@ class TheClearState(FolderCase):
                 self.assertEqual(list(where.iterdir()), [])
 
 
+class TheAccessPhrase(FolderCase):
+    """A Frase de Acesso na subida: quem sela, quem abre, e o que não sobe (§4).
+
+    A fatia que fecha a promessa do item 50 do lado de FORA: o que o AT sorteia
+    não se lê na pasta — o que se lê lá é o envelope —, e o valor claro só existe
+    no diretório de execução, que morre com o ambiente. Quem o escreve lá é o
+    `up`, e ele só o faz com a Frase que ABRIU cada envelope: sem Frase, ou com
+    uma que não abre, o ambiente não sobe e a pasta fica exatamente onde estava.
+    """
+
+    def counting(self, phrase: str = PHRASE):
+        """Um leitor sem eco que conta o que lhe foi perguntado.
+
+        Ele é o que responde por quantas vezes a Frase foi LIDA — a pergunta que
+        separa a primeira subida (duas leituras, porque não há contra o que
+        conferir) das seguintes (uma, porque a conferência é a abertura).
+        """
+        asked: list[str] = []
+
+        def reader(question: str) -> str:
+            asked.append(question)
+            return phrase
+
+        return asked, reader
+
+    def seeded(self) -> None:
+        """Uma pasta que nasceu ANTES do selo: os quatro valores, em claro.
+
+        É o estado que a auditoria mediu na instância, e o corte da migração é o
+        seguinte: esta fatia não o decide, e o que ela tem de provar é que ele
+        sobe como sempre subiu — a Frase não é pedida onde não há o que abrir nem
+        o que selar.
+        """
+        files.atomic_write_text(caddy.gate_file(), "o-portao-que-nasceu-em-claro\n")
+        for name in env.IDENTITY_SECRETS:
+            files.atomic_write_text(env.state(env.IDENTITY) / name,
+                                    f"o-valor-{name}-em-claro\n")
+
+    def test_the_first_boot_reads_the_phrase_twice(self):
+        # **Uma Frase que SELA não tem como ser conferida depois**: a segunda
+        # leitura é a única conferência possível na primeira vez, e é a mesma
+        # proteção que a credencial do primeiro administrador tem (`at-cli
+        # admin`) — e aqui ela vale o que ela acabou de selar.
+        asked, reader = self.counting()
+        self.runtime()
+        outcome, _ = self.quiet(env.up, secret=reader)
+        self.assertEqual(outcome, env.UP)
+        self.assertEqual(len(asked), 2)
+
+    def test_a_folder_that_already_sealed_is_read_once(self):
+        # Depois da primeira vez a conferência é a ABERTURA do que a pasta
+        # guarda, e ela é melhor que uma segunda leitura: dois valores selados
+        # com a mesma Frase são a prova de que é a mesma.
+        self.runtime()
+        self.quiet(env.up, secret=self.phrase)
+        asked, reader = self.counting()
+        outcome, _ = self.quiet(env.up, secret=reader)
+        self.assertEqual(outcome, env.UP)
+        self.assertEqual(len(asked), 1)
+
+    def test_two_readings_that_disagree_draw_nothing(self):
+        # A recusa ANTES de qualquer sorteio: uma pasta com valores selados sob
+        # uma Frase que ninguém sabe qual é seria pior que uma pasta vazia.
+        said = iter([PHRASE, "outra frase de acesso, e ela tambem e longa"])
+        fake = self.runtime()
+        outcome, text = self.quiet(env.up, secret=lambda question: next(said))
+        self.assertEqual(outcome, env.UNREADABLE)
+        self.assertIn(i18n.tr("services.phrase.mismatch"), text)
+        self.assertNotIn("run", fake.verbs())
+        self.assertFalse(caddy.gate_file().exists())
+        self.assertFalse(env.pin_file().exists())
+
+    def test_no_terminal_is_no_phrase_and_the_folder_is_untouched(self):
+        # §3's fail-closed posture, a mesma da elevação: sem terminal não se
+        # pergunta, e não se sobe um ambiente que não abriu o que ele guarda.
+        fake = self.runtime()
+        outcome, text = self.quiet(env.up)
+        self.assertEqual(outcome, env.NO_ANSWER)
+        self.assertIn(i18n.tr("services.phrase.no_tty"), text)
+        self.assertNotIn("run", fake.verbs())
+        self.assertFalse(caddy.gate_file().exists())
+        self.assertFalse(env.pin_file().exists())
+
+    def test_a_phrase_that_does_not_open_what_the_folder_keeps_does_not_come_up(self):
+        self.runtime()
+        self.quiet(env.up, secret=self.phrase)
+        fake = self.runtime()
+        outcome, text = self.quiet(
+            env.up, secret=lambda question: "uma frase que nao e a que selou")
+        self.assertEqual(outcome, env.UNREADABLE)
+        self.assertIn(i18n.tr("services.phrase.unopened", where=caddy.gate_file()),
+                      text)
+        self.assertNotIn("run", fake.verbs())
+
+    def test_a_phrase_under_the_vaults_floor_is_refused_by_its_sentence(self):
+        # O tamanho é a regra do COFRE e não desta porta (§3: quem pergunta não
+        # decide a regra), e a sentença é a mesma que o `core.secrets` diz.
+        fake = self.runtime()
+        outcome, text = self.quiet(env.up, secret=lambda question: "curta")
+        self.assertEqual(outcome, env.UNREADABLE)
+        self.assertIn(i18n.tr("secrets.error.phrase", min=vault.MINIMUM), text)
+        self.assertNotIn("run", fake.verbs())
+        self.assertFalse(caddy.gate_file().exists())
+
+    def test_a_folder_that_never_sealed_is_not_asked(self):
+        # A migração do que já está em claro é o corte seguinte do item 50, e
+        # não esta fatia: uma pasta que já tem os quatro valores sobe como
+        # sempre subiu — sem Frase, porque não há o que abrir nem o que selar.
+        self.seeded()
+        fake = self.runtime()
+        outcome, text = self.quiet(env.up, secret=None)
+        self.assertEqual(outcome, env.UP)
+        self.assertNotIn(i18n.tr("services.phrase.no_tty"), text)
+        self.assertIn("run", fake.verbs())
+        # E o que ela guardava continua em claro: esta fatia não migra.
+        self.assertEqual(vault.envelopes(
+            caddy.gate_file().read_text(encoding="utf-8")), ())
+
+    def test_the_sealing_is_the_same_phrase_every_time(self):
+        # A Chave do Cofre vem da Frase e de mais nada (§4): a mesma Frase sobre
+        # os mesmos valores os abre de novo, e é isso que faz de uma cópia da
+        # pasta uma pasta que volta a subir.
+        self.runtime()
+        self.quiet(env.up, secret=self.phrase)
+        first = self.value(caddy.gate_file(), env.CADDY)
+        self.quiet(env.up, secret=self.phrase)
+        self.assertEqual(self.value(caddy.gate_file(), env.CADDY), first)
+
+
 class TheRunDirectory(FolderCase):
-    """A fatia 2 do item 50: o que o container lê sai da pasta da pessoa.
+    """As fatias 2 e 3 do item 50: o container lê o que a subida ABRIU.
 
     O `--volume` de cada serviço apontava para `App/services/<serviço>/`, a pasta
-    dela — e é isso que impedia o selo: um arquivo selado na pasta seria um
+    da pessoa — e é isso que impedia o selo: um arquivo selado na pasta seria um
     arquivo que o container não consegue abrir. O que esta classe prova é a
-    ESTRADA: o `up` materializa o que cada serviço lê num diretório de execução
-    FORA da Pasta de Trabalho e aponta o `--volume` para lá, e a pasta de estado
-    segue sendo a fonte.
+    ESTRADA e o que ela carrega: o `up` materializa o que cada serviço lê num
+    diretório de execução FORA da Pasta de Trabalho, aponta o `--volume` para lá,
+    e **o que ele monta é o valor, não o envelope** — a pasta de estado segue
+    sendo a fonte, e ela é a que guarda o selo.
 
-    **O que ela NÃO prova é o selo** — ele é a fatia seguinte. Aqui os dois
-    lados têm os mesmos bytes, de propósito: se o diretório de execução nasce com
-    o texto aberto e a pasta continua com o texto aberto, esta fatia entregou o
-    que prometeu, e é a cópia que a fatia do selo troca pela versão aberta do
-    envelope — uma linha de cada vez, e é este catálogo que diz qual.
+    A pergunta (2) da auditoria é respondida aqui, do lado de dentro: nenhum
+    processo do container abre o cofre. Quem o abre é o `up`, uma vez, com a
+    Frase, e o que os três leitores recebem é a cópia clara.
     """
 
     def up(self) -> FakeRuntime:
         fake = self.runtime()
-        self.quiet(env.up)
+        self.quiet(env.up, secret=self.phrase)
         return fake
 
     def test_the_run_directory_lives_outside_the_working_folder(self):
@@ -1867,18 +2108,33 @@ class TheRunDirectory(FolderCase):
         self.assertTrue(where.is_dir())
         self.assertFalse(where.is_relative_to(env.paths.working_folder()))
 
-    def test_every_file_a_service_reads_is_copied_for_it(self):
-        # O que o container lê é a CÓPIA, e ela sai dos mesmos bytes da fonte:
-        # cada arquivo que o deploy escreveu na pasta sai igual no diretório de
-        # execução, com o mesmo nome.
+    def test_the_run_directory_is_a_door_nobody_else_opens(self):
+        # **Ele guarda o valor CLARO**, e o diretório de execução pode cair no
+        # temporário do sistema, onde ele é de todo mundo: a porta é a pasta, e
+        # ela nasce `0700` (o modo do ARQUIVO continua sendo o da umask, porque
+        # quem o lê é o container).
         self.up()
-        for service in env.SERVICES:
-            for name, _ in service.writes:
-                with self.subTest(service=service.name, file=name):
-                    self.assertEqual(
-                        (env.materialized(service.name) / name).read_bytes(),
-                        (env.state(service.name) / name).read_bytes(),
-                    )
+        self.assertEqual(stat.S_IMODE(env.run_dir().stat().st_mode), 0o700)
+
+    def test_the_copy_is_the_folder_with_the_values_open(self):
+        # **O que o container lê é o arquivo ABERTO, e a classificação é medida
+        # caminhando o catálogo**: cada valor que a pasta guarda chega à cópia
+        # como o valor — é o que faz de um arquivo selado um arquivo que o
+        # container consegue ler —, nenhum envelope sobra na cópia, e o valor de
+        # um não aparece no arquivo de outro.
+        self.up()
+        values = self.secrets()
+        for where, _, carries in _catalogue():
+            copy = self.copy_of(where)
+            if copy is None or not copy.is_file():
+                continue
+            text = copy.read_text(encoding="utf-8")
+            with self.subTest(where=where):
+                self.assertEqual(vault.envelopes(text), ())
+                for name, value in values.items():
+                    if value:
+                        self.assertEqual(value in text, name in carries,
+                                         f"{name} em {copy.name}")
 
     def test_the_volume_of_the_read_side_comes_from_the_run_directory(self):
         # **A classificação é MEDIDA, e não repetida**: o teste caminha o
@@ -1906,15 +2162,27 @@ class TheRunDirectory(FolderCase):
     def test_the_gate_is_materialized_and_handed_to_the_webapp(self):
         # O WebApp é o TERCEIRO leitor do portão e o único de dentro do
         # container: ele o lê pela pasta inteira que monta (`Mirror`), e o
-        # `App/caddy/gate` de lá é o arquivo da PASTA — o que o selo vai fechar.
-        # Então ele recebe a cópia clara como uma montagem própria, e o `at-cli`
-        # de dentro é told onde ela está.
+        # `App/caddy/gate` de lá é o arquivo da PASTA — que guarda o ENVELOPE, e
+        # que por isso ninguém de dentro abriria. Então ele recebe a cópia clara
+        # como uma montagem própria, e o `at-cli` de dentro é told onde ela está.
         fake = self.up()
         argv = _call(fake, env.container(env.WEBAPP))
         self.assertIn(f"{env.gate_materialized()}:{env.GATE_MOUNT}:Z", argv)
         self.assertIn(f"{caddy.GATE_PATH_ENV}={env.GATE_MOUNT}", argv)
-        self.assertEqual(env.gate_materialized().read_text(encoding="utf-8"),
-                         caddy.gate_file().read_text(encoding="utf-8"))
+        self.assertEqual(env.gate_materialized().read_text(encoding="utf-8").strip(),
+                         self.value(caddy.gate_file(), env.CADDY))
+        self.assertTrue(vault.envelopes(
+            caddy.gate_file().read_text(encoding="utf-8")))
+
+    def test_the_gate_the_container_reads_is_not_the_file_of_the_folder(self):
+        # **O defeito que isto tranca**: quem prova a virada lia o portão do
+        # ARQUIVO DA PASTA (`switch.witness`), e o que a pasta guarda agora é o
+        # envelope — o WebApp compararia o envelope com o valor aberto e
+        # recusaria a identidade que ele aceita. `gate_opened` é a porta certa:
+        # o valor que o container lê.
+        self.up()
+        self.assertEqual(env.gate_opened(), self.value(caddy.gate_file(), env.CADDY))
+        self.assertNotEqual(env.gate_opened(), caddy.gate_secret())
 
     def test_the_credentials_of_the_notifier_are_read_by_no_container(self):
         # §7f's two ends are read by AT, from OUTSIDE, and by no container: they

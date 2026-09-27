@@ -52,6 +52,7 @@ carries the sealed value is written.
 from __future__ import annotations
 
 import base64
+import re
 
 import nacl.encoding
 import nacl.exceptions
@@ -77,6 +78,13 @@ SEALED = "xsalsa20poly1305"
 # `libsodium` changes cannot drift here.
 KEY_SIZE = nacl.secret.SecretBox.KEY_SIZE
 SALT_SIZE = nacl.pwhash.argon2id.SALTBYTES
+
+# A FORMA do envelope, para quem precisa achá-lo DENTRO de um texto: o nome do
+# algoritmo, os dois-pontos, e o base64 urlsafe que `seal` escreve — o nonce e o
+# ciphertext. Ela é montada a partir de `SEALED` para que um algoritmo novo não
+# deixe esta expressão para trás, e quem a usa é `envelopes`, que é a única
+# porta por onde um envelope é reconhecido sem ser aberto.
+_ENVELOPE = re.compile(rf"{SEALED}:[A-Za-z0-9_\-=]+")
 
 
 class PhraseRefused(ValueError):
@@ -200,6 +208,22 @@ def seal(value: str, key: bytes) -> str:
         raise KeyRefused() from None
     raw = bytes(box.encrypt(value.encode("utf-8")))
     return f"{SEALED}:{base64.urlsafe_b64encode(raw).decode('ascii')}"
+
+
+def envelopes(text: str) -> tuple[str, ...]:
+    """Todo envelope que um texto carrega, na ordem em que aparece.
+
+    **Quem compõe um texto com valores selados dentro precisa saber ONDE eles
+    estão para abri-los depois.** O `configuration.yml` e o `Caddyfile` do
+    caminho container são dois desses textos: eles levam os valores inline, e o
+    que eles levam é o envelope — o que o container monta é este mesmo texto
+    com eles abertos (`at_deploy/environment.py`). A forma é a de `seal`, e ela
+    é lida daqui para que quem a procura não invente uma segunda.
+
+    Um texto sem envelope nenhum responde vazio, e isso não é erro: é o caso
+    comum, e é o que diz a quem pergunta que não há nada a abrir.
+    """
+    return tuple(match.group(0) for match in _ENVELOPE.finditer(text))
 
 
 def unseal(envelope: str, key: bytes) -> str | None:

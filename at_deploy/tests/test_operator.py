@@ -49,6 +49,11 @@ TOKEN_LINE = f"token {DRAWN_TOKEN} created for user phone, never expires"
 CREDENTIAL = "uma-frase-bem-longa"
 NEW_CREDENTIAL = "outra-frase-bem-longa"
 
+# A Frase de Acesso que a suíte digita (item 50, §4). O reinício do provedor a
+# pede — ele monta o `configuration.yml` de novo —, e é ela que sela os três
+# valores que o provedor assina, cifra e prova.
+PHRASE = "a frase de acesso da suite, e ela nao abre nada de ninguem"
+
 # Every sentence the two acts say, in either language: the words of both doors,
 # and the messages each act prints on the way out. A key the catalog does not
 # have answers with the KEY itself, which is why this list exists — a message
@@ -186,6 +191,9 @@ class FolderCase(unittest.TestCase):
         self.no_vpn = mock.patch.object(vpn, "run", side_effect=FileNotFoundError)
         self.no_vpn.start()
         self.addCleanup(self.no_vpn.stop)
+        # **E a pessoa digita a Frase**: o `up` e o reinício do provedor a leem
+        # de um leitor sem eco, e a suíte entrega o dela.
+        self.phrase = lambda question: PHRASE
         with redirect_stdout(io.StringIO()):
             boot.create_working_folder()
 
@@ -221,7 +229,7 @@ class FolderCase(unittest.TestCase):
         """
         gate.remember(gate.GATE)
         self.machine()
-        self.quiet(env.up)
+        self.quiet(env.up, secret=self.phrase)
 
     def quiet(self, call, *args, **kw):
         output = io.StringIO()
@@ -531,7 +539,8 @@ class TheGateCredential(FolderCase):
     def change(self, name: str = "Rafael", credential: str = NEW_CREDENTIAL,
                **kw):
         fake = self.machine(**kw)
-        outcome, text = self.quiet(env.set_credential, name, credential)
+        outcome, text = self.quiet(env.set_credential, name, credential,
+                                   secret=self.phrase)
         return fake, outcome, text
 
     def users(self) -> str:
@@ -571,6 +580,20 @@ class TheGateCredential(FolderCase):
         self.assertIn(i18n.tr("services.credential.changed", name="Rafael",
                               where=env.state(env.IDENTITY) / env.IDENTITY_USERS),
                       text)
+
+    def test_without_the_phrase_the_row_changes_and_the_gate_stays_behind(self):
+        # **A Frase é o preço do reinício, e ele é declarado** (item 50): ele
+        # monta o `configuration.yml` de novo, e o que a pasta guarda dos três
+        # do provedor é o envelope. Sem Frase o reinício não acontece — e o que
+        # o ato deixa é o que o `PENDING` já dizia: a pasta tem a credencial
+        # nova, o portão ainda prova a antiga.
+        fake = self.machine()
+        outcome, text = self.quiet(env.set_credential, "Rafael", NEW_CREDENTIAL)
+        self.assertEqual(outcome, env.CREDENTIAL_PENDING)
+        self.assertIn(i18n.tr("services.credential.pending", name="Rafael"), text)
+        self.assertIn(i18n.tr("services.phrase.no_tty"), text)
+        self.assertIsNotNone(actors.authenticate("Rafael", NEW_CREDENTIAL))
+        self.assertFalse([call for call in fake.argv() if call[:1] == ["rm"]])
 
     def test_the_restart_does_not_pull_and_does_not_re_pin(self):
         # It is a restart and not `up`: the container was standing, so the image
@@ -692,6 +715,11 @@ class TheDoor(FolderCase):
         asked: list[str] = []
 
         def secret(question: str) -> str:
+            """A mesma pessoa digitando sem eco: a credencial nas perguntas dela,
+            e a Frase onde a Frase é pedida — o reinício do provedor a pede, e
+            ela entra pelo mesmo leitor (item 50, §4)."""
+            if question == i18n.tr("services.phrase"):
+                return PHRASE
             asked.append(question)
             return NEW_CREDENTIAL
 

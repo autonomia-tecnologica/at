@@ -146,8 +146,14 @@ def witness() -> tuple[str, str] | None:
     No witness is a real answer, and `to_gate` says it in its own words: the
     secret is the folder's own (`App/caddy/gate`, drawn at installation, §7b),
     and the name has to be a row AT can resolve (`actors.asserted`).
+
+    **O segredo é lido como o CONTAINER o lê** (`environment.gate_opened`), e
+    não do arquivo da pasta: o da pasta é o envelope que o selo deixou (item
+    50), e uma prova que mandasse o envelope acusaria o portão de não aceitar a
+    identidade que ele aceita. Sem cópia no diretório de execução não há prova —
+    o ambiente não está de pé.
     """
-    secret = caddy.gate_secret()
+    secret = environment.gate_opened()
     if secret is None:
         return None
     for row in actors.admins():
@@ -276,7 +282,8 @@ def proved(answer: gate.Answer | None = None) -> bool:
 # -------------------------------------------------------------- the switch ---
 
 def to_gate(ask: environment.Ask | None = None,
-            answer: gate.Answer | None = None) -> str:
+            answer: gate.Answer | None = None,
+            secret: environment.Ask | None = None) -> str:
     """Take this folder to the container path — transactionally (§6).
 
     The order IS the rule, and it is worth reading as one: the environment comes
@@ -289,6 +296,10 @@ def to_gate(ask: environment.Ask | None = None,
     The two ways out of a machine without Podman are the ENVIRONMENT's answers
     and they come back unchanged: neither of them moved anything, so there is
     nothing to undo.
+
+    `secret` é o leitor sem eco, e ele desce para o `up` sem ser lido aqui: a
+    Frase de Acesso é pedida por quem SELA (§4), e a virada é uma das portas
+    por onde alguém sobe o ambiente.
     """
     if gate.on_gate():
         print(tr("services.switch.already"))
@@ -299,7 +310,7 @@ def to_gate(ask: environment.Ask | None = None,
     # return gets, and the exception keeps travelling afterwards — the `cli` is
     # what turns the read-only folder into its own sentence (§3).
     try:
-        outcome = environment.up(ask)
+        outcome = environment.up(ask, secret)
     except (files.ReadOnly, OSError):
         _rollback("services.switch.failed")
         raise

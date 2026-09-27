@@ -230,7 +230,10 @@ def services(
         return _credential(args[0], ask, secret)
     try:
         if word == "switch":
-            outcome = switch.to_gate(ask if ask is not None else _reader())
+            outcome = switch.to_gate(
+                ask if ask is not None else _reader(),
+                secret=secret if secret is not None else _secret(),
+            )
             # The environment's own answers come back through the switch
             # unchanged, and they mean here what they mean there.
             return OK if outcome in (
@@ -243,7 +246,10 @@ def services(
             return OK if switch.to_forms() in (
                 switch.FORMS_OUTCOME, switch.ALREADY,
             ) else REFUSED
-        outcome = environment.up(ask if ask is not None else _reader())
+        outcome = environment.up(
+            ask if ask is not None else _reader(),
+            secret if secret is not None else _secret(),
+        )
     except files.ReadOnly as error:
         # The pin and the services' files are written by `up`, and the read-only
         # switch is the one writer's rule — the same answer `at-cli`'s table route
@@ -332,7 +338,7 @@ def _credential(name: str, ask: Ask | None, secret: Ask | None) -> int:
         credential = secret(tr("services.credential.secret"))
         if credential != secret(tr("services.credential.again")):
             raise actors.AdminError("error.mismatch")
-        outcome = environment.set_credential(name, credential)
+        outcome = environment.set_credential(name, credential, secret)
     except (actors.AdminError, tables.TableError) as refused:
         print(refused)
         return REFUSED
@@ -362,6 +368,16 @@ def _readers() -> tuple[Ask | None, Ask | None]:
 def _reader() -> Ask | None:
     """A line reader, when there is a terminal to ask a YES/NO question in."""
     return _readers()[0]
+
+
+def _secret() -> Ask | None:
+    """A no-echo reader, when there is a terminal to type a secret in.
+
+    Ele é o leitor da Frase de Acesso (§4): o mesmo `getpass` que a credencial
+    do primeiro administrador usa, pela mesma razão — o que se digita sem eco
+    não fica no histórico do shell nem no `ps` de ninguém.
+    """
+    return _readers()[1]
 
 
 def _license(rest: list[str], texts: bool = False) -> int:

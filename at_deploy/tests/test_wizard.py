@@ -52,6 +52,12 @@ def edge(url: str, headers: dict[str, str]) -> int:
 CREDENTIAL = "uma-frase-bem-longa"
 NEW_CREDENTIAL = "outra-frase-bem-longa"
 
+# A Frase de Acesso que a suíte digita (item 50, §4). A subida e o reinício do
+# provedor a pedem pelo leitor sem eco, e a janela entrega o dela: é o diálogo
+# com o que se digita escondido (`simpledialog`, com o `show`) que a suíte
+# substitui, e ele é o mesmo caminho do terminal.
+PHRASE = "a frase de acesso da suite, e ela nao abre nada de ninguem"
+
 # Every sentence the Wizard says, in both languages: the keys of the window
 # itself. A key the catalog does not have answers with the KEY, which is why this
 # list exists — a text added to `wizard.py` without a line here is a text nobody
@@ -216,6 +222,9 @@ class FolderCase(unittest.TestCase):
             {"AT_ROOT": str(self.root), "AT_LANG": "pt_BR",
              env.RUN_ENV: self.execution.name},
         )
+        # **E a pessoa digita a Frase**: a subida a lê de um leitor sem eco, e a
+        # suíte entrega o dela — o `getpass` do terminal, ou o diálogo da janela.
+        self.phrase = lambda question: PHRASE
         self.env.start()
         i18n.reset()
         # The machine has NO Podman, always: the day one is installed, a test
@@ -319,7 +328,7 @@ class TheStepsAreTheClisWords(unittest.TestCase):
             return USAGE
 
         with mock.patch.object(wizard.cli, "services", door):
-            code, text = wizard.run_step("up", ask=lambda q: "", secret=lambda q: "")
+            code, text = wizard.run_step("up", ask=lambda q: "", secret=lambda q: PHRASE)
 
         self.assertEqual(code, USAGE)
         self.assertEqual(seen, [["up"]])
@@ -337,8 +346,8 @@ class TheStepsAreTheClisWords(unittest.TestCase):
 
         with mock.patch.object(wizard.cli, "services", door):
             wizard.run_step("credential", ask=lambda q: "Rafael",
-                            secret=lambda q: "")
-            wizard.run_step("credential", ask=lambda q: "", secret=lambda q: "")
+                            secret=lambda q: PHRASE)
+            wizard.run_step("credential", ask=lambda q: "", secret=lambda q: PHRASE)
 
         self.assertEqual(seen, [["credential", "Rafael"], ["credential"]])
 
@@ -404,7 +413,7 @@ class TheSequenceHoldsItselfBack(FolderCase):
 
     def test_the_environment_standing_is_what_closes_the_first_step(self):
         self.machine()
-        code, _ = wizard.run_step("up", lambda question: "")
+        code, _ = wizard.run_step("up", lambda question: "", secret=self.phrase)
         self.assertEqual(code, OK)
         self.assertTrue(env.standing())
         self.assertTrue(wizard.STEPS[0].settled(code))
@@ -413,7 +422,7 @@ class TheSequenceHoldsItselfBack(FolderCase):
         # §6's switch is read off the folder's own record — the one `at-cli` reads
         # (`gate.mode`) — so the screen and the app cannot disagree about the
         # path this folder is on.
-        code, _ = wizard.run_step("switch", lambda question: "")
+        code, _ = wizard.run_step("switch", lambda question: "", secret=self.phrase)
         self.assertFalse(gate.on_gate())
         self.assertFalse(wizard.STEPS[2].settled(code))
 
@@ -435,7 +444,7 @@ class TheWindow(FolderCase):
         self.addCleanup(drawn.stop)
 
     def test_the_window_builds_on_the_first_step_with_the_next_one_held(self):
-        fake, walk = self.window(ask=lambda q: "", secret=lambda q: "")
+        fake, walk = self.window(ask=lambda q: "", secret=lambda q: PHRASE)
         self.assertEqual(walk.index, 0)
         self.assertEqual(fake.button(i18n.tr("deploy.wizard.next")).state,
                          "disabled", "a required step that was not run was passed")
@@ -447,7 +456,7 @@ class TheWindow(FolderCase):
         )
 
     def test_the_window_keeps_no_words_of_a_step_that_was_not_run(self):
-        fake, _ = self.window(ask=lambda q: "", secret=lambda q: "")
+        fake, _ = self.window(ask=lambda q: "", secret=lambda q: PHRASE)
         self.assertEqual(fake.area().content, "",
                          "the window drew words no step had printed")
 
@@ -465,19 +474,22 @@ class TheWindow(FolderCase):
 
     def test_the_credential_is_read_with_what_is_typed_hidden(self):
         # The screen's way of saying what `getpass` says in a terminal: a
-        # credential is not for whoever is looking at the screen.
+        # credential is not for whoever is looking at the screen — **e a Frase
+        # de Acesso também não** (item 50): o reinício do provedor a pede, e ela
+        # entra pelo MESMO diálogo escondido, duas vezes na primeira vez, porque
+        # uma Frase que sela não tem como ser conferida depois.
         fake, _ = self.window()
         self.person()
         self.machine()
         gate.remember(gate.GATE)
 
         code, _ = self.credential_step(
-            fake, ["Rafael", NEW_CREDENTIAL, NEW_CREDENTIAL])
+            fake, ["Rafael", NEW_CREDENTIAL, NEW_CREDENTIAL, PHRASE, PHRASE])
 
         self.assertEqual(code, OK)
         hidden = [kw.get("show") for _, kw in fake.simpledialog.asked]
-        self.assertEqual(hidden, [None, "*", "*"],
-                         "the credential was read in the open")
+        self.assertEqual(hidden, [None, "*", "*", "*", "*"],
+                         "a credencial ou a Frase foram lidas em claro")
         self.assertIsNotNone(actors.authenticate("Rafael", NEW_CREDENTIAL))
 
     def test_a_name_nobody_gave_is_answered_by_the_words_own_sentence(self):
@@ -496,7 +508,7 @@ class TheWindow(FolderCase):
         fake = FakeTkinter()
         with mock.patch.object(env, "GRACE", 0.0), mock.patch.dict(
                 sys.modules, {"tkinter": fake}):
-            walk = wizard.build(fake.root, ask=lambda q: "", secret=lambda q: "",
+            walk = wizard.build(fake.root, ask=lambda q: "", secret=lambda q: PHRASE,
                                 answer=edge)
 
             fake.button(i18n.tr("deploy.wizard.run")).press()
@@ -539,7 +551,7 @@ class TheWindow(FolderCase):
         # shows is replaced on every run, so the second press of the button
         # reads the file's name and the value is gone with the run that drew it.
         self.machine()
-        fake, walk = self.window(ask=lambda q: "", secret=lambda q: "",
+        fake, walk = self.window(ask=lambda q: "", secret=lambda q: PHRASE,
                                  answer=edge)
         walk.index = len(wizard.STEPS) - 1
         with mock.patch.object(env, "GRACE", 0.0):
@@ -555,7 +567,7 @@ class TheWindow(FolderCase):
         closes = lambda *a, **kw: (OK, "")  # noqa: E731 — a step that closes
         with mock.patch.object(wizard, "run_step", closes), mock.patch.dict(
                 sys.modules, {"tkinter": fake}):
-            walk = wizard.build(fake.root, ask=lambda q: "", secret=lambda q: "")
+            walk = wizard.build(fake.root, ask=lambda q: "", secret=lambda q: PHRASE)
             fake.button(i18n.tr("deploy.wizard.run")).press()
             for _ in range(len(wizard.STEPS) - 1):
                 fake.button(i18n.tr("deploy.wizard.next")).press()

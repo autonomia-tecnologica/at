@@ -209,6 +209,29 @@ class TheEnvelope(unittest.TestCase):
                 with self.assertRaises(vault.KeyRefused):
                     vault.seal(VALUE, key)
 
+    def test_the_envelopes_of_a_text_are_the_ones_it_carries(self):
+        # **A forma é do cofre, e quem procura um envelope dentro de um TEXTO a
+        # lê daqui**: o `configuration.yml` e o `Caddyfile` do caminho container
+        # levam valores selados inline, e é esta porta que diz onde eles estão
+        # para que a subida os abra (`at_deploy/environment.py`).
+        one = vault.seal(VALUE, self.key)
+        other = vault.seal("outro valor", self.key)
+        text = f"session:\n  secret: \"{one}\"\n  outra: \"{other}\"\n"
+        self.assertEqual(vault.envelopes(text), (one, other))
+
+    def test_a_text_with_no_envelope_answers_empty(self):
+        # O caso comum, e o de uma pasta que nasceu antes do selo: não há nada a
+        # abrir, e a resposta diz isso em vez de errar.
+        for text in ("", "sem selo nenhum\n", "xsalsa20polly1305:nao-e-esse\n"):
+            with self.subTest(text=text):
+                self.assertEqual(vault.envelopes(text), ())
+
+    def test_the_envelope_of_another_algorithm_is_not_one_of_ours(self):
+        # A mesma recusa de `unseal`, do lado da PROCURA: um envelope de outro
+        # algoritmo não é um envelope deste cofre, e procurá-lo não o acha.
+        text = f"outro-algoritmo:{base64.urlsafe_b64encode(b'x').decode('ascii')}"
+        self.assertEqual(vault.envelopes(text), ())
+
 
 class TheDerivedKey(unittest.TestCase):
     """The key of one service or purpose, out of the Vault Key alone (§4)."""
@@ -418,9 +441,11 @@ class TheLayer(unittest.TestCase):
                 reached.update(alias.name for alias in node.names)
             elif isinstance(node, ast.ImportFrom) and node.module:
                 reached.add(node.module)
+        # `re` entrou com `envelopes`: a FORMA do envelope é do cofre, e quem
+        # procura um dentro de um texto não inventa uma segunda expressão.
         self.assertEqual(
             {name.split(".")[0] for name in reached} - {"__future__"},
-            {"base64", "nacl", "at"},
+            {"base64", "nacl", "re", "at"},
         )
         self.assertEqual({name for name in reached if name.startswith("at.")}, {"at.encryption"})
 

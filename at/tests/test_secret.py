@@ -410,13 +410,18 @@ class ThePermissions(SecretCase):
 class TheEntry(SecretCase):
     """A credential is proved with the Access Phrase untyped (§4, item 8)."""
 
-    def test_the_vault_is_reached_by_the_two_core_files_and_by_them_alone(self):
+    def test_the_vault_is_reached_by_three_files_and_by_them_alone(self):
         # Item 14a landed the vault with no caller anywhere and said so in a
-        # test; this is the slice that gave it one. The two are the door that
-        # SEALS (`core/secrets`) and the engine that knows the shape of the
-        # envelope it validates (`core/tables`) — and a third file is a decision
-        # and not an accident, the same way the pin in `test_encryption.py` names
-        # the files that speak to `libsodium`.
+        # test; the slice that landed the table gave it the first two. They are
+        # the door that SEALS (`core/secrets`) and the engine that knows the
+        # shape of the envelope it validates (`core/tables`) — and a third file
+        # is a decision and not an accident, the same way the pin in
+        # `test_encryption.py` names the files that speak to `libsodium`.
+        #
+        # **O terceiro é o `at-deploy`** (item 50), e ele entrou com um motivo
+        # próprio: o que a pasta guarda dos valores que o AT SORTEIA é o
+        # envelope, e quem sela e abre não é uma linha de tabela e sim o arquivo
+        # — `App/caddy/gate`, o `configuration.yml` e os três do provedor.
         # Sorted, because the filesystem hands the files over in an order of its
         # own and the list below is the declaration, not a directory listing.
         callers = sorted(
@@ -425,19 +430,33 @@ class TheEntry(SecretCase):
             for path in root.rglob("*.py")
             if "tests" not in path.parts and reaches_vault(path)
         )
-        self.assertEqual(callers, ["at/core/secrets.py", "at/core/tables.py"])
+        self.assertEqual(callers, [
+            "at/core/secrets.py", "at/core/tables.py",
+            "at_deploy/environment.py",
+        ])
 
-    def test_no_surface_reaches_the_vault(self):
+    def test_the_surface_that_reaches_the_vault_is_the_deploy_and_no_screen(self):
         # §4's three grades — typing the phrase when AT starts, `~/.at/`, the
-        # Working Folder — are a SURFACE's choice with its price said out loud,
-        # and no surface has made it yet: the phrase arrives as an argument, and
-        # the screen that asks for it is the item that chooses a grade.
-        for surface in ("at/ui", "at_deploy"):
-            for path in (ROOT / surface).rglob("*.py"):
-                if "tests" in path.parts:
-                    continue
-                with self.subTest(file=path.relative_to(ROOT)):
-                    self.assertFalse(reaches_vault(path))
+        # Working Folder — are a SURFACE's choice, with its price said out loud.
+        # **A escolha foi feita, e ela é a nota `S`**: quem sobe o ambiente
+        # digita a Frase (`at-deploy services up`), e é ela que sela o que a
+        # subida sorteia e abre o que a pasta guarda (item 50).
+        #
+        # O que esta linha tranca é a ESCOLHA e não a ausência dela: a
+        # superfície é UMA, e a outra — a tela — continua de fora. O WebApp não
+        # digita Frase nenhuma: quem lê o que a subida abriu é o container, e o
+        # que ele lê é a cópia clara do diretório de execução.
+        reached = sorted(
+            path.relative_to(ROOT).as_posix()
+            for path in (ROOT / "at_deploy").rglob("*.py")
+            if "tests" not in path.parts and reaches_vault(path)
+        )
+        self.assertEqual(reached, ["at_deploy/environment.py"])
+        for path in (ROOT / "at" / "ui").rglob("*.py"):
+            if "tests" in path.parts:
+                continue
+            with self.subTest(file=path.relative_to(ROOT)):
+                self.assertFalse(reaches_vault(path))
 
     def test_a_credential_is_proved_with_no_phrase_typed(self):
         # No phrase was typed to open anything, and the door works: what is

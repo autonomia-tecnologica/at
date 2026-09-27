@@ -111,6 +111,7 @@ from urllib.parse import urlsplit
 
 from at.core import actors, files, gate, paths, tables
 from at.core.migrations import is_yes
+from at.encryption import vault
 from at.i18n import tr
 from at.services import caddy as caddy_service
 from at.ui import words
@@ -131,6 +132,21 @@ INSTALL = "install"       # the person installs the Podman; AT said how
 HOSTED = "hosted"         # the folder stays on the hosted path, and nothing moved
 NO_ANSWER = "no_answer"   # no terminal to ask in: neither way was taken
 FAILED = "failed"         # a service did not come up
+UNREADABLE = "unreadable"  # the Access Phrase does not open what the folder keeps
+
+
+class SealedRefused(Exception):
+    """Um envelope que esta subida não abriu — e não se monta o que não se abriu.
+
+    Ele guarda contra a única coisa que não pode acontecer em silêncio: o
+    envelope indo parar no diretório de execução, onde o container o leria como
+    se fosse o valor. A Frase é conferida contra TUDO o que a pasta guarda antes
+    de qualquer container (`_not_opened`), então chegar aqui é uma
+    inconsistência — a cópia mudou entre a conferência e a montagem, ou alguém
+    montou sem Frase nenhuma. A resposta é a mesma nos dois casos, e é a do §4:
+    o que não se abriu não se usa.
+    """
+
 
 # The outcomes of the gate's credential change — item 27's operator act (§7b).
 # The row is written in all three: what separates them is how far the change
@@ -281,6 +297,13 @@ IDENTITY_SESSION = "session"
 # signs an identity-validation token with.
 IDENTITY_ENCRYPTION = "encryption"
 IDENTITY_JWT = "jwt"
+
+# Os TRÊS, numa lista, porque dois lugares os nomeiam: quem os SORTEIA — o `up`,
+# antes de qualquer escritor, e um a um — e quem os SELA na conferência da
+# Frase (`_sealed_files`). O `_identity_conf` continua nomeando cada um no lugar
+# do YAML onde ele entra, porque lá a POSIÇÃO é o que importa; aqui é o
+# CONJUNTO, e ele é um só.
+IDENTITY_SECRETS = (IDENTITY_SESSION, IDENTITY_ENCRYPTION, IDENTITY_JWT)
 
 # Where the provider writes what it has to TELL somebody, and the everyday case
 # is an identity validating a second factor. §7 has no smtp to give it, so it is
@@ -970,8 +993,177 @@ def authority_file() -> Path:
     return caddy_service.authority_file(state(CADDY) / CADDY_STORAGE)
 
 
-def draw_gate() -> str:
-    """Draw the gate's secret, once, and answer with it — §7b's drawing.
+def _drawn_files() -> tuple[Path, ...]:
+    """Os arquivos que o AT SORTEIA: onde os valores selados moram (item 50).
+
+    O portão, que é do Caddy, e os três que o provedor assina, cifra e prova
+    com (§7b). Os dois conjuntos são nomeados juntos porque a pergunta que os
+    usa é uma só — "há o que selar, ou o que abrir?" —, e ela é feita ANTES de
+    qualquer sorteio.
+    """
+    return (caddy_service.gate_file(),
+            *(state(IDENTITY) / name for name in IDENTITY_SECRETS))
+
+
+def _sealed_files() -> tuple[tuple[Path, str], ...]:
+    """Todo arquivo que pode carregar um envelope, e o escopo da chave que o abre.
+
+    **O escopo é o SERVIÇO dono do valor** (§4: uma chave por serviço ou
+    finalidade): os três do provedor são dele, e o portão é do Caddy — o arquivo
+    é do Caddy, e é o `Caddyfile` dele que o carrega. É por isso que o escopo
+    pode ser lido do arquivo e não precisa viajar dentro dele: quem compõe um
+    texto sabe de quem é o valor que está compondo.
+
+    Os arquivos ESCRITOS entram aqui também, e não só os sorteados: o
+    `configuration.yml` e o `Caddyfile` carregam os envelopes inline, e são eles
+    que a conferência da Frase tem de abrir.
+    """
+    found = tuple((where, CADDY) for where in (caddy_service.gate_file(),))
+    found += tuple((state(IDENTITY) / name, IDENTITY) for name in IDENTITY_SECRETS)
+    for service in SERVICES:
+        found += tuple((state(service.name) / name, service.name)
+                       for name, _ in service.writes)
+    return found
+
+
+def _text(where: Path) -> str:
+    """O texto de um arquivo da pasta, ou vazio quando não há o que ler.
+
+    Ele é tolerante de propósito: quem pergunta é a conferência da Frase, e o
+    que ela precisa saber é quais envelopes existem — um arquivo que ainda não
+    nasceu não tem nenhum, e não é erro.
+    """
+    try:
+        return where.read_text(encoding="utf-8")
+    except (FileNotFoundError, IsADirectoryError, UnicodeDecodeError):
+        return ""
+
+
+def _sealed_somewhere() -> bool:
+    """Se a pasta já guarda algum envelope do cofre.
+
+    **É a pergunta que decide se a Frase tem como ser CONFERIDA**: uma pasta que
+    já selou abre o que guarda e sabe se a Frase é a mesma; uma que nunca selou
+    não tem contra o que conferir, e é por isso que ela é lida duas vezes na
+    primeira vez (`_ask_phrase`).
+    """
+    return any(vault.envelopes(_text(where)) for where, _ in _sealed_files())
+
+
+def _needs_phrase() -> bool:
+    """Se a Frase faz falta nesta subida: há o que abrir, ou há o que selar.
+
+    As duas coisas são a mesma pergunta para quem sobe: **abrir** o que a pasta
+    guarda selado, e **selar** o que este `up` vai sortear. Uma pasta sem
+    envelope e com os quatro valores no lugar não pede Frase nenhuma — é a pasta
+    que nasceu antes do selo, e a migração dela é outra fatia (`docs`, item 50,
+    o corte do que nasceu em claro).
+    """
+    for where in _drawn_files():
+        if not where.exists():
+            # Um sorteio vem aí, e um sorteio SELA: sem Chave não há selo.
+            return True
+    return _sealed_somewhere()
+
+
+def _not_opened(key: bytes) -> Path | None:
+    """O primeiro arquivo que esta Chave NÃO abre, ou `None` quando abre todos.
+
+    **A conferência da Frase é esta, e ela é a própria abertura**: dois valores
+    selados com a mesma Frase são a prova de que é a mesma, e não há nada a
+    perguntar de novo — §4: o que só se confere responde, não levanta.
+    """
+    for where, scope in _sealed_files():
+        derived = vault.derived_key(key, scope)
+        for envelope in vault.envelopes(_text(where)):
+            if vault.unseal(envelope, derived) is None:
+                return where
+    return None
+
+
+def _ask_phrase(secret: Ask) -> bytes | None:
+    """A Frase de Acesso lida e conferida: a Chave do Cofre, ou `None` (§4).
+
+    **Lida UMA vez por subida** — §4: digitar a Frase quando o AT sobe é a nota
+    `S`, e a Chave vive o tempo desta chamada e mais nada; nada a guarda, e
+    nada a escreve. **E conferida contra o que a pasta guarda**: cada envelope
+    que a subida vai ter de abrir é aberto aqui, antes de qualquer container, e
+    uma Frase que não abre um deles não sobe o ambiente.
+
+    **A primeira vez é a exceção, e ela é declarada**: sem envelope nenhum não
+    há contra o que conferir, então a Frase é lida DUAS vezes — como a
+    credencial do primeiro administrador (`at-cli admin`) —, porque uma Frase
+    que sela não tem como ser conferida depois, e um erro de digitação custaria
+    exatamente o que ela acabou de selar.
+
+    A Frase curta é recusada pela regra do COFRE e não por esta porta (§3: quem
+    pergunta não decide o tamanho), e a sentença é a mesma em qualquer lugar que
+    a peça (`core.secrets` e aqui leem a mesma).
+    """
+    phrase = secret(tr("services.phrase"))
+    try:
+        key = vault.vault_key(phrase)
+    except vault.PhraseRefused:
+        print(tr("secrets.error.phrase", min=vault.MINIMUM))
+        return None
+    if not _sealed_somewhere() and secret(tr("services.phrase.again")) != phrase:
+        print(tr("services.phrase.mismatch"))
+        return None
+    where = _not_opened(key)
+    if where is not None:
+        print(tr("services.phrase.unopened", where=where))
+        return None
+    return key
+
+
+def _unlock(secret: Ask | None) -> tuple[bytes | None, str | None]:
+    """A Chave do Cofre para este ato, e a recusa — uma das duas (§4).
+
+    Ela é a porta por onde o `up` e o `restart` pedem a Frase, e a única: os
+    dois atos escrevem na pasta e montam o diretório de execução, e nenhum dos
+    dois pode fazer isso com um envelope que não abriu. `None` na Chave é o
+    estado de uma pasta que não tem nada de selado — e aí nada precisa dela.
+    """
+    if not _needs_phrase():
+        return None, None
+    if secret is None:
+        # A mesma postura da elevação: sem terminal não se pergunta, e não se
+        # sobe um ambiente que não abriu o que ele mesmo guardou.
+        print(tr("services.phrase.no_tty"))
+        return None, NO_ANSWER
+    key = _ask_phrase(secret)
+    if key is None:
+        return None, UNREADABLE
+    return key, None
+
+
+def _opened(text: str, scope: str, key: bytes | None) -> str:
+    """O texto com cada envelope ABERTO — o que o container lê (§4, item 50).
+
+    **Ele é o coração da fatia**: a pasta guarda o envelope, e o diretório de
+    execução monta o valor. A Frase já foi conferida contra tudo o que a pasta
+    guarda antes de qualquer container subir (`_not_opened`), então um envelope
+    que não abre aqui é uma inconsistência — e a resposta para ela é fechada:
+    não se monta o que não se abriu (`SealedRefused`).
+    """
+    found = vault.envelopes(text)
+    if not found:
+        # O caso comum, e o de uma pasta que nasceu antes do selo: não há o que
+        # abrir, e o texto vai como está.
+        return text
+    if key is None:  # pragma: no cover — `_unlock` dá Chave quando há envelope
+        raise SealedRefused()
+    derived = vault.derived_key(key, scope)
+    for envelope in found:
+        value = vault.unseal(envelope, derived)
+        if value is None:  # pragma: no cover — a Frase já foi conferida
+            raise SealedRefused()
+        text = text.replace(envelope, value)
+    return text
+
+
+def draw_gate(key: bytes) -> str:
+    """Draw the gate's secret, once, and SEAL it — §7b's drawing (§4).
 
     **It is the deploy's act and it moved here with the rest of §7** (item 27):
     §7b says AT draws a secret per installation, and the installation is the
@@ -979,6 +1171,18 @@ def draw_gate() -> str:
     Caddy's own — `App/caddy/gate`, beside the Caddyfile that is its only writer
     — and both artifacts read it: `at-cli` refuses the identity that arrives
     without it, and the WebApp's check is what turns the M2M into a door.
+
+    **O que ele escreve é o ENVELOPE do cofre, e não o valor** (item 50): a
+    pasta é copiada sem criptografia, então o que ela guarda de um valor que o
+    AT sorteou é o que só a Frase de Acesso abre. O escopo da chave é o Caddy —
+    o valor é dele, o arquivo é dele, e é o `Caddyfile` dele que o carrega —, e
+    quem o abre para o container é o `up`, no diretório de execução.
+
+    **A key é obrigatória, e o chamador só a tem quando há o que sortear**: o
+    `up` pergunta a Frase exatamente quando um destes arquivos falta
+    (`_needs_phrase`), então um sorteio sem Chave seria um valor em claro na
+    pasta — o que esta fatia existe para não haver. O que já está lá não é
+    sorteado de novo.
 
     **A secret already drawn is not drawn again**, and that is the whole of the
     function: rotating it would take the running Caddy and the running WebApp
@@ -988,6 +1192,10 @@ def draw_gate() -> str:
     the environment up again, which is the same act as changing it, said out
     loud.
 
+    **O que ele responde é o ENVELOPE**, e não o valor: é o que ficou na pasta, e
+    é ele que o `Caddyfile` carrega — quem precisa do valor claro é o container,
+    e quem o escreve no diretório de execução é o `up` (`_materialize_gate`).
+
     It is the CALLER that decides when — `up` draws it at installation, which is
     the moment §7b names — because a file written on import would be a secret in
     the folder of whoever never asked for one.
@@ -996,28 +1204,55 @@ def draw_gate() -> str:
     if held is not None:
         return held
     drawn = secrets.token_urlsafe(caddy_service.GATE_BYTES)
-    files.atomic_write_text(caddy_service.gate_file(), f"{drawn}\n")
-    return drawn
+    envelope = vault.seal(drawn, vault.derived_key(key, CADDY))
+    files.atomic_write_text(caddy_service.gate_file(), f"{envelope}\n")
+    return envelope
 
 
-def _drawn(service: str, name: str) -> str:
-    """A secret drawn once and kept, in the service's own state folder.
+def _drawn(service: str, name: str, key: bytes) -> str:
+    """A secret drawn once and SEALED, in the service's own state folder (§4).
 
-    The same rule `caddy.draw_gate` follows and for the same reason: a value a
-    service signs or proves with has to outlive the container, and one drawn per
-    start would take everything it had issued down with it. Whoever wants a new
-    one removes the file and brings the environment up again.
+    The same rule `draw_gate` follows and for the same reason: a value a service
+    signs or proves with has to outlive the container, and one drawn per start
+    would take everything it had issued down with it. Whoever wants a new one
+    removes the file and brings the environment up again.
+
+    **O escopo da chave é o SERVIÇO** (§4: uma por serviço ou finalidade), e os
+    três que ele desenha são dele — o provedor os assina, cifra e prova. É por
+    isso que o escopo pode ser lido do arquivo depois: quem compõe um texto sabe
+    de quem é o valor que está compondo (`_materialize`).
     """
-    where = state(service) / name
-    try:
-        held = where.read_text(encoding="utf-8").strip()
-    except FileNotFoundError:
-        held = ""
+    held = _held(state(service) / name)
     if held:
         return held
     drawn = secrets.token_urlsafe(SECRET_BYTES)
-    files.atomic_write_text(where, f"{drawn}\n")
-    return drawn
+    envelope = vault.seal(drawn, vault.derived_key(key, service))
+    files.atomic_write_text(state(service) / name, f"{envelope}\n")
+    return envelope
+
+
+def _held(where: Path) -> str:
+    """O texto que um arquivo da pasta guarda — vazio quando ele não está lá."""
+    try:
+        return where.read_text(encoding="utf-8").strip()
+    except FileNotFoundError:
+        return ""
+
+
+def _kept(service: str, name: str) -> str:
+    """O que a pasta guarda para aquele valor: o envelope, ou o que já estava lá.
+
+    **Quem SORTEIA é o `up`, antes de qualquer escritor** (`_drawn`), e o
+    escritor só LÊ: o selo precisa da Chave do Cofre, e o escritor não a tem —
+    `Service.writes` é uma função de nenhum argumento, e o que ela compõe é o
+    arquivo com o que a pasta guarda, que é o envelope. Quem o abre para o
+    container é o `_materialize`.
+
+    Um valor que não está lá sai vazio, e o serviço que o lê recusa: o `up`
+    sorteia antes de escrever, então isto é uma inconsistência e não um estado —
+    e a resposta para ela é fechada, como a de todo valor que falta.
+    """
+    return _held(state(service) / name)
 
 
 def _quoted(value: str) -> str:
@@ -1050,11 +1285,15 @@ def _identity_conf() -> str:
     `431` (`caddy.PORTAL`). The access control keeps naming the site alone: the
     portal never travels through it, because it never travels through the ask.
 
-    Each secret is drawn once and kept beside this file (`_drawn`), because they
-    belong to the installation and not to a start: one drawn per start would
-    drop every session on the floor and make every record it had written
-    unreadable. The notifier's file lives in the state folder, which is the
-    folder the backup covers (§3), so a notice survives a copied folder.
+    Each secret is drawn once, SEALED, and kept beside this file — by the `up`,
+    before this writer runs (`_drawn`) — because they belong to the installation
+    and not to a start: one drawn per start would drop every session on the
+    floor and make every record it had written unreadable. **O que este arquivo
+    carrega é o ENVELOPE delas** (item 50): a pasta é copiada sem criptografia,
+    a fonte é ela, e a cópia que o container monta é este mesmo texto com os
+    três abertos (`_materialize`). The notifier's file lives in the state
+    folder, which is the folder the backup covers (§3), so a notice survives a
+    copied folder.
 
     **No OIDC provider is declared, and that is a decision and not an omission.**
     §7b has Authelia speaking OIDC with whoever speaks OIDC and forward-auth
@@ -1066,9 +1305,9 @@ def _identity_conf() -> str:
     provider enters with the first service that speaks OIDC, and it is that
     slice's to write.
     """
-    session = _drawn(IDENTITY, IDENTITY_SESSION)
-    encryption = _drawn(IDENTITY, IDENTITY_ENCRYPTION)
-    signature = _drawn(IDENTITY, IDENTITY_JWT)
+    session = _kept(IDENTITY, IDENTITY_SESSION)
+    encryption = _kept(IDENTITY, IDENTITY_ENCRYPTION)
+    signature = _kept(IDENTITY, IDENTITY_JWT)
     site = site_host()
     lines = [
         f"# {tr('services.identity-provider.file.header')}",
@@ -1428,6 +1667,25 @@ def gate_materialized() -> Path:
     return run_dir() / GATE_DIR / caddy_service.GATE_FILE
 
 
+def gate_opened() -> str | None:
+    """O portão como o CONTAINER o lê — a cópia aberta, ou `None` sem cópia.
+
+    **Quem lê o valor do portão de fora do container tem de ler daqui e não do
+    arquivo da pasta** (item 50): o da pasta é o ENVELOPE, e quem compara o
+    cabeçalho é o WebApp de dentro, que lê a cópia que a subida montou. Mandar o
+    envelope seria uma prova que não prova — o portão acusado de recusar a
+    identidade que ele aceita (`switch.witness`).
+
+    Sem cópia não há segredo: o ambiente não está de pé, e é isso que a resposta
+    diz.
+    """
+    try:
+        opened = gate_materialized().read_text(encoding="utf-8").strip()
+    except FileNotFoundError:
+        return None
+    return opened or None
+
+
 def pin_file() -> Path:
     """`App/services/images.json` — the pin this folder IS at, per service."""
     return paths.services_dir() / "images.json"
@@ -1595,7 +1853,7 @@ def run_argv(service: Service, image: Image) -> list[str]:
     return argv
 
 
-def _prepare(service: Service) -> Path:
+def _prepare(service: Service, key: bytes | None) -> Path:
     """The service's state folder, ready: the folders it mounts, and its files.
 
     The files go in the order the manifest declares them, which is the order a
@@ -1606,7 +1864,9 @@ def _prepare(service: Service) -> Path:
     **And what it wrote is materialized for the container** (`_materialize`), in
     the same act: the folder is the source and the run directory is the copy
     that serves the boot, and a call site that wrote one and forgot the other
-    would be a container reading yesterday's file.
+    would be a container reading yesterday's file. `key` é a Chave do Cofre
+    desta subida, e ela desce até lá porque o que a pasta guarda de um valor
+    sorteado é o envelope: montá-lo é abri-lo.
     """
     where = state(service.name)
     where.mkdir(parents=True, exist_ok=True)
@@ -1619,19 +1879,32 @@ def _prepare(service: Service) -> Path:
             (where / mount.host).mkdir(parents=True, exist_ok=True)
     for name, body in service.writes:
         files.atomic_write_text(where / name, body())
-    _materialize(service)
+    _materialize(service, key)
     return where
 
 
-def _materialize(service: Service) -> Path:
+def _run_place(where: Path) -> Path:
+    """Uma pasta do diretório de execução, criada — e com o modo DELE.
+
+    O diretório de execução nasce `0700`, e não é detalhe: ele pode cair no
+    temporário do sistema, onde ele é de todo mundo, e o que ele guarda é a
+    cópia CLARA do que a pasta sela. O modo do ARQUIVO em si continua sendo o da
+    umask: quem o lê é o container, e a porta é a pasta.
+    """
+    run_dir().mkdir(mode=0o700, parents=True, exist_ok=True)
+    where.mkdir(parents=True, exist_ok=True)
+    return where
+
+
+def _materialize(service: Service, key: bytes | None) -> Path:
     """A cópia que o container LÊ, fora da pasta (§ `RUN_ENV`, item 50).
 
     **A pasta de estado é a FONTE e este é o diretório de execução**: o `up`
     escreve na pasta e copia para cá, e o `--volume` do serviço aponta para cá.
-    Nada é transformado ainda — a cópia sai com os mesmos bytes —, e é esta
-    função que a fatia do selo vai mudar: ela é quem abre o envelope do cofre,
-    uma vez, com a Frase que a subida digitou, e escreve o valor claro que o
-    container monta (item 50, pergunta 2).
+    **E o que ele copia é o valor, e não o envelope**: cada envelope que o
+    arquivo carrega é aberto aqui, com a Chave desta subida, e é o texto aberto
+    que o container monta — é esta função que faz de um arquivo selado na pasta
+    um arquivo que o container consegue ler (item 50, pergunta 2).
 
     O que NÃO vem para cá são as pastas que o container enche: elas continuam na
     pasta de estado, que é a que o backup leva, e um `Mount` com `host` não
@@ -1647,25 +1920,25 @@ def _materialize(service: Service) -> Path:
         # `Mirror`. Um diretório vazio no diretório de execução não seria o que
         # ele monta, e sim um resto.
         return where
-    where.mkdir(parents=True, exist_ok=True)
+    _run_place(where)
     for name, _ in service.writes:
-        body = (state(service.name) / name).read_text(encoding="utf-8")
+        body = _opened(_text(state(service.name) / name), service.name, key)
         files.atomic_write_text(where / name, body)
     return where
 
 
-def _materialize_gate() -> Path:
+def _materialize_gate(key: bytes | None) -> Path:
     """A cópia clara do portão, para o leitor que a lê montada (§ `GATE_MOUNT`).
 
     O portão é escrito na pasta pelo `draw_gate` e lido de lá pelos dois leitores
     de fora do container — o Caddy que AT gera, que o carrega dentro do
     `Caddyfile`, e o próprio AT. O WebApp é o terceiro e o único de dentro, e
-    ele o lê por uma montagem própria; esta é a cópia, e ela é o mesmo valor (a
-    fatia do selo é que a torna a versão ABERTA do envelope).
+    ele o lê por uma montagem própria; esta é a cópia, e ela é o valor ABERTO —
+    a pasta guarda o envelope, e quem o abre é esta linha.
     """
     where = gate_materialized()
-    where.parent.mkdir(parents=True, exist_ok=True)
-    body = caddy_service.gate_file().read_text(encoding="utf-8")
+    _run_place(where.parent)
+    body = _opened(_text(caddy_service.gate_file()), CADDY, key)
     files.atomic_write_text(where, body)
     return where
 
@@ -1847,10 +2120,15 @@ def _as_curl_config(headers: dict[str, str],
     return "\n".join(lines) + "\n"
 
 
-def _start(service: Service, pins: dict[str, dict]) -> bool:
-    """Put one service on its feet. `False` when it did not get there."""
+def _start(service: Service, pins: dict[str, dict], key: bytes | None) -> bool:
+    """Put one service on its feet. `False` when it did not get there.
+
+    `key` é a Chave do Cofre desta subida, e ela só desce porque o que a pasta
+    guarda dos valores sorteados é o envelope: quem monta o diretório de
+    execução tem de abri-lo (`_materialize`).
+    """
     name = tr(service.label)
-    where = _prepare(service)
+    where = _prepare(service, key)
 
     image = running(service, pins)
     if decide(service, pins) == AHEAD:
@@ -1883,7 +2161,7 @@ def _start(service: Service, pins: dict[str, dict]) -> bool:
     return True
 
 
-def up(ask: Ask | None = None) -> str:
+def up(ask: Ask | None = None, secret: Ask | None = None) -> str:
     """Bring the environment up — or offer the two ways out (§7a).
 
     The absence of the Podman is not a dry refusal: AT says the two ways out
@@ -1895,6 +2173,14 @@ def up(ask: Ask | None = None) -> str:
     **The machine's permission comes first, and it is the same posture**: the
     low-port rule is asked about before a secret is drawn or a container named, so
     that a refusal is a folder nobody touched (`elevate`, §3's Privilege).
+
+    **E depois a Frase de Acesso** (§4, item 50): ela é pedida depois da
+    permissão e antes de qualquer sorteio, porque é ela que sela o que este `up`
+    vai sortear e que abre o que a pasta já guarda — e uma subida que não a tem,
+    ou que recebe uma que não abre, não sobe e diz por quê (`_unlock`). Ela é
+    lida UMA vez por subida, e vive o tempo dela: nada a guarda, e nada a
+    escreve. Uma pasta que ainda não selou nada e não tem o que sortear não a
+    pede — é a pasta que nasceu antes do selo, e a migração dela é outra fatia.
 
     The environment is not the SWITCH, and it does not pretend to be one: a
     service that does not come up is said, and what did come up stays up for
@@ -1924,27 +2210,45 @@ def up(ask: Ask | None = None) -> str:
     if refusal is not None:
         return refusal
 
+    # §4: a Frase de Acesso entra aqui, antes de qualquer sorteio e de qualquer
+    # container. A Chave que sai dela é desta subida e de mais nada.
+    key, refusal = _unlock(secret)
+    if refusal is not None:
+        return refusal
+
     # §7b: the gate's secret is drawn at INSTALLATION — here, once — and kept in
     # the folder from then on. It is drawn before anything starts because the
     # Caddyfile is written by the service's own writer, and a Caddy that came up
     # without the line would be an edge that attaches nothing and a WebApp that
     # refuses every identity it is handed.
-    fresh = caddy_service.gate_secret() is None
-    draw_gate()
-    if fresh:
-        print(tr("services.gate.drawn", where=caddy_service.gate_file()))
+    #
+    # **E só se sorteia com a Chave na mão**: os quatro valores que faltam são
+    # exatamente o que faz o `_unlock` pedir a Frase, então quando não há Chave
+    # é porque os quatro já estão na pasta — e o que já está lá não é sorteado
+    # de novo. Sortear sem Chave seria escrever um valor em claro na pasta, que
+    # é o que este item existe para não haver.
+    if key is not None:
+        fresh = caddy_service.gate_secret() is None
+        draw_gate(key)
+        if fresh:
+            print(tr("services.gate.drawn", where=caddy_service.gate_file()))
+        # E os três do provedor, pela mesma razão de ordem: o `configuration.yml`
+        # é composto a partir do que a pasta guarda, e o provedor lê esse arquivo
+        # ao SUBIR.
+        for name in IDENTITY_SECRETS:
+            _drawn(IDENTITY, name, key)
 
     # O diretório de execução é reescrito inteiro a cada subida — ele é a cópia
     # que serve ESTA —, e o portão entra nele antes de qualquer serviço: o
     # WebApp o lê de lá (§ `GATE_MOUNT`), e o `_prepare` do WebApp não é quem o
     # escreve, porque o portão não é arquivo de serviço nenhum (`draw_gate`).
     _clear_run_dir()
-    _materialize_gate()
+    _materialize_gate(key)
 
     pins = held()
     _networks()
     for service in SERVICES:
-        if not _start(service, pins):
+        if not _start(service, pins, key):
             return FAILED
 
     # §7f's delivery: the notifier is standing, so AT can make its own
@@ -1962,7 +2266,7 @@ def _service(name: str) -> Service | None:
     return next((service for service in SERVICES if service.name == name), None)
 
 
-def restart(name: str) -> bool:
+def restart(name: str, secret: Ask | None = None) -> bool:
     """Put one service's container up again, with the files AT writes for it.
 
     It exists for the gate and for one reason (`set_credential`): the provider
@@ -1983,6 +2287,13 @@ def restart(name: str) -> bool:
     and the registry those sessions live in is the folder's (`IDENTITY_DATA`).
     §3 declares that price where the operator's act is recorded, because it is
     the one thing a person changing a credential has to know.
+
+    **E ele PEDE a Frase de Acesso, porque ele monta de novo** (`_unlock`): o
+    `_prepare` reescreve o `configuration.yml` — os três do provedor entram
+    nele, e o que a pasta guarda deles é o envelope — e o diretório de execução
+    só recebe o arquivo ABERTO. Sem Frase, o reinício não acontece e é dito por
+    quê: a cópia que está lá é a da subida, e montar por cima dela o envelope
+    seria entregar ao provedor o que ele não sabe ler.
     """
     service = _service(name)
     if service is None or not podman.present():
@@ -1990,7 +2301,11 @@ def restart(name: str) -> bool:
     if _state_of(service) == ABSENT:
         return False
 
-    where = _prepare(service)
+    key, refusal = _unlock(secret)
+    if refusal is not None:
+        return False
+
+    where = _prepare(service, key)
     image = running(service, held())
 
     for address in addresses(service):
@@ -2014,7 +2329,7 @@ def restart(name: str) -> bool:
     return True
 
 
-def set_credential(name: str, credential: str) -> str:
+def set_credential(name: str, credential: str, secret: Ask | None = None) -> str:
     """Give a person the credential the gate proves — the operator's act (§7b).
 
     Item 27's second operator act, and the three things it is are one sentence:
@@ -2037,6 +2352,12 @@ def set_credential(name: str, credential: str) -> str:
     function says it on the screen (`services.credential.changed`), because
     whoever is changing a credential is the one who has to know.
 
+    **E o reinício pede a Frase de Acesso** (`restart`, §4): ele monta o
+    `configuration.yml` de novo, e o que a pasta guarda dos três do provedor é o
+    envelope. Uma Frase que não vem deixa a pasta com a credencial nova e o
+    portão provando a antiga — que é o `PENDING` que já existia, e a palavra diz
+    as duas coisas: o que mudou e o que ainda não foi provado.
+
     A name nobody wears is `CREDENTIAL_UNKNOWN` and not an error: `named` is the
     one lookup the entrance and the gate share, so this answers what the door
     would answer, with the words the deploy owns.
@@ -2051,7 +2372,7 @@ def set_credential(name: str, credential: str) -> str:
     if not gate.on_gate():
         print(tr("services.credential.hosted", name=who))
         return CREDENTIAL_CHANGED
-    if not restart(IDENTITY):
+    if not restart(IDENTITY, secret):
         print(tr("services.credential.pending", name=who))
         return CREDENTIAL_PENDING
 
