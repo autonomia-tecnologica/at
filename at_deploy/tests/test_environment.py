@@ -62,6 +62,9 @@ SAID = (
     # A migração da pasta que nasceu antes do selo (item 50, corte `f`): o ato
     # que re-sorteia e sela o que estava em claro.
     "services.migrated",
+    # A forma da pasta de estado: um caminho que é ARQUIVO onde o serviço monta
+    # uma pasta (ou o contrário) vira recusa dita, e não um traceback.
+    "services.state.shape", "services.state.folder", "services.state.file",
     # §4's Access Phrase, pedida pela subida (item 50): a pergunta, a segunda
     # leitura da primeira vez, e as três recusas. **A da frase curta é do
     # COFRE** — `secrets.error.phrase`, a mesma sentença que o `core.secrets`
@@ -2080,6 +2083,72 @@ class TheStorageOutOfReach(FolderCase):
         private = [where for where in written if where.suffix == ".key"]
         self.assertTrue(private, "o teste precisa de chaves privadas ao lado para valer")
         self.assertNotIn(authority, private)
+
+
+class TheStateShape(FolderCase):
+    """A pasta de estado com a forma que o serviço não lê — e a recusa dita.
+
+    O `notifications` do provedor era um ARQUIVO escrito pelo container, com
+    `/config` montado inteiro; a fatia 2 do item 50 o trocou por uma PASTA, com
+    montagem própria — e o arquivo que já existia na instância ficou. A subida
+    seguinte morria com `FileExistsError` no `mkdir` do `_prepare`, e por cima
+    dele vinha o traceback do PyInstaller, que não diz nem o caminho nem o que
+    ele devia ser. **A forma do estado é diagnosticável ANTES de tentar**, e o
+    AT recusa com a frase: ele não conserta a pasta da pessoa em silêncio.
+    """
+
+    def said(self, service: str, where: Path, wanted: str) -> str:
+        """A frase da recusa, montada como o `up` a monta."""
+        return i18n.tr("services.state.shape", service=i18n.tr(service),
+                       where=where, wanted=i18n.tr(wanted))
+
+    def test_a_file_where_the_service_mounts_a_folder_is_refused_with_a_phrase(self):
+        # É o defeito medido na instância: `App/services/identity-provider/
+        # notifications` é um ARQUIVO de 0 byte, resto da montagem antiga, e o
+        # `up` precisa de uma PASTA ali.
+        where = env.state(env.IDENTITY) / env.IDENTITY_NOTIFICATIONS
+        files.atomic_write_text(where, "")
+        fake = self.runtime()
+        outcome, text = self.quiet(env.up, secret=self.phrase)
+        self.assertEqual(outcome, env.MALFORMED)
+        self.assertIn(self.said("services.identity-provider.name", where,
+                                "services.state.folder"), text)
+        # Nada subiu, e o arquivo continua onde estava: o AT não mexe no que não
+        # é dele — quem move ou apaga é a pessoa.
+        self.assertNotIn("run", fake.verbs())
+        self.assertTrue(where.is_file())
+
+    def test_a_folder_where_the_at_writes_a_file_is_refused_too(self):
+        # A mesma classe, do outro lado: o `configuration.yml` é ESCRITO pelo
+        # `_prepare`, e uma pasta no lugar dele estoura no `os.replace`.
+        where = env.state(env.IDENTITY) / env.IDENTITY_YAML
+        where.mkdir(parents=True)
+        fake = self.runtime()
+        outcome, text = self.quiet(env.up, secret=self.phrase)
+        self.assertEqual(outcome, env.MALFORMED)
+        self.assertIn(self.said("services.identity-provider.name", where,
+                                "services.state.file"), text)
+        self.assertNotIn("run", fake.verbs())
+
+    def test_the_shape_is_checked_before_the_phrase_is_asked(self):
+        # Sem terminal a subida responde `NO_ANSWER` — e não é o que acontece
+        # aqui: a forma do estado é conferida ANTES, porque não se pede a Frase
+        # (nem a elevação) para uma subida que já se sabe que não sobe.
+        files.atomic_write_text(
+            env.state(env.IDENTITY) / env.IDENTITY_NOTIFICATIONS, "")
+        self.runtime()
+        outcome, _ = self.quiet(env.up, secret=None)
+        self.assertEqual(outcome, env.MALFORMED)
+
+    def test_the_restart_refuses_the_same_shape_for_its_own_service(self):
+        # O `restart` monta o estado de UM serviço, e a recusa é a mesma frase.
+        where = env.state(env.IDENTITY) / env.IDENTITY_YAML
+        where.mkdir(parents=True)
+        self.runtime()
+        outcome, text = self.quiet(env.restart, env.IDENTITY, self.phrase)
+        self.assertFalse(outcome)
+        self.assertIn(self.said("services.identity-provider.name", where,
+                                "services.state.file"), text)
 
 
 class TheAccessPhrase(FolderCase):

@@ -133,6 +133,11 @@ HOSTED = "hosted"         # the folder stays on the hosted path, and nothing mov
 NO_ANSWER = "no_answer"   # no terminal to ask in: neither way was taken
 FAILED = "failed"         # a service did not come up
 UNREADABLE = "unreadable"  # the Access Phrase does not open what the folder keeps
+# A pasta de estado tem um caminho com a forma errada — um ARQUIVO onde o
+# serviço monta uma pasta, ou o contrário. Não é um serviço que não subiu: é um
+# estado que o AT sabe diagnosticar antes de tentar, e a subida recusa com a
+# frase em vez de estourar no meio dela.
+MALFORMED = "malformed"
 
 
 class SealedRefused(Exception):
@@ -2249,6 +2254,48 @@ def _start(service: Service, pins: dict[str, dict], key: bytes | None) -> bool:
     return True
 
 
+def _state_trouble(
+    services: tuple[Service, ...] = SERVICES,
+) -> tuple[Service, Path, str] | None:
+    """O primeiro caminho da pasta de estado com a forma que o serviço não lê.
+
+    O `up` monta uma PASTA por serviço (`Mount` com `host`) e escreve os ARQUIVOS
+    que ele lê, e um caminho que existe com a forma trocada — um **arquivo** onde
+    ele vai montar a pasta, uma **pasta** onde ele vai escrever o arquivo —
+    estoura no meio da subida como uma exceção do `pathlib` (`mkdir`,
+    `os.replace`), que o PyInstaller entrega como traceback sem uma frase. **Ele
+    é um estado que o AT consegue diagnosticar antes de tentar**, e é por isso
+    que a resposta é uma recusa dita e não um estouro.
+
+    **A recusa e não o conserto**: o caminho pode ser da pessoa — um arquivo que
+    ela pôs ali, ou o resto de uma versão anterior do AT —, e §3 já diz que o AT
+    não mexe no que não é dele. Quem move ou apaga é ela, e o que a frase faz é
+    dizer o caminho e o que ele deveria ser.
+
+    `services` é o que se confere: a subida inteira (`up`) ou um serviço só
+    (`restart`), que monta o estado de um e não tem por que recusar pelos outros.
+    """
+    for service in services:
+        where = state(service.name)
+        for mount in service.mounts:
+            if isinstance(mount, Mount) and mount.host:
+                path = where / mount.host
+                if path.exists() and not path.is_dir():
+                    return service, path, "folder"
+        for name, _ in service.writes:
+            path = where / name
+            if path.is_dir():
+                return service, path, "file"
+    return None
+
+
+def _refuse_shape(trouble: tuple[Service, Path, str]) -> None:
+    """Diz a recusa da forma do estado — o caminho, e o que ele deveria ser."""
+    service, where, wanted = trouble
+    print(tr("services.state.shape", service=tr(service.label), where=where,
+             wanted=tr(f"services.state.{wanted}")))
+
+
 def up(ask: Ask | None = None, secret: Ask | None = None) -> str:
     """Bring the environment up — or offer the two ways out (§7a).
 
@@ -2293,6 +2340,17 @@ def up(ask: Ask | None = None, secret: Ask | None = None) -> str:
     """
     if not podman.present():
         return ways_out(ask)
+
+    # A forma da pasta de estado é a primeira coisa conferida, e de propósito:
+    # um caminho que o serviço não consegue usar derruba a subida NO MEIO dela
+    # como uma exceção do `pathlib`, e o traceback que sai no lugar da frase não
+    # diz nem o caminho nem o que ele devia ser (`_state_trouble`). Antes da
+    # elevação e da Frase, porque não se pede senha nem Chave para uma subida
+    # que já se sabe que não sobe.
+    trouble = _state_trouble()
+    if trouble is not None:
+        _refuse_shape(trouble)
+        return MALFORMED
 
     # §3 (Privilege): the environment inevitably demands elevation somewhere, and
     # §7a's DNS port is where. It is asked BEFORE anything is drawn or started, so
@@ -2406,6 +2464,14 @@ def restart(name: str, secret: Ask | None = None) -> bool:
     if service is None or not podman.present():
         return False
     if _state_of(service) == ABSENT:
+        return False
+
+    # A mesma recusa da subida, e só sobre ESTE serviço: o `_prepare` daqui monta
+    # o estado dele e mais nada, e um caminho torto de outro serviço não é razão
+    # para recusar o reinício deste (`_state_trouble`).
+    trouble = _state_trouble((service,))
+    if trouble is not None:
+        _refuse_shape(trouble)
         return False
 
     key, refusal = unlock(secret)
