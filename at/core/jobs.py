@@ -8,9 +8,21 @@ with no table to hold it; this is the table.
 
 **A job is a definition and a life, and not a demand that disappears once
 served.** The row carries the act it performs (`what`, and the table it is on),
-the arguments it needs to perform it, the actor that OWNS it, the instant the
-demand arrived and the state of its life: `waiting`, `approved`, `refused`,
-`done`.
+the arguments it needs to perform it, the actor that OWNS it, the instant it is
+about and the state of its life: `waiting`, `approved`, `refused`, `done` and
+`scheduled`.
+
+**And `when` is the instant the job is ABOUT — which instant that is depends on
+who drives the job, and that is why the fifth state exists.** The demand that
+waited carries the instant it ARRIVED (`hold`), and it waits for a person; the
+job the CLOCK drives carries the next instant it must ROUND, and `scheduled` is
+the state that says so. The two are not the same thing and the table keeps them
+apart by name: `waiting` is the demand that could not run, `scheduled` is the
+act that will run again, and `at.core.clock` reads the second and never the
+first. **The clock READS `when` and REWRITES it**: after every round it moves
+the instant on by the cadence, which is what makes a job's life a series of
+rounds instead of one, and what lets a round that did not go through be tried
+again on the next pass instead of in a hot loop.
 
 **The job runs with the via `engine` and with the actor that owns it, so its
 ceiling is that actor's.** That is why the owner is a column and why the run
@@ -62,13 +74,18 @@ WHEN = "when"
 STATUS = "status"
 
 # The states of the job's life. `waiting` is the one that says it waits (§4,
-# item 15), and the other three are what each act leaves behind: a person
-# approved it, a person refused it, or the engine ran it.
+# item 15), and three of the others are what an act leaves behind: a person
+# approved it, a person refused it, or the engine ran it. `scheduled` is the
+# fifth and it is the CLOCK's (item 24): a job that was DECLARED with a `when`
+# and that rounds on its own, over and over, while the state stays where it is —
+# a `scheduled` job is never `done`, because its life is a series of rounds and
+# not one act.
 WAITING = "waiting"
 APPROVED = "approved"
 REFUSED = "refused"
 DONE = "done"
-STATES = (WAITING, APPROVED, REFUSED, DONE)
+SCHEDULED = "scheduled"
+STATES = (WAITING, APPROVED, REFUSED, DONE, SCHEDULED)
 
 # The three acts, in the order the tree offers them.
 RUN = "run"
@@ -189,6 +206,25 @@ def state(row: dict) -> str:
     return value if isinstance(value, str) else ""
 
 
+def instant(row: dict) -> datetime | None:
+    """The point in time `when` carries, or `None` — read and never trusted.
+
+    The value is written in the one spelling §4 gives an instant (`tables.utc`:
+    UTC, with milliseconds), and a row a hand edited to something else answers
+    `None` — which is the clock reading it as "not due", the rule failing closed
+    rather than a job fired on a strange word. A value with no zone is that same
+    strange value: an instant AT cannot place is one it does not act on.
+    """
+    text = row.get(WHEN) if isinstance(row, dict) else None
+    if not isinstance(text, str):
+        return None
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo is not None else None
+
+
 def owner(row: dict) -> dict | None:
     """The ACTOR row the job belongs to, or `None` — the owner, resolved.
 
@@ -268,6 +304,61 @@ def done(row: dict) -> dict:
     """
     released(row)
     return tables.edit(JOB, store.number_of(row), {STATUS: DONE})
+
+
+def _driven(row: dict) -> int | None:
+    """The row's number, when the STORE still says the clock drives it.
+
+    The state a pass read is a snapshot, and the store is the truth: AT answers a
+    request in a thread and the `cli` is another process, so a person may have
+    approved or refused a job between the read and the write. The two transitions
+    below write only where the state still says `scheduled`, which is what keeps
+    the clock from overwriting a word that arrived after it looked.
+    """
+    number = store.number_of(row)
+    held = store.find(JOB, number) if number is not None else None
+    if held is None or state(held) != SCHEDULED:
+        return None
+    return number
+
+
+def reschedule(row: dict, written: str) -> dict:
+    """The next instant this job may round — the `when` the clock REWRITES.
+
+    It is the one write the clock makes to the row it just rounded: the act it
+    performed belongs to the engine, and the only thing the clock owns of the
+    job is WHEN it comes round again. Moving the instant on is what keeps a
+    single appointment from firing twice, and what makes a round that did not go
+    through wait for the next pass instead of being retried in a loop.
+
+    `written` is the instant already spelled the way §4 spells one, because the
+    cadence is the clock's and this module is not the one that knows it. A row
+    the clock no longer owns — one a person answered while the round was being
+    prepared — is handed back untouched (`_driven`).
+    """
+    number = _driven(row)
+    if number is None:
+        return row
+    return tables.edit(JOB, number, {WHEN: written})
+
+
+def waits(row: dict) -> dict:
+    """The round that ended WAITING for approval — `scheduled` becomes `waiting`.
+
+    It is item 15's model, and the whole of what "no second model" means: a
+    round whose demand is at or above the bar does not become a queue, a lock or
+    a second record — it becomes THIS ROW, in the state that says it waits, and
+    a person's approval is what releases it. No second row is born and no
+    instant is rewritten: the job is waiting for somebody, and `when` keeps
+    saying when it came round.
+
+    A row the clock no longer owns is handed back untouched, for the reason
+    `reschedule` gives.
+    """
+    number = _driven(row)
+    if number is None:
+        return row
+    return tables.edit(JOB, number, {STATUS: WAITING})
 
 
 def stored(row: dict) -> list[str]:

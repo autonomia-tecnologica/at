@@ -73,6 +73,15 @@ so it does not walk `run` either. What makes it the odd one of the four is that
 it is a read, and §3 makes reading not doing: no line is written, nothing is
 versioned, and there is no actor nor via to name. What the door still owns is the
 sentence, which is what keeps the `cli` and a page after it reading one wording.
+
+**And the clock is the fifth — one pass of the engine without anybody there.**
+`tick` rounds the jobs that have come round (§4, item 24), and it is a door and
+not a rule for the reason the four above are: what a round performs is an ACT —
+with the via `engine` and the actor that owns the job, so its ceiling is that
+actor's, leaving the line §3 asks of every act and the version item 30 asks of
+every write. `at.core.clock` says who is due and when the next instant is; this
+is where the act happens. The process that keeps waking it is the WebApp's
+(`at.ui.webapp.app`), and the clock leaves it the day the engine does.
 """
 
 from __future__ import annotations
@@ -85,6 +94,7 @@ from at import nlu
 from at.core import (
     actors,
     audit,
+    clock,
     files,
     jobs,
     permissions,
@@ -558,20 +568,15 @@ def _ran(row: dict) -> tuple[int, str]:
     and the refusal is its own line.
     """
     jobs.released(row)
-    table, action = jobs.release(row)
-    needed = permissions.needed(table, action)
     owner = jobs.owner(row)
-    if not actors.may(owner or {}, needed):
-        refused = jobs.JobError(
-            "error.ceiling",
-            id=jobs.shown(row),
-            permission=permissions.label(needed),
-        )
+    refused = _ceiling(row)
+    if refused is not None:
         _line(
             jobs.JOB, jobs.RUN, owner, audit.ENGINE, audit.REFUSED,
             refused.key, str(refused), threshold=_arrival(),
         )
         return REFUSED, str(refused)
+    table, action = jobs.release(row)
     code, answer, _ = run(
         table,
         action,
@@ -583,6 +588,148 @@ def _ran(row: dict) -> tuple[int, str]:
     if code == OK:
         jobs.done(row)
     return code, answer
+
+
+def _ceiling(row: dict) -> jobs.JobError | None:
+    """The wall the OWNER of a job finds, or `None` — the refusal, ready to say.
+
+    It is read HERE and not at the approval, because the store is the truth: a
+    role edited under a waiting job is read on the next read like any other row,
+    and a job whose owner no longer carries what the act demands is refused by
+    name. It answers with the ERROR and not with a sentence so that the two
+    callers — a person's `job run` and the clock's round — write the refusal in
+    one wording and leave the one line a wall owes (§3).
+    """
+    table, action = jobs.release(row)
+    needed = permissions.needed(table, action)
+    if actors.may(jobs.owner(row) or {}, needed):
+        return None
+    return jobs.JobError(
+        "error.ceiling", id=jobs.shown(row), permission=permissions.label(needed)
+    )
+
+
+# ------------------------------------------------------------------ the clock ---
+
+
+def tick(now: datetime | None = None) -> list[dict]:
+    """One pass of the clock: every job that has come round is rounded (§4, item 24).
+
+    **Two kinds of job come round, and they are not rounded the same way.**
+
+    - a `scheduled` job is the DECLARED one, and its round faces the BAR: the
+      clock is AT acting on its own, and §4 is flat — what runs on its own waits
+      at the threshold. A round the bar holds does not run: the job becomes
+      `waiting`, which is item 15's model and the whole of "no second model" —
+      same table, same row, same state. A round that runs leaves the job
+      `scheduled` and moves its instant on, so the job lives and rounds again;
+    - an `approved` job is one a PERSON released: the demand that waited and was
+      answered. It is fired ONCE, by the very road `at-cli job run` walks
+      (`_ran`), which is what §4 means by the act belonging to the engine's
+      clock — nobody typed it, and nothing else changed.
+
+    `now` is the instant the pass is measured against, and it is handed in by
+    whoever keeps the clock (`at.ui.webapp.app`) or by a test; `None` reads the
+    machine's hour through `at.core.clock.now`, which is the module's one seam.
+
+    **A folder under the read-only switch applies NOTHING** (§3), and a round is
+    a write like any other: the pass answers nothing and leaves the folder
+    exactly as it found it.
+
+    The rows it rounded come back, so that a caller can say what happened
+    without reading the store back.
+    """
+    if files.readonly():
+        return []
+    at = now if now is not None else clock.now()
+    rounded: list[dict] = []
+    for row in clock.due(jobs.SCHEDULED, at):
+        _round(row, at)
+        rounded.append(row)
+    for row in clock.due(jobs.APPROVED, at):
+        _fired(row)
+        rounded.append(row)
+    return rounded
+
+
+def _round(row: dict, at: datetime) -> None:
+    """One round of a DECLARED job: the bar, the act, and the instant moved on.
+
+    **The bar is faced, and it can hold the round** — the sentence item 24 ends
+    on, and where the round that ends waiting for approval becomes a job like
+    any other (§4, item 15). It is measured HERE and not by `run`, because the
+    job that waits is THIS row: `hold` is the filter's for a demand that never
+    became a job, and a schedule that already is one does not need a second row
+    to say it waits. A round the bar holds leaves NO line, for the reason §3
+    gives — a demand that waits is neither a write nor a refusal.
+
+    **The ceiling is the OWNER's, read again on every round**: a role edited
+    under a `scheduled` job is read on the next read like any other row, and a
+    job whose owner lost the permission is refused by NAME — with the line a
+    wall owes (§3) — and its instant still moves on, so the round comes back
+    once the role does instead of hammering in a loop.
+
+    **A missed instant is recovered before the round runs, and the line says so.**
+    It is the engine's own act — the round AT was not up for — and §3 writes a
+    line for every act. The round itself is then the ordinary one: it may run,
+    and it may be held by the bar.
+    """
+    if clock.missed(row, at):
+        _line(
+            jobs.JOB, clock.RECOVERED, jobs.owner(row), audit.ENGINE, audit.OK,
+            None, tr("job.recovered"),
+        )
+    refused = _ceiling(row)
+    if refused is not None:
+        _line(
+            jobs.JOB, jobs.RUN, jobs.owner(row), audit.ENGINE, audit.REFUSED,
+            refused.key, str(refused), threshold=_arrival(),
+        )
+        jobs.reschedule(row, clock.next_instant(at))
+        return
+    table, action = jobs.release(row)
+    owner = jobs.owner(row)
+    try:
+        values, _ = _sets(jobs.stored(row))
+    except tables.TableError:
+        # The arguments a hand edited into something the door cannot read: there
+        # is no demand to measure, so the bar is not asked and the round goes
+        # straight to `run`, which writes the refusal's line and re-raises it.
+        values = None
+    if values is not None and holds(
+        risk.demand(table, action, values), actor=owner, via=audit.ENGINE
+    ):
+        jobs.waits(row)
+        return
+    try:
+        run(
+            table,
+            action,
+            jobs.stored(row),
+            actor=owner,
+            via=audit.ENGINE,
+            released=True,
+        )
+    except (tables.TableError, files.ReadOnly):
+        # `run` already wrote the line of the refusal and re-raised it: what the
+        # engine refused is the surface's to answer, and this surface is the
+        # LOG — the job stays `scheduled` and its instant moves on, so it is
+        # tried again on the next pass and not in a loop.
+        pass
+    jobs.reschedule(row, clock.next_instant(at))
+
+
+def _fired(row: dict) -> None:
+    """The round of a job a PERSON released: `job run`, with nobody typing it.
+
+    It is the very road `at-cli job run` walks, and that is the whole point of
+    §4's sentence — the act belongs to the engine's clock, and what a person
+    does is release it. A job the engine refuses stays `approved` (that is
+    `_ran`'s rule: the refusal is its own line, and leaving the job released is
+    what lets it be asked for again once whatever refused the act is dealt
+    with), and the clock is the one that asks again — on the next pass.
+    """
+    _ran(row)
 
 
 # -------------------------------------------------------------- the scan ---

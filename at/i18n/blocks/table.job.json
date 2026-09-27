@@ -11,7 +11,8 @@
     "field.status.waiting": "Esperando",
     "field.status.approved": "Aprovado",
     "field.status.refused": "Recusado",
-    "field.status.done": "Feito"
+    "field.status.done": "Feito",
+    "field.status.scheduled": "Agendado"
   },
   "en_US": {
     "name.one": "Job",
@@ -25,6 +26,7 @@
     "field.status.waiting": "Waiting",
     "field.status.approved": "Approved",
     "field.status.refused": "Refused",
-    "field.status.done": "Done"
+    "field.status.done": "Done",
+    "field.status.scheduled": "Scheduled"
   }
 }

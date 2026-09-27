@@ -14,7 +14,7 @@
     "actor",
     "when"
   ],
-  "desc": "the demand that could not run: the act it performs, the arguments it needs, the actor that owns it and the state of its life — waiting, approved, refused or done",
+  "desc": "the demand that could not run, and the act the clock drives: what it performs, the arguments it needs, the actor that owns it, the instant it is about and the state of its life — waiting, approved, refused, done or scheduled",
   "fields": {
     "id": {
       "label": "table.field.id",
@@ -57,7 +57,8 @@
         "waiting": "table.job.field.status.waiting",
         "approved": "table.job.field.status.approved",
         "refused": "table.job.field.status.refused",
-        "done": "table.job.field.status.done"
+        "done": "table.job.field.status.done",
+        "scheduled": "table.job.field.status.scheduled"
       }
     }
   }

@@ -49,7 +49,9 @@
       "esperando": "waiting",
       "aguardando": "waiting",
       "aprovado": "approved",
-      "aprovada": "approved"
+      "aprovada": "approved",
+      "agendado": "scheduled",
+      "agendada": "scheduled"
     }
   },
   "en_US": {
@@ -89,7 +91,8 @@
       "ok": "ok",
       "refused": "refused",
       "waiting": "waiting",
-      "approved": "approved"
+      "approved": "approved",
+      "scheduled": "scheduled"
     }
   }
 }

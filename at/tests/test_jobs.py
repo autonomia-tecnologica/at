@@ -169,13 +169,16 @@ class TheDeclaration(JobCase):
                 self.assertTrue(schema.field("job", name), name)
 
     def test_the_states_are_the_closed_list(self):
-        # The four the item decided: the one that says it waits, and what each
-        # answer leaves — a person approved it, a person refused it, or the
-        # engine ran it.
+        # The four item 15 decided — the one that says it waits, and what each
+        # answer leaves: a person approved it, a person refused it, or the engine
+        # ran it — plus the one item 24 added, which is the state the clock
+        # drives and the only one a job that recurs ever rests in.
         self.assertEqual(
             sorted(tables.enum_values("job", jobs.STATUS)), sorted(jobs.STATES)
         )
-        self.assertEqual(jobs.STATES, ("waiting", "approved", "refused", "done"))
+        self.assertEqual(
+            jobs.STATES, ("waiting", "approved", "refused", "done", "scheduled")
+        )
 
     def test_the_instant_is_declared_as_one(self):
         self.assertEqual(schema.field("job", jobs.WHEN).get("type"), "instant")

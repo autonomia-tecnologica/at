@@ -890,6 +890,42 @@ def _tags(ask: Ask | None) -> list[Report]:
     return _extend(TAGS)
 
 
+# What THIS release adds to a declaration that is ALREADY on disk — migration
+# eighteen, and the same shape migrations nine, fifteen and seventeen write.
+#
+# **The `job` gains the state the CLOCK drives** (§4, item 24): a folder born
+# before the clock declares four states, and a job that comes round on its own
+# has a fifth. The value is the last one in the enum and not the first, and that
+# is not cosmetic — the merge only ever ADDS, so a value inserted before `done`
+# would be an edit to the person's file, while appended it is the same list the
+# bundled declaration now carries.
+CLOCK: dict[str, dict] = {
+    "job": {
+        "fields": {
+            "status": {
+                "enum": {"scheduled": "table.job.field.status.scheduled"},
+            }
+        },
+    },
+}
+
+
+def _clock(ask: Ask | None) -> list[Report]:
+    """Migration eighteen: the `job` gains the state that says it rounds on its own.
+
+    A folder that already exists is the one this is for: its declaration was
+    written when a job could only WAIT, and the new state is what the engine
+    reads to know which jobs the clock drives. Nothing about the rows changes —
+    a job is `waiting` until a person answers it, and only a job DECLARED with a
+    `when` is ever `scheduled` —, and nothing outside the folder points at the
+    declaration (§3, migration).
+
+    It does not ask, for the reason `_tags` gives: a declaration of the
+    product's own.
+    """
+    return _extend(CLOCK)
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, _legacy_instance),
     Migration(2, _capitalized_instance),
@@ -908,6 +944,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(15, _backlog_order),
     Migration(16, _scanner),
     Migration(17, _tags),
+    Migration(18, _clock),
 )
 
 

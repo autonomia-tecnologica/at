@@ -117,6 +117,8 @@ import hashlib
 import json
 import os
 import secrets
+import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Callable
@@ -126,6 +128,7 @@ from at import i18n, nlu
 from at.core import (
     actors,
     audit,
+    clock,
     files,
     gate,
     permissions,
@@ -180,6 +183,11 @@ GATE_IDENTITY = "Remote-User"
 # The page runs under this, which is why nothing inline and no `data:` is ever
 # built into it: Vite is configured for it, and the themes are checked for it.
 CSP = "default-src 'self'"
+
+# The clock's thread, by name (§4, item 24). It is named because a thread with
+# no name is a thread nobody can find: a person reading a dump of the process,
+# and the test that proves the RAW server does not start one.
+CLOCK_THREAD = "at-clock"
 
 # How much a write may carry. A table row is small; the ceiling is what stops a
 # stranger's stream from becoming this process's memory.
@@ -1558,6 +1566,36 @@ def make_server(port: int = DEFAULT_PORT, host: str = HOST) -> Server:
     return Server((host, port), Handler)
 
 
+def beat(times: int | None = None, pause: Callable[[float], None] = time.sleep) -> None:
+    """The clock's rhythm: one pass, then the cadence, over and over (§4, item 24).
+
+    **The WebApp is where the clock lives, and it is the process AT already
+    raises.** A job has no clock of its own, and the process that manages it IS
+    this one — which is exactly why item 24 puts the clock here, and why the
+    clock leaves the day the engine does. It is a THREAD and not a loop inside
+    `serve_forever`: the two do not know each other, so a pass neither waits for
+    a request nor blocks one.
+
+    **A pass that raises does not take the clock down.** A clock that stopped is
+    a folder whose jobs stopped with it, and nobody to say so — so the failure is
+    said (in AT's words, with the machine's message inside, because a bug's text
+    is the only thing that can be diagnosed from) and the rhythm goes on.
+
+    `times` and `pause` are the seams a test drives: the pass is proven with the
+    instant handed to `at.ui.ask.tick`, and these are how the same pass is
+    proven without the machine's hour and without sleeping through a cadence.
+    """
+    done = 0
+    while times is None or done < times:
+        try:
+            door.tick()
+        except Exception as error:  # noqa: BLE001 — the clock does not die of a pass
+            print(i18n.tr("webapp.clock_failed", error=error))
+        done += 1
+        if times is None or done < times:
+            pause(clock.CADENCE.total_seconds())
+
+
 def run(port: int = DEFAULT_PORT, host: str | None = None,
         include_caddy: bool = False) -> int:
     """Put AT on a port — in HTTP, or behind the Caddy's TLS.
@@ -1570,6 +1608,12 @@ def run(port: int = DEFAULT_PORT, host: str | None = None,
     about and where it is not is the module docstring's. The raw server is what
     the route tests build, and it is not a hole: it is the folder that asks
     nothing, and `_asks` is where that is decided.
+
+    **And the clock starts with it** (§4, item 24): a daemon thread that rounds
+    the jobs which have come round, born here and gone with the process. It is
+    NOT in `make_server`, and that is the same line the refusal above draws —
+    the route tests build a bare server, and nothing of theirs may move with an
+    hour the machine chose.
     """
     from at.i18n import tr
 
@@ -1624,6 +1668,10 @@ def run(port: int = DEFAULT_PORT, host: str | None = None,
     url = f"https://{where}:{port}" if include_caddy else f"http://{where}:{port}"
     print(tr("caddy.serving", url=url) if include_caddy
           else tr("webapp.serving", url=url))
+    # The clock, kept by the process that is already up (§4, item 24). It is a
+    # DAEMON: it dies with the server, and nothing has to stop it — the folder
+    # that is idle is exactly the one it is here for.
+    threading.Thread(target=beat, daemon=True, name=CLOCK_THREAD).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
