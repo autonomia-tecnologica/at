@@ -210,6 +210,34 @@ def seal(value: str, key: bytes) -> str:
     return f"{SEALED}:{base64.urlsafe_b64encode(raw).decode('ascii')}"
 
 
+def seal_bytes(data: bytes, key: bytes) -> bytes:
+    """`data` sealed with `key`, nonce included — `seal`'s twin for raw bytes.
+
+    A file is not a value that lands in a row: it needs no self-describing
+    header and no base64, so this is the primitive underneath `seal` with
+    neither — `SecretBox.encrypt` already carries the nonce ahead of the
+    ciphertext, which is the whole of the envelope a byte string needs.
+    """
+    try:
+        box = nacl.secret.SecretBox(key)
+    except (TypeError, ValueError):
+        raise KeyRefused() from None
+    return bytes(box.encrypt(data))
+
+
+def unseal_bytes(data: bytes, key: bytes) -> bytes | None:
+    """The bytes `data` carries, or `None` when this key does not open it.
+
+    `seal_bytes`'s twin, and the same posture as `unseal`: a key that does not
+    open it, bytes a hand shortened or lengthened — every way of not opening
+    is one answer, and none of them is an exception that takes down the read.
+    """
+    try:
+        return bytes(nacl.secret.SecretBox(key).decrypt(data))
+    except (nacl.exceptions.CryptoError, ValueError, TypeError):
+        return None
+
+
 def envelopes(text: str) -> tuple[str, ...]:
     """Todo envelope que um texto carrega, na ordem em que aparece.
 

@@ -99,6 +99,17 @@ def atomic_write_text(path: Path, text: str, mode: int | None = None) -> None:
     _writes += 1
 
 
+def mark_write() -> None:
+    """Count a write that did not go through `atomic_write_text` — for content
+    that is not a single file written whole. A restore's tar extraction is many
+    files in one act, and the cadence only needs to know ONE write happened
+    since the last version, not how many files carried it. The switch is the
+    caller's to have asked already (`guard`), before the write it counts here.
+    """
+    global _writes
+    _writes += 1
+
+
 def read_json(path: Path, default: object = None) -> object:
     """A JSON file as it is, or `default` when it is absent or unreadable.
 

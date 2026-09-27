@@ -233,6 +233,42 @@ class TheEnvelope(unittest.TestCase):
         self.assertEqual(vault.envelopes(text), ())
 
 
+class TheByteEnvelope(unittest.TestCase):
+    """`seal_bytes`/`unseal_bytes` — `seal`'s twin, for a file and not a row."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.key = vault.vault_key(PHRASE)
+
+    def test_the_bytes_round_trip(self):
+        data = b"\x00\x01qualquer coisa bin\xe1ria"
+        self.assertEqual(vault.unseal_bytes(vault.seal_bytes(data, self.key), self.key), data)
+
+    def test_it_carries_no_cleartext_and_no_base64_header(self):
+        data = b"um segredo qualquer"
+        sealed = vault.seal_bytes(data, self.key)
+        self.assertNotIn(data, sealed)
+        self.assertFalse(sealed.startswith(vault.SEALED.encode("ascii")))
+
+    def test_two_seals_of_one_value_are_two_answers(self):
+        data = b"o mesmo valor"
+        self.assertNotEqual(vault.seal_bytes(data, self.key), vault.seal_bytes(data, self.key))
+
+    def test_another_key_does_not_open_it(self):
+        sealed = vault.seal_bytes(b"algo", self.key)
+        self.assertIsNone(vault.unseal_bytes(sealed, FOREIGN))
+
+    def test_a_shortened_value_does_not_open_and_does_not_raise(self):
+        sealed = vault.seal_bytes(b"algo", self.key)
+        self.assertIsNone(vault.unseal_bytes(sealed[:-1], self.key))
+
+    def test_sealing_with_no_key_is_refused(self):
+        for key in (None, b"", b"curta"):
+            with self.subTest(key=key):
+                with self.assertRaises(vault.KeyRefused):
+                    vault.seal_bytes(b"algo", key)
+
+
 class TheDerivedKey(unittest.TestCase):
     """The key of one service or purpose, out of the Vault Key alone (§4)."""
 

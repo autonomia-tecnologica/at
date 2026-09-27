@@ -410,7 +410,7 @@ class ThePermissions(SecretCase):
 class TheEntry(SecretCase):
     """A credential is proved with the Access Phrase untyped (§4, item 8)."""
 
-    def test_the_vault_is_reached_by_four_files_and_by_them_alone(self):
+    def test_the_vault_is_reached_by_five_files_and_by_them_alone(self):
         # Item 14a landed the vault with no caller anywhere and said so in a
         # test; the slice that landed the table gave it the first two. They are
         # the door that SEALS (`core/secrets`) and the engine that knows the
@@ -424,6 +424,13 @@ class TheEntry(SecretCase):
         # — o `at_deploy/environment.py` para o portão e os três do provedor, e o
         # `at_deploy/notifier.py` para as duas pontas da ACL do §7f, que são
         # lidas de FORA do container e por isso não passam pela materialização.
+        #
+        # **O quinto é `core/backup.py`** (item 51): o arquivo que o backup manda
+        # para fora não é uma linha de tabela nem um valor que o container encheu
+        # — é a Pasta de Trabalho inteira, num arquivo só —, e por isso a chave
+        # derivada e o par `seal_bytes`/`unseal_bytes` entram por ele, e não pela
+        # porta que sela linhas.
+        #
         # Sorted, because the filesystem hands the files over in an order of its
         # own and the list below is the declaration, not a directory listing.
         callers = sorted(
@@ -433,7 +440,7 @@ class TheEntry(SecretCase):
             if "tests" not in path.parts and reaches_vault(path)
         )
         self.assertEqual(callers, [
-            "at/core/secrets.py", "at/core/tables.py",
+            "at/core/backup.py", "at/core/secrets.py", "at/core/tables.py",
             "at_deploy/environment.py", "at_deploy/notifier.py",
         ])
 

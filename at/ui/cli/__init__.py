@@ -17,6 +17,7 @@ from at import __version__, i18n
 from at.core import (
     actors,
     audit,
+    backup,
     boot,
     files,
     install,
@@ -25,6 +26,7 @@ from at.core import (
     migrations,
     paths,
     permissions,
+    secrets,
     tables,
 )
 from at.data import schema
@@ -82,6 +84,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if word == "webapp":
         return _webapp(rest)
+
+    if word == "backup":
+        return _backup(rest)
 
     if word == "admin":
         return _admin(rest)
@@ -162,6 +167,69 @@ def _webapp(rest: list[str]) -> int:
             return _reject("webapp")
 
     return webapp.run(port, host=host, include_caddy=include_caddy)
+
+
+# ----------------------------------------------------------------- the backup ---
+
+def _backup(rest: list[str], secret: Ask | None = None) -> int:
+    """`at-cli backup make|restore` — the copy that survives the machine (item 51).
+
+    The Access Phrase is read WITHOUT ECHO, the same way `admin`'s credential
+    is — it does not travel through the command line, so it never lands in
+    the shell's history nor anybody's `ps`. It is read LAZILY: `core.backup`
+    calls the reader itself, once its own cheap checks already passed, so a
+    destination with no tool to reach it or a folder `restore` refuses never
+    gets as far as asking a person to type it.
+    """
+    if len(rest) != 2:
+        return _reject("backup")
+    action, target = rest[0], rest[1]
+    if action not in (backup.MAKE, backup.RESTORE):
+        return _reject("backup")
+    if secret is None:
+        secret = _readers()[1]
+    if secret is None:
+        print(tr("backup.no_tty"))
+        return REFUSED
+
+    def phrase() -> str:
+        return secret(tr("backup.phrase"))
+
+    try:
+        outcome = backup.make(phrase, target) if action == backup.MAKE \
+            else backup.restore(phrase, target)
+    except secrets.SecretsError as error:
+        print(error)
+        return REFUSED
+    except files.ReadOnly as error:
+        print(tr("cli.error.read_only", where=error.where))
+        return REFUSED
+    except OSError as error:
+        print(tr("backup.error.io", reason=str(error)))
+        return REFUSED
+
+    print(_backup_message(action, outcome, target))
+    return OK if outcome.state in (backup.MADE, backup.RESTORED) else REFUSED
+
+
+def _backup_message(action: str, outcome: backup.Report, target: str) -> str:
+    """The sentence one act of `backup` ends in — composed here, and not in
+    `core.backup`, which answers in facts (a state, a tool) and not in words."""
+    if action == backup.MAKE:
+        if outcome.state == backup.MADE:
+            return tr("backup.make.done", destination=target)
+        if outcome.state == backup.BLOCKED:
+            return tr("backup.make.blocked")
+        if outcome.state == backup.NO_TOOL:
+            return tr("backup.make.no_tool", tool=outcome.tool)
+        return tr("backup.make.failed", tool=outcome.tool, destination=target)
+    if outcome.state == backup.RESTORED:
+        return tr("backup.restore.done")
+    if outcome.state == backup.NOT_FOUND:
+        return tr("backup.restore.not_found", where=target)
+    if outcome.state == backup.NOT_FRESH:
+        return tr("backup.restore.not_fresh")
+    return tr("backup.restore.wrong_key")
 
 
 # ---------------------------------------------------------------- the licence ---

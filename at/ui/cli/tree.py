@@ -44,6 +44,13 @@ SETTING = Node(
 
 WORDS: tuple[Node, ...] = (
     Node("webapp", "cli.webapp.about", (Node("run", "cli.webapp.run.about"),)),
+    # The copy that survives the machine (item 51). It is about the FOLDER and
+    # not a table, so it is declared here like `webapp` and `admin` are, and
+    # not read off `data/schema/` — there is no row behind either of its acts.
+    Node("backup", "cli.backup.about", (
+        Node("make", "cli.backup.make.about"),
+        Node("restore", "cli.backup.restore.about"),
+    )),
     # The `services` word is NOT here, and its absence is the artifact boundary:
     # the environment of §7 left this binary whole and became `at-deploy`
     # (item 27), whose own tree carries it. `at-cli` keeps the folder and the app.
