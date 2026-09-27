@@ -18,8 +18,9 @@ import threading
 import unittest
 import urllib.error
 import urllib.request
-from contextlib import redirect_stdout
+from contextlib import contextmanager, redirect_stdout
 from datetime import date
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from unittest import mock
 
@@ -864,10 +865,14 @@ class TheEntrance(ServerCase):
     def test_the_door_carries_no_table_and_no_count(self):
         # It is the ONE public answer of the API, and a page that described the
         # folder to whoever can reach the port would be the folder read by
-        # whoever can reach the port.
+        # whoever can reach the port. `version` is not a description of the
+        # folder — it is the same word `at-cli --version` prints — and it is
+        # what lets a second `at-cli webapp` landing on this port ask this
+        # very route which release is already up.
         _, _, body = self.get("/api/session")
         answer = json.loads(body)
-        self.assertEqual(sorted(set(answer) - {"auth", "actor", "lang", "labels"}), [])
+        self.assertEqual(
+            sorted(set(answer) - {"auth", "actor", "lang", "labels", "version"}), [])
 
     def test_the_words_of_the_entrance_arrive_in_both_languages(self):
         # The first screen AT ever shows speaks the active language, and it
@@ -1920,6 +1925,118 @@ class ThePort(unittest.TestCase):
             holder.close()
         self.assertEqual(code, 1)
         self.assertIn(i18n.tr("webapp.port_taken", port=port), output.getvalue())
+
+    def test_a_port_answering_at_the_same_version_names_nothing_to_do(self):
+        with _answering(webapp.__version__) as port:
+            output = io.StringIO()
+            with redirect_stdout(output):
+                code = webapp.run(port)
+        self.assertEqual(code, 1)
+        self.assertIn(
+            i18n.tr("webapp.instance_up", url=f"http://{webapp.HOST}:{port}",
+                     version=webapp.__version__),
+            output.getvalue(),
+        )
+
+    def test_a_port_answering_ahead_says_to_update_this_at_cli(self):
+        with _answering("9.9.9") as port:
+            output = io.StringIO()
+            with redirect_stdout(output):
+                code = webapp.run(port)
+        self.assertEqual(code, 1)
+        self.assertIn(
+            i18n.tr("webapp.instance_ahead", url=f"http://{webapp.HOST}:{port}",
+                     theirs="9.9.9", mine=webapp.__version__),
+            output.getvalue(),
+        )
+
+    def test_a_port_answering_behind_names_at_deploy_update(self):
+        with _answering("0.0.1") as port:
+            output = io.StringIO()
+            with redirect_stdout(output):
+                code = webapp.run(port)
+        self.assertEqual(code, 1)
+        self.assertIn(
+            i18n.tr("webapp.instance_behind", url=f"http://{webapp.HOST}:{port}",
+                     theirs="0.0.1", mine=webapp.__version__),
+            output.getvalue(),
+        )
+        # No `at-deploy` in this folder, so the second exit is offered too —
+        # never fetched, only named.
+        self.assertIn(
+            i18n.tr("webapp.instance_behind_no_deploy", deploy=paths.deploy_file()),
+            output.getvalue(),
+        )
+
+    def test_a_port_answering_behind_says_nothing_more_with_at_deploy_present(self):
+        (paths.working_folder() / paths.deploy_file()).touch()
+        with _answering("0.0.1") as port:
+            output = io.StringIO()
+            with redirect_stdout(output):
+                webapp.run(port)
+        self.assertNotIn(
+            i18n.tr("webapp.instance_behind_no_deploy", deploy=paths.deploy_file()),
+            output.getvalue(),
+        )
+
+    def test_a_port_answering_something_that_is_not_at_falls_back(self):
+        # A body that does not carry `version` is not this AT — the door
+        # `/api/session` never answers without it — so the plain refusal is
+        # what a stray server on the port gets.
+        class NotAT(BaseHTTPRequestHandler):
+            def do_GET(self):  # noqa: N802
+                body = json.dumps({"ok": True}).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *args):
+                pass
+
+        server = HTTPServer((webapp.HOST, 0), NotAT)
+        port = server.server_address[1]
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            output = io.StringIO()
+            with redirect_stdout(output):
+                code = webapp.run(port)
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=5)
+        self.assertEqual(code, 1)
+        self.assertIn(i18n.tr("webapp.port_taken", port=port), output.getvalue())
+
+
+@contextmanager
+def _answering(version: str):
+    """A bare HTTP server standing in for another AT, answering `/api/session`
+    with a version of the caller's choosing — never this process's own, so
+    the three orders `_report_taken` decides between can each be driven."""
+
+    class Answering(BaseHTTPRequestHandler):
+        def do_GET(self):  # noqa: N802
+            body = json.dumps({"version": version}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *args):
+            pass
+
+    server = HTTPServer((webapp.HOST, 0), Answering)
+    port = server.server_address[1]
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield port
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
 
 
 class TheAuditRoute(ServerCase):

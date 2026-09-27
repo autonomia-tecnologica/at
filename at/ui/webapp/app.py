@@ -119,18 +119,21 @@ import os
 import secrets
 import threading
 import time
+import urllib.error
+import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Callable
 from urllib.parse import parse_qs, urlparse
 
-from at import i18n, nlu
+from at import __version__, i18n, nlu
 from at.core import (
     actors,
     audit,
     clock,
     files,
     gate,
+    paths,
     permissions,
     projects,
     risk,
@@ -443,11 +446,17 @@ def entry_payload(open_session: session.Session | None) -> dict:
     opens — nobody could type anything that wins. The page tells "nobody is in"
     from "nobody can enter" by this boolean, and only one of the two draws a
     form.
+
+    `version` rides along for a reader that is not the page: `at-cli webapp`,
+    landing on a port another AT already holds, asks THIS route to find out
+    which one — it stays the ONE public answer instead of a second route, and
+    the page itself has no use for the field and reads past it.
     """
     return {
         "auth": actors.can_expose(),
         "actor": {"name": open_session.name} if open_session else None,
         "lang": i18n.active_code(),
+        "version": __version__,
         # The WHOLE language each word, like `/api/state` hands them: the page
         # picks by the language on screen and the server keeps owning the words.
         "labels": {key: i18n.labels(f"webapp.{key}") for key in ENTRY_WORDS},
@@ -1596,6 +1605,84 @@ def beat(times: int | None = None, pause: Callable[[float], None] = time.sleep) 
             pause(clock.CADENCE.total_seconds())
 
 
+# How long `run` waits for whoever already holds the port to answer
+# `/api/session` before giving up on knowing who it is. Local and fast: the
+# instance on the other end is on THIS machine's loopback (or reached the same
+# way the person reaches it), never a wait worth making a person sit through.
+INSTANCE_PROBE_TIMEOUT = 0.5
+
+
+def _instance_version(where: str, port: int) -> str | None:
+    """The version of whoever already answers on that port, or `None`.
+
+    Asked over HTTP and never guessed from HOW the thing was started: a loose
+    `at-cli webapp`, a machine service and the container of §7c all answer the
+    same `/api/session` the same way, so ONE probe covers every case this
+    product can meet on a port — nothing here has to tell them apart. `None`
+    covers everything that is not that answer: a closed port that only took
+    the handshake, a page that is not AT's, a body the session payload never
+    takes this shape in.
+    """
+    request = urllib.request.Request(f"http://{where}:{port}/api/session")
+    try:
+        with urllib.request.urlopen(request, timeout=INSTANCE_PROBE_TIMEOUT) as answer:
+            payload = json.loads(answer.read())
+    except (OSError, ValueError):
+        return None
+    version = payload.get("version") if isinstance(payload, dict) else None
+    return version if isinstance(version, str) else None
+
+
+def _version_order(version: str) -> tuple[int, ...]:
+    """A version as the numbers in it, for the one comparison this needs:
+    which of two is ahead.
+
+    The same rule `at_deploy/environment.py:order` reads image pins by — but
+    not imported from there: `at` does not depend on `at_deploy` (that half
+    needs the machine and elevation, this one does not), so the few lines are
+    repeated instead of reached for across the line that separates them.
+    """
+    numbers: list[int] = []
+    for part in version.replace("-", ".").replace("_", ".").split("."):
+        digits = "".join(character for character in part if character.isdigit())
+        if digits:
+            numbers.append(int(digits))
+    return tuple(numbers)
+
+
+def _report_taken(where: str, port: int) -> None:
+    """The port is somebody else's — and, when that somebody is an AT, which
+    version it is and the way out that fits (§3: the pin only moves forward).
+
+    A version this cannot read at all falls back to the plain refusal: named
+    port, named way out, nothing guessed about who is holding it. Otherwise
+    it is one of three: the SAME version (nothing to do — it is already the
+    WebApp this command would have started, loose or as a service, and this
+    probe cannot tell which); AHEAD (this at-cli is the one behind, and the
+    way out is updating IT); or BEHIND, where the way out is updating the
+    instance itself. That word — `at-deploy update` — does not exist yet, so
+    this only NAMES the exit and never runs it; once it exists, the missing
+    piece is `at-deploy` itself, offered and never fetched, the same way the
+    Podman and the `certutil` gaps are (`docs/pt_BR/container.md`).
+    """
+    url = f"http://{where}:{port}"
+    theirs = _instance_version(where, port)
+    if theirs is None:
+        print(i18n.tr("webapp.port_taken", port=port))
+        return
+    mine = _version_order(__version__)
+    order = _version_order(theirs)
+    if order == mine:
+        print(i18n.tr("webapp.instance_up", url=url, version=theirs))
+    elif order > mine:
+        print(i18n.tr("webapp.instance_ahead", url=url, theirs=theirs, mine=__version__))
+    else:
+        print(i18n.tr("webapp.instance_behind", url=url, theirs=theirs, mine=__version__))
+        deploy = paths.deploy_file()
+        if not (paths.working_folder() / deploy).is_file():
+            print(i18n.tr("webapp.instance_behind_no_deploy", deploy=deploy))
+
+
 def run(port: int = DEFAULT_PORT, host: str | None = None,
         include_caddy: bool = False) -> int:
     """Put AT on a port — in HTTP, or behind the Caddy's TLS.
@@ -1641,10 +1728,12 @@ def run(port: int = DEFAULT_PORT, host: str | None = None,
             raise
         # A port somebody else is already serving on is the way this fails in
         # practice — the PoC on 12345, or a second AT — and the bare `OSError:
-        # Address already in use` names neither the port nor a way out. AT
-        # says both, and the two ways out are the person's: another port, or
-        # freeing this one.
-        print(tr("webapp.port_taken", port=port))
+        # Address already in use` names neither the port nor a way out. When
+        # the somebody is an AT, `_report_taken` asks it which version and
+        # names the way out that fits; otherwise it falls back to naming just
+        # the port and the two generic ways out: another port, or freeing
+        # this one.
+        _report_taken(where, port)
         return 1
 
     process = None
