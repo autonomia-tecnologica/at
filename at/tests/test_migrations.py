@@ -645,6 +645,64 @@ class TheBacklogArrives(FolderCase):
         self.assertEqual(where.read_text(encoding="utf-8"), before)
 
 
+class TheTagsArrive(FolderCase):
+    """Migration seventeen: a task carries the tag the backlog is sliced by.
+
+    The fatia stops being a project or a subproject and becomes the set of tasks
+    that carry the same tag. It is a DECLARATION change and nothing else — the
+    `tags` list and the column the listing shows it in — and no row is touched:
+    a task without the field already reads as the empty list the default names.
+    """
+
+    def old_task(self) -> dict:
+        """`task.json` as the release before this one wrote it."""
+        declared = json.loads(self.declaration("task").read_text(encoding="utf-8"))
+        declared["fields"].pop("tags", None)
+        declared["columns"] = ["status", "priority", "text", "project"]
+        return declared
+
+    def old_folder(self) -> None:
+        self.born()
+        self.rewrite(self.declaration("task"), self.old_task())
+        self.forgotten()
+
+    def test_an_old_folder_gains_the_field_the_backlog_is_sliced_by(self):
+        self.old_folder()
+        self.caught_up()
+        declared = json.loads(self.declaration("task").read_text(encoding="utf-8"))
+        tags = declared["fields"]["tags"]
+        self.assertEqual(tags["type"], "list")
+        self.assertEqual(tags["default"], [])
+        self.assertTrue(tags["filterable"])
+        self.assertTrue(tags["searchable"])
+        # Who writes a tag is the backlog session, and not the screen.
+        self.assertNotIn("editable", tags)
+
+    def test_the_task_listing_gains_the_tag_column(self):
+        self.old_folder()
+        self.caught_up()
+        declared = json.loads(self.declaration("task").read_text(encoding="utf-8"))
+        self.assertIn("tags", declared["columns"])
+
+    def test_a_row_that_predates_the_field_is_not_rewritten(self):
+        # A decisão: o default é lista VAZIA, e uma linha sem o campo já lê como
+        # vazia — a listagem junta o que encontra, e um campo ausente não junta
+        # nada. Encher toda tarefa com `[]` seria a migração reescrevendo o
+        # arquivo inteiro para dizer o que a leitura já diz.
+        self.born()
+        self.rewrite(self.declaration("task"), self.old_task())
+        where = self.root / "Tabelas" / "tasks.jsonl"
+        where.write_text(
+            json.dumps({"id": 1, "text": "café", "status": "todo"}) + "\n",
+            encoding="utf-8",
+        )
+        self.forgotten()
+        self.caught_up()
+        rows = [json.loads(line) for line in where.read_text(encoding="utf-8").splitlines()]
+        self.assertNotIn("tags", rows[0])
+        self.assertEqual(rows[0]["text"], "café")
+
+
 # ------------------------------------------------------------- the stamp ---
 
 

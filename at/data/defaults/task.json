@@ -12,7 +12,8 @@
     "status",
     "priority",
     "text",
-    "project"
+    "project",
+    "tags"
   ],
   "desc": "the movement: one short text, the whole of the prose in desc, and the status log in modifications",
   "fields": {
@@ -62,6 +63,13 @@
         "project",
         "orphans"
       ]
+    },
+    "tags": {
+      "label": "table.task.field.tags",
+      "type": "list",
+      "filterable": true,
+      "searchable": true,
+      "default": []
     },
     "since": {
       "label": "table.task.field.since",

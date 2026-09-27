@@ -134,6 +134,7 @@ subprojects
 subtree
 symlink
 tabelas
+tags
 tailscale
 tarball
 tarefas

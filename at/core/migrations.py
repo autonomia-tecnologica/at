@@ -847,6 +847,49 @@ def _scanner(ask: Ask | None) -> list[Report]:
     return _hand_over(SCANNER_PERMISSIONS)
 
 
+# What THIS release adds to a declaration that is ALREADY on disk — migration
+# seventeen, and the same shape migrations nine and fifteen write: the additions
+# are spelled as a declaration spells them, so the merge never has to be told
+# which kind of key it is holding.
+#
+# The backlog stops being a project or a subproject and becomes a QUEUE OF TAGS:
+# the tag is the FATIA, and the fatia is the set of tasks that carry the same
+# one. The `task` gains the `tags` list and the column the listing shows it in.
+# It is not `editable`: who writes a tag is the backlog session, and not the
+# screen a person types into.
+TAGS: dict[str, dict] = {
+    "task": {
+        "columns": ["tags"],
+        "fields": {
+            "tags": {
+                "label": "table.task.field.tags",
+                "type": "list",
+                "filterable": True,
+                "searchable": True,
+                "default": [],
+            }
+        },
+    },
+}
+
+
+def _tags(ask: Ask | None) -> list[Report]:
+    """Migration seventeen: a task carries the tag the backlog is sliced by.
+
+    It does not ask: a declaration of the product's own, and nothing outside the
+    folder points at it (§3, migration).
+
+    **No row is filled, and that is the decision — `_fill_missing` is NOT called
+    here.** The default is an empty list, and a row without the field already
+    READS as empty: the listing joins the list it finds, an absent field joins
+    nothing, and both read as `—`. Writing `[]` into every task would be a
+    migration rewriting the whole file to say what the read already says, and
+    there is no second truth to settle — unlike `priority`, which the order was
+    already reading off the declaration.
+    """
+    return _extend(TAGS)
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, _legacy_instance),
     Migration(2, _capitalized_instance),
@@ -864,6 +907,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(14, _jobs),
     Migration(15, _backlog_order),
     Migration(16, _scanner),
+    Migration(17, _tags),
 )
 
 
