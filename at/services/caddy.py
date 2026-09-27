@@ -130,8 +130,8 @@ AUTH_HEADERS = ("Remote-User", "Remote-Groups", "Remote-Name", "Remote-Email")
 PORTAL = "/authelia"
 
 # The port HTTPS is served on when nobody says otherwise, and the ONE port a URL
-# does not spell: `https://at.local` and `https://at.local:443` are the same
-# address, and the first is what a person types. Caddy reads a site address with
+# does not spell: `https://at.at.local` and `https://at.at.local:443` are the
+# same address, and the first is what a person types. Caddy reads a site address with
 # no port the same way, so the omission is one on both sides of the file.
 HTTPS = 443
 
@@ -362,7 +362,7 @@ def address(host: str, port: int) -> str:
     `--host 192.168.1.10` — and not opening every one of them.
 
     **The default port is not written**: a URL and a Caddyfile both read
-    `https://at.local` as the address on `443`, and a `:443` in the middle of it
+    `https://at.at.local` as the address on `443`, and a `:443` in the middle of it
     is noise that says nothing — the port is there when it is another one, which
     is exactly when a person has to read it.
     """

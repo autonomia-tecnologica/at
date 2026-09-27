@@ -394,7 +394,7 @@ class TheManifest(unittest.TestCase):
         # UDP e TCP, na mesma porta, e o endereço é um dos dois que §7e permite:
         # o laço quando a máquina não está em rede nenhuma, o dela quando está.
         # O DNS é o segundo serviço a sair do laço, e é isso que torna os nomes
-        # do ambiente — `at.local`, `ntfy.at.local` — perguntáveis de fora da
+        # do ambiente — `at.at.local`, `ntfy.at.local` — perguntáveis de fora da
         # máquina. Onde cada endereço vale é o que `ThePrivateNetwork` e `TheUp`
         # provam, com o agente fora do caminho; aqui a pergunta é outra.
         ports = env.ports_of(_service("dnsmasq"))
@@ -664,7 +664,7 @@ class TheIdentityProvider(FolderCase):
         self.up()
         text = self.conf()
         self.assertIn("default_policy: deny", text)
-        self.assertIn(f"    - domain: {env.NAME}", text)
+        self.assertIn(f"    - domain: {env.site_host()}", text)
         self.assertIn("      policy: one_factor", text)
         self.assertIn(f"authelia_url: {env.portal_url()}", text)
 
@@ -1055,20 +1055,20 @@ class ThePrivateNetwork(FolderCase):
         with mock.patch.object(vpn, "name", lambda call=None: "host.example-tailnet.ts.net"), \
                 mock.patch.object(vpn, "address", lambda call=None: "100.64.0.1"), \
                 mock.patch.object(env, "address_ready", lambda address: True):
-            self.assertEqual(env.site_host(), env.NAME)
+            self.assertEqual(env.site_host(), f"{env.AT_HOST}.{env.NAME}")
             fake = self.runtime()
             self.quiet(env.up, secret=self.phrase)
             caddyfile = (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8")
-            self.assertIn(f"https://{env.NAME} {{", caddyfile)
+            self.assertIn(f"https://{env.site_host()} {{",caddyfile)
             self.assertNotIn("host.example-tailnet.ts.net", caddyfile)
             identity = (env.state(env.IDENTITY) / env.IDENTITY_YAML).read_text(encoding="utf-8")
-            self.assertIn(f"domain: {env.NAME}", identity)
+            self.assertIn(f"domain: {env.site_host()}", identity)
             # O portal segue o mesmo nome — e carrega o caminho dele, que é o
             # endereço em que a borda o roteia fora do `forward_auth`.
             self.assertIn(
-                f"authelia_url: https://{env.NAME}{caddy.PORTAL}/", identity)
+                f"authelia_url: https://{env.site_host()}{caddy.PORTAL}/", identity)
             # The name AT answers for points at where the edge actually is.
-            self.assertIn(f"address=/{env.NAME}/100.64.0.1",
+            self.assertIn(f"address=/{env.site_host()}/100.64.0.1",
                           (env.state("dnsmasq") / "dnsmasq.conf").read_text(encoding="utf-8"))
             # **E a porta do site é publicada no endereço DA REDE**, que é como a
             # pessoa chega: no caminho container quem publica é o container, e o
@@ -1076,7 +1076,7 @@ class ThePrivateNetwork(FolderCase):
             self.assertIn(f"100.64.0.1:{env.PORT}:{env.PORT}/tcp",
                           _call(fake, "at-caddy"))
             # **E o DNS sai do laço pela outra metade da mesma razão**: os nomes
-            # que ele responde — `at.local` e `ntfy.at.local` — não existem em
+            # que ele responde — `at.at.local` e `ntfy.at.local` — não existem em
             # DNS público nenhum, então o navegador de outra máquina e o celular
             # só os resolvem perguntando a ELE, e é para cá que o split-DNS do
             # tailnet aponta. Sem isso o nome não resolve fora da máquina, e a
@@ -1087,15 +1087,16 @@ class ThePrivateNetwork(FolderCase):
 
     def test_without_a_network_the_site_is_bills_own_name(self):
         # O estado suportado, e não um degradado: a máquina não está em rede
-        # privada nenhuma, e o site é o nome que o AT responde (§7a) — um
-        # NOME, e não o laço, porque o portão recusa um domínio de cookie sem
-        # ponto e o TLS precisa de um nome para o SNI. Os dois foram medidos.
-        self.assertEqual(env.site_host(), env.NAME)
+        # privada nenhuma, e o site é o NOME que o AT responde (§7a) —
+        # `at.at.local`, um nome embaixo do domínio do ambiente, e não o laço,
+        # porque o portão recusa um domínio de cookie sem ponto e o TLS precisa
+        # de um nome para o SNI. Os dois foram medidos.
+        self.assertEqual(env.site_host(), f"{env.AT_HOST}.{env.NAME}")
         self.runtime()
         self.quiet(env.up, secret=self.phrase)
-        self.assertIn(f"https://{env.NAME} {{",
+        self.assertIn(f"https://{env.site_host()} {{",
                       (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8"))
-        self.assertIn(f"address=/{env.NAME}/{env.LOOP}",
+        self.assertIn(f"address=/{env.site_host()}/{env.LOOP}",
                       (env.state("dnsmasq") / "dnsmasq.conf").read_text(encoding="utf-8"))
 
 
@@ -1455,7 +1456,7 @@ class TheWebappBehindIt(FolderCase):
         self.runtime()
         self.quiet(env.up, secret=self.phrase)
         text = (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8")
-        self.assertIn(f"https://{env.NAME} {{", text)
+        self.assertIn(f"https://{env.site_host()} {{",text)
         self.assertIn(f"\tbind {env.ALL}", text)
         self.assertIn(
             f"reverse_proxy {env.container(env.WEBAPP)}:{env.WEBAPP_PORT}", text)
@@ -1466,20 +1467,26 @@ class TheNames(FolderCase):
     """Os nomes do ambiente: o do site, o do notificador e o da CA (§7a, §7f).
 
     O ambiente responde por UM domínio (`at.local`) e cada serviço que é
-    alcançado por um nome pendura o dele embaixo: o site fica com o domínio, o
-    notificador responde em `ntfy.at.local`, e a CA do AT em `cert.at.local` —
-    o único que não tem serviço atrás, e que existe para o aparelho que precisa
-    confiar no certificado poder BUSCÁ-lo em vez de receber um caminho de
-    arquivo. Quem responde os três é o `dnsmasq`, com o endereço onde a borda
-    está de fato — e o que se lê aqui é o que a subida ESCREVE, que é a única
-    coisa que esta suíte pode ler.
+    alcançado por um nome pendura o dele embaixo: o site responde em
+    `at.at.local`, o notificador em `ntfy.at.local`, e a CA do AT em
+    `cert.at.local` — o único que não tem serviço atrás, e que existe para o
+    aparelho que precisa confiar no certificado poder BUSCÁ-lo em vez de receber
+    um caminho de arquivo. Quem responde os três é o `dnsmasq`, com o endereço
+    onde a borda está de fato — e o que se lê aqui é o que a subida ESCREVE, que
+    é a única coisa que esta suíte pode ler.
     """
 
     def test_the_environment_owns_one_domain_and_the_services_hang_under_it(self):
         self.assertEqual(env.NAME, "at.local")
-        self.assertEqual(env.site_host(), env.NAME)
+        self.assertEqual(env.site_host(), f"{env.AT_HOST}.{env.NAME}")
         self.assertEqual(env.notifier_host(), f"{env.NOTIFIER_HOST}.{env.NAME}")
         self.assertEqual(env.cert_host(), f"{env.CERT_HOST}.{env.NAME}")
+        # **E o domínio pelado não responde nada.** O site era o `at.local`
+        # inteiro enquanto era o único serviço; agora que ele tem o nome dele
+        # embaixo do domínio, um nome que ninguém digita não entra na lista — a
+        # borda não teria certificado para ele, e o DNS responderia por um
+        # endereço que não serve nada.
+        self.assertNotIn(env.NAME, env.names())
 
     def test_the_dns_answers_every_name_with_the_address_the_edge_is_at(self):
         # **Nome a nome, e não um curinga.** `address=/.at.local/…` responderia
