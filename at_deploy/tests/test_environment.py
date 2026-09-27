@@ -1963,6 +1963,116 @@ class TheClearState(FolderCase):
                 self.assertEqual(list(where.iterdir()), [])
 
 
+# --------------------------------------------- o que o container enche ---
+
+# A árvore que o CONTAINER escreve no storage do Caddy, na forma em que a
+# instância a tem: a chave privada de cada autoridade da CA local, a de cada
+# certificado emitido contra ela, e o `root.crt` PÚBLICO que a pessoa importa.
+# O conteúdo é o de menos — o que estes testes leem é que o `up` não o toca, não
+# o sela e não o tira da pasta —, e por isso ele é uma frase que se reconhece.
+CA_PRIVATE = "a-chave-privada-que-o-container-escreveu, e o cofre nao a alcanca\n"
+CA_PUBLIC = "o-root-crt-publico-que-a-pessoa-importa-no-app-do-celular\n"
+
+
+class TheStorageOutOfReach(FolderCase):
+    """O storage do Caddy fica FORA do alcance do cofre, e isso é declarado (§7a, item 50, corte `e`).
+
+    **O item 50 selou tudo o que o AT SORTEIA — e este objeto ele não sorteia.**
+    O `storage` do Caddy é PREENCHIDO pelo container enquanto ele está de pé, na
+    cadência da renovação de certificado dele, e nenhuma subida passa por ali
+    para selá-lo; e a Frase não chega lá dentro, porque §7a diz que nenhum
+    processo de dentro do container abre o cofre. Sem um selo que o alcance, o
+    que resta é DECLARAR o objeto fora do alcance do cofre, com o preço dito (a
+    cópia da pasta leva a chave privada da CA), e é esta a declaração que a
+    suíte segura: o `up` não escreve, não sela e não move o que o container
+    encheu. O modo `0600` é o do container — nenhum arquivo daqui é escrita do
+    AT, e é por isso que o catálogo de `TheClearState` não tem linha para eles.
+    """
+
+    def storage(self) -> Path:
+        """A pasta que o container enche — a mesma que a instância mediu."""
+        return env.state(env.CADDY) / env.CADDY_STORAGE
+
+    def seeded(self) -> dict[Path, str]:
+        """A árvore como o CONTAINER a deixa, e não como o AT a escreveria.
+
+        Os nomes são os que a árvore de verdade tem dentro do storage, e o
+        `root.crt` é o `caddy.AUTHORITY` — o arquivo que o AT NOMEIA, e a única
+        metade da CA que é pública.
+        """
+        local = self.storage() / "pki" / "authorities" / "local"
+        files_written = {
+            local / "root.key": CA_PRIVATE,
+            local / "intermediate.key": CA_PRIVATE,
+            local / "intermediate.crt": CA_PUBLIC,
+            local / caddy.AUTHORITY.name: CA_PUBLIC,
+            self.storage() / "certificates" / "local" / "at.local" / "at.local.key":
+                CA_PRIVATE,
+        }
+        for where, body in files_written.items():
+            files.atomic_write_text(where, body, mode=0o600)
+        return files_written
+
+    def up(self) -> None:
+        """A subida inteira, com o runtime respondendo no lugar do Podman."""
+        self.runtime()
+        self.quiet(env.up, secret=self.phrase)
+
+    def test_the_up_leaves_what_the_container_wrote_exactly_as_it_was(self):
+        # **A declaração, do lado do AT**: o que o container encheu continua
+        # byte a byte como ele deixou. Um AT que passasse a escrever, mover ou
+        # re-selar a árvore falha aqui — que é o que separa "fora do alcance"
+        # de um comentário.
+        before = self.seeded()
+        self.up()
+        for where, body in before.items():
+            with self.subTest(where=where):
+                self.assertEqual(where.read_text(encoding="utf-8"), body)
+                self.assertEqual(stat.S_IMODE(where.stat().st_mode), 0o600)
+
+    def test_no_envelope_of_the_vault_reaches_the_storage(self):
+        # O cofre sela o que o AT SORTEIA, e o envelope é a marca dele
+        # (`vault.SEALED`). Nenhum arquivo desta pasta o carrega: ela não está
+        # entre os arquivos que o `up` abre ou sela — nem os que o container
+        # escreveu, nem qualquer outro que apareça ali.
+        self.seeded()
+        self.up()
+        for where in self.storage().rglob("*"):
+            if where.is_file():
+                with self.subTest(where=where):
+                    self.assertEqual(
+                        vault.envelopes(where.read_text(encoding="utf-8")), (),
+                        f"{where} carries a vault envelope: o storage não é do cofre",
+                    )
+
+    def test_the_storage_is_not_copied_out_of_the_folder(self):
+        # O diretório de execução recebe o que o container LÊ de uma cópia; o
+        # storage não: ele é montado DA pasta (`Mount(CADDY_DATA, host=...)`), e
+        # é na pasta de estado que o container o enche. O que a cópia clara
+        # levaria é o que a pasta sela, e esta pasta não é selada — tirá-la de
+        # lá seria ir na direção contrária à promessa do backup.
+        self.seeded()
+        self.up()
+        self.assertFalse((env.materialized(env.CADDY) / env.CADDY_STORAGE).exists())
+        self.assertTrue(self.storage().is_dir())
+
+    def test_the_only_name_the_at_has_there_is_the_public_certificate(self):
+        # O único arquivo do storage que o AT nomeia é a metade PÚBLICA da CA —
+        # o `root.crt` que o celular e o navegador da máquina importam
+        # (`authority_file`) —, e as chaves privadas que o container escreveu ao
+        # lado dele não têm nome nenhum no produto: quem as lê é o Caddy, de
+        # dentro.
+        written = self.seeded()
+        self.up()
+        authority = env.authority_file()
+        self.assertEqual(authority, self.storage() / caddy.AUTHORITY)
+        self.assertEqual(authority.suffix, ".crt")
+        self.assertIn(authority, written)
+        private = [where for where in written if where.suffix == ".key"]
+        self.assertTrue(private, "o teste precisa de chaves privadas ao lado para valer")
+        self.assertNotIn(authority, private)
+
+
 class TheAccessPhrase(FolderCase):
     """A Frase de Acesso na subida: quem sela, quem abre, e o que não sobe (§4).
 
