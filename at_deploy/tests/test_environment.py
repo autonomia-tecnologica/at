@@ -59,6 +59,9 @@ SAID = (
     "services.status.head.service", "services.status.head.state",
     "services.status.head.image",
     "services.dnsmasq.file.header", "services.gate.drawn",
+    # A migração da pasta que nasceu antes do selo (item 50, corte `f`): o ato
+    # que re-sorteia e sela o que estava em claro.
+    "services.migrated",
     # §4's Access Phrase, pedida pela subida (item 50): a pergunta, a segunda
     # leitura da primeira vez, e as três recusas. **A da frase curta é do
     # COFRE** — `secrets.error.phrase`, a mesma sentença que o `core.secrets`
@@ -1765,6 +1768,12 @@ PHONE = "the phone's notifier credential"
 # (`notifier.subscribe`).
 DRAWN_PHONE = "tk_zyxwvutsrqponmlkjihgfedcba9876"
 
+# Os valores que a pasta que nasceu ANTES do selo guardava, e que a migração
+# existe para matar (item 50, corte `f`). Eles são reconhecíveis de propósito:
+# o que cada teste procura é que eles não estejam em arquivo nenhum DEPOIS.
+BORN_GATE = "o-portao-que-nasceu-em-claro\n"
+BORN_TOKEN = "tk_o-token-que-nasceu-em-claro\n"
+
 # The three folders a CONTAINER fills and the deploy only creates: the Caddy's
 # storage (the local CA, and the private keys of it), the provider's `data` (its
 # database) and the notifier's (the auth database). What lands in them is the
@@ -2099,21 +2108,20 @@ class TheAccessPhrase(FolderCase):
         return asked, reader
 
     def seeded(self) -> None:
-        """Uma pasta que nasceu ANTES do selo: os valores, em claro.
+        """Uma pasta que nasceu ANTES do selo: os valores, em claro (item 50, corte `f`).
 
-        É o estado que a auditoria mediu na instância, e o corte da migração é o
-        seguinte: esta fatia ainda não o decide, e o que ela tem de provar é que
-        ele sobe como sempre subiu — a Frase não é pedida onde não há o que abrir
-        nem o que selar. **A credencial do AT entra aqui em claro também**, e não
-        é detalhe: é assim que a instância a tem, e é ela que faz o `up` não ter
-        o que sortear — sem ela, um sorteio viria aí e um sorteio SELA.
+        É o estado que a auditoria mediu na instância, e a migração é o ato que
+        esta classe prende: **cada valor em claro é RE-SORTEADO e selado**, e não
+        apenas selado, porque a pasta pode ter sido copiada e o valor que já
+        viajou não volta. **A credencial do AT entra aqui em claro também**, e
+        não é detalhe: é assim que a instância a tem, e é ela que faz o `up`
+        pedir a Frase — sem ela, um sorteio viria aí e um sorteio SELA.
         """
-        files.atomic_write_text(caddy.gate_file(), "o-portao-que-nasceu-em-claro\n")
+        files.atomic_write_text(caddy.gate_file(), BORN_GATE)
         for name in env.IDENTITY_SECRETS:
             files.atomic_write_text(env.state(env.IDENTITY) / name,
                                     f"o-valor-{name}-em-claro\n")
-        files.atomic_write_text(notifier.token_file(),
-                                "tk_o-token-que-nasceu-em-claro\n")
+        files.atomic_write_text(notifier.token_file(), BORN_TOKEN)
 
     def test_the_first_boot_reads_the_phrase_twice(self):
         # **Uma Frase que SELA não tem como ser conferida depois**: a segunda
@@ -2181,19 +2189,95 @@ class TheAccessPhrase(FolderCase):
         self.assertNotIn("run", fake.verbs())
         self.assertFalse(caddy.gate_file().exists())
 
-    def test_a_folder_that_never_sealed_is_not_asked(self):
-        # A migração do que já está em claro é o corte seguinte do item 50, e
-        # não esta fatia: uma pasta que já tem os quatro valores sobe como
-        # sempre subiu — sem Frase, porque não há o que abrir nem o que selar.
+    def born(self) -> dict[str, str]:
+        """Os valores que a pasta guardava em claro, por nome — como `_sealed_values`.
+
+        É o mapa que a migração tem de matar: cada um deles é um valor que já
+        esteve no disco sem envelope, e portanto um valor que uma cópia da pasta
+        pode ter levado.
+        """
+        return {
+            GATE: BORN_GATE.strip(),
+            SESSION: f"o-valor-{env.IDENTITY_SESSION}-em-claro",
+            ENCRYPTION: f"o-valor-{env.IDENTITY_ENCRYPTION}-em-claro",
+            SIGNATURE: f"o-valor-{env.IDENTITY_JWT}-em-claro",
+            TOKEN: BORN_TOKEN.strip(),
+        }
+
+    def folder_files(self) -> list[Path]:
+        """Todo arquivo sob `App/services/`, mais o portão — o que uma cópia levaria."""
+        return [where for where in env.pin_file().parent.rglob("*") if where.is_file()] \
+            + [caddy.gate_file()]
+
+    def test_a_folder_that_never_sealed_is_migrated_and_reads_the_phrase_twice(self):
+        # **A migração é um ATO, e ele pede a Frase** (item 50, corte `f`): a
+        # pasta que nasceu antes do selo tem valores em claro, e cada um deles é
+        # re-sorteado nesta subida. A segunda leitura é a única conferência
+        # possível na primeira vez — não há envelope contra o que conferir antes
+        # de o primeiro nascer (`_ask_phrase`) —, e ela vale o que acabou de selar.
+        self.seeded()
+        asked, reader = self.counting()
+        fake = self.runtime()
+        outcome, text = self.quiet(env.up, secret=reader)
+        self.assertEqual(outcome, env.UP)
+        self.assertEqual(len(asked), 2)
+        self.assertIn(i18n.tr("services.migrated", count=len(self.born())), text)
+        self.assertIn("run", fake.verbs())
+
+    def test_the_migration_rotates_every_clear_value_and_seals_the_new_one(self):
+        # **A rotação é a metade que faz a migração valer**: um valor que já
+        # viajou não volta a ser segredo por ser selado depois. O que a pasta
+        # guarda agora é o envelope de um valor NOVO — e o novo não é o antigo.
+        self.seeded()
+        born = self.born()
+        self.runtime()
+        self.quiet(env.up, secret=self.phrase)
+        fresh = self.secrets()
+        for name, old in born.items():
+            with self.subTest(value=name):
+                self.assertTrue(fresh.get(name), f"{name} não ficou selado")
+                self.assertNotEqual(fresh[name], old, f"{name} não foi rotacionado")
+
+    def test_the_old_clear_values_are_in_no_file_of_the_folder(self):
+        # **A promessa da migração, medida**: o valor que nasceu em claro não se
+        # lê numa cópia da pasta — em arquivo nenhum dela, nem no envelope que o
+        # substituiu. Quem tinha uma cópia antiga fica com o valor morto.
+        self.seeded()
+        born = self.born()
+        self.runtime()
+        self.quiet(env.up, secret=self.phrase)
+        for where in self.folder_files():
+            text = where.read_text(encoding="utf-8")
+            for name, old in born.items():
+                with self.subTest(value=name, where=where):
+                    self.assertNotIn(old, text)
+
+    def test_no_terminal_does_not_migrate_and_leaves_the_folder_as_it_was(self):
+        # §3's fail-closed posture: migrar SELA, e sem Frase não há selo — e o
+        # que não se abriu não se usa. A pasta fica exatamente onde estava, e
+        # nada foi re-sorteado.
         self.seeded()
         fake = self.runtime()
         outcome, text = self.quiet(env.up, secret=None)
+        self.assertEqual(outcome, env.NO_ANSWER)
+        self.assertIn(i18n.tr("services.phrase.no_tty"), text)
+        self.assertNotIn("run", fake.verbs())
+        self.assertEqual(caddy.gate_file().read_text(encoding="utf-8"), BORN_GATE)
+        self.assertFalse(env.pin_file().exists())
+
+    def test_only_the_clear_values_are_rotated(self):
+        # A migração é cirúrgica, arquivo a arquivo: o que já tem envelope não é
+        # re-sorteado — a regra de sempre —, e só o que está em claro é que vira
+        # valor novo.
+        self.seeded()
+        sealed = vault.seal("o-portao-de-verdade",
+                            vault.derived_key(self.phrase_key(), env.CADDY))
+        files.atomic_write_text(caddy.gate_file(), f"{sealed}\n")
+        self.runtime()
+        outcome, _ = self.quiet(env.up, secret=self.phrase)
         self.assertEqual(outcome, env.UP)
-        self.assertNotIn(i18n.tr("services.phrase.no_tty"), text)
-        self.assertIn("run", fake.verbs())
-        # E o que ela guardava continua em claro: esta fatia não migra.
-        self.assertEqual(vault.envelopes(
-            caddy.gate_file().read_text(encoding="utf-8")), ())
+        self.assertEqual(self.value(caddy.gate_file(), env.CADDY),
+                         "o-portao-de-verdade")
 
     def test_the_sealing_is_the_same_phrase_every_time(self):
         # A Chave do Cofre vem da Frase e de mais nada (§4): a mesma Frase sobre

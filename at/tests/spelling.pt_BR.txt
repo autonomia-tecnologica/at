@@ -216,6 +216,8 @@ rename
 rest
 review
 root
+rotaciona
+rotacionar
 runner
 runners
 runtime

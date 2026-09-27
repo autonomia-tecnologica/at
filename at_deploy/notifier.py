@@ -555,8 +555,16 @@ def provision(key: bytes | None) -> str:
     An environment that already has a credential is left exactly as it is: the
     file is the truth, and whoever wants a new one deletes it and brings the
     environment up again — the same rule the gate's secret follows (`caddy`).
+
+    **A credencial que nasceu em CLARO é a exceção, e é a migração** (item 50,
+    corte `f`): a pasta que nasceu antes do selo guarda o valor sem envelope, e
+    a subida o re-sorteia como faria com um que faltasse — a conta antiga sai
+    primeiro (`_draw`), então o valor que já pode ter sido copiado deixa de
+    autenticar. Uma credencial SELADA é deixada como está, que é a regra de
+    cima.
     """
-    if has_token():
+    held = _held(token_file())
+    if held is not None and vault.envelopes(held):
         return HELD
     if key is None:
         # Um sorteio SELA, e sem Chave não há selo: gravar o valor em claro seria

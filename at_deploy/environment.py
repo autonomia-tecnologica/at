@@ -1058,6 +1058,31 @@ def _text(where: Path) -> str:
         return ""
 
 
+def _clear(where: Path) -> bool:
+    """Se o arquivo existe e guarda um valor EM CLARO — a pasta que nasceu antes do selo.
+
+    É a medida do corte `f` do item 50, e ela não se confunde com a de um
+    arquivo ausente: um ausente é um sorteio que vem aí, e um em claro é um
+    valor que JÁ viajou. **Um texto sem envelope É o valor** — a mesma regra com
+    que `notifier._value` o lê —, e é por isso que a migração não precisa saber
+    o que o valor significa: ele é re-sorteado como qualquer outro, e o que a
+    pasta guardava deixa de abrir o que foi copiado dela.
+    """
+    text = _text(where).strip()
+    return bool(text) and not vault.envelopes(text)
+
+
+def _clear_drawn() -> tuple[Path, ...]:
+    """Os arquivos que o AT SORTEIA e que estão em claro na pasta (item 50, corte `f`).
+
+    A lista é a mesma pergunta de `_needs_phrase` feita arquivo a arquivo, e o
+    que ela responde é o que a subida vai migrar: **cada um destes é
+    re-sorteado e selado**, porque a pasta pode ter sido copiada e o valor que
+    já viajou não volta. É isso que separa a migração de um simples selo.
+    """
+    return tuple(where for where in _drawn_files() if _clear(where))
+
+
 def _sealed_somewhere() -> bool:
     """Se a pasta já guarda algum envelope do cofre.
 
@@ -1072,19 +1097,24 @@ def _sealed_somewhere() -> bool:
 def _needs_phrase() -> bool:
     """Se a Frase faz falta nesta subida: há o que abrir, ou há o que selar.
 
-    As duas coisas são a mesma pergunta para quem sobe: **abrir** o que a pasta
-    guarda selado, e **selar** o que este `up` vai sortear. Uma pasta sem
-    envelope e com os valores todos no lugar não pede Frase nenhuma — é a pasta
-    que nasceu antes do selo, e a migração dela é outra fatia (`docs`, item 50,
-    o corte do que nasceu em claro). **E as duas pontas do notificador entram na
-    pergunta**: a credencial do AT é um dos arquivos que o `up` sorteia
-    (`_drawn_files`), e a do celular, que o `up` não sorteia, é conferida como
-    qualquer selo da pasta (`_sealed_files`) — quem a abre no dia a dia é o
-    `phone`, pela porta de quem sela.
+    As três coisas são a mesma pergunta para quem sobe: **abrir** o que a pasta
+    guarda selado, **selar** o que este `up` vai sortear, e **migrar** o valor
+    que nasceu em claro (`_clear_drawn`, o corte `f` do item 50). Uma pasta com
+    os valores todos no lugar e todos selados não a pede: não há o que abrir nem
+    o que sortear. **E as duas pontas do notificador entram na pergunta**: a
+    credencial do AT é um dos arquivos que o `up` sorteia (`_drawn_files`), e a
+    do celular, que o `up` não sorteia, é conferida como qualquer selo da pasta
+    (`_sealed_files`) — quem a abre no dia a dia é o `phone`, pela porta de quem
+    sela.
     """
     for where in _drawn_files():
         if not where.exists():
             # Um sorteio vem aí, e um sorteio SELA: sem Chave não há selo.
+            return True
+        if _clear(where):
+            # A pasta que nasceu antes do selo: há o que MIGRAR, e migrar
+            # re-sorteia — o valor que já está no disco pode ter sido copiado,
+            # e a rotação é o que mata a cópia.
             return True
     return _sealed_somewhere()
 
@@ -1146,11 +1176,12 @@ def unlock(secret: Ask | None) -> tuple[bytes | None, str | None]:
     e a única: os três leem o que a pasta guarda — o `up` e o `restart` para
     montar o diretório de execução, e a entrega para autenticar no notificador
     —, e nenhum deles pode fazer isso com um envelope que não abriu. **`None` na
-    Chave é o estado de uma pasta que não tem nada de selado**, e aí nada precisa
-    dela: é a pasta que nasceu antes do selo, e o que ela guarda está em claro.
+    Chave é o estado de uma pasta que não tem nada de selado, nada a sortear e
+    nada a migrar**, e aí nada precisa dela: a pasta já está inteiramente
+    selada.
 
     Quem SELA pergunta por outra porta (`sealing_key`): esta só pergunta quando a
-    pasta tem o que abrir ou o que sortear (`_needs_phrase`).
+    pasta tem o que abrir, o que sortear ou o que migrar (`_needs_phrase`).
     """
     if not _needs_phrase():
         return None, None
@@ -1230,13 +1261,19 @@ def draw_gate(key: bytes) -> str:
     pasta — o que esta fatia existe para não haver. O que já está lá não é
     sorteado de novo.
 
-    **A secret already drawn is not drawn again**, and that is the whole of the
-    function: rotating it would take the running Caddy and the running WebApp
-    apart — the first would attach a value the second no longer takes, and every
-    identity would be refused (`webapp.gate_refused`) until both were restarted
-    from the same file. Whoever wants a new secret removes this one and brings
-    the environment up again, which is the same act as changing it, said out
-    loud.
+    **A secret already drawn and SEALED is not drawn again**, and that is the
+    whole of the function: rotating it would take the running Caddy and the
+    running WebApp apart — the first would attach a value the second no longer
+    takes, and every identity would be refused (`webapp.gate_refused`) until both
+    were restarted from the same file. Whoever wants a new secret removes this
+    one and brings the environment up again, which is the same act as changing
+    it, said out loud.
+
+    **Um portão em CLARO é a única exceção, e é a migração** (item 50, corte
+    `f`): a pasta que nasceu antes do selo guarda o valor sem envelope, e
+    mantê-lo seria manter o que já pode ter sido copiado. Ele é re-sorteado como
+    um que faltasse — a subida reinicia os dois leitores de qualquer modo, e é
+    por isso que a rotação aqui não abre a janela que a de cima abre.
 
     **O que ele responde é o ENVELOPE**, e não o valor: é o que ficou na pasta, e
     é ele que o `Caddyfile` carrega — quem precisa do valor claro é o container,
@@ -1246,8 +1283,8 @@ def draw_gate(key: bytes) -> str:
     the moment §7b names — because a file written on import would be a secret in
     the folder of whoever never asked for one.
     """
-    held = caddy_service.gate_secret()
-    if held is not None:
+    held = _held(caddy_service.gate_file())
+    if held and vault.envelopes(held):
         return held
     drawn = secrets.token_urlsafe(caddy_service.GATE_BYTES)
     envelope = vault.seal(drawn, vault.derived_key(key, CADDY))
@@ -1261,7 +1298,10 @@ def _drawn(service: str, name: str, key: bytes) -> str:
     The same rule `draw_gate` follows and for the same reason: a value a service
     signs or proves with has to outlive the container, and one drawn per start
     would take everything it had issued down with it. Whoever wants a new one
-    removes the file and brings the environment up again.
+    removes the file and brings the environment up again. **Um em CLARO é
+    re-sorteado**, pela mesma exceção do `draw_gate`: ele é a pasta que nasceu
+    antes do selo (item 50, corte `f`), e o `encryption` que ele redesenha é o
+    que torna ilegível o que o provedor cifrou com o antigo.
 
     **O escopo da chave é o SERVIÇO** (§4: uma por serviço ou finalidade), e os
     três que ele desenha são dele — o provedor os assina, cifra e prova. É por
@@ -1269,7 +1309,7 @@ def _drawn(service: str, name: str, key: bytes) -> str:
     de quem é o valor que está compondo (`_materialize`).
     """
     held = _held(state(service) / name)
-    if held:
+    if held and vault.envelopes(held):
         return held
     drawn = secrets.token_urlsafe(SECRET_BYTES)
     envelope = vault.seal(drawn, vault.derived_key(key, service))
@@ -2227,8 +2267,11 @@ def up(ask: Ask | None = None, secret: Ask | None = None) -> str:
     vai sortear e que abre o que a pasta já guarda — e uma subida que não a tem,
     ou que recebe uma que não abre, não sobe e diz por quê (`unlock`). Ela é
     lida UMA vez por subida, e vive o tempo dela: nada a guarda, e nada a
-    escreve. Uma pasta que ainda não selou nada e não tem o que sortear não a
-    pede — é a pasta que nasceu antes do selo, e a migração dela é outra fatia.
+    escreve. Uma pasta que já está inteiramente selada — nada a abrir, nada a
+    sortear — não a pede. **E a pasta que nasceu antes do selo a pede**, porque
+    ela tem o que MIGRAR (item 50, corte `f`): cada valor em claro é re-sorteado
+    e selado nesta subida, e é por isso que a migração não é um efeito de trocar
+    o binário — é um ato, e ele custa a Frase.
 
     The environment is not the SWITCH, and it does not pretend to be one: a
     service that does not come up is said, and what did come up stays up for
@@ -2273,14 +2316,25 @@ def up(ask: Ask | None = None, secret: Ask | None = None) -> str:
     # **E só se sorteia com a Chave na mão**: os valores que faltam — o portão, os
     # três do provedor e a credencial do AT no notificador — são exatamente o que
     # faz o `unlock` pedir a Frase, então quando não há Chave é porque eles todos
-    # já estão na pasta — e o que já está lá não é sorteado de novo. Sortear sem
-    # Chave seria escrever um valor em claro na pasta, que é o que este item
-    # existe para não haver.
+    # já estão na pasta — e o que já está lá, SELADO, não é sorteado de novo.
+    # Sortear sem Chave seria escrever um valor em claro na pasta, que é o que
+    # este item existe para não haver.
+    #
+    # **A pasta que nasceu antes do selo é a exceção, e é esta linha que a
+    # migra** (item 50, corte `f`): um valor em CLARO não é mantido — ele é
+    # re-sorteado, porque pode já ter sido copiado, e um valor que já viajou não
+    # volta a ser segredo por ser selado depois. A decisão é declarada uma vez,
+    # antes dos sorteios, e os valores que o notificador tem por sua conta (a
+    # credencial dele) são rotacionados pelo próprio ato, depois de ele subir.
     if key is not None:
-        fresh = caddy_service.gate_secret() is None
+        born = _clear_drawn()
+        if born:
+            print(tr("services.migrated", count=len(born)))
+        where = caddy_service.gate_file()
+        drawing = not _held(where) or _clear(where)
         draw_gate(key)
-        if fresh:
-            print(tr("services.gate.drawn", where=caddy_service.gate_file()))
+        if drawing:
+            print(tr("services.gate.drawn", where=where))
         # E os três do provedor, pela mesma razão de ordem: o `configuration.yml`
         # é composto a partir do que a pasta guarda, e o provedor lê esse arquivo
         # ao SUBIR.
