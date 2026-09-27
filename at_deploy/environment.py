@@ -498,7 +498,7 @@ class Port:
 
 @dataclass(frozen=True)
 class Mount:
-    """A folder of the instance, inside the container.
+    """State of the instance, inside the container — a folder, or a file.
 
     `host` is relative to the service's own state folder — `App/services/<name>/`
     — and empty means the folder itself: §7 puts every service's persistent
@@ -512,17 +512,27 @@ class Mount:
     `host` it is a folder the CONTAINER fills — the provider's database, the
     Caddy's storage, the notifier's memory —, and it stays in the state folder:
     what a container writes has to outlive it for the backup to bring it back.
+
+    **`file` é a exceção da exceção, e ela existe porque o serviço a exige.** O
+    provedor abre o caminho do notificador como ARQUIVO, e um diretório montado
+    ali é um container que morre no primeiro `open` (`is a directory`): o que
+    ele ESCREVE tem de ser o arquivo, e não uma pasta onde ele caiba. A fonte,
+    então, é um arquivo da pasta de estado — que o `_prepare` cria vazio, porque
+    o runtime criaria um DIRETÓRIO no lugar dele —, e o serviço o abre e o
+    preenche. Um caminho que já exista com a outra forma é recusado antes de
+    tentar (`_state_trouble`), como todo o resto da forma do estado.
     """
 
     container: str
     host: str = ""
+    file: bool = False
 
     def volume(self, where: Path, materialized: Path) -> str:
         """The argument the runtime reads, with the SELinux label it needs.
 
-        `:Z` is podman's word for "give this folder a private label": without it
-        an enforcing host stops the container at the first read, and where there
-        is no SELinux it is ignored. Both sources are folders AT created, so the
+        `:Z` is podman's word for "give this a private label": without it an
+        enforcing host stops the container at the first read, and where there is
+        no SELinux it is ignored. Both sources are things AT created, so the
         relabel touches nothing of the person's.
         """
         source = where / self.host if self.host else materialized
@@ -1382,9 +1392,11 @@ def _identity_conf() -> str:
     floor and make every record it had written unreadable. **O que este arquivo
     carrega é o ENVELOPE delas** (item 50): a pasta é copiada sem criptografia,
     a fonte é ela, e a cópia que o container monta é este mesmo texto com os
-    três abertos (`_materialize`). The notifier's file lives in the state
-    folder, which is the folder the backup covers (§3), so a notice survives a
-    copied folder.
+    três abertos (`_materialize`). **O caminho do notificador é o do ARQUIVO** —
+    o `filename:` abaixo é o mesmo que a montagem do serviço declara com
+    `file=True`, porque é assim que o Authelia o abre —, e ele vive na pasta de
+    estado, que é a pasta que o backup cobre (§3): um aviso sobrevive a uma pasta
+    copiada.
 
     **No OIDC provider is declared, and that is a decision and not an omission.**
     §7b has Authelia speaking OIDC with whoever speaks OIDC and forward-auth
@@ -1653,15 +1665,16 @@ SERVICES: tuple[Service, ...] = (
         # hold, for a Caddy that shared the host's, is gone.
         mounts=(
             Mount(IDENTITY_CONFIG),
-            # O aviso que o provedor ESCREVE, e ele é uma PASTA: o arquivo de
-            # configuração o aponta para `/config/notifications`, e a cópia
-            # materializada de `/config` morre com o ambiente — o aviso tem de
-            # sobreviver a ele, e quem o guarda é a pasta de estado (§3, a
-            # promessa do backup). Por isso ele tem `host`, e por isso é uma
-            # montagem própria dentro de `/config`: o que o container enche não
-            # vem para o diretório de execução.
+            # O aviso que o provedor ESCREVE, e ele é um ARQUIVO: o arquivo de
+            # configuração o aponta para `/config/notifications`, e o Authelia o
+            # abre como arquivo — um DIRETÓRIO montado ali é um container que
+            # morre no primeiro `open` (`is a directory`, medido). E a cópia
+            # materializada de `/config` morre com o ambiente, então o aviso tem
+            # de sobreviver a ele: quem o guarda é a pasta de estado (§3, a
+            # promessa do backup), num arquivo que o container enche e que o
+            # diretório de execução não copia.
             Mount(f"{IDENTITY_CONFIG}/{IDENTITY_NOTIFICATIONS}",
-                  host=IDENTITY_NOTIFICATIONS),
+                  host=IDENTITY_NOTIFICATIONS, file=True),
             Mount(IDENTITY_DATA, host="data"),
         ),
         writes=((IDENTITY_YAML, _identity_conf), (IDENTITY_USERS, _identity_users)),
@@ -1962,12 +1975,22 @@ def _prepare(service: Service, key: bytes | None) -> Path:
     where = state(service.name)
     where.mkdir(parents=True, exist_ok=True)
     for mount in service.mounts:
-        # Only the service's OWN folders are born here: a `Mirror` mounts the
+        # Only the service's OWN paths are born here: a `Mirror` mounts the
         # Working Folder, which exists — creating it would be AT writing in
         # the person's folder for no reason —, and a `Gate` mounts a file, whose
         # folder is the run directory's and born with the copy.
+        #
+        # **Um `file` é criado VAZIO e nunca de novo** (`touch`): o runtime
+        # criaria um DIRETÓRIO no lugar de uma fonte que não existe, e o
+        # provedor morreria no `open` — mas apagar o que o container já escreveu
+        # ali seria perder o aviso que esta montagem existe para guardar.
         if isinstance(mount, Mount) and mount.host:
-            (where / mount.host).mkdir(parents=True, exist_ok=True)
+            path = where / mount.host
+            if mount.file:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.touch(exist_ok=True)
+            else:
+                path.mkdir(parents=True, exist_ok=True)
     for name, body in service.writes:
         files.atomic_write_text(where / name, body())
     _materialize(service, key)
@@ -2259,13 +2282,15 @@ def _state_trouble(
 ) -> tuple[Service, Path, str] | None:
     """O primeiro caminho da pasta de estado com a forma que o serviço não lê.
 
-    O `up` monta uma PASTA por serviço (`Mount` com `host`) e escreve os ARQUIVOS
-    que ele lê, e um caminho que existe com a forma trocada — um **arquivo** onde
-    ele vai montar a pasta, uma **pasta** onde ele vai escrever o arquivo —
-    estoura no meio da subida como uma exceção do `pathlib` (`mkdir`,
-    `os.replace`), que o PyInstaller entrega como traceback sem uma frase. **Ele
-    é um estado que o AT consegue diagnosticar antes de tentar**, e é por isso
-    que a resposta é uma recusa dita e não um estouro.
+    O `up` monta uma PASTA por serviço (`Mount` com `host`, ou um ARQUIVO quando
+    o serviço o exige — o `file` do provedor) e escreve os ARQUIVOS que ele lê,
+    e um caminho que existe com a forma trocada — um **arquivo** onde ele vai
+    montar a pasta, uma **pasta** onde ele vai montar o arquivo, ou uma **pasta**
+    onde ele vai escrever o arquivo — estoura no meio da subida como uma exceção
+    do `pathlib` (`mkdir`, `os.replace`), que o PyInstaller entrega como
+    traceback sem uma frase. **Ele é um estado que o AT consegue diagnosticar
+    antes de tentar**, e é por isso que a resposta é uma recusa dita e não um
+    estouro.
 
     **A recusa e não o conserto**: o caminho pode ser da pessoa — um arquivo que
     ela pôs ali, ou o resto de uma versão anterior do AT —, e §3 já diz que o AT
@@ -2280,7 +2305,9 @@ def _state_trouble(
         for mount in service.mounts:
             if isinstance(mount, Mount) and mount.host:
                 path = where / mount.host
-                if path.exists() and not path.is_dir():
+                if mount.file and path.is_dir():
+                    return service, path, "file"
+                if not mount.file and path.exists() and not path.is_dir():
                     return service, path, "folder"
         for name, _ in service.writes:
             path = where / name

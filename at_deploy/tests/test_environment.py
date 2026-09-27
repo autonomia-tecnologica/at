@@ -738,10 +738,26 @@ class TheIdentityProvider(FolderCase):
         # O Authelia exige um notificador — um smtp ou um arquivo — porque ele
         # tem de poder contar alguma coisa a alguém, e o caso do dia é uma
         # identidade validando um segundo fator. §7 não tem smtp, então é um
-        # arquivo, e ele mora na pasta de estado, que é a pasta do backup (§3).
+        # ARQUIVO, e ele mora na pasta de estado, que é a pasta do backup (§3).
+        #
+        # **O caminho montado é o ARQUIVO, e não a pasta que o contém** — medido
+        # contra o container: com o diretório montado ali, o Authelia morre no
+        # startup check com `open /config/notifications: is a directory`. A
+        # montagem o declara (`file=True`) e a subida o cria VAZIO, porque desde
+        # então é o container que o preenche.
         self.up()
         self.assertIn(f"filename: {env.IDENTITY_CONFIG}/{env.IDENTITY_NOTIFICATIONS}",
                       self.conf())
+        mounted = [mount for mount in _service(env.IDENTITY).mounts
+                   if mount.host == env.IDENTITY_NOTIFICATIONS]
+        self.assertEqual([mount.file for mount in mounted], [True])
+        notice = env.state(env.IDENTITY) / env.IDENTITY_NOTIFICATIONS
+        self.assertTrue(notice.is_file(), "o caminho montado tem de ser arquivo")
+        self.assertEqual(notice.read_bytes(), b"")
+        # E o diretório de execução não leva cópia: o aviso é do container, e a
+        # pasta de estado é quem o guarda.
+        self.assertFalse(
+            (env.materialized(env.IDENTITY) / env.IDENTITY_NOTIFICATIONS).exists())
 
     def test_the_provider_listens_on_the_container_and_not_on_a_publication(self):
         # O endereço do container, e não uma publicação: o que sai dele é o que
@@ -1782,14 +1798,14 @@ BORN_TOKEN = "tk_o-token-que-nasceu-em-claro\n"
 # database) and the notifier's (the auth database). What lands in them is the
 # container's act and not AT's write — which is the whole reason they are
 # asserted EMPTY below, and the reason the audit of item 50 names them apart.
+#
+# O aviso do provedor saiu desta lista, e ele é a exceção que PROVA a regra: o
+# caminho montado é um ARQUIVO (`Mount(..., file=True)`), porque é assim que o
+# Authelia o abre — e um arquivo vazio na pasta de estado é o que a subida
+# deixa. Ele tem teste próprio, com a mesma pergunta (`TheIdentityProvider`).
 FILLED_BY_CONTAINERS = (
     (env.CADDY, env.CADDY_STORAGE),
     (env.IDENTITY, "data"),
-    # O aviso que o provedor dá, e ele é do container como os outros: o arquivo
-    # de configuração o aponta para `/config/notifications`, e é a pasta de
-    # estado que o guarda porque a cópia materializada de `/config` morre com a
-    # subida (`Mount` com `host`).
-    (env.IDENTITY, env.IDENTITY_NOTIFICATIONS),
     (env.NOTIFIER, "data"),
 )
 
@@ -1860,6 +1876,11 @@ def _catalogue() -> tuple[tuple[Path, int | None, frozenset[str]], ...]:
         # credential (§4) — a value that is only ever compared, and nothing that
         # could be turned back into one.
         (identity / env.IDENTITY_USERS, None, frozenset()),
+        # O aviso do provedor: um ARQUIVO VAZIO que a subida cria e o container
+        # enche — o caminho é montado como arquivo, e o runtime criaria um
+        # DIRETÓRIO ali se ele não existisse (`Mount.file`). Não carrega segredo
+        # nenhum: o que ele leva é o que o Authelia tem a dizer.
+        (identity / env.IDENTITY_NOTIFICATIONS, None, frozenset()),
         # No secret at all: the names the DNS answers, the image the folder is
         # pinned at, and the notifier's own configuration (paths and the posture).
         (env.state("dnsmasq") / "dnsmasq.conf", None, frozenset()),
@@ -2088,13 +2109,21 @@ class TheStorageOutOfReach(FolderCase):
 class TheStateShape(FolderCase):
     """A pasta de estado com a forma que o serviço não lê — e a recusa dita.
 
-    O `notifications` do provedor era um ARQUIVO escrito pelo container, com
-    `/config` montado inteiro; a fatia 2 do item 50 o trocou por uma PASTA, com
-    montagem própria — e o arquivo que já existia na instância ficou. A subida
-    seguinte morria com `FileExistsError` no `mkdir` do `_prepare`, e por cima
-    dele vinha o traceback do PyInstaller, que não diz nem o caminho nem o que
-    ele devia ser. **A forma do estado é diagnosticável ANTES de tentar**, e o
-    AT recusa com a frase: ele não conserta a pasta da pessoa em silêncio.
+    O `notifications` do provedor já foi as duas coisas, e é a história inteira
+    que esta classe guarda. Era um ARQUIVO escrito pelo container, com `/config`
+    montado inteiro; a fatia 2 do item 50 o trocou por uma PASTA, com montagem
+    própria — e o Authelia morreu no startup check com `is a directory`, porque
+    ele abre aquele caminho como arquivo. **Esta fatia o faz voltar a ser um
+    ARQUIVO**, e por isso a forma confere os dois sentidos: uma pasta onde o
+    serviço monta um arquivo, um arquivo onde ele monta uma pasta, uma pasta
+    onde o AT escreve um arquivo.
+
+    Um caminho que já exista com a forma trocada — o resto de uma versão
+    anterior do AT, ou algo que a pessoa pôs ali — estoura no meio da subida
+    como uma exceção do `pathlib` (`mkdir`, `os.replace`), que o PyInstaller
+    entrega como traceback sem uma frase. **A forma do estado é diagnosticável
+    ANTES de tentar**, e o AT recusa com a frase: ele não conserta a pasta da
+    pessoa em silêncio.
     """
 
     def said(self, service: str, where: Path, wanted: str) -> str:
@@ -2102,19 +2131,34 @@ class TheStateShape(FolderCase):
         return i18n.tr("services.state.shape", service=i18n.tr(service),
                        where=where, wanted=i18n.tr(wanted))
 
-    def test_a_file_where_the_service_mounts_a_folder_is_refused_with_a_phrase(self):
-        # É o defeito medido na instância: `App/services/identity-provider/
-        # notifications` é um ARQUIVO de 0 byte, resto da montagem antiga, e o
-        # `up` precisa de uma PASTA ali.
+    def test_a_folder_where_the_service_mounts_a_file_is_refused_with_a_phrase(self):
+        # É o defeito que a instância tem hoje: `App/services/identity-provider/
+        # notifications` ficou uma PASTA vazia da montagem que o Authelia não
+        # lê, e o `up` precisa de um ARQUIVO ali. O AT não conserta sozinho — a
+        # frase diz o caminho e o que ele devia ser, e quem o move é a pessoa.
         where = env.state(env.IDENTITY) / env.IDENTITY_NOTIFICATIONS
+        where.mkdir(parents=True)
+        fake = self.runtime()
+        outcome, text = self.quiet(env.up, secret=self.phrase)
+        self.assertEqual(outcome, env.MALFORMED)
+        self.assertIn(self.said("services.identity-provider.name", where,
+                                "services.state.file"), text)
+        # Nada subiu, e a pasta continua onde estava: o AT não mexe no que não
+        # é dele — quem move ou apaga é a pessoa.
+        self.assertNotIn("run", fake.verbs())
+        self.assertTrue(where.is_dir())
+
+    def test_a_file_where_the_service_mounts_a_folder_is_refused_too(self):
+        # O outro sentido da mesma forma: o `data` do provedor é uma PASTA que o
+        # container enche, e um arquivo plantado no lugar dela estoura o `mkdir`
+        # do `_prepare`.
+        where = env.state(env.IDENTITY) / "data"
         files.atomic_write_text(where, "")
         fake = self.runtime()
         outcome, text = self.quiet(env.up, secret=self.phrase)
         self.assertEqual(outcome, env.MALFORMED)
         self.assertIn(self.said("services.identity-provider.name", where,
                                 "services.state.folder"), text)
-        # Nada subiu, e o arquivo continua onde estava: o AT não mexe no que não
-        # é dele — quem move ou apaga é a pessoa.
         self.assertNotIn("run", fake.verbs())
         self.assertTrue(where.is_file())
 
@@ -2134,8 +2178,7 @@ class TheStateShape(FolderCase):
         # Sem terminal a subida responde `NO_ANSWER` — e não é o que acontece
         # aqui: a forma do estado é conferida ANTES, porque não se pede a Frase
         # (nem a elevação) para uma subida que já se sabe que não sobe.
-        files.atomic_write_text(
-            env.state(env.IDENTITY) / env.IDENTITY_NOTIFICATIONS, "")
+        (env.state(env.IDENTITY) / env.IDENTITY_NOTIFICATIONS).mkdir(parents=True)
         self.runtime()
         outcome, _ = self.quiet(env.up, secret=None)
         self.assertEqual(outcome, env.MALFORMED)
