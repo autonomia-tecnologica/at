@@ -15,28 +15,38 @@
 // each module decided to write there — that way a new page does not need to know
 // a mark exists.
 
-import { computed } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { store, word } from "../lib/store";
-import { CHAT_KEY, isCurrent, open, countOf } from "../lib/views";
+import { CHAT_KEY, NLU_UI_ENABLED, isCurrent, open, countOf } from "../lib/views";
 import { byName } from "../lib/order";
 import { navRail, toggleNav } from "../lib/nav";
 import Foldable from "./Foldable.vue";
 import ProjectsTree from "./ProjectsTree.vue";
 import FileTree from "./FileTree.vue";
 
+const foot = ref<HTMLElement | null>(null);
+let footWatcher: ResizeObserver | null = null;
+
 const SETTINGS_KEY = "settings";
-// THE PEOPLE ENTRY (§5): the actors and the roles, together, behind one line —
-// "who may act, with which ceiling". It is a door of its own and not a table
-// name, which is why it sits in the foot beside Settings: what it opens is a
-// screen, and the screen is where the moving is done.
-const PEOPLE_KEY = "people";
+
+// THE TWO SYSTEM TABLES PEOPLE OWNS (§5, item 11) DO NOT LIVE HERE TWICE. An
+// actor and a role are still declared tables — the server counts them, a
+// reference still resolves to them — but Tabelas is a list of things to BROWSE,
+// and these two already have their own screen, inside Configurações: a table
+// that also has a door of its own is not a table any more to this fold, it is a
+// duplicate of that door. `at.core.audit.ACTOR`/`"role"`, the same two words.
+const PEOPLE_TABLES = ["actor", "role"];
 
 const hasProjects = computed(() => Boolean(store.types.project && store.types.task));
 
 // The list is ALPHABETICAL, by the name the panel prints. The store declares an
 // `order` of its own; what a person does with a list of tables is look one up,
 // and the name is the index (order.ts).
-const kinds = computed(() => [...store.tables].sort((a, b) => byName(a.label, b.label)));
+const kinds = computed(() =>
+  [...store.tables]
+    .filter(kind => !PEOPLE_TABLES.includes(kind.key))
+    .sort((a, b) => byName(a.label, b.label)),
+);
 
 function openKind(key: string): void {
   open(key, null);
@@ -46,13 +56,37 @@ function openSettings(): void {
   open(SETTINGS_KEY, null);
 }
 
-function openPeople(): void {
-  open(PEOPLE_KEY, null);
-}
-
 function openChat(): void {
   open(CHAT_KEY, null);
 }
+
+// `--foot-space` USED TO BE A GUESS (2026-09-27): a constant in `base.css`,
+// measured by hand against whatever rows the foot held the day someone last
+// counted them — and every time a row was added or taken away (the collapse
+// button, People, this very change), the guess went stale and the list's last
+// row ended up hidden under the foot with no scroll left to reach it (the
+// "the sidebar's scroll does not work" report). The foot's real height is not
+// a thing to guess: it is a thing the BROWSER already knows, so this reads it
+// off the box itself and writes it down as the token `#kinds`'s padding reads
+// (`base.css`) — on mount, and on every resize the foot's own box reports
+// (a language switch, a font swap, a row appearing or gone).
+function syncFootSpace(): void {
+  if (foot.value) {
+    document.documentElement.style.setProperty("--foot-space", `${foot.value.offsetHeight}px`);
+  }
+}
+
+onMounted(() => {
+  syncFootSpace();
+  if (foot.value) {
+    footWatcher = new ResizeObserver(syncFootSpace);
+    footWatcher.observe(foot.value);
+  }
+});
+
+onUnmounted(() => {
+  footWatcher?.disconnect();
+});
 </script>
 
 <template>
@@ -80,20 +114,22 @@ function openChat(): void {
   <!-- THE FOOT — the buttons that are ALWAYS on screen, with the list scrolling
        BEHIND them. It floats over the list (the box is out of the flow in
        `base.css`), so a long tree passes under it instead of pushing it away. -->
-  <div class="side-foot">
+  <div class="side-foot" ref="foot">
     <hr class="sep">
     <!-- THE CHAT IS THE INTERPRETER'S, and it is here whether the balloon flies or
          not: the switch of the balloon hides the balloon. What takes the chat away
          is the CORE's switch (`store.interpreter`) — with the interpreter off
-         there is no box, no balloon and no chat, because the function is gone. -->
-    <button v-if="store.interpreter" type="button" class="file" :data-view="CHAT_KEY"
-            :class="{ on: isCurrent(CHAT_KEY) }" @click="openChat">
+         there is no box, no balloon and no chat, because the function is gone.
+         `NLU_UI_ENABLED` is the WEBAPP's own switch, above that one (views.ts):
+         the feature is unfinished, so this surface does not offer it yet. -->
+    <button v-if="NLU_UI_ENABLED && store.interpreter" type="button" class="file"
+            :data-view="CHAT_KEY" :class="{ on: isCurrent(CHAT_KEY) }" @click="openChat">
       <span>{{ word("chat") }}</span>
     </button>
-    <button type="button" class="file" :data-view="PEOPLE_KEY"
-            :class="{ on: isCurrent(PEOPLE_KEY) }" @click="openPeople">
-      <span>{{ word("people") }}</span>
-    </button>
+    <!-- PEOPLE LIVES IN CONFIGURAÇÕES NOW (2026-09-27): who may act, with which
+         ceiling, is an adjustment of the folder, not a table to browse — the same
+         reason Settings itself sits behind this line. The door is gone from here;
+         the screen moved, not the words that describe it (`SettingsView.vue`). -->
     <button type="button" class="file" :data-view="SETTINGS_KEY"
             :class="{ on: isCurrent(SETTINGS_KEY) }" @click="openSettings">
       <span>{{ word("settings") }}</span>

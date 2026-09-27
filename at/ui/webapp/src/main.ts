@@ -17,7 +17,6 @@ import OrphansView from "./views/OrphansView.vue";
 import FileView from "./views/FileView.vue";
 import ActorView from "./views/ActorView.vue";
 import RoleView from "./views/RoleView.vue";
-import PeopleView from "./views/PeopleView.vue";
 
 // The pages that are a SINGLE key (no rest): the chat, Settings and the "no
 // project". The chat has an address like every other view, which is what makes a
@@ -25,9 +24,12 @@ import PeopleView from "./views/PeopleView.vue";
 registerView("chat", ChatView);
 registerView("settings", SettingsView);
 registerView("orphans", OrphansView);
-// THE PEOPLE ENTRY (§5): the actors and the roles behind one line, each row
-// opening its own screen (`/actor/3`, `/role/2`).
-registerView("people", PeopleView);
+// PEOPLE IS NOT A VIEW OF ITS OWN ANY MORE (2026-09-27): the actors and the
+// roles, together, are a SECTION of Configurações now (`SettingsView.vue`
+// embeds `PeopleView.vue` directly) — who may act is an adjustment of the
+// folder, and this is the same door that already holds the theme and the
+// language. Each row still opens its own screen (`/actor/3`, `/role/2`),
+// through the two registrations below.
 // THE TWO SYSTEM TABLES THAT ARE MORE THAN A TABLE (item 11). A role is a SET,
 // and the closed list it is written against is drawn as checks; an actor that is
 // a machine carries a credential AT MINTS. Both keep the table's own address —

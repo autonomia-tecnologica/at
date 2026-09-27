@@ -146,7 +146,7 @@ from at.ui.webapp import session
 
 HOST = "127.0.0.1"
 DEFAULT_PORT = 12345
-DEFAULT_THEME = "at"
+DEFAULT_THEME = "paper"
 
 # The face of the loop, by name. It is the host the person reaches by default,
 # and it is the only NAME this module answers for itself: with the Caddy in

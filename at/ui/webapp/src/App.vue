@@ -15,7 +15,7 @@ import { computed, onMounted, watch } from "vue";
 import { api, whenRefused } from "./lib/api";
 import { enter, lost, session, signedIn } from "./lib/session";
 import { store, applyState, label, word } from "./lib/store";
-import { nav, ui, isKind, viewFor, open, markPage, poke, resumePath, CHAT_KEY } from "./lib/views";
+import { nav, ui, isKind, viewFor, open, markPage, poke, resumePath, CHAT_KEY, NLU_UI_ENABLED } from "./lib/views";
 import { applyTheme, watchSystem } from "./lib/theme";
 import { applyMotion } from "./lib/motion";
 import { writingState } from "./lib/writing";
@@ -39,7 +39,7 @@ import LoginView from "./views/LoginView.vue";
 // and the chat already carries the box — over the chat it would be the same box
 // twice, and a second box is a box nobody reads.
 const balloon = computed(
-  () => store.interpreter && balloonOn.value && nav.current?.view !== CHAT_KEY,
+  () => NLU_UI_ENABLED && store.interpreter && balloonOn.value && nav.current?.view !== CHAT_KEY,
 );
 
 // The page the panel shows: whoever draws it is the module that registered itself
@@ -71,7 +71,7 @@ const frame = computed(() => {
 // the chat is one when the interpreter is off: the switch takes the chat away, so
 // an address that still opened one would be the page offering what is gone.
 function offered(view: string): boolean {
-  if (view === CHAT_KEY && !store.interpreter) return false;
+  if (view === CHAT_KEY && (!NLU_UI_ENABLED || !store.interpreter)) return false;
   return Boolean(viewFor(view) || isKind(view));
 }
 

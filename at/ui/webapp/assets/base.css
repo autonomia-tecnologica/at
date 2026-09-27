@@ -306,16 +306,23 @@
            /* THE ROOM THE FOOT COVERS. The foot is OUT of the flow (below), so the
               list has to end with the same amount of nothing — otherwise the last
               row can never be scrolled clear of it and the panel hides an item
-              nobody can reach. THE NUMBER is the foot's height MINUS the bottom
-              breathing room, which is how deep it bites; measured across the themes
-              it ran 54-61px, and 64 was the default that cleared all of them.
-              THE DEFAULT IS 96 SINCE 2026-09-22, and the gain is the collapse
-              button: it moved into the foot from the title strip (see `.nav-toggle`
-              below), so every theme's foot grew by one row and the old number would
-              have left the last row of the tree under it. A theme with a taller
-              foot declares its own `--foot-space`; a shorter one only pays a few
-              pixels of air at the end of the scroll. */
-           padding-bottom: var(--foot-space, 96px); }
+              nobody can reach.
+              THE NUMBER IS NOT A GUESS ANY MORE (2026-09-27). It used to be a
+              constant here, measured by hand against whichever rows the foot held
+              the day someone last counted them — 64, then 96 the day the collapse
+              button moved in — and every count went stale the next time a row
+              arrived or left (People did, then didn't), leaving the tree's last
+              row under the foot with no scroll left to reach it: the report was
+              "the sidebar's scroll does not work", and the scroll was not the
+              defect, the guess was. `Sidebar.vue` now reads the foot's own
+              rendered height with a `ResizeObserver` and writes it here as
+              `--foot-space` — on mount, and again on every resize the foot
+              reports, so a theme's own row height, a language's own word length
+              and a row that comes or goes are never something this number has to
+              be told about by hand. The literal fallback is what runs with
+              JavaScript refused (a bare `curl`, a crawler): close enough for
+              those, and never what a person's browser actually uses. */
+           padding-bottom: var(--foot-space, 130px); }
   /* THE FOOT OF THE PANEL — the buttons that are ALWAYS on screen, with the list
      scrolling BEHIND them (2026-09-20). It is OUT OF THE FLOW and pinned to the
      bottom: in the flow it would be one more item of the column and the list would
@@ -1526,8 +1533,23 @@
      before: a theme that says nothing keeps the old geometry exactly, which is why
      this rule could be added without touching the other twelve themes.
      `dt:first-child` is zeroed because the body's own top padding is what breathes
-     there now; leaving the margin would have counted the room twice. */
+     there now; leaving the margin would have counted the room twice.
+     A BODY THAT IS NOT A `dl` HAD NO FALLBACK AT ALL (2026-09-27): People's two
+     groups hold a form and a table, not a `dl`, so they never read `--dl-pad` —
+     and eleven of the twelve themes never declared `--group-pad` either (only
+     `at`/`at-dark` do), which left "New role" sitting flush against the group's
+     own border, in every theme but those two. The `dl` case is UNTOUCHED
+     (`:has(> .fold > dl)` excludes it — `.fold` is `Foldable`'s own inner box,
+     between the group-body and whatever it holds) because it already breathes
+     through `--dl-pad`, and doubling that room was never the defect being fixed
+     here; a body with anything else gets the page's own breathing room as its
+     fallback, the same `--page-pad-y`/`--page-pad-x` the group's OWN page
+     already pads itself with (`.groups`, above) — so a theme that says nothing
+     about `--group-pad` still gives its non-`dl` groups room, and one that
+     declares it is obeyed exactly as before. */
   .group-body { padding: var(--group-pad, 0); }
+  .group-body:not(:has(> .fold > dl)) {
+    padding: var(--group-pad, var(--page-pad-y, 18px) var(--page-pad-x, 20px)); }
   .group-body dt { margin-top: var(--group-row-gap, var(--dt-gap)); }
   .group-body dl > dt:first-child { margin-top: 0; }
   .group-head { display: flex; align-items: center; gap: 6px;

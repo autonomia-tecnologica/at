@@ -22,6 +22,13 @@ export const ORPHANS_KEY = "orphans";
 // would be the page offering what the switch took.
 export const CHAT_KEY = "chat";
 
+// THE WEBAPP'S OWN SURFACE FOR THE INTERPRETER IS OFF (2026-09-27). The CORE's
+// switch (`store.interpreter`) is a different thing and stays exactly what it
+// was — a folder can still be asked from the `cli`. This is the layer ABOVE it:
+// the chat and the balloon are not offered on THIS surface while the feature is
+// unfinished, and flipping it back is the one line this constant is.
+export const NLU_UI_ENABLED = false;
+
 export interface Frame {
   view: string;
   id: number | null;
