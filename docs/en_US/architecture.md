@@ -45,9 +45,9 @@
 
 - The permission catalogue is declared in the code, and it is not loose data: the permission has the form `object:action`, the objects and the actions are a closed list, and the display labels come from `i18n` like everything else. The objects go beyond the tables: the settings, the services, the plugins and the interpreter's vocabulary are also objects, with permissions of their own. A role is a row of the `role` table with a set of permissions, and the `actor` table points at the role. A role naming a permission that does not exist does not bring AT down: it warns, and the warning is what gets read.
 
-### Secret management
+### The Vault
 
-- To perform certain actions, such as accessing external service APIs, AT needs access to secrets. Every secret AT **stores** is written into the `secret` table — a secret that is only compared, such as an actor's credential, lives hashed in its own row (§4, Tables). There are the metadata and the secret itself, saved in encrypted form.
+- **The Vault is where everything AT seals lives.** To perform certain actions, such as accessing external service APIs, AT needs access to secrets. Every secret AT **stores** is written into the `secret` table (`data/secrets.jsonl`) — a secret that is only compared, such as an actor's credential, lives hashed in its own row and not in the Vault (§4, Tables: **what is proved stays hashed, what AT uses stays in the Vault, encrypted**). There are the metadata and the secret itself, saved in encrypted form.
 
 - AT's encryption starts from an **Access Phrase**, which is what the person knows and types: at least 16 characters, and it is a phrase. "Mariazinha comeu todo o pudim", in lowercase and without spaces, is safer than `Mariazinha@123`. From it the **Vault Key** is derived, and from it the **derived keys**, one per service or purpose. The Vault Key recovers any lost derived key.
 

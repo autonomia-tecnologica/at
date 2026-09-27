@@ -45,9 +45,9 @@
 
 - O catálogo de permissões é declarado no código, e não é dado solto: a permissão tem a forma `objeto:ação`, os objetos e as ações são uma lista fechada, e os rótulos de exibição saem do `i18n` como todo o resto. Os objetos vão além das tabelas: as configurações, os serviços, os plugins e o vocabulário do interpretador também são objetos, com permissões próprias. Um papel é uma linha da tabela `role` com um conjunto de permissões, e a tabela `actor` aponta para o papel. Papel que nomeia permissão inexistente não derruba o AT: ele avisa, e o aviso é o que se lê.
 
-### Gestão de segredos
+### O Cofre
 
-- Para executar certas ações, como acessar APIs de serviços externos, o AT precisa ter acesso a segredos. Todo segredo que o AT **guarda** é escrito na tabela `secret` — segredo que só se confere, como a credencial de um ator, mora hasheado na própria linha (§4, Tabelas). Lá estão metadados e o segredo em si, salvo de forma criptografada.
+- **O Cofre é onde vive tudo o que o AT fecha.** Para executar certas ações, como acessar APIs de serviços externos, o AT precisa ter acesso a segredos. Todo segredo que o AT **guarda** é escrito na tabela `secret` (`data/secrets.jsonl`) — segredo que só se confere, como a credencial de um ator, mora hasheado na própria linha e não no Cofre (§4, Tabelas: **o que se prova se guarda hasheado, o que o AT usa se guarda no Cofre, criptografado**). Lá estão metadados e o segredo em si, salvo de forma criptografada.
 
 - A criptografia do AT parte de uma **Frase de Acesso**, que é o que a pessoa sabe e digita: no mínimo 16 caracteres, e é uma frase. "Mariazinha comeu todo o pudim", em minúsculas e sem espaços, é mais seguro que `Mariazinha@123`. Dela se deriva a **Chave do Cofre**, e dela as **chaves derivadas**, uma por serviço ou finalidade. A Chave do Cofre recupera qualquer chave derivada perdida.
 

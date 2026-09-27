@@ -84,8 +84,7 @@ docs/                          os documentos
     ├── end-to-end.md          a tradução dela, que anda junto
     ├── derivation.md          a tradução dela, que anda junto
     ├── functionalities.md     a tradução dela, que anda junto
-    ├── glossary.md            a tradução dela, que anda junto
-    └── backlog.md             o documento de trabalho, só em inglês: o que vem a seguir, e o que conta como pronto
+    └── glossary.md            a tradução dela, que anda junto
 ```
 
 Os dois specs — `at-cli.spec` e `at-deploy.spec` — são o único lugar que diz o que viaja dentro de cada artefato, e são à mão de propósito: os conteúdos — `at/i18n`, `at/data/defaults`, o tarball do Caddy em `at/vendor/caddy/` e os `assets`, `dist` e `vendor` do WebApp — são invisíveis a um grafo de importação, e `at/ui/webapp/` também guarda `node_modules/` e `src/`, que são a derivação e não podem viajar. Um conteúdo deixado de fora falha em silêncio no WebApp (404 e um 500) e em voz alta em todo o resto, porque `tr()` levanta na primeira mensagem de cada comando. O spec do deploy é o curto de propósito: ele não carrega o WebApp, o interpretador nem o Caddy, porque não alcança nenhum deles.

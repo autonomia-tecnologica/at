@@ -16,8 +16,8 @@
   - The first admin is born on the first start, with a terminal in front; with no actor at all AT does not expose — [Interfaces](interfaces.md).
   - Role and permission are a WebApp screen, and only an admin touches them — [Interfaces](interfaces.md).
   - **Installing a service is the Wizard's and only the Wizard's** — [Interfaces](interfaces.md).
-  - A machine secret is stored hashed, with a role; a secret AT **uses**, such as a service credential, is stored encrypted in the `secret` table — [Secret management](architecture.md#secret-management).
-  - A secret AT uses is **sealed with the key of its own service or purpose**: the key is derived from the Vault Key and recovered from it alone, and what one scope sealed another does not open — [Secret management](architecture.md#secret-management).
+  - A machine secret is stored hashed, with a role; a secret AT **uses**, such as a service credential, is stored encrypted in the `secret` table — [The Vault](architecture.md#the-vault).
+  - A secret AT uses is **sealed with the key of its own service or purpose**: the key is derived from the Vault Key and recovered from it alone, and what one scope sealed another does not open — [The Vault](architecture.md#the-vault).
   - AT authenticates to the services instead of taking advantage of being on the same machine: an administrative credential exists where it is necessary, and it counts in the posture — [The security posture](#the-security-posture).
   - A service that talks to AT gets a delimited scope — least privilege: the compromise of a service reaches its function and nothing else — [Container path](paths.md#container-path).
   - Identity arriving through the gate is only valid with the gate secret: AT draws a secret per installation, writes it into the Caddyfile it generates itself, and refuses identity without it — [Install the identity provider as a container](container.md#b-install-the-identity-provider-as-a-container-required).

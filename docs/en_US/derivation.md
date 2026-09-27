@@ -85,8 +85,7 @@ docs/                          the documents
     ├── end-to-end.md          its translation, which moves along with it
     ├── derivation.md          its translation, which moves along with it
     ├── functionalities.md     its translation, which moves along with it
-    ├── glossary.md            its translation, which moves along with it
-    └── backlog.md             the working document, English only: what comes next, and what counts as done
+    └── glossary.md            its translation, which moves along with it
 ```
 
 The two specs — `at-cli.spec` and `at-deploy.spec` — are the one place that says what travels inside each artifact, and they are by hand on purpose: the payloads — `at/i18n`, `at/data/defaults`, the Caddy's tarball under `at/vendor/caddy/`, and the WebApp's `assets`, `dist` and `vendor` — are invisible to an import graph, and `at/ui/webapp/` also holds `node_modules/` and `src/`, which are the derivation and must not travel. A payload left out fails silently in the WebApp (404s and a 500) and loudly everywhere else, because `tr()` raises on the first message of every command. The deploy's spec is short on purpose: it carries no WebApp, no interpreter and no Caddy, because it reaches none of them.

@@ -16,8 +16,8 @@
   - O primeiro admin nasce na primeira subida, com terminal na frente; sem ator nenhum o AT não expõe — [Interfaces](interfaces.md).
   - Papel e permissão são tela do WebApp, e só admin mexe neles — [Interfaces](interfaces.md).
   - **Instalar serviço é do Wizard e só dele** — [Interfaces](interfaces.md).
-  - Segredo de máquina se guarda hasheado, com papel; segredo que o AT **usa**, como a credencial de um serviço, se guarda criptografado na tabela `secret` — [Gestão de segredos](architecture.md#gestão-de-segredos).
-  - Segredo que o AT usa é **selado com a chave do próprio serviço ou propósito**: a chave se deriva da Chave do Cofre e se recupera só dela, e o que um escopo selou outro não abre — [Gestão de segredos](architecture.md#gestão-de-segredos).
+  - Segredo de máquina se guarda hasheado, com papel; segredo que o AT **usa**, como a credencial de um serviço, se guarda criptografado na tabela `secret` — [O Cofre](architecture.md#o-cofre).
+  - Segredo que o AT usa é **selado com a chave do próprio serviço ou propósito**: a chave se deriva da Chave do Cofre e se recupera só dela, e o que um escopo selou outro não abre — [O Cofre](architecture.md#o-cofre).
   - O AT autentica nos serviços em vez de se aproveitar de estar na mesma máquina: credencial de administração existe onde ela é necessária, e ela conta na postura — [A postura de segurança](#a-postura-de-segurança).
   - Serviço que fala com o AT recebe escopo delimitado — mínimo privilégio: o comprometimento de um serviço alcança a função dele e nada mais — [Caminho container](paths.md#caminho-container).
   - Identidade que chega pelo portão só vale com o segredo do portão: o AT sorteia um segredo por instalação, escreve no Caddyfile que ele mesmo gera, e recusa identidade sem ele — [Instalar provedor de identidade como container](container.md#b-instalar-provedor-de-identidade-como-container-obrigatório).
