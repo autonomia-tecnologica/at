@@ -1,16 +1,17 @@
 <script setup lang="ts">
 // ProseField — a text as PROSE.
 //
-// THE RENDERER IS NOT HERE YET (`lib/markdown`): `proseHtml` answers null, and
-// what the person reads is the text as it is stored. The branch for the rendered
-// prose is already drawn, so the day the renderer lands nothing here changes but
-// the answer.
+// THE RENDERER IS HOSTED (`lib/markdown`): `ensureRenderer` pulls `/vendor/marked`
+// once, and this field is one of the places that asks for it. Until it lands,
+// `proseHtml` answers null and the field draws the source it has — the honest
+// answer with no renderer —, and the field REDRAWS when it lands, which is what
+// `rendererReady` carries.
 //
 // NO WRAPPER: the base's edge rules (`.prose > :first-child` / `:last-child`)
 // have to reach the first and last BLOCK.
 
 import { ref, onMounted, watch } from "vue";
-import { proseHtml } from "../lib/markdown";
+import { proseHtml, ensureRenderer, rendererReady } from "../lib/markdown";
 
 const props = withDefaults(
   defineProps<{
@@ -30,8 +31,14 @@ async function render(): Promise<void> {
   if (out !== null) html.value = out;
 }
 
-onMounted(render);
+onMounted(() => {
+  void ensureRenderer();
+  void render();
+});
 watch(() => props.text, render);
+// The renderer arrives AFTER the mount — it is a hosted script —, and the first
+// render answered null. This is what redraws the field as prose.
+watch(rendererReady, render);
 </script>
 
 <template>

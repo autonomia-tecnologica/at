@@ -37,7 +37,7 @@ at/                          the product: the engine, the declarations and the U
 │       ├── assets/            `base.css`, the themes (`themes.jsonl`), the drawings
 │       ├── src/               the derivation (Vue 3 + TypeScript) — does NOT travel in the binary
 │       ├── dist/              the built output, served at runtime — comes from `npm run build`
-│       ├── vendor/            the hosted typefaces, with the hash the manifest pins
+│       ├── vendor/            the hosted files — typefaces and the renderer —, with the hash the manifest pins
 │       └── node_modules/      the derivation — does NOT travel in the binary
 ├── i18n/
 │   ├── blocks/<block>.json    one file per subject, both languages side by side — the filename
@@ -196,7 +196,7 @@ name and `0.0.0.0` is not one.
 
 Exit codes: `0` success · `1` refused or failed · `2` usage error.
 
-Python 3.14.7, with **one** runtime dependency: `PyNaCl`, the binding of `libsodium`, pinned in version and in hashing in `requirements.txt` (§3). The hashed field's derivation is `libsodium`'s, and that is not the standard library, so the price is named instead of avoided. Its wheel carries `libsodium` inside it, so the binary stays self-contained and nothing is asked of the machine that runs it. Two more exceptions are deliberate, and both stay on the development side: the WebApp's hosted typefaces, in `at/ui/webapp/vendor/`, with the hash the manifest pins; and the documents' checker, which runs in the suite and is therefore a tool, not an installation — it cannot demand from another dev or from the runner anything that does not come pinned inside `.venv`.
+Python 3.14.7, with **one** runtime dependency: `PyNaCl`, the binding of `libsodium`, pinned in version and in hashing in `requirements.txt` (§3). The hashed field's derivation is `libsodium`'s, and that is not the standard library, so the price is named instead of avoided. Its wheel carries `libsodium` inside it, so the binary stays self-contained and nothing is asked of the machine that runs it. Two more exceptions are deliberate, and both stay on the development side: the WebApp's hosted files — the typefaces and the renderer —, in `at/ui/webapp/vendor/`, with the hash the manifest pins; and the documents' checker, which runs in the suite and is therefore a tool, not an installation — it cannot demand from another dev or from the runner anything that does not come pinned inside `.venv`.
 
 That dependency installs first, under the same rule:
 

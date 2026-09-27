@@ -181,7 +181,8 @@ class TheArtifacts(unittest.TestCase):
         manifest = json.loads((VENDOR / "manifest.json").read_text(encoding="utf-8"))
         pinned = {
             said["package"].removeprefix("@fontsource/")
-            for said in manifest["files"].values()
+            for key, said in manifest["files"].items()
+            if key.startswith("font-")
         }
         declared = {
             component.text.removesuffix("-LICENSE").rsplit("/", 1)[-1]
@@ -189,6 +190,21 @@ class TheArtifacts(unittest.TestCase):
             if component.key.startswith("font-")
         }
         self.assertEqual(pinned, declared)
+
+    def test_a_hosted_dependency_and_its_licence_agree_on_the_version(self):
+        # The renderer is pinned in the WebApp's own vendor manifest — the sha256
+        # travels THERE — and declared here, where the terms travel. The two ends
+        # are one version: a bump on one side alone would serve a file whose
+        # licence names another.
+        manifest = json.loads((VENDOR / "manifest.json").read_text(encoding="utf-8"))
+        declared = {
+            component.key: component
+            for component in licenses.declared(paths.ARTIFACT)
+        }
+        self.assertIn("marked", declared)
+        self.assertEqual(
+            declared["marked"].version, manifest["files"]["marked"]["version"],
+        )
 
     def test_the_copies_are_the_vendors_own_member(self):
         # The texts that are COPIES: each tarball carries its own LICENSE, and

@@ -482,6 +482,18 @@ class TheDoors(ServerCase):
         self.assertEqual(hashlib.sha256(body).hexdigest(),
                          manifest["files"]["font-inter-400"]["sha256"])
 
+    def test_a_hosted_renderer_is_served_as_code_with_its_revision(self):
+        # The markdown renderer travels the same door as the typefaces, and its
+        # extension is the one `upstream` carries — so the content type is the
+        # server's own `_CONTENT_TYPES`, not the key's business.
+        status, headers, body = self.get("/vendor/marked")
+        self.assertEqual(status, 200)
+        self.assertEqual(headers["Content-Type"], "text/javascript; charset=utf-8")
+        self.assertEqual(headers["X-Hosted"], "18.0.14")
+        manifest = json.loads((webapp.VENDOR / "manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual(hashlib.sha256(body).hexdigest(),
+                         manifest["files"]["marked"]["sha256"])
+
     def test_a_hosted_key_nobody_pinned_is_refused(self):
         self.assertEqual(self.status("/vendor/no-such-font"), 404)
 

@@ -37,7 +37,7 @@ at/                          o produto: o motor, as declarações e a UI
 │       ├── assets/            `base.css`, os temas (`themes.jsonl`), os desenhos
 │       ├── src/               a derivação (Vue 3 + TypeScript) — NÃO viaja no binário
 │       ├── dist/              o construído, servido em runtime — vem de `npm run build`
-│       ├── vendor/            as fontes hospedadas, com o hash que o manifesto pina
+│       ├── vendor/            os arquivos hospedados — fontes e o renderizador —, com o hash que o manifesto pina
 │       └── node_modules/      a derivação — NÃO viaja no binário
 ├── i18n/
 │   ├── blocks/<bloco>.json    um arquivo por assunto, as duas línguas lado a lado — o nome do
@@ -195,7 +195,7 @@ para um nome, e `0.0.0.0` não é um.
 
 Códigos de saída: `0` sucesso · `1` recusado ou falhou · `2` erro de uso.
 
-Python 3.14.7 com **uma** dependência de runtime: `PyNaCl`, a ligação do `libsodium`, pinada em versão e hashing no `requirements.txt` (§3). A derivação do campo hasheado é a do `libsodium`, e ele não é a biblioteca padrão, então o preço está nomeado em vez de evitado. A wheel carrega o `libsodium` dentro dela, então o binário continua autossuficiente e nada é pedido da máquina que o roda. Há mais duas exceções deliberadas, as duas do lado do desenvolvimento: as fontes hospedadas do WebApp, em `at/ui/webapp/vendor/`, com o hash que o manifesto pina; e o corretor dos documentos, que roda na suíte e por isso é ferramenta, não instalação — ele não pode exigir do outro dev nem do runner nada que não venha pinado dentro do `.venv`.
+Python 3.14.7 com **uma** dependência de runtime: `PyNaCl`, a ligação do `libsodium`, pinada em versão e hashing no `requirements.txt` (§3). A derivação do campo hasheado é a do `libsodium`, e ele não é a biblioteca padrão, então o preço está nomeado em vez de evitado. A wheel carrega o `libsodium` dentro dela, então o binário continua autossuficiente e nada é pedido da máquina que o roda. Há mais duas exceções deliberadas, as duas do lado do desenvolvimento: os arquivos hospedados do WebApp — as fontes e o renderizador —, em `at/ui/webapp/vendor/`, com o hash que o manifesto pina; e o corretor dos documentos, que roda na suíte e por isso é ferramenta, não instalação — ele não pode exigir do outro dev nem do runner nada que não venha pinado dentro do `.venv`.
 
 Essa dependência se instala primeiro, sob a mesma regra:
 

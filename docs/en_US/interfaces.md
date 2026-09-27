@@ -36,7 +36,7 @@
 
 ### The WebApp application
 
-The WebApp serves three things and nothing else: **the built page**, **the look** (`base.css`, the themes, the drawings and the hosted typefaces) and the **JSON** the page reads. The page owns no rule — the server decides, the page draws.
+The WebApp serves three things and nothing else: **the built page**, **the look** (`base.css`, the themes, the drawings, the hosted typefaces and the renderer) and the **JSON** the page reads. The page owns no rule — the server decides, the page draws.
 
 The panel has the entries:
 
@@ -53,7 +53,7 @@ The panel has the entries:
 
 **There is no separate "Projetos" entry.** The Tarefas fold *is* the projects tree: a project is a scope of tasks, and the tree is how one reaches them — a second line would be the same door with another name.
 
-- **The drawings and the typefaces are served BY NAME**, through `/icons/<name>` and `/vendor/<key>`. Nothing is embedded as `data:` — the page runs under `default-src 'self'`, and an embedded drawing would simply never paint.
+- **The drawings, the typefaces and the renderer are served BY NAME**, through `/icons/<name>` and `/vendor/<key>`. Nothing is embedded as `data:` — the page runs under `default-src 'self'`, and an embedded drawing would simply never paint.
 - **The hosted dependencies are pinned**: `vendor/manifest.json` names the package, the version and the sha256 of every file, and the server checks the hash against what was installed (§3, External dependency).
 - **The theme is a LOOKUP, never a path**: an id that names no theme falls back to the default, so a query string can never reach a file the registry does not name.
 

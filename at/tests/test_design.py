@@ -178,12 +178,14 @@ class TheDoors(unittest.TestCase):
 
 
 class TheTypefaces(unittest.TestCase):
-    """The hosted families, pinned by version and by hash.
+    """The hosted files, pinned by version and by hash.
 
     `base.css` declares the `@font-face` (an at-rule is not a selector, so a
     theme could never hold it) and names `/vendor/<key>`. The manifest is the
     pin: it says which package, which version and which sha256 — so what leaves
-    the server can be checked against what was installed (§3).
+    the server can be checked against what was installed (§3). What it hosts is
+    no longer only typefaces: the markdown renderer travels the same door
+    (`lib/markdown.ts`), and the pin below is over EVERY entry, font or code.
     """
 
     @classmethod
@@ -198,8 +200,11 @@ class TheTypefaces(unittest.TestCase):
         self.assertEqual(sorted(keys - set(self.files)), [])
 
     def test_every_pinned_file_matches_its_hash(self):
+        # The file is the key plus the extension the vendor's `upstream` carries
+        # — `.woff2` for a typeface, `.js` for the renderer —, the same
+        # arithmetic `app.hosted` does when it serves it.
         for key, entry in self.files.items():
-            where = VENDOR / f"{key}.woff2"
+            where = VENDOR / f"{key}{Path(entry['upstream']).suffix}"
             self.assertTrue(where.is_file(), key)
             digest = hashlib.sha256(where.read_bytes()).hexdigest()
             self.assertEqual(digest, entry["sha256"], key)

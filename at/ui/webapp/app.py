@@ -289,6 +289,12 @@ def hosted(key: str) -> tuple[Path, str] | None:
     The manifest is the pin: it names the package, the version and the sha256 of
     every file, so what leaves here can be checked against what was installed
     (§3, Dependência externa).
+
+    The key is the file's NAME and never a path — the same rule the font door
+    keeps —, and the file's extension is the one the vendor's own `upstream`
+    carries (`.woff2` for the typefaces, `.js` for the renderer `lib/markdown`
+    waits for): it is what tells the content type apart without the key spelling
+    a second extension the URL would then have to carry.
     """
     if not key or key.startswith(".") or "/" in key or "\\" in key:
         return None
@@ -302,7 +308,11 @@ def hosted(key: str) -> tuple[Path, str] | None:
     entry = rows.get(key)
     if not isinstance(entry, dict):
         return None
-    where = VENDOR / f"{key}.woff2"
+    upstream = entry.get("upstream")
+    suffix = Path(upstream).suffix if isinstance(upstream, str) else ""
+    if not suffix:
+        return None
+    where = VENDOR / f"{key}{suffix}"
     if not where.is_file():
         return None
     if _pinned(key, where) != entry.get("sha256"):

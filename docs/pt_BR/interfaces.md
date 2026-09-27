@@ -36,7 +36,7 @@
 
 ### Aplicação WebApp
 
-O WebApp serve três coisas e nada mais: **a página construída**, **a aparência** (`base.css`, os temas, os desenhos e as fontes hospedadas) e o **JSON** que a página lê. A página não tem regra nenhuma — o servidor decide, a página desenha.
+O WebApp serve três coisas e nada mais: **a página construída**, **a aparência** (`base.css`, os temas, os desenhos, as fontes hospedadas e o renderizador) e o **JSON** que a página lê. A página não tem regra nenhuma — o servidor decide, a página desenha.
 
 O painel tem as entradas:
 
@@ -53,7 +53,7 @@ O painel tem as entradas:
 
 **Não existe uma entrada "Projetos" separada.** A dobra de Tarefas *é* a árvore de projetos: um projeto é um escopo de tarefas, e a árvore é como se chega a elas — uma segunda linha seria a mesma porta com outro nome.
 
-- **Os desenhos e as fontes são servidos POR NOME**, por `/icons/<nome>` e `/vendor/<chave>`. Nada é embutido como `data:` — a página roda sob `default-src 'self'`, e um desenho embutido simplesmente nunca apareceria.
+- **Os desenhos, as fontes e o renderizador são servidos POR NOME**, por `/icons/<nome>` e `/vendor/<chave>`. Nada é embutido como `data:` — a página roda sob `default-src 'self'`, e um desenho embutido simplesmente nunca apareceria.
 - **As dependências hospedadas são pinadas**: `vendor/manifest.json` nomeia o pacote, a versão e o sha256 de cada arquivo, e o servidor confere o hash contra o que foi instalado (§3, Dependência externa).
 - **O tema é uma CONSULTA, nunca um caminho**: um id que não nomeia tema nenhum cai no padrão, então uma query string nunca alcança um arquivo que o registro não nomeia.
 

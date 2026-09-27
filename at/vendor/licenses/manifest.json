@@ -69,6 +69,14 @@
       "text": "at/vendor/licenses/libsodium/LICENSE",
       "note": "The version is the one PyNaCl 1.6.2 bundles and compiles into nacl/_sodium.abi3.so — AT does not pin it and cannot read it back from the extension, so the declaration says so instead of inventing a number. The text comes from the same wheel."
     },
+    "marked": {
+      "name": "Marked",
+      "version": "18.0.14",
+      "license": "MIT",
+      "artifacts": ["at-cli"],
+      "text": "at/ui/webapp/vendor/licenses/marked-LICENSE",
+      "note": "The markdown renderer the WebApp HOSTS through /vendor/marked, pinned in at/ui/webapp/vendor/manifest.json where the sha256 travels (lib/markdown.ts is its door). Its text is the vendor's own LICENSE, the file the tarball carries beside the build — and it is the one that also spells the Markdown licence the parser descends from."
+    },
     "pyinstaller": {
       "name": "PyInstaller",
       "version": "6.22.3",

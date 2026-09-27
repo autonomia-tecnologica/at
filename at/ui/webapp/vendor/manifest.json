@@ -1,5 +1,5 @@
 {
-  "note": "The dependencies the WebApp HOSTS: code and typefaces that come from outside and are served byte for byte through /vendor/<key>. The key IS the file name here, minus the .woff2 the URL never carries, so the route is a name lookup and never a path.",
+  "note": "The dependencies the WebApp HOSTS: code and typefaces that come from outside and are served byte for byte through /vendor/<key>. The key IS the file name here, minus the extension the URL never carries, so the route is a name lookup and never a path — the file's own extension comes from `upstream`, which is the vendor's path.",
   "install": "npm ci --ignore-scripts, in a project pinning these exact versions",
   "files": {
     "font-eb-garamond-400": {
@@ -106,6 +106,13 @@
       "upstream": "files/unifrakturmaguntia-latin-400-normal.woff2",
       "bytes": 26512,
       "sha256": "a467466874b50cd9ffbe10e5caccd9b261f2bc2252bcfa7d160c744ed9da6f15"
+    },
+    "marked": {
+      "package": "marked",
+      "version": "18.0.14",
+      "upstream": "lib/marked.umd.js",
+      "bytes": 46891,
+      "sha256": "21568877a938d2c4e7d74e27f18e60da96bb73a68809610ca39216e1efebae62"
     }
   }
 }
