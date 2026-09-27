@@ -1084,6 +1084,16 @@ class ThePrivateNetwork(FolderCase):
             dns = _call(fake, "at-dnsmasq")
             self.assertIn("100.64.0.1:53:53/udp", dns)
             self.assertIn("100.64.0.1:53:53/tcp", dns)
+            # **E a PORTA do notificador sai do laço pela mesma decisão**: §7f o
+            # expõe ao celular, e o celular não é esta máquina. O que sai é a
+            # porta, no endereço da rede — e a entrega do AT segue a porta
+            # (`notifier_url`), senão o alerta bateria num endereço onde não há
+            # container nenhum publicado.
+            self.assertIn(
+                f"100.64.0.1:{env.NOTIFIER_PORT}:{env.NOTIFIER_PORT}/tcp",
+                _call(fake, env.container(env.NOTIFIER)))
+            self.assertEqual(env.notifier_url(),
+                             f"http://100.64.0.1:{env.NOTIFIER_PORT}")
 
     def test_without_a_network_the_site_is_bills_own_name(self):
         # O estado suportado, e não um degradado: a máquina não está em rede
@@ -1611,13 +1621,22 @@ class TheNotifier(FolderCase):
     def conf(self) -> str:
         return (env.state(env.NOTIFIER) / env.NOTIFIER_YAML).read_text(encoding="utf-8")
 
-    def test_the_notifier_publishes_on_the_loop_at_bills_own_port(self):
-        # §7f: "publicado no loop". The address is the measured rule (§7a) and
-        # the port is AT's: ntfy's own default is 80, under the kernel's
-        # low-port rule, and §3's elevation asks for DNS's 53 and nothing else.
+    def test_the_notifier_publishes_where_the_private_network_puts_it(self):
+        # **A decisão desta fatia**: o que sai do laço é a PORTA do notificador,
+        # no endereço da rede privada quando há uma (§7e) e o laço quando não há
+        # — a mesma decisão que a porta do site já é —, e nunca `0.0.0.0`, que é
+        # uma porta na LAN. **E nada mais dele sai**: o `deny-all` continua, e
+        # sem token ninguém lê (§6). O número da porta é o do AT e não o padrão
+        # do ntfy (80, abaixo do piso do kernel): §3 pede o DNS na 53 e mais
+        # nada, e 2586 está acima do piso.
         service = _service(env.NOTIFIER)
-        self.assertEqual([port.published() for port in service.ports],
-                         [f"127.0.0.1:{env.NOTIFIER_PORT}:{env.NOTIFIER_PORT}/tcp"])
+        ports = env.ports_of(service)
+        self.assertEqual(
+            [port.published() for port in ports],
+            [f"{env.vpn.address() or env.LOOP}:{env.NOTIFIER_PORT}"
+             f":{env.NOTIFIER_PORT}/tcp"],
+        )
+        self.assertNotIn(ports[0].address, ("0.0.0.0", "::"))
         self.assertGreater(env.NOTIFIER_PORT, 1024)
 
     def test_the_notifier_is_told_to_serve(self):
@@ -1658,8 +1677,9 @@ class TheNotifier(FolderCase):
         # The port is decided once, in the `Port` the container publishes and in
         # the line ntfy reads. **E o endereço que ele DEVOLVE é outro de
         # propósito**: quem lê o link de dentro do alerta é o celular, então é o
-        # NOME; quem publica é o AT, e ele fala com o serviço pelo laço
-        # (`notifier_url`), onde o alerta não depende do DNS nem da borda.
+        # NOME; quem publica é o AT, e ele fala com o serviço por um endereço
+        # cru (`notifier_url`) — o MESMO que a `Port` publica, onde o alerta não
+        # depende do DNS nem da borda.
         self.up()
         text = self.conf()
         self.assertIn(f'listen-http: ":{env.NOTIFIER_PORT}"', text)

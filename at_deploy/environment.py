@@ -53,8 +53,10 @@ the `webapp` is up as §7c's container: the WebApp, moved off the person's
 machine and behind the gate, answering on the network because the loop is a
 place nobody in the environment can reach. And
 §7f's `notifier` is up as the LAST of them: ntfy, configured by AT to keep
-everything it remembers inside its own state folder, published on the loop, and
-**out of the gate** — the one thing §7f inherits instead of deciding.
+everything it remembers inside its own state folder, **published where §7e
+publishes** — o endereço da rede privada quando há uma, o laço quando não há,
+porque o celular que o lê não é esta máquina (`_notifier_ports`) —, e **out of
+the gate**, the one thing §7f inherits instead of deciding.
 
 **The gate does NOT front the notifier, and that is a measurement.** The gate
 authenticates by redirect and session cookie, and a headless phone app takes the
@@ -927,10 +929,11 @@ def _dnsmasq_ports() -> tuple[Port, ...]:
     não tem endereço para onde apontar. O endereço é o mesmo da borda, pela
     mesma §7e: a rede decide onde, e `_caddy_ports` já é esta expressão.
 
-    **É o segundo e último serviço que sai do laço, e ele sai pela mesma razão
-    que o primeiro**: o que a pessoa alcança tem que estar alcançável. O que ele
+    **É o segundo serviço que sai do laço, e ele sai pela mesma razão que o
+    primeiro**: o que a pessoa alcança tem que estar alcançável. O que ele
     publica é um servidor de nomes do ambiente, na rede privada que a pessoa
-    escolheu, e não em todo endereço.
+    escolheu, e não em todo endereço. O terceiro é a porta do §7f, que o celular
+    alcança pelo mesmo endereço (`_notifier_ports`).
     """
     where = vpn.address() or LOOP
     return (Port(53, "udp", address=where), Port(53, address=where))
@@ -1516,11 +1519,13 @@ def notifier_url() -> str:
 
     **Ele NÃO é o endereço que a pessoa digita**, e desde que o notificador tem
     nome os dois se separaram de propósito (`notifier_public_url`): AT fala com
-    o serviço no laço, onde um alerta não depende do DNS interno, da borda nem
-    do certificado do AT — se qualquer um dos três cair, o alerta ainda sai. O
-    que a PESSOA e o celular usam é o nome.
+    o serviço por um ENDEREÇO CRU — o laço quando a máquina não está em rede
+    privada nenhuma, o dela quando está (§7e, o MESMO endereço que a `Port`
+    publica) —, e um alerta não depende do DNS interno, da borda nem do
+    certificado do AT: se qualquer um dos três cair, o alerta ainda sai. O que a
+    PESSOA e o celular usam é o nome, e a estrada é outra (`phone_url`).
     """
-    return f"http://{LOOP}:{NOTIFIER_PORT}"
+    return f"http://{vpn.address() or LOOP}:{NOTIFIER_PORT}"
 
 
 def notifier_public_url() -> str:
@@ -1574,6 +1579,31 @@ def _notifier_conf() -> str:
         "behind-proxy: true",
         'auth-default-access: "deny-all"',
     ]) + "\n"
+
+
+def _notifier_ports() -> tuple[Port, ...]:
+    """A porta do notificador, no endereço onde o CELULAR o alcança (§7f).
+
+    **É o terceiro serviço que sai do laço, e ele sai pela mesma decisão que o
+    primeiro**: o endereço da rede privada quando a máquina está numa (§7e), o
+    laço quando não está — a mesma expressão de `_caddy_ports`, e nunca `0.0.0.0`,
+    que é uma porta na LAN e o que este produto não promete. Antes dela o
+    notificador estava no laço, que é um lugar onde celular nenhum está: o push
+    que o §7f existe para fazer chegava a lugar nenhum.
+
+    **O que sai é a PORTA e nada mais dele.** O `deny-all` continua, e sem token
+    ninguém lê: quem expõe o notificador expõe a ACL por tópico, e nunca a
+    borda — é a medição do módulo, `subscribers=0` atrás do portão e `101` sem
+    ele, e repeti-la é o defeito. O que o AT publica continua sendo um endereço
+    cru (`notifier_url`), e o endereço é este mesmo: a `Port` e a entrega não
+    podem divergir, senão a máquina em rede publicaria a porta num lugar e o
+    alerta bateria em outro.
+
+    Ela é uma função pela mesma razão que `_caddy_ports`: o endereço é medido
+    quando o ambiente sobe, e um valor lido no import deixaria de ser verdade no
+    momento em que a pessoa entrasse numa rede.
+    """
+    return (Port(NOTIFIER_PORT, address=vpn.address() or LOOP),)
 
 
 @dataclass(frozen=True)
@@ -1717,10 +1747,11 @@ SERVICES: tuple[Service, ...] = (
         ),
         # The site's port, and it is published outside the loop when the machine
         # is on a private network (§7e): the edge is what the person reaches.
-        # The DNS's `53` is the other one, and it leaves the loop for the other
-        # half of the same reason — the names it answers exist nowhere else
-        # (`_dnsmasq_ports`). Everything else of the environment is on the loop
-        # or on nothing at all.
+        # The DNS's `53` and §7f's notifier are the other two, each for its own
+        # half of the same reason — the names the DNS answers exist nowhere else
+        # (`_dnsmasq_ports`), and the phone that reads the notifier is not this
+        # machine (`_notifier_ports`). Everything else of the environment is on
+        # the loop or on nothing at all.
         ports=_caddy_ports,
         mounts=(Mount(CADDY_CONFIG), Mount(CADDY_DATA, host=CADDY_STORAGE)),
         writes=(("Caddyfile", _caddy_conf),),
@@ -1729,7 +1760,8 @@ SERVICES: tuple[Service, ...] = (
     # depends on it — no edge proxies to it and no gate asks it anything — and
     # §7f is the last step of §7, the cherry on the cake in the step's own
     # words. It is also the ONE service that is not behind the gate, and that is
-    # measured and not a preference (the module docstring).
+    # measured and not a preference (the module docstring). **E a porta dele sai
+    # do laço**, porque o celular que o lê não é esta máquina (`_notifier_ports`).
     Service(
         name=NOTIFIER,
         label=f"services.{NOTIFIER}.name",
@@ -1738,7 +1770,7 @@ SERVICES: tuple[Service, ...] = (
             version="v2.28",
             digest="sha256:6ef4b819f722fccdc036af611c4774cfdc2de821ab74fdd48bbf4c9d6f8973da",
         ),
-        ports=(Port(NOTIFIER_PORT),),
+        ports=_notifier_ports,
         mounts=(Mount(NOTIFIER_CONFIG), Mount(NOTIFIER_DATA, host="data")),
         command=_notifier_command,
         writes=((NOTIFIER_YAML, _notifier_conf),),
@@ -1884,12 +1916,12 @@ def running(service: Service, pins: dict[str, dict]) -> Image:
 def ports_of(service: Service) -> tuple[Port, ...]:
     """The ports a service publishes, resolved NOW.
 
-    `ports` is a tuple for every service but two, and the exceptions are the
-    SITE's and the DNS's: what address each of them publishes on is §7e's, and
-    §7e is measured when the environment comes up — the machine's address on the
-    private network, or the loop. A value read at import would be a value that
-    stopped being true the moment the person joined a network. It is a callable
-    for the same reason `command` and `writes` are.
+    `ports` is a tuple for every service but three, and the exceptions are the
+    SITE's, the DNS's and §7f's notifier's: what address each of them publishes
+    on is §7e's, and §7e is measured when the environment comes up — the
+    machine's address on the private network, or the loop. A value read at
+    import would be a value that stopped being true the moment the person joined
+    a network. It is a callable for the same reason `command` and `writes` are.
     """
     return service.ports() if callable(service.ports) else service.ports
 

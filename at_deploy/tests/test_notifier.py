@@ -30,7 +30,7 @@ from at import i18n
 from at.core import boot, files
 from at.encryption import vault
 from at_deploy import environment as env
-from at_deploy import notifier, podman
+from at_deploy import notifier, podman, vpn
 
 # The token the fake notifier draws: `tk_` and 32 characters, which is ntfy's own
 # rule. The value is nobody's — what the tests read is where it was KEPT.
@@ -243,7 +243,22 @@ class TheCredential(FolderCase):
         # the notifier listens and where AT posts — cannot drift.
         self.assertEqual(notifier.target(), f"{env.notifier_url()}/{notifier.TOPIC}")
         self.assertEqual(notifier.target(),
-                         f"http://{env.LOOP}:{env.NOTIFIER_PORT}/at")
+                         f"http://{env.vpn.address() or env.LOOP}:{env.NOTIFIER_PORT}/at")
+
+    def test_the_delivery_follows_the_port_out_of_the_loop(self):
+        # **A entrega segue a PORTA** (§7f, a decisão desta fatia): quando a
+        # máquina está numa rede privada, o container publica no endereço dela e
+        # o AT publica ali também — senão o alerta bateria num endereço onde não
+        # há container nenhum, e o push não chegaria. O endereço continua CRU:
+        # sem nome, sem borda e sem o certificado do AT no caminho, que é a
+        # propriedade que `notifier_url` existe para guardar.
+        network = "100.64.0.1"
+        with mock.patch.object(vpn, "address", lambda call=None: network):
+            self.assertEqual(env.notifier_url(),
+                             f"http://{network}:{env.NOTIFIER_PORT}")
+            self.assertEqual(
+                notifier.target(),
+                f"http://{network}:{env.NOTIFIER_PORT}/{notifier.TOPIC}")
 
 
 class TheProvision(FolderCase):
