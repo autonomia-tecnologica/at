@@ -34,6 +34,7 @@ from unittest import mock
 
 from at import i18n
 from at.core import actors, boot, gate
+from at.encryption import vault
 from at_deploy import environment as env
 from at_deploy import notifier, podman, vpn
 from at_deploy.cli import OK, REFUSED, USAGE, services, main
@@ -237,6 +238,17 @@ class FolderCase(unittest.TestCase):
             result = call(*args, **kw)
         return result, output.getvalue()
 
+    def key(self) -> bytes:
+        """A Chave do Cofre da Frase da suíte — o que abre o que ela selou (§4).
+
+        As duas pontas do notificador são seladas na pasta (item 50), e é com
+        esta Chave que os testes leem o valor de volta: derivada da Frase, e
+        nunca de um segundo sorteio.
+        """
+        if not hasattr(self, "_key"):
+            self._key = vault.vault_key(PHRASE)
+        return self._key
+
 
 # ------------------------------------------------------------ the phone ---
 
@@ -254,8 +266,9 @@ class TheReadToken(FolderCase):
     def subscribe(self, edge: FakeEdge | None = None, **kw):
         fake = self.machine(**kw)
         with mock.patch.object(env, "GRACE", 0.0):
-            outcome, text = self.quiet(notifier.subscribe,
-                                       edge if edge is not None else FakeEdge())
+            outcome, text = self.quiet(
+                notifier.subscribe, edge if edge is not None else FakeEdge(),
+                secret=self.phrase)
         return fake, outcome, text
 
     def test_the_two_ends_of_the_acl_are_two_accounts_with_two_scopes(self):
@@ -321,7 +334,7 @@ class TheReadToken(FolderCase):
         where = notifier.phone_file()
         self.assertEqual(where, env.state(env.NOTIFIER) / "phone-token")
         self.assertEqual(stat.S_IMODE(where.stat().st_mode), 0o600)
-        self.assertEqual(notifier.phone_token(), DRAWN_TOKEN)
+        self.assertEqual(notifier.phone_token(self.key()), DRAWN_TOKEN)
 
     def test_a_second_run_never_prints_the_value_again(self):
         # The rule is once, and it is the rule because the value came out in a
@@ -333,7 +346,7 @@ class TheReadToken(FolderCase):
         self.assertNotIn(DRAWN_TOKEN, text)
         self.assertIn(str(notifier.phone_file()), text)
         self.assertEqual(fake.calls, [])
-        self.assertEqual(notifier.phone_token(), DRAWN_TOKEN)
+        self.assertEqual(notifier.phone_token(self.key()), DRAWN_TOKEN)
 
     def test_the_value_never_travels_in_an_argv(self):
         # The argv is what the whole machine reads through `ps`, and the
@@ -361,7 +374,7 @@ class TheReadToken(FolderCase):
         _, outcome, text = self.subscribe()
         self.assertEqual(outcome, notifier.PHONE_DRAWN)
         self.assertIn(DRAWN_TOKEN, text)
-        self.assertEqual(notifier.phone_token(), DRAWN_TOKEN)
+        self.assertEqual(notifier.phone_token(self.key()), DRAWN_TOKEN)
 
     def test_a_step_that_refuses_is_said_and_leaves_nothing_behind(self):
         # A half-made credential would be a file with a token in it that
@@ -371,7 +384,7 @@ class TheReadToken(FolderCase):
                 notifier.phone_file().unlink(missing_ok=True)
                 _, outcome, text = self.subscribe(fails=(word,))
                 self.assertEqual(outcome, notifier.FAILED)
-                self.assertIsNone(notifier.phone_token())
+                self.assertIsNone(notifier.phone_token(self.key()))
                 self.assertIn(f"ntfy {word}", text)
 
     def test_a_notifier_that_never_stands_is_said_and_not_guessed(self):
@@ -379,7 +392,7 @@ class TheReadToken(FolderCase):
         # (measured), so the act waits — and says so when it gives up.
         _, outcome, text = self.subscribe(ready=False)
         self.assertEqual(outcome, notifier.FAILED)
-        self.assertIsNone(notifier.phone_token())
+        self.assertIsNone(notifier.phone_token(self.key()))
         self.assertIn(i18n.tr("services.notifier.not_ready",
                               where=f"{env.NOTIFIER_DATA}/{env.NOTIFIER_AUTH}"),
                       text)
@@ -391,7 +404,7 @@ class TheReadToken(FolderCase):
         outcome, text = self.quiet(notifier.subscribe)
         self.assertEqual(outcome, notifier.FAILED)
         self.assertIn(i18n.tr("services.no_podman.status"), text)
-        self.assertIsNone(notifier.phone_token())
+        self.assertIsNone(notifier.phone_token(self.key()))
 
     def test_the_status_report_names_the_file_and_never_the_value(self):
         self.subscribe()
@@ -406,8 +419,8 @@ class TheReadToken(FolderCase):
         # the write end is untouched — and a folder with only the phone's is a
         # folder AT cannot publish from.
         self.subscribe()
-        self.assertIsNone(notifier.token())
-        self.assertEqual(notifier.phone_token(), DRAWN_TOKEN)
+        self.assertIsNone(notifier.token(self.key()))
+        self.assertEqual(notifier.phone_token(self.key()), DRAWN_TOKEN)
 
 
 class TheReadProved(FolderCase):
@@ -432,7 +445,8 @@ class TheReadProved(FolderCase):
         fake = self.machine(**kw)
         edge = edge if edge is not None else FakeEdge()
         with mock.patch.object(env, "GRACE", 0.0):
-            outcome, text = self.quiet(notifier.subscribe, edge)
+            outcome, text = self.quiet(notifier.subscribe, edge,
+                                       secret=self.phrase)
         return fake, edge, outcome, text
 
     def test_without_a_seam_the_question_goes_through_the_edge(self):
@@ -449,7 +463,7 @@ class TheReadProved(FolderCase):
         self.machine()
         with mock.patch.object(env, "through_edge", edge), \
                 mock.patch.object(env, "GRACE", 0.0):
-            outcome, _ = self.quiet(notifier.subscribe)
+            outcome, _ = self.quiet(notifier.subscribe, secret=self.phrase)
         self.assertEqual(outcome, notifier.PHONE_DRAWN)
         self.assertEqual(asked, [notifier.phone_url()] * 2)
 
@@ -476,7 +490,7 @@ class TheReadProved(FolderCase):
     def test_the_two_halves_closing_is_what_proves_the_read(self):
         _, edge, outcome, text = self.subscribe()
         self.assertEqual(outcome, notifier.PHONE_DRAWN)
-        self.assertTrue(notifier.proved(edge))
+        self.assertTrue(notifier.proved(edge, self.key()))
         self.assertIn(i18n.tr("services.notifier.phone.proved",
                               url=notifier.phone_url(), topic=notifier.TOPIC),
                       text)
@@ -486,7 +500,7 @@ class TheReadProved(FolderCase):
         # fechou é a leitura. A palavra promete a leitura, então ela recusa.
         _, _, outcome, text = self.subscribe(FakeEdge(read=403))
         self.assertEqual(outcome, notifier.PHONE_UNPROVED)
-        self.assertEqual(notifier.phone_token(), DRAWN_TOKEN)
+        self.assertEqual(notifier.phone_token(self.key()), DRAWN_TOKEN)
         self.assertIn(i18n.tr("services.notifier.phone.unread",
                               url=notifier.phone_url(), topic=notifier.TOPIC,
                               host=env.notifier_host(),
@@ -683,10 +697,11 @@ class TheDoor(FolderCase):
     def test_the_phone_door_answers_ok_and_draws_the_credential(self):
         self.machine()
         with mock.patch.object(env, "GRACE", 0.0):
-            code, text = self.quiet(services, ["phone"], answer=FakeEdge())
+            code, text = self.quiet(services, ["phone"], answer=FakeEdge(),
+                                    secret=self.phrase)
         self.assertEqual(code, OK)
         self.assertIn(DRAWN_TOKEN, text)
-        self.assertEqual(notifier.phone_token(), DRAWN_TOKEN)
+        self.assertEqual(notifier.phone_token(self.key()), DRAWN_TOKEN)
 
     def test_the_phone_door_is_a_refusal_when_the_credential_is_not_made(self):
         self.machine(fails=("access",))
@@ -701,10 +716,11 @@ class TheDoor(FolderCase):
         self.machine()
         with mock.patch.object(env, "GRACE", 0.0):
             code, text = self.quiet(services, ["phone"],
-                                    answer=FakeEdge(read=403))
+                                    answer=FakeEdge(read=403),
+                                    secret=self.phrase)
         self.assertEqual(code, REFUSED)
         self.assertIn(DRAWN_TOKEN, text)   # o valor saiu uma vez, e fica no arquivo
-        self.assertEqual(notifier.phone_token(), DRAWN_TOKEN)
+        self.assertEqual(notifier.phone_token(self.key()), DRAWN_TOKEN)
 
     def test_the_credential_door_reads_it_twice_and_without_echo(self):
         # The two readers are the account's own (`at-cli admin`): the credential

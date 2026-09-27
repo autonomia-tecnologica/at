@@ -539,8 +539,10 @@ class TheWindow(FolderCase):
         # the file's name and never the value.
         self.machine()
         with mock.patch.object(env, "GRACE", 0.0):
-            _, first = wizard.run_step("phone", answer=edge)
-            _, second = wizard.run_step("phone", answer=edge)
+            _, first = wizard.run_step("phone", secret=lambda q: PHRASE,
+                                       answer=edge)
+            _, second = wizard.run_step("phone", secret=lambda q: PHRASE,
+                                        answer=edge)
         self.assertIn(DRAWN_TOKEN, first)
         self.assertNotIn(DRAWN_TOKEN, second)
         self.assertIn(str(notifier.phone_file()), second)

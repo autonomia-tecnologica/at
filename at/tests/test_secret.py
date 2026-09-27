@@ -410,7 +410,7 @@ class ThePermissions(SecretCase):
 class TheEntry(SecretCase):
     """A credential is proved with the Access Phrase untyped (§4, item 8)."""
 
-    def test_the_vault_is_reached_by_three_files_and_by_them_alone(self):
+    def test_the_vault_is_reached_by_four_files_and_by_them_alone(self):
         # Item 14a landed the vault with no caller anywhere and said so in a
         # test; the slice that landed the table gave it the first two. They are
         # the door that SEALS (`core/secrets`) and the engine that knows the
@@ -418,10 +418,12 @@ class TheEntry(SecretCase):
         # is a decision and not an accident, the same way the pin in
         # `test_encryption.py` names the files that speak to `libsodium`.
         #
-        # **O terceiro é o `at-deploy`** (item 50), e ele entrou com um motivo
-        # próprio: o que a pasta guarda dos valores que o AT SORTEIA é o
+        # **Os outros dois são o `at-deploy`** (item 50), e cada um entrou com um
+        # motivo próprio: o que a pasta guarda dos valores que o AT SORTEIA é o
         # envelope, e quem sela e abre não é uma linha de tabela e sim o arquivo
-        # — `App/caddy/gate`, o `configuration.yml` e os três do provedor.
+        # — o `at_deploy/environment.py` para o portão e os três do provedor, e o
+        # `at_deploy/notifier.py` para as duas pontas da ACL do §7f, que são
+        # lidas de FORA do container e por isso não passam pela materialização.
         # Sorted, because the filesystem hands the files over in an order of its
         # own and the list below is the declaration, not a directory listing.
         callers = sorted(
@@ -432,7 +434,7 @@ class TheEntry(SecretCase):
         )
         self.assertEqual(callers, [
             "at/core/secrets.py", "at/core/tables.py",
-            "at_deploy/environment.py",
+            "at_deploy/environment.py", "at_deploy/notifier.py",
         ])
 
     def test_the_surface_that_reaches_the_vault_is_the_deploy_and_no_screen(self):
@@ -443,15 +445,20 @@ class TheEntry(SecretCase):
         # subida sorteia e abre o que a pasta guarda (item 50).
         #
         # O que esta linha tranca é a ESCOLHA e não a ausência dela: a
-        # superfície é UMA, e a outra — a tela — continua de fora. O WebApp não
-        # digita Frase nenhuma: quem lê o que a subida abriu é o container, e o
-        # que ele lê é a cópia clara do diretório de execução.
+        # superfície é UMA — o `at-deploy` —, e a outra, a tela, continua de
+        # fora. O WebApp não digita Frase nenhuma: quem lê o que a subida abriu é
+        # o container, e o que ele lê é a cópia clara do diretório de execução.
+        # **E são dois arquivos do mesmo artefato**: o `environment`, que sela o
+        # que a subida sorteia e abre o que ela monta, e o `notifier`, que sela e
+        # abre as duas pontas do §7f — as duas lidas pelo próprio `at-deploy`, de
+        # fora do container, a cada entrega.
         reached = sorted(
             path.relative_to(ROOT).as_posix()
             for path in (ROOT / "at_deploy").rglob("*.py")
             if "tests" not in path.parts and reaches_vault(path)
         )
-        self.assertEqual(reached, ["at_deploy/environment.py"])
+        self.assertEqual(reached, ["at_deploy/environment.py",
+                                   "at_deploy/notifier.py"])
         for path in (ROOT / "at" / "ui").rglob("*.py"):
             if "tests" in path.parts:
                 continue

@@ -223,42 +223,46 @@ class FolderCase(unittest.TestCase):
             self._vault_key = vault.vault_key(PHRASE)
         return self._vault_key
 
-    def value(self, where: Path, scope: str) -> str:
+    def value(self, where: Path, scope: str) -> str | None:
         """O valor CLARO que um arquivo da pasta guarda SELADO (item 50).
 
         Ele é lido ABRINDO o envelope com a Frase da suíte, e nunca de um
         segundo sorteio: um valor sorteado de novo não provaria nada sobre o
-        arquivo, e é o arquivo que estes testes leem.
+        arquivo, e é o arquivo que estes testes leem. Um arquivo que não existe
+        responde `None`: nem todo valor já nasceu em toda pasta.
         """
-        envelope = where.read_text(encoding="utf-8").strip()
+        try:
+            envelope = where.read_text(encoding="utf-8").strip()
+        except FileNotFoundError:
+            return None
+        if not envelope:
+            return None
         return vault.unseal(envelope, vault.derived_key(self.phrase_key(), scope))
 
-    def secrets(self) -> dict[str, str]:
+    def secrets(self) -> dict[str, str | None]:
         """Os valores que o deploy sorteou, em CLARO, lidos da própria pasta.
 
-        Os quatro que o AT sela são lidos ABRINDO o envelope que a pasta guarda
-        (`value`), e nunca de um segundo sorteio: um valor sorteado de novo pelo
-        teste não provaria nada sobre o arquivo. As duas pontas do notificador
-        ainda são lidas em claro, que é como a pasta as guarda até o corte
-        seguinte do item 50.
+        Os SEIS são lidos ABRINDO o envelope que a pasta guarda (`value`), e
+        nunca de um segundo sorteio: um valor sorteado de novo pelo teste não
+        provaria nada sobre o arquivo. As duas pontas do notificador entraram
+        aqui nesta fatia — elas eram as últimas que a pasta guardava em claro.
         """
-        values = {name: self.value(where, scope)
-                  for name, (where, scope) in _sealed_values().items()}
-        values[TOKEN] = notifier.token()
-        values[PHONE] = notifier.phone_token()
-        return values
+        return {name: self.value(where, scope)
+                for name, (where, scope) in _sealed_values().items()}
 
     def marks(self) -> dict[str, str]:
         """O texto que IDENTIFICA cada valor dentro da pasta.
 
-        Para os quatro que o AT sela é o ENVELOPE — a pasta guarda o selo, e é
-        ele que a linha do catálogo promete —, e para as duas pontas do
-        notificador, que ainda estão em claro, é o próprio valor.
+        Para os SEIS que o AT sela é o ENVELOPE — a pasta guarda o selo, e é ele
+        que a linha do catálogo promete. Um arquivo que não existe identifica
+        nada, e é `""` que o diz.
         """
-        marks = {name: where.read_text(encoding="utf-8").strip()
-                 for name, (where, _) in _sealed_values().items()}
-        marks[TOKEN] = notifier.token() or ""
-        marks[PHONE] = notifier.phone_token() or ""
+        marks = {}
+        for name, (where, _) in _sealed_values().items():
+            try:
+                marks[name] = where.read_text(encoding="utf-8").strip()
+            except FileNotFoundError:
+                marks[name] = ""
         return marks
 
     def copy_of(self, where: Path) -> Path | None:
@@ -1692,22 +1696,32 @@ class TheNotifier(FolderCase):
         # and the token (`services/notifier.py`).
         self.runtime()
         _, text = self.quiet(env.up, secret=self.phrase)
-        self.assertEqual(notifier.token(), DRAWN_TOKEN)
+        self.assertEqual(notifier.token(self.phrase_key()), DRAWN_TOKEN)
         self.assertIn(i18n.tr(
             "services.notifier.drawn", where=notifier.token_file(),
             topic=notifier.TOPIC, scope=notifier.SCOPE,
         ), text)
         # The value is a secret: it is kept, and it is never said.
         self.assertNotIn(DRAWN_TOKEN, text)
+        # **E o que fica na pasta é o ENVELOPE** (item 50): o mesmo valor que o
+        # `phone-token` do celular, selado sob o escopo do serviço dono.
+        kept = notifier.token_file().read_text(encoding="utf-8")
+        self.assertNotIn(DRAWN_TOKEN, kept)
+        self.assertTrue(vault.envelopes(kept))
+        # E quem o abre é a Frase: o que a pasta guarda volta a ser o valor.
+        self.assertEqual(self.value(notifier.token_file(), env.NOTIFIER),
+                         DRAWN_TOKEN)
 
-    def test_the_credential_is_kept_at_0600_and_never_in_an_argv(self):
-        # The interim while the vault does not exist (item 14): a 0600 file
-        # beside the folder's other secrets, never printed, never in the argv —
-        # which on this machine means never in a `ps`.
+    def test_the_credential_is_kept_SEALED_at_0600_and_never_in_an_argv(self):
+        # O que a pasta guarda de um valor que o AT sorteia é o envelope (§4), e
+        # o arquivo é um `0600` de sempre: nunca impresso, nunca no argv — o que
+        # nesta máquina quer dizer nunca num `ps`.
         fake = self.up()
         mode = stat.S_IMODE(notifier.token_file().stat().st_mode)
         self.assertEqual(mode, 0o600, f"the credential is readable by others: {mode:o}")
         self.assertNotIn(DRAWN_TOKEN, [part for call in fake.calls for part in call])
+        self.assertNotIn(DRAWN_TOKEN,
+                         notifier.token_file().read_text(encoding="utf-8"))
 
     def test_the_credential_is_scoped_to_the_topic(self):
         # §3's delimited scope, mirrored: AT talks to the service, and the
@@ -1722,9 +1736,9 @@ class TheNotifier(FolderCase):
         # looks at; whoever wants a new one deletes the file and brings the
         # environment up again — the same rule the gate's secret follows.
         self.up()
-        held = notifier.token()
+        held = notifier.token(self.phrase_key())
         _, text = self.quiet(env.up, secret=self.phrase)
-        self.assertEqual(notifier.token(), held)
+        self.assertEqual(notifier.token(self.phrase_key()), held)
         self.assertNotIn(i18n.tr(
             "services.notifier.drawn", where=notifier.token_file(),
             topic=notifier.TOPIC, scope=notifier.SCOPE,
@@ -1771,13 +1785,11 @@ FILLED_BY_CONTAINERS = (
 def _sealed_values() -> dict[str, tuple[Path, str]]:
     """Onde cada valor que o AT SELA mora, e o escopo da chave que o abre (item 50).
 
-    São os QUATRO desta fatia — o portão, que é do Caddy, e os três do provedor
-    —, e o par `(arquivo, escopo)` é o que a subida usa para os abrir: o escopo é
-    o serviço dono do valor (§4), e é o nome dele que a pasta não precisa
-    carregar porque o arquivo já o diz.
-
-    As duas pontas do notificador NÃO estão aqui: elas são o corte seguinte do
-    item 50, e até lá a pasta as guarda em claro, a `0600`.
+    São os SEIS deste corte — o portão, que é do Caddy, os três do provedor e
+    **as duas pontas do notificador** (§7f, o corte `d`) —, e o par
+    `(arquivo, escopo)` é o que a subida usa para os abrir: o escopo é o serviço
+    dono do valor (§4), e é o nome dele que a pasta não precisa carregar porque o
+    arquivo já o diz.
     """
     return {
         GATE: (caddy.gate_file(), env.CADDY),
@@ -1785,6 +1797,8 @@ def _sealed_values() -> dict[str, tuple[Path, str]]:
         ENCRYPTION: (env.state(env.IDENTITY) / env.IDENTITY_ENCRYPTION,
                      env.IDENTITY),
         SIGNATURE: (env.state(env.IDENTITY) / env.IDENTITY_JWT, env.IDENTITY),
+        TOKEN: (notifier.token_file(), env.NOTIFIER),
+        PHONE: (notifier.phone_file(), env.NOTIFIER),
     }
 
 
@@ -1794,10 +1808,10 @@ def _catalogue() -> tuple[tuple[Path, int | None, frozenset[str]], ...]:
     **This is item 50's audit, turned into a gate.** The philosophy of the folder
     is that it is copied WITHOUT encryption and that what a PERSON writes in it is
     theirs — so what the AT creates is the part that has to stop being readable in
-    a copy, and this is the measurement of what that part is today: **os quatro
-    valores que o AT sorteia saem daqui como o envelope do cofre** (o corte do
-    selo), **e as duas pontas do notificador ainda saem em claro**, a `0600`.
-    The scanner does not delimit it: measured on a folder the deploy filled,
+    a copy, and this is the measurement of what that part is today: **os SEIS
+    valores que o AT sorteia saem daqui como o envelope do cofre** — os quatro do
+    corte `c` e as duas pontas do notificador, que este corte selou. The scanner
+    does not delimit it: measured on a folder the deploy filled,
     `gitleaks 8.30.1` flags
     ONE of these files — the provider's YAML, where each value has its keyword on
     the line — and is BLIND to the Caddyfile, to the three bare-valued files and
@@ -1807,7 +1821,7 @@ def _catalogue() -> tuple[tuple[Path, int | None, frozenset[str]], ...]:
 
     The mode is `None` where the writer left it to the umask — which is every
     file but the two notifier credentials, and that is the finding: the deploy
-    already knows how to keep a secret to itself at `0600` (`notifier._keep`) and
+    already knows how to keep a secret to itself at `0600` (`notifier._sealed`) and
     does it in one place only.
 
     **A linha não mudou com o selo, e é isso que a faz um gate**: o que mudou
@@ -1851,12 +1865,11 @@ class TheClearState(FolderCase):
     """What the deploy writes into the folder, and with what mode (item 50).
 
     The audit of the vault's first slice, held as a gate — e o que ele tranca
-    mudou com o selo, que é o que esta fatia veio fazer. A folder is copied
-    without encryption, so the files below are the ones a copy hands over:
-    **os quatro valores que o AT sorteia chegam à pasta como o envelope do
-    cofre** e o valor claro não está em arquivo nenhum dela; as duas pontas do
-    notificador continuam em claro, a `0600`, até o corte que as sela; e o resto
-    não é segredo nenhum.
+    mudou com cada corte do selo. A folder is copied without encryption, so the
+    files below are the ones a copy hands over: **os SEIS valores que o AT
+    sorteia chegam à pasta como o envelope do cofre** e o valor claro não está
+    em arquivo nenhum dela — nem os das duas pontas do notificador, que este
+    corte selou —, e o resto não é segredo nenhum.
 
     O catálogo é a linha por arquivo, e ele é o mesmo depois do selo: o que
     mudou é o que cada linha carrega, e é por isso que `marks` existe — a
@@ -1867,12 +1880,13 @@ class TheClearState(FolderCase):
         """The environment up — the whole of the deploy's writing happens here.
 
         One stand-in: §7f draws the phone's credential in `subscribe`, which
-        needs the notifier standing for real. Its writer is called directly, so
-        what is proved is the mode and the place and not the door.
+        needs the notifier standing for real. Its writer is called directly — com
+        a Chave da Frase, porque o que ele grava é o envelope —, so what is
+        proved is the mode and the place and not the door.
         """
         self.runtime()
         self.quiet(env.up, secret=self.phrase)
-        notifier.write_phone_token(DRAWN_PHONE)
+        notifier.write_phone_token(DRAWN_PHONE, self.phrase_key())
 
     def written(self) -> set[Path]:
         """Every file the deploy wrote, by the path it wrote it at."""
@@ -1894,10 +1908,9 @@ class TheClearState(FolderCase):
 
     def test_every_secret_a_file_carries_is_there_and_no_other_one_is(self):
         # The classification is MEASURED and not repeated: what the catalogue
-        # says a file carries has to be in it — o ENVELOPE, para os quatro que o
-        # AT sela, e o próprio valor para as duas pontas do notificador —, e um
-        # segredo que apareça num arquivo que o catálogo não nomeia é um
-        # vazamento que o catálogo perdeu.
+        # says a file carries has to be in it — o ENVELOPE, para os seis que o AT
+        # sela —, e um segredo que apareça num arquivo que o catálogo não nomeia
+        # é um vazamento que o catálogo perdeu.
         self.up()
         marks = self.marks()
         for where, _, carries in _catalogue():
@@ -1976,17 +1989,21 @@ class TheAccessPhrase(FolderCase):
         return asked, reader
 
     def seeded(self) -> None:
-        """Uma pasta que nasceu ANTES do selo: os quatro valores, em claro.
+        """Uma pasta que nasceu ANTES do selo: os valores, em claro.
 
         É o estado que a auditoria mediu na instância, e o corte da migração é o
-        seguinte: esta fatia não o decide, e o que ela tem de provar é que ele
-        sobe como sempre subiu — a Frase não é pedida onde não há o que abrir nem
-        o que selar.
+        seguinte: esta fatia ainda não o decide, e o que ela tem de provar é que
+        ele sobe como sempre subiu — a Frase não é pedida onde não há o que abrir
+        nem o que selar. **A credencial do AT entra aqui em claro também**, e não
+        é detalhe: é assim que a instância a tem, e é ela que faz o `up` não ter
+        o que sortear — sem ela, um sorteio viria aí e um sorteio SELA.
         """
         files.atomic_write_text(caddy.gate_file(), "o-portao-que-nasceu-em-claro\n")
         for name in env.IDENTITY_SECRETS:
             files.atomic_write_text(env.state(env.IDENTITY) / name,
                                     f"o-valor-{name}-em-claro\n")
+        files.atomic_write_text(notifier.token_file(),
+                                "tk_o-token-que-nasceu-em-claro\n")
 
     def test_the_first_boot_reads_the_phrase_twice(self):
         # **Uma Frase que SELA não tem como ser conferida depois**: a segunda
@@ -2190,7 +2207,7 @@ class TheRunDirectory(FolderCase):
         # longer mounted whole into the notifier, which is what put them inside
         # it. Quem as lê é o `notify`, e é a pasta que as guarda.
         fake = self.up()
-        notifier.write_phone_token(DRAWN_PHONE)
+        notifier.write_phone_token(DRAWN_PHONE, self.phrase_key())
         argv = _call(fake, env.container(env.NOTIFIER))
         self.assertFalse((env.materialized(env.NOTIFIER) / notifier.TOKEN_FILE).exists())
         self.assertFalse((env.materialized(env.NOTIFIER) / notifier.PHONE_FILE).exists())

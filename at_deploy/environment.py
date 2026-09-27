@@ -996,13 +996,23 @@ def authority_file() -> Path:
 def _drawn_files() -> tuple[Path, ...]:
     """Os arquivos que o AT SORTEIA: onde os valores selados moram (item 50).
 
-    O portão, que é do Caddy, e os três que o provedor assina, cifra e prova
-    com (§7b). Os dois conjuntos são nomeados juntos porque a pergunta que os
-    usa é uma só — "há o que selar, ou o que abrir?" —, e ela é feita ANTES de
-    qualquer sorteio.
+    O portão, que é do Caddy, os três que o provedor assina, cifra e prova com
+    (§7b) e **a credencial do AT no notificador** (§7f): os três conjuntos são
+    nomeados juntos porque a pergunta que os usa é uma só — "há o que selar, ou
+    o que abrir?" —, e ela é feita ANTES de qualquer sorteio. A credencial do
+    notificador entra aqui porque quem a sorteia é o `up`, depois de os serviços
+    subirem (`notifier.provision`): um arquivo que falta é um sorteio que vem
+    aí, e um sorteio SELA.
+
+    **A do celular NÃO entra**: quem a sorteia é o `phone`, um ato da pessoa e
+    não da subida — quem responde por ela é a porta de quem sela
+    (`sealing_key`).
     """
+    from at_deploy import notifier  # noqa: PLC0415 — notifier reads this module
+
     return (caddy_service.gate_file(),
-            *(state(IDENTITY) / name for name in IDENTITY_SECRETS))
+            *(state(IDENTITY) / name for name in IDENTITY_SECRETS),
+            notifier.token_file())
 
 
 def _sealed_files() -> tuple[tuple[Path, str], ...]:
@@ -1017,12 +1027,21 @@ def _sealed_files() -> tuple[tuple[Path, str], ...]:
     Os arquivos ESCRITOS entram aqui também, e não só os sorteados: o
     `configuration.yml` e o `Caddyfile` carregam os envelopes inline, e são eles
     que a conferência da Frase tem de abrir.
+
+    **E as duas pontas do notificador entram nomeadas** (§7f): elas não são
+    `writes` de serviço nenhum — o container não as lê, e por isso não há texto
+    composto que as carregue inline —, e o escopo delas é o do SERVIÇO dono do
+    valor, `notifier`, como o de qualquer outro.
     """
+    from at_deploy import notifier  # noqa: PLC0415 — notifier reads this module
+
     found = tuple((where, CADDY) for where in (caddy_service.gate_file(),))
     found += tuple((state(IDENTITY) / name, IDENTITY) for name in IDENTITY_SECRETS)
     for service in SERVICES:
         found += tuple((state(service.name) / name, service.name)
                        for name, _ in service.writes)
+    found += ((notifier.token_file(), NOTIFIER),
+              (notifier.phone_file(), NOTIFIER))
     return found
 
 
@@ -1055,9 +1074,13 @@ def _needs_phrase() -> bool:
 
     As duas coisas são a mesma pergunta para quem sobe: **abrir** o que a pasta
     guarda selado, e **selar** o que este `up` vai sortear. Uma pasta sem
-    envelope e com os quatro valores no lugar não pede Frase nenhuma — é a pasta
+    envelope e com os valores todos no lugar não pede Frase nenhuma — é a pasta
     que nasceu antes do selo, e a migração dela é outra fatia (`docs`, item 50,
-    o corte do que nasceu em claro).
+    o corte do que nasceu em claro). **E as duas pontas do notificador entram na
+    pergunta**: a credencial do AT é um dos arquivos que o `up` sorteia
+    (`_drawn_files`), e a do celular, que o `up` não sorteia, é conferida como
+    qualquer selo da pasta (`_sealed_files`) — quem a abre no dia a dia é o
+    `phone`, pela porta de quem sela.
     """
     for where in _drawn_files():
         if not where.exists():
@@ -1116,16 +1139,39 @@ def _ask_phrase(secret: Ask) -> bytes | None:
     return key
 
 
-def _unlock(secret: Ask | None) -> tuple[bytes | None, str | None]:
-    """A Chave do Cofre para este ato, e a recusa — uma das duas (§4).
+def unlock(secret: Ask | None) -> tuple[bytes | None, str | None]:
+    """A Chave do Cofre para um ato que ABRE, e a recusa — uma das duas (§4).
 
-    Ela é a porta por onde o `up` e o `restart` pedem a Frase, e a única: os
-    dois atos escrevem na pasta e montam o diretório de execução, e nenhum dos
-    dois pode fazer isso com um envelope que não abriu. `None` na Chave é o
-    estado de uma pasta que não tem nada de selado — e aí nada precisa dela.
+    Ela é a porta por onde o `up`, o `restart` e a entrega do §7f pedem a Frase,
+    e a única: os três leem o que a pasta guarda — o `up` e o `restart` para
+    montar o diretório de execução, e a entrega para autenticar no notificador
+    —, e nenhum deles pode fazer isso com um envelope que não abriu. **`None` na
+    Chave é o estado de uma pasta que não tem nada de selado**, e aí nada precisa
+    dela: é a pasta que nasceu antes do selo, e o que ela guarda está em claro.
+
+    Quem SELA pergunta por outra porta (`sealing_key`): esta só pergunta quando a
+    pasta tem o que abrir ou o que sortear (`_needs_phrase`).
     """
     if not _needs_phrase():
         return None, None
+    return sealing_key(secret)
+
+
+def sealing_key(secret: Ask | None) -> tuple[bytes | None, str | None]:
+    """A Chave do Cofre de um ato que SELA, pedida SEMPRE — e a recusa (§4).
+
+    `unlock` responde "esta pasta precisa da Frase?"; esta porta responde "dê-me
+    a Chave", e é a diferença que um ato que SELA não pode ignorar: uma pasta que
+    nasceu antes do selo não tem o que ABRIR e, no entanto, o valor que o ato vai
+    sortear tem de sair selado — sem Chave ele iria para a pasta em claro, que é
+    exatamente o que o item 50 existe para não haver. Quem a usa é o `phone`
+    (`notifier.subscribe`), que sorteia uma credencial, imprime o valor e sela o
+    que fica.
+
+    A recusa é a mesma das outras portas: sem terminal não se pergunta (§3, a
+    postura fechada), e uma Frase que não abre o que a pasta guarda não sela nada
+    novo.
+    """
     if secret is None:
         # A mesma postura da elevação: sem terminal não se pergunta, e não se
         # sobe um ambiente que não abriu o que ele mesmo guardou.
@@ -1151,7 +1197,7 @@ def _opened(text: str, scope: str, key: bytes | None) -> str:
         # O caso comum, e o de uma pasta que nasceu antes do selo: não há o que
         # abrir, e o texto vai como está.
         return text
-    if key is None:  # pragma: no cover — `_unlock` dá Chave quando há envelope
+    if key is None:  # pragma: no cover — `unlock` dá Chave quando há envelope
         raise SealedRefused()
     derived = vault.derived_key(key, scope)
     for envelope in found:
@@ -1909,9 +1955,11 @@ def _materialize(service: Service, key: bytes | None) -> Path:
     O que NÃO vem para cá são as pastas que o container enche: elas continuam na
     pasta de estado, que é a que o backup leva, e um `Mount` com `host` não
     passa por aqui. E o que não é lido por container nenhum também não: as duas
-    credenciais do notificador (`notifier.token_file`) moram na pasta de estado
-    e quem as lê é o AT, do lado de fora — o container do notificador monta só o
-    `server.yml`.
+    credenciais do notificador (`notifier.token_file`) moram na pasta de estado,
+    **seladas**, e quem as lê é o AT, do lado de fora — o container do
+    notificador monta só o `server.yml`. Elas não têm cópia clara aqui porque
+    não há container que as monte: quem as abre é o ato de fora que as pede, com
+    a Frase dele (`notifier.token`, `notifier.phone_token`).
     """
     where = materialized(service.name)
     if not service.writes:
@@ -2177,7 +2225,7 @@ def up(ask: Ask | None = None, secret: Ask | None = None) -> str:
     **E depois a Frase de Acesso** (§4, item 50): ela é pedida depois da
     permissão e antes de qualquer sorteio, porque é ela que sela o que este `up`
     vai sortear e que abre o que a pasta já guarda — e uma subida que não a tem,
-    ou que recebe uma que não abre, não sobe e diz por quê (`_unlock`). Ela é
+    ou que recebe uma que não abre, não sobe e diz por quê (`unlock`). Ela é
     lida UMA vez por subida, e vive o tempo dela: nada a guarda, e nada a
     escreve. Uma pasta que ainda não selou nada e não tem o que sortear não a
     pede — é a pasta que nasceu antes do selo, e a migração dela é outra fatia.
@@ -2212,7 +2260,7 @@ def up(ask: Ask | None = None, secret: Ask | None = None) -> str:
 
     # §4: a Frase de Acesso entra aqui, antes de qualquer sorteio e de qualquer
     # container. A Chave que sai dela é desta subida e de mais nada.
-    key, refusal = _unlock(secret)
+    key, refusal = unlock(secret)
     if refusal is not None:
         return refusal
 
@@ -2222,11 +2270,12 @@ def up(ask: Ask | None = None, secret: Ask | None = None) -> str:
     # without the line would be an edge that attaches nothing and a WebApp that
     # refuses every identity it is handed.
     #
-    # **E só se sorteia com a Chave na mão**: os quatro valores que faltam são
-    # exatamente o que faz o `_unlock` pedir a Frase, então quando não há Chave
-    # é porque os quatro já estão na pasta — e o que já está lá não é sorteado
-    # de novo. Sortear sem Chave seria escrever um valor em claro na pasta, que
-    # é o que este item existe para não haver.
+    # **E só se sorteia com a Chave na mão**: os valores que faltam — o portão, os
+    # três do provedor e a credencial do AT no notificador — são exatamente o que
+    # faz o `unlock` pedir a Frase, então quando não há Chave é porque eles todos
+    # já estão na pasta — e o que já está lá não é sorteado de novo. Sortear sem
+    # Chave seria escrever um valor em claro na pasta, que é o que este item
+    # existe para não haver.
     if key is not None:
         fresh = caddy_service.gate_secret() is None
         draw_gate(key)
@@ -2255,9 +2304,13 @@ def up(ask: Ask | None = None, secret: Ask | None = None) -> str:
     # credential inside it. The import is inside the function because the
     # delivery reads THIS module for the address it posts to and the folder the
     # credential lives in — the two are one subject, like `switch` and this file.
+    #
+    # **A Chave desce**: o que o notificador grava é o envelope do cofre (§4,
+    # item 50), e quem a tem é esta subida — o `unlock` a pediu porque a
+    # credencial é um dos arquivos que faltam (`_drawn_files`).
     from at_deploy import notifier  # noqa: PLC0415 — see above
 
-    notifier.provision()
+    notifier.provision(key)
     return UP
 
 
@@ -2288,7 +2341,7 @@ def restart(name: str, secret: Ask | None = None) -> bool:
     §3 declares that price where the operator's act is recorded, because it is
     the one thing a person changing a credential has to know.
 
-    **E ele PEDE a Frase de Acesso, porque ele monta de novo** (`_unlock`): o
+    **E ele PEDE a Frase de Acesso, porque ele monta de novo** (`unlock`): o
     `_prepare` reescreve o `configuration.yml` — os três do provedor entram
     nele, e o que a pasta guarda deles é o envelope — e o diretório de execução
     só recebe o arquivo ABERTO. Sem Frase, o reinício não acontece e é dito por
@@ -2301,7 +2354,7 @@ def restart(name: str, secret: Ask | None = None) -> bool:
     if _state_of(service) == ABSENT:
         return False
 
-    key, refusal = _unlock(secret)
+    key, refusal = unlock(secret)
     if refusal is not None:
         return False
 
@@ -2513,20 +2566,22 @@ def status() -> None:
     # The notifier's credentials are said WITH the notifier, and only then: they
     # are facts about a service that is up, and listing where a credential would
     # live for a notifier nobody brought is a report about a thing that is not
-    # there.
+    # there. **E o relatório pergunta se elas EXISTEM, e não as abre**: quem abre
+    # um envelope é quem tem a Frase (§4), e um relatório de estado não tem — nem
+    # deve pedir — a Frase de ninguém.
     served = _service(NOTIFIER)
     if served is None or _state_of(served) != RUNNING:
         return
     where = notifier.token_file()
     print(tr("services.notifier.credential.at", where=where, topic=notifier.TOPIC,
              scope=notifier.SCOPE)
-          if notifier.token() is not None
+          if notifier.has_token()
           else tr("services.notifier.credential.absent", where=where))
 
     phone = notifier.phone_file()
     print(tr("services.notifier.phone.at", where=phone, topic=notifier.TOPIC,
              scope=notifier.PHONE_SCOPE)
-          if notifier.phone_token() is not None
+          if notifier.has_phone()
           else tr("services.notifier.phone.absent", where=phone))
 
 

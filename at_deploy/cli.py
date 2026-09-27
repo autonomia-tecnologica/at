@@ -174,6 +174,11 @@ def services(
     the credential the gate proves, and it is the one word of this surface that
     takes an ARGUMENT, because the thing it changes is a NAME.
 
+    **Os dois do §7f — `notify` e `phone` — pedem a Frase de Acesso** (item 50):
+    o que a pasta guarda das duas credenciais é o envelope do cofre, e quem o
+    abre é a Chave daquele ato. É por isso que o `secret` deste surface chega a
+    eles: a mesma porta sem eco por onde o `up` e o `credential` já a leem.
+
     The Podman is checked by the ENVIRONMENT and not here: the two ways out of a
     machine without it are §7a's sentence, and they are composed where the
     environment is (`at_deploy/environment.py`). What this surface does is read
@@ -214,17 +219,30 @@ def services(
         # way a real one does — the credential on the file and the POST to the
         # topic — and a delivery that did not happen is a refusal (§7f's own
         # "the alert is the best-effort part"; the thing itself is not lost).
+        #
+        # **E ele pede a Frase de Acesso** (item 50): o que a pasta guarda é o
+        # envelope, e quem o abre é a Chave desta entrega — a mesma porta da
+        # subida (`environment.unlock`). Sem terminal não se pergunta, e sem a
+        # Frase o alerta não sai; é o preço declarado, e ele é o de §7f.
         outcome = notifier.push(tr("services.notifier.test.title"),
-                                tr("services.notifier.test.body"))
+                                tr("services.notifier.test.body"),
+                                secret if secret is not None else _secret())
         return OK if outcome == notifier.SENT else REFUSED
     if word == "phone":
         # §7f's other end, and the person's act: the phone's credential is drawn
-        # by the notifier, kept at `0600`, and PRINTED ONCE — it has to reach the
-        # phone, and the only road there is the person's eyes. A second run does
-        # not print it again (`notifier.subscribe`). **E o ato prova a leitura
-        # pelo NOME**, com o token e sem ele: um token que existe num arquivo não
-        # é um celular que lê, e a palavra promete a leitura (`PHONE_UNPROVED`).
-        outcome = notifier.subscribe(answer)
+        # by the notifier, kept at `0600` SEALED, and PRINTED ONCE — it has to
+        # reach the phone, and the only road there is the person's eyes. A second
+        # run does not print it again (`notifier.subscribe`). **E o ato prova a
+        # leitura pelo NOME**, com o token e sem ele: um token que existe num
+        # arquivo não é um celular que lê, e a palavra promete a leitura
+        # (`PHONE_UNPROVED`).
+        #
+        # **A Frase entra aqui porque o ato SELA e porque ele ABRE** (§4, item
+        # 50): o valor sorteado vai para a pasta como envelope, e a prova de uma
+        # segunda rodada abre o que está lá — as duas coisas pedem a Chave, e é
+        # o mesmo leitor sem eco da subida.
+        outcome = notifier.subscribe(
+            answer, secret if secret is not None else _secret())
         return OK if outcome in (notifier.PHONE_DRAWN, notifier.PHONE_HELD) else REFUSED
     if word == ARGUMENT:
         return _credential(args[0], ask, secret)
