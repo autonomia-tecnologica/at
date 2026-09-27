@@ -163,7 +163,7 @@ CREDENTIAL_UNKNOWN = "unknown"   # nobody in this folder wears that name
 CREDENTIAL_PENDING = "pending"   # the folder has it; the gate does not yet
 
 # The port the edge is reached on, and it is 443 because that is the port a URL
-# does not say: the person types `https://at.at.local`, and §7f's phone takes a URL
+# does not say: the person types `https://at.local`, and §7f's phone takes a URL
 # and nothing more — a `:8443` in the middle of it is a port nobody asked to
 # know. The Caddy is the edge, and its port is the ONE the environment publishes
 # outside the loop (§7e).
@@ -354,7 +354,7 @@ NOTIFIER_PORT = 2586
 # quem lê cada um: `NOTIFIER` nomeia o serviço para o AT (e o dia em que outro
 # servir o papel, só ele se muda), e este é o nome que o CELULAR digita e que o
 # app do ntfy guarda como servidor dele. **Medido, e é o que decide a forma**:
-# o ntfy NÃO funciona sob um caminho (`at.at.local/ntfy`) — o mantenedor diz que é
+# o ntfy NÃO funciona sob um caminho (`at.local/ntfy`) — o mantenedor diz que é
 # preciso um subdomínio, e o app e a interface quebram sob um prefixo —, então o
 # notificador ganha o dele no mesmo domínio em vez de uma rota.
 NOTIFIER_HOST = "ntfy"
@@ -394,19 +394,12 @@ SECRET_BYTES = 32
 # translated (§3), and `.local` is the name a machine answers to on its own
 # network.
 #
-# **O domínio é só o domínio: nada responde nele pelado.** Ele era também o nome
-# do site, e deixou de ser quando cada serviço ganhou o seu embaixo dele — o
-# site em `at.at.local`, o notificador em `ntfy.at.local`, a CA em
-# `cert.at.local`. Um nome por serviço é o que a pessoa digita, e um nome que
-# ninguém digita não tem o que servir: a borda não teria certificado para ele.
+# **O site fica com este nome, e os outros penduram o deles embaixo.** O site é
+# o que a pessoa digita sem pensar, então ele É o `at.local` (§7a); o notificador
+# em `ntfy.at.local` e a CA em `cert.at.local` ganham o nome próprio deles porque
+# não podem viver sob um caminho (`NOTIFIER_HOST` diz por quê). São TRÊS nomes, e
+# o `names()` é a fonte única dos três.
 NAME = "at.local"
-
-# O nome do SITE embaixo do domínio — `at.at.local` —, e ele é o serviço que a
-# pessoa digita sem pensar. Fica com um subdomínio como os outros, e não com o
-# domínio pelado, porque o portão e o TLS precisam de UM nome por serviço: o
-# cookie de sessão é emitido para ele, o certificado é emitido para ele, e o
-# `at.local` sozinho não responde mais a nada.
-AT_HOST = "at"
 
 # How long the orchestrator waits for an address to exist before it gives up on
 # publishing there. Long enough for an interface to come up, short enough that a
@@ -785,40 +778,38 @@ def _notifier_command() -> tuple[str, ...]:
 
 
 def site_host() -> str:
-    """The NAME the environment's edge serves the site at — `at.at.local`.
+    """The NAME the environment's edge serves the site at — the environment's own.
 
-    §7a is what this reads, and it is a NAME under the environment's DOMAIN and
-    not a fact about the machine: `at.at.local` is what the DNS of the
-    environment answers for, and it is a name — which was measured twice, once
-    against each half of the environment. The gate refuses a cookie domain
-    without a dot that is not an IP, so the word `localhost` is out; and TLS
-    needs a NAME for the SNI — a client connecting to an ADDRESS sends none, and
-    the Caddy answers the handshake with `internal error` because it has no
-    certificate it can serve.
+    §7a is what this reads, and it is the environment's DOMAIN and not a fact
+    about the machine: `at.local` is the name the DNS of the environment answers
+    for, and it is a name — which was measured twice, once against each half of
+    the environment. The gate refuses a cookie domain without a dot that is not
+    an IP, so the word `localhost` is out; and TLS needs a NAME for the SNI — a
+    client connecting to an ADDRESS sends none, and the Caddy answers the
+    handshake with `internal error` because it has no certificate it can serve.
 
-    **O site tem subdomínio próprio, e não o domínio pelado.** Ele era o único
-    serviço e ficava com o `at.local` inteiro; agora que cada serviço alcançado
-    por um nome pendura o dele embaixo (`NAME`), o site responde em `AT_HOST`
-    como o notificador e a CA respondem nos deles — e `at.local` sozinho deixa
-    de ser um nome que alguém alcança.
+    **O site fica com o domínio, e não com um subdomínio dele.** Ele é o que a
+    pessoa digita sem pensar, então ele É o `at.local`; o notificador e a CA
+    penduram os nomes deles embaixo do mesmo domínio (`NAME`), cada um por uma
+    medição própria — e é o que faz o site e o domínio serem a mesma coisa.
 
     **The private network does NOT name the site, and that is this piece's
     decision.** §7e is what the network changes, and what it changes is the
     ADDRESS the edge publishes on and that the DNS answers with — never the
     name. The name the network gives the machine (`vpn.name`) named the site
-    while the site was the only thing the environment had; now that every
-    service has its own name under one domain, a site that answered under the
-    network's name would be a second domain, a second certificate and a gate
-    whose `authelia_url` pointed at the other one — the portal a phone reached
-    by the network's name would redirect it to a name the network cannot
-    resolve. What the person points at the environment's DNS is the whole of
-    it, and the backlog already says that is the person's act and not AT's.
+    while the site was the only thing the environment had; now that the
+    environment's names all hang under its own domain, a site that answered
+    under the network's name would be a second domain, a second certificate and
+    a gate whose `authelia_url` pointed at the other one — the portal a phone
+    reached by the network's name would redirect it to a name the network
+    cannot resolve. What the person points at the environment's DNS is the whole
+    of it, and the backlog already says that is the person's act and not AT's.
 
     **It is a function and not a constant because every file that has to agree
     on the name is written when the environment comes up**: the Caddyfile, the
     identity provider's access rule and its cookie, and the URL the switch says.
     """
-    return f"{AT_HOST}.{NAME}"
+    return NAME
 
 
 def notifier_host() -> str:
@@ -880,10 +871,10 @@ def names() -> tuple[str, ...]:
 
     It is asked of the manifest and never written by hand, the way `networks` is:
     a service that starts being reached by a name tomorrow enters this question
-    by existing. What decides is whether a service HAS a name — the site, the
-    notifier and the CA each hang theirs under the domain — and the services the
-    edge and the WebApp reach by their container names (the gate, the WebApp
-    itself) have none, because nobody types them.
+    by existing. What decides is whether a service HAS a name — the site keeps
+    the domain's own, the notifier and the CA hang theirs under it — and the
+    services the edge and the WebApp reach by their container names (the gate,
+    the WebApp itself) have none, because nobody types them.
 
     **`cert_host` is the one that hangs under the domain without fronting a
     service**, and it enters here for the same reason the notifier does: the
@@ -898,10 +889,10 @@ def _dnsmasq_conf() -> str:
     """The names the environment answers for, in dnsmasq's words.
 
     §7a gives this service one job — customizing the access URLs — and the names
-    are the environment's: `at.at.local`, which is the site, `ntfy.at.local`,
+    are the environment's: `at.local`, which is the site, `ntfy.at.local`,
     which is §7f's notifier, and `cert.at.local`, which is the CA the edge
-    serves. The
-    ADDRESS it answers with is where the edge actually is: the private network's
+    serves. The ADDRESS it answers with is where the edge actually is: the
+    private network's
     when the machine is on one (§7e), the loop otherwise — the network decides
     WHERE, never WHAT the names are.
 
@@ -921,7 +912,7 @@ def _dnsmasq_conf() -> str:
 def _dnsmasq_ports() -> tuple[Port, ...]:
     """A porta do DNS, no endereço onde a borda está.
 
-    **Quem pergunta por estes nomes não está na máquina.** `at.at.local`,
+    **Quem pergunta por estes nomes não está na máquina.** `at.local`,
     `ntfy.at.local` e `cert.at.local` não existem em DNS público nenhum — são do
     ambiente, e este `dnsmasq` é o único que os responde —, então publicá-lo no
     laço é responder a quem já está dentro e a mais ninguém: o navegador de
@@ -1024,6 +1015,37 @@ def authority_file() -> Path:
     teria como saber qual arquivo é (`notifier.py` o diz na mensagem do celular).
     """
     return caddy_service.authority_file(state(CADDY) / CADDY_STORAGE)
+
+
+def _prune_names() -> tuple[str, ...]:
+    """Tira do storage do Caddy o certificado dos nomes que a borda já não serve.
+
+    **O conjunto de nomes é do AT e não do Caddy** (`names`): quando o ambiente
+    deixa de servir um nome, o Caddy não tem como sabê-lo — ele guarda o
+    certificado daquele nome e a chave privada ao lado dele para sempre, e o que
+    sobra é uma chave em claro que o portão do backup barraria sem motivo. É por
+    isso que a poda é do `up`: a limpeza não é um ato à parte que a pessoa teria
+    de lembrar de pedir, ela é o preço de o nome ter mudado, e ele já foi pago na
+    subida seguinte.
+
+    **É o ÚNICO ato do AT dentro do que o container encheu, e ele é estreito de
+    propósito**: só os diretórios de `certificates/local` cujo nome não está no
+    `names()` saem — um por nome, e o nome do diretório é o nome servido —, e o
+    diretório da CA (`pki/`) nunca é tocado. O que o container escreveu de um
+    nome que AINDA é servido continua byte a byte como ele deixou
+    (`TheStorageOutOfReach`).
+    """
+    where = caddy_service.certificates_dir(state(CADDY) / CADDY_STORAGE)
+    if not where.is_dir():
+        return ()
+    served = set(names())
+    stale = sorted(
+        entry for entry in where.iterdir()
+        if entry.is_dir() and entry.name not in served
+    )
+    for entry in stale:
+        shutil.rmtree(entry)
+    return tuple(entry.name for entry in stale)
 
 
 def _drawn_files() -> tuple[Path, ...]:
@@ -2480,6 +2502,15 @@ def up(ask: Ask | None = None, secret: Ask | None = None) -> str:
     _clear_run_dir()
     _materialize_gate(key)
 
+    # **A poda do storage do Caddy vem antes de qualquer container subir**, e ela
+    # é a única escrita do AT no que o container encheu: o conjunto de nomes é
+    # dele (`names`), então o certificado de um nome que ele deixou de servir sai
+    # agora — com a chave privada em claro que o portão do backup barraria sem
+    # motivo. O que o container escreveu de um nome ainda servido fica intacto.
+    pruned = _prune_names()
+    if pruned:
+        print(tr("services.storage.pruned", count=len(pruned)))
+
     pins = held()
     _networks()
     for service in SERVICES:
@@ -2723,7 +2754,7 @@ def status() -> None:
     # not the report's business to name a door that is not there.
     #
     # **A pergunta vai ao ENDEREÇO onde a borda publica e a resposta diz o
-    # NOME**, e desde que o site é `at.at.local` os dois não são a mesma coisa: o
+    # NOME**, e desde que o site é `at.local` os dois não são a mesma coisa: o
     # nome só resolve numa máquina que use o DNS do ambiente, e o endereço onde
     # a borda publica é desta máquina sempre (§7e). Perguntar pelo nome diria
     # "não há nada" sobre uma borda de pé, e a linha que a pessoa mais precisa

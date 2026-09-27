@@ -130,8 +130,8 @@ AUTH_HEADERS = ("Remote-User", "Remote-Groups", "Remote-Name", "Remote-Email")
 PORTAL = "/authelia"
 
 # The port HTTPS is served on when nobody says otherwise, and the ONE port a URL
-# does not spell: `https://at.at.local` and `https://at.at.local:443` are the
-# same address, and the first is what a person types. Caddy reads a site address with
+# does not spell: `https://at.local` and `https://at.local:443` are the same
+# address, and the first is what a person types. Caddy reads a site address with
 # no port the same way, so the omission is one on both sides of the file.
 HTTPS = 443
 
@@ -249,6 +249,27 @@ def authority_file(root: Path | None = None) -> Path:
     return (root or storage_dir()) / AUTHORITY
 
 
+# Onde o Caddy guarda o certificado de CADA nome, dentro do storage: um
+# diretório por nome servido, com o `.crt` e a `.key` dele. **É um caminho do
+# PRÓPRIO Caddy e não uma decisão de AT** — `tls internal` emite por nome, e ele
+# os guarda aqui —, e é por isso que ele é nomeado uma vez: quem varre o storage
+# atrás dos nomes que a borda já não serve precisa saber onde eles moram
+# (`environment._prune_names`), e um nome que ninguém serve deixa um certificado
+# e uma chave privada para trás.
+CERTIFICATES = Path("certificates") / "local"
+
+
+def certificates_dir(root: Path | None = None) -> Path:
+    """O diretório dos certificados POR NOME, dentro de um storage.
+
+    A raiz é um parâmetro pela mesma razão de `authority_file`: são DOIS storages
+    com o mesmo conteúdo, e o que eles têm em comum é o que o Caddy escreve
+    dentro. Cada entrada é um nome servido, e é o NOME que diz se ele ainda
+    serve (`environment.names`).
+    """
+    return (root or storage_dir()) / CERTIFICATES
+
+
 def unpacked() -> bool:
     """Whether the folder already carries the Caddy this platform runs."""
     if not binary().is_file() or not stamp_file().is_file():
@@ -362,7 +383,7 @@ def address(host: str, port: int) -> str:
     `--host 192.168.1.10` — and not opening every one of them.
 
     **The default port is not written**: a URL and a Caddyfile both read
-    `https://at.at.local` as the address on `443`, and a `:443` in the middle of it
+    `https://at.local` as the address on `443`, and a `:443` in the middle of it
     is noise that says nothing — the port is there when it is another one, which
     is exactly when a person has to read it.
     """

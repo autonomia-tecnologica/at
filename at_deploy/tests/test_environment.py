@@ -394,7 +394,7 @@ class TheManifest(unittest.TestCase):
         # UDP e TCP, na mesma porta, e o endereço é um dos dois que §7e permite:
         # o laço quando a máquina não está em rede nenhuma, o dela quando está.
         # O DNS é o segundo serviço a sair do laço, e é isso que torna os nomes
-        # do ambiente — `at.at.local`, `ntfy.at.local` — perguntáveis de fora da
+        # do ambiente — `at.local`, `ntfy.at.local` — perguntáveis de fora da
         # máquina. Onde cada endereço vale é o que `ThePrivateNetwork` e `TheUp`
         # provam, com o agente fora do caminho; aqui a pergunta é outra.
         ports = env.ports_of(_service("dnsmasq"))
@@ -1043,9 +1043,9 @@ class ThePrivateNetwork(FolderCase):
         # **A decisão desta fatia, e ela é uma linha**: a rede privada decide
         # ONDE a borda publica e o que o DNS responde, e nunca QUAIS são os
         # nomes. O nome da rede (`vpn.name`) nomeava o site enquanto ele era a
-        # única coisa que o ambiente tinha; agora que cada serviço tem o seu
-        # embaixo de um domínio só, um site que respondesse pelo nome da rede
-        # seria um segundo domínio, um segundo certificado, e um portão cujo
+        # única coisa que o ambiente tinha; agora que os nomes do ambiente
+        # penduram todos do domínio dele, um site que respondesse pelo nome da
+        # rede seria um segundo domínio, um segundo certificado, e um portão cujo
         # `authelia_url` mandaria o celular para um nome que a rede não resolve.
         #
         # O endereço da rede privada não existe nesta máquina — quem responde
@@ -1055,11 +1055,11 @@ class ThePrivateNetwork(FolderCase):
         with mock.patch.object(vpn, "name", lambda call=None: "host.example-tailnet.ts.net"), \
                 mock.patch.object(vpn, "address", lambda call=None: "100.64.0.1"), \
                 mock.patch.object(env, "address_ready", lambda address: True):
-            self.assertEqual(env.site_host(), f"{env.AT_HOST}.{env.NAME}")
+            self.assertEqual(env.site_host(), env.NAME)
             fake = self.runtime()
             self.quiet(env.up, secret=self.phrase)
             caddyfile = (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8")
-            self.assertIn(f"https://{env.site_host()} {{",caddyfile)
+            self.assertIn(f"https://{env.site_host()} {{", caddyfile)
             self.assertNotIn("host.example-tailnet.ts.net", caddyfile)
             identity = (env.state(env.IDENTITY) / env.IDENTITY_YAML).read_text(encoding="utf-8")
             self.assertIn(f"domain: {env.site_host()}", identity)
@@ -1076,7 +1076,7 @@ class ThePrivateNetwork(FolderCase):
             self.assertIn(f"100.64.0.1:{env.PORT}:{env.PORT}/tcp",
                           _call(fake, "at-caddy"))
             # **E o DNS sai do laço pela outra metade da mesma razão**: os nomes
-            # que ele responde — `at.at.local` e `ntfy.at.local` — não existem em
+            # que ele responde — `at.local` e `ntfy.at.local` — não existem em
             # DNS público nenhum, então o navegador de outra máquina e o celular
             # só os resolvem perguntando a ELE, e é para cá que o split-DNS do
             # tailnet aponta. Sem isso o nome não resolve fora da máquina, e a
@@ -1097,11 +1097,11 @@ class ThePrivateNetwork(FolderCase):
 
     def test_without_a_network_the_site_is_bills_own_name(self):
         # O estado suportado, e não um degradado: a máquina não está em rede
-        # privada nenhuma, e o site é o NOME que o AT responde (§7a) —
-        # `at.at.local`, um nome embaixo do domínio do ambiente, e não o laço,
-        # porque o portão recusa um domínio de cookie sem ponto e o TLS precisa
-        # de um nome para o SNI. Os dois foram medidos.
-        self.assertEqual(env.site_host(), f"{env.AT_HOST}.{env.NAME}")
+        # privada nenhuma, e o site é o nome que o AT responde (§7a) — o
+        # `at.local` inteiro, e não o laço, porque o portão recusa um domínio de
+        # cookie sem ponto e o TLS precisa de um nome para o SNI. Os dois foram
+        # medidos.
+        self.assertEqual(env.site_host(), env.NAME)
         self.runtime()
         self.quiet(env.up, secret=self.phrase)
         self.assertIn(f"https://{env.site_host()} {{",
@@ -1476,9 +1476,9 @@ class TheWebappBehindIt(FolderCase):
 class TheNames(FolderCase):
     """Os nomes do ambiente: o do site, o do notificador e o da CA (§7a, §7f).
 
-    O ambiente responde por UM domínio (`at.local`) e cada serviço que é
-    alcançado por um nome pendura o dele embaixo: o site responde em
-    `at.at.local`, o notificador em `ntfy.at.local`, e a CA do AT em
+    O ambiente responde por UM domínio (`at.local`) e os serviços que são
+    alcançados por um nome penduram o deles embaixo dele: o site fica com o
+    domínio mesmo, o notificador responde em `ntfy.at.local`, e a CA do AT em
     `cert.at.local` — o único que não tem serviço atrás, e que existe para o
     aparelho que precisa confiar no certificado poder BUSCÁ-lo em vez de receber
     um caminho de arquivo. Quem responde os três é o `dnsmasq`, com o endereço
@@ -1488,15 +1488,18 @@ class TheNames(FolderCase):
 
     def test_the_environment_owns_one_domain_and_the_services_hang_under_it(self):
         self.assertEqual(env.NAME, "at.local")
-        self.assertEqual(env.site_host(), f"{env.AT_HOST}.{env.NAME}")
+        self.assertEqual(env.site_host(), env.NAME)
         self.assertEqual(env.notifier_host(), f"{env.NOTIFIER_HOST}.{env.NAME}")
         self.assertEqual(env.cert_host(), f"{env.CERT_HOST}.{env.NAME}")
-        # **E o domínio pelado não responde nada.** O site era o `at.local`
-        # inteiro enquanto era o único serviço; agora que ele tem o nome dele
-        # embaixo do domínio, um nome que ninguém digita não entra na lista — a
-        # borda não teria certificado para ele, e o DNS responderia por um
-        # endereço que não serve nada.
-        self.assertNotIn(env.NAME, env.names())
+        # **E o site É o domínio.** Ele é o que a pessoa digita sem pensar, então
+        # ele fica com o `at.local` inteiro, e o domínio responde — ao contrário
+        # do desenho que o punha num subdomínio próprio e deixava o domínio
+        # pelado sem resposta nenhuma.
+        self.assertIn(env.NAME, env.names())
+        # E o subdomínio próprio que o site já teve não existe mais: um nome
+        # embaixo do domínio que não é o site nem o notificador nem a CA não
+        # entra na lista.
+        self.assertNotIn(f"at.{env.NAME}", env.names())
 
     def test_the_dns_answers_every_name_with_the_address_the_edge_is_at(self):
         # **Nome a nome, e não um curinga.** `address=/.at.local/…` responderia
@@ -2044,9 +2047,17 @@ class TheStorageOutOfReach(FolderCase):
     processo de dentro do container abre o cofre. Sem um selo que o alcance, o
     que resta é DECLARAR o objeto fora do alcance do cofre, com o preço dito (a
     cópia da pasta leva a chave privada da CA), e é esta a declaração que a
-    suíte segura: o `up` não escreve, não sela e não move o que o container
-    encheu. O modo `0600` é o do container — nenhum arquivo daqui é escrita do
-    AT, e é por isso que o catálogo de `TheClearState` não tem linha para eles.
+    suíte segura: o `up` não escreve e não sela o que o container encheu. O modo
+    `0600` é o do container — nenhum arquivo daqui é escrita do AT, e é por isso
+    que o catálogo de `TheClearState` não tem linha para eles.
+
+    **A única exceção é a PODA, e ela é declarada aqui também** (§7a, a fatia dos
+    nomes): o conjunto de nomes servidos é do AT (`names`), então o `up` tira do
+    storage o certificado dos nomes que ele deixou de servir — a chave privada em
+    claro de um nome que ninguém digita não serve a nada e o portão do backup a
+    barraria sem motivo. O que o container escreveu de um nome AINDA servido não
+    é tocado: quem o poda é a subida seguinte à mudança do nome, e a árvore do
+    nome servido sai byte a byte como estava.
     """
 
     def storage(self) -> Path:
@@ -2080,15 +2091,36 @@ class TheStorageOutOfReach(FolderCase):
 
     def test_the_up_leaves_what_the_container_wrote_exactly_as_it_was(self):
         # **A declaração, do lado do AT**: o que o container encheu continua
-        # byte a byte como ele deixou. Um AT que passasse a escrever, mover ou
-        # re-selar a árvore falha aqui — que é o que separa "fora do alcance"
-        # de um comentário.
+        # byte a byte como ele deixou. Um AT que passasse a escrever, re-selar ou
+        # podar a árvore de um nome SERVIDO falha aqui — que é o que separa "fora
+        # do alcance" de um comentário. (O nome semeado é o do site, e é servido:
+        # a poda só toca os nomes que a borda já não serve.)
         before = self.seeded()
         self.up()
         for where, body in before.items():
             with self.subTest(where=where):
                 self.assertEqual(where.read_text(encoding="utf-8"), body)
                 self.assertEqual(stat.S_IMODE(where.stat().st_mode), 0o600)
+
+    def test_the_up_prunes_the_certificate_of_a_name_the_edge_no_longer_serves(
+            self):
+        # **O conjunto de nomes é do AT, e a subida o faz valer** (§7a, a fatia
+        # dos nomes): o certificado de um nome que a borda já não serve — e a
+        # chave privada EM CLARO ao lado dele — não fica no storage para sempre.
+        # Um nome que ainda é servido não é tocado; um nome que saiu não sobra.
+        served = self.storage() / "certificates" / "local" / env.site_host()
+        stale = ("velho.at.local", "host.example-tailnet.ts.net")
+        for name in stale:
+            files.atomic_write_text(
+                self.storage() / "certificates" / "local" / name / f"{name}.key",
+                CA_PRIVATE, mode=0o600)
+        self.seeded()
+        self.up()
+        self.assertTrue((served / f"{env.site_host()}.key").is_file())
+        for name in stale:
+            with self.subTest(name=name):
+                self.assertFalse(
+                    (self.storage() / "certificates" / "local" / name).exists())
 
     def test_no_envelope_of_the_vault_reaches_the_storage(self):
         # O cofre sela o que o AT SORTEIA, e o envelope é a marca dele
