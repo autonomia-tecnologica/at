@@ -26,7 +26,7 @@ from at.core import actors, boot, files, gate, install, licenses, paths, tables
 from at.i18n import tr
 
 from at_deploy import environment, tree
-from at_deploy.environment import HOSTED, INSTALL, UP
+from at_deploy.environment import HOSTED, INSTALL, PROVISIONED, UP, UPDATED
 
 # What a person answers with, injected so a test can answer without a terminal —
 # the same shape `boot` and `at-cli`'s `cli` take. The credential's door takes two
@@ -160,9 +160,10 @@ def services(
     no other (`at_deploy/wizard.py` walks it one word at a time): §5's rule is
     that everything of the Wizard is reachable from the `cli`, and the way to
     make that a property instead of a promise is for the screen to have no other
-    road. So this is the door for the environment — `up` brings it up, `down`
-    takes it down, and `status` says what is standing, which is also what the
-    wordless `services` answers.
+    road. So this is the door for the environment — `up` brings it up the FIRST
+    time, `update` is every time after (2026-09-28: the release that already
+    replaced the binary), `down` takes it down, and `status` says what is
+    standing, which is also what the wordless `services` answers.
 
     Two of the words are not about the environment at all, and they live here
     because this is the surface §6 says reaches them: `switch` is the
@@ -281,20 +282,29 @@ def services(
             return OK if switch.to_forms() in (
                 switch.FORMS_OUTCOME, switch.ALREADY,
             ) else REFUSED
-        outcome = environment.up(
-            ask if ask is not None else _reader(),
-            secret if secret is not None else _secret(),
-        )
+        if word == "update":
+            outcome = environment.update(
+                ask if ask is not None else _reader(),
+                secret if secret is not None else _secret(),
+            )
+        else:
+            outcome = environment.up(
+                ask if ask is not None else _reader(),
+                secret if secret is not None else _secret(),
+            )
     except files.ReadOnly as error:
-        # The pin and the services' files are written by `up`, and the read-only
-        # switch is the one writer's rule — the same answer `at-cli`'s table route
-        # and every other engine give (§3).
+        # The pin and the services' files are written by `up`/`update`, and the
+        # read-only switch is the one writer's rule — the same answer `at-cli`'s
+        # table route and every other engine give (§3).
         print(tr("deploy.error.read_only", where=error.where))
         return REFUSED
     # A person who chose either way out, or an environment that came up, is not
-    # a failure. What failed is a machine that could not be asked, and a service
-    # that did not come up.
-    return OK if outcome in (UP, INSTALL, HOSTED) else REFUSED
+    # a failure. `PROVISIONED` is `up` pointing at the other word, and that is
+    # guidance and not a refusal either. What failed is a machine that could not
+    # be asked, and a service that did not come up.
+    return OK if outcome in (
+        UP, UPDATED, PROVISIONED, INSTALL, HOSTED,
+    ) else REFUSED
 
 
 def ca(rest: list[str]) -> int:

@@ -15,8 +15,10 @@ from at.ui.words import Node, completion_words, section, width
 
 WORDS: tuple[Node, ...] = (
     # The environment of the container path, and everything a person does with
-    # one. `up`, `down` and `status` are the environment itself, and the
-    # wordless `services` answers with the status.
+    # one. `up` is the FIRST time, `update` every time after (2026-09-28: the
+    # release that already replaced the binary), `down` and `status` are the
+    # environment's own report and its way down, and the wordless `services`
+    # answers with the status.
     # `switch` is §6's TRANSACTIONAL change from the hosted path to the
     # container one and `forms` is the way back — both local, which is the whole
     # point of the return existing (`at_deploy/switch.py`).
@@ -34,6 +36,7 @@ WORDS: tuple[Node, ...] = (
         "deploy.services.about",
         (
             Node("up", "deploy.services.up.about"),
+            Node("update", "deploy.services.update.about"),
             Node("down", "deploy.services.down.about"),
             Node("status", "deploy.services.status.about"),
             Node("switch", "deploy.services.switch.about"),

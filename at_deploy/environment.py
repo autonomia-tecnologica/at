@@ -128,12 +128,18 @@ Ask = Callable[[str], str]
 # a test that ran `sudo` would be a test that asked a person for a password.
 Spend = Callable[..., None]
 
-# The outcomes of `up`, and the CLI is what turns them into an exit code.
+# The outcomes of `up` and `update`, and the CLI is what turns them into an
+# exit code.
 UP = "up"                 # the environment is standing
+UPDATED = "updated"       # `update` re-pinned and recreated, over a folder that
+                          # already had an environment
+PROVISIONED = "provisioned"  # `up` refused: this folder already has one — the
+                             # word for a second time is `update`
 INSTALL = "install"       # the person installs the Podman; AT said how
 HOSTED = "hosted"         # the folder stays on the hosted path, and nothing moved
 NO_ANSWER = "no_answer"   # no terminal to ask in: neither way was taken
-FAILED = "failed"         # a service did not come up
+FAILED = "failed"         # a service did not come up (or `update` on a folder
+                          # with no environment yet — the word for that is `up`)
 UNREADABLE = "unreadable"  # the Access Phrase does not open what the folder keeps
 # A pasta de estado tem um caminho com a forma errada — um ARQUIVO onde o
 # serviço monta uma pasta, ou o contrário. Não é um serviço que não subiu: é um
@@ -2394,7 +2400,68 @@ def _refuse_shape(trouble: tuple[Service, Path, str]) -> None:
 
 
 def up(ask: Ask | None = None, secret: Ask | None = None) -> str:
-    """Bring the environment up — or offer the two ways out (§7a).
+    """`up` — the FIRST time only (2026-09-28): bring a folder's environment up.
+
+    §3's word for a folder with none yet. A folder that already has one — this
+    folder's own pin says so (`held`) — is not `up`'s to touch again: it is
+    told which word is (`update`), and returns `PROVISIONED`, an outcome and
+    not a failure — nothing here is broken, the person just reached for the
+    other word. The actual work of bringing every service up is `bring_up`,
+    shared with `update` and with the switch (§6): this function's whole job is
+    deciding WHICH of the two is allowed to call it.
+    """
+    if not podman.present():
+        return ways_out(ask)
+    if held():
+        print(tr("services.up.provisioned"))
+        return PROVISIONED
+    return bring_up(ask, secret)
+
+
+def update(ask: Ask | None = None, secret: Ask | None = None) -> str:
+    """`update` — every time AFTER the first (2026-09-28): the infra at the pin
+    the BINARY in this folder carries.
+
+    §3's word for the release that already replaced the binary: the images of
+    every service are re-verified and re-pinned against the manifest this
+    artifact carries, every container is recreated (`podman rm --force`, like
+    `up`), and what AT writes for each service is rewritten — the mirror of
+    `up`'s own work, and the same function does it (`bring_up`). **A instância
+    à frente do pin avisa e segue** — a mesma regra de sempre (`decide`,
+    `_start`): não é rebaixada.
+
+    **O que persiste é a PASTA, e isto não a toca**: o cofre, `App/`, o estado
+    de cada serviço, e o que já foi SORTEADO — o segredo do portão, os três do
+    provedor, a credencial do AT no notificador. `bring_up` sorteia esses
+    valores só quando faltam (`_drawn`, `draw_gate`): uma pasta que já os tem
+    selados não vê nada mudar neles, e é por isso que rodar isto sobre um
+    ambiente de pé não derruba as sessões que já estavam abertas — o segredo
+    que as assina é o mesmo, e o volume onde a sessão mora não é limpo por
+    `_start` (§ `FILLED_BY_CONTAINERS`).
+
+    Uma pasta que NUNCA subiu — sem pin nenhum registrado (`held`) — não tem o
+    que `update`: o word certo para ela é `up`, e é o que a recusa diz.
+    """
+    if not podman.present():
+        return ways_out(ask)
+    if not held():
+        print(tr("services.update.unprovisioned"))
+        return FAILED
+    outcome = bring_up(ask, secret)
+    if outcome == UP:
+        print(tr("services.update.done"))
+        return UPDATED
+    return outcome
+
+
+def bring_up(ask: Ask | None = None, secret: Ask | None = None) -> str:
+    """The one engine `up`, `update` and the switch share — or the two ways out (§7a).
+
+    **Three doors, one body.** `up` calls this when the folder has none yet;
+    `update` calls it when the folder already does; the switch (`switch.to_gate`)
+    calls it directly, unguarded by either — a folder going from Forms back to
+    the gate is neither a true first time nor blocked by having been up before,
+    so it takes the engine and not either of the two words built around it.
 
     The absence of the Podman is not a dry refusal: AT says the two ways out
     and takes neither, because neither is his to take. Installing is an act of

@@ -54,6 +54,10 @@ SAID = (
     "services.no_podman.status", "services.no_podman.down",
     "services.up.ahead", "services.up.waiting", "services.up.no_address",
     "services.up.failed", "services.up.service",
+    # §3's second word (2026-09-28): `up` refusing a folder that already has an
+    # environment, and `update` refusing one that has none yet.
+    "services.up.provisioned", "services.update.unprovisioned",
+    "services.update.done",
     "services.down.done", "services.status.site",
     "services.status.running", "services.status.installed", "services.status.missing",
     "services.status.head.service", "services.status.head.state",
@@ -594,7 +598,10 @@ class TheUp(FolderCase):
             json.dumps({"dnsmasq": ahead}), encoding="utf-8"
         )
         fake = self.runtime()
-        outcome, text = self.quiet(env.up, secret=self.phrase)
+        # `bring_up` and not `up`: a pin already on the folder makes `up` refuse
+        # with `PROVISIONED` (2026-09-28) — the engine under test here is the
+        # one `update` shares with it, not the first-time gate.
+        outcome, text = self.quiet(env.bring_up, secret=self.phrase)
         self.assertEqual(outcome, env.UP)
         self.assertIn(i18n.tr(
             "services.up.ahead", service=i18n.tr("services.dnsmasq.name"),
@@ -624,6 +631,81 @@ def _call(fake: FakeRuntime, name: str) -> list[str]:
         call for call in fake.calls
         if call[:1] == ["run"] and name in call
     )
+
+
+class TheUpdate(FolderCase):
+    """§3's second word (2026-09-28): `up` is the first time, `update` every
+    time after — the release that already replaced the binary."""
+
+    def test_up_refuses_a_folder_that_already_has_an_environment(self):
+        self.runtime()
+        self.quiet(env.up, secret=self.phrase)
+        fake = self.runtime()
+        outcome, text = self.quiet(env.up, secret=self.phrase)
+        self.assertEqual(outcome, env.PROVISIONED)
+        self.assertIn(i18n.tr("services.up.provisioned"), text)
+        self.assertEqual(fake.calls, [], "a second `up` touched something")
+
+    def test_update_refuses_a_folder_with_no_environment_yet(self):
+        fake = self.runtime()
+        outcome, text = self.quiet(env.update, secret=self.phrase)
+        self.assertEqual(outcome, env.FAILED)
+        self.assertIn(i18n.tr("services.update.unprovisioned"), text)
+        self.assertEqual(fake.calls, [], "`update` touched a never-provisioned folder")
+
+    def test_update_re_pins_and_recreates_every_container(self):
+        self.runtime()
+        self.quiet(env.up, secret=self.phrase)
+        fake = self.runtime()
+        outcome, text = self.quiet(env.update, secret=self.phrase)
+        self.assertEqual(outcome, env.UPDATED)
+        self.assertIn(i18n.tr("services.update.done"), text)
+        for service in env.SERVICES:
+            with self.subTest(service=service.name):
+                self.assertIn(["rm", "--force", env.container(service.name)],
+                              fake.calls)
+                _call(fake, env.container(service.name))
+
+    def test_update_leaves_what_was_already_drawn_exactly_as_it_was(self):
+        self.runtime()
+        self.quiet(env.up, secret=self.phrase)
+        before = self.secrets()
+        self.runtime()
+        self.quiet(env.update, secret=self.phrase)
+        after = self.secrets()
+        self.assertEqual(before, after)
+
+    def test_an_instance_ahead_of_the_pin_is_not_downgraded_by_update_either(self):
+        # A mesma regra do §3 medida em `TheUp`, agora do lado do `update`: uma
+        # instância à frente avisa e segue, e não é rebaixada.
+        self.runtime()
+        self.quiet(env.up, secret=self.phrase)
+        pins = env.held()
+        pins["dnsmasq"] = {"version": "9.99", "digest": "sha256:" + "d" * 64}
+        env.pin_file().write_text(json.dumps(pins), encoding="utf-8")
+        fake = self.runtime()
+        outcome, text = self.quiet(env.update, secret=self.phrase)
+        self.assertEqual(outcome, env.UPDATED)
+        self.assertIn(i18n.tr(
+            "services.up.ahead", service=i18n.tr("services.dnsmasq.name"),
+            held="9.99", pin=_service("dnsmasq").image.version,
+        ), text)
+        self.assertEqual(env.held()["dnsmasq"]["version"], "9.99")
+
+    def test_the_words_reach_the_cli_and_map_to_an_exit_code(self):
+        self.runtime()
+        self.quiet(env.up, secret=self.phrase)
+        # `up` a second time is guidance, not a failure.
+        code, _ = self.quiet(services, ["up"], secret=self.phrase)
+        self.assertEqual(code, OK)
+        code, _ = self.quiet(services, ["update"], secret=self.phrase)
+        self.assertEqual(code, OK)
+
+    def test_update_with_no_environment_is_a_refusal_on_the_cli(self):
+        self.runtime()
+        code, text = self.quiet(services, ["update"], secret=self.phrase)
+        self.assertEqual(code, REFUSED)
+        self.assertIn(i18n.tr("services.update.unprovisioned"), text)
 
 
 class TheIdentityProvider(FolderCase):
@@ -2312,7 +2394,10 @@ class TheAccessPhrase(FolderCase):
         self.runtime()
         self.quiet(env.up, secret=self.phrase)
         asked, reader = self.counting()
-        outcome, _ = self.quiet(env.up, secret=reader)
+        # `bring_up`, the second time: `up` itself would refuse a folder that
+        # already has an environment (`PROVISIONED`, 2026-09-28) before ever
+        # reading a Frase again — the engine underneath is what this test reads.
+        outcome, _ = self.quiet(env.bring_up, secret=reader)
         self.assertEqual(outcome, env.UP)
         self.assertEqual(len(asked), 1)
 
@@ -2343,8 +2428,11 @@ class TheAccessPhrase(FolderCase):
         self.runtime()
         self.quiet(env.up, secret=self.phrase)
         fake = self.runtime()
+        # `bring_up`: `up` itself would already refuse this second call with
+        # `PROVISIONED`, before the wrong Frase is ever read (2026-09-28).
         outcome, text = self.quiet(
-            env.up, secret=lambda question: "uma frase que nao e a que selou")
+            env.bring_up,
+            secret=lambda question: "uma frase que nao e a que selou")
         self.assertEqual(outcome, env.UNREADABLE)
         self.assertIn(i18n.tr("services.phrase.unopened", where=caddy.gate_file()),
                       text)
@@ -2625,7 +2713,7 @@ class TheDoor(FolderCase):
         assert node is not None
         self.assertEqual(
             [child.name for child in node.children],
-            ["up", "down", "status", "switch", "forms", "notify",
+            ["up", "update", "down", "status", "switch", "forms", "notify",
              "credential"],
             "a word the dispatch takes and the help does not offer (or the "
             "other way round) is the defect §5's one-way rule exists for",
@@ -2658,7 +2746,7 @@ class TheDoor(FolderCase):
         self.assertEqual(code, OK)
         self.assertIn("services", text)
         self.assertIn(
-            "up, down, status, switch, forms, notify, credential", text)
+            "up, update, down, status, switch, forms, notify, credential", text)
 
     def test_the_delivery_is_proved_by_hand_and_says_where_it_would_come_from(self):
         # §7f's proof, walked from the `cli`: one alert, through the credential,

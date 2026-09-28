@@ -297,9 +297,15 @@ def to_gate(ask: environment.Ask | None = None,
     and they come back unchanged: neither of them moved anything, so there is
     nothing to undo.
 
-    `secret` é o leitor sem eco, e ele desce para o `up` sem ser lido aqui: a
-    Frase de Acesso é pedida por quem SELA (§4), e a virada é uma das portas
-    por onde alguém sobe o ambiente.
+    `secret` é o leitor sem eco, e ele desce para o `bring_up` sem ser lido
+    aqui: a Frase de Acesso é pedida por quem SELA (§4), e a virada é uma das
+    portas por onde alguém sobe o ambiente.
+
+    **E é `bring_up`, não `up`** (2026-09-28): a virada não é nem uma primeira
+    subida garantida nem uma que `up` recusaria por a pasta já ter ambiente —
+    um Forms seguido de uma virada de volta é exatamente essa segunda forma —,
+    então ela toma o motor direto, sem a porta que decide qual dos dois nomes
+    vale.
     """
     if gate.on_gate():
         print(tr("services.switch.already"))
@@ -310,7 +316,7 @@ def to_gate(ask: environment.Ask | None = None,
     # return gets, and the exception keeps travelling afterwards — the `cli` is
     # what turns the read-only folder into its own sentence (§3).
     try:
-        outcome = environment.up(ask, secret)
+        outcome = environment.bring_up(ask, secret)
     except (files.ReadOnly, OSError):
         _rollback("services.switch.failed")
         raise
