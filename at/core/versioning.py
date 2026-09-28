@@ -70,6 +70,7 @@ from typing import Callable
 
 from at.core import files, paths, settings
 from at.i18n import tr
+from at.services import caddy
 
 # What a person answers with, injected so a test can answer without a terminal —
 # the same shape `boot.ensure_working_folder` takes.
@@ -474,6 +475,20 @@ def reset() -> None:
     _committed = 0
 
 
+def generated_dirs() -> tuple[Path, ...]:
+    """The two folders AT itself fills, and a person never types into: the
+    Caddy it unpacked out of the binary, and the state the container path's
+    services write (§7, item 51).
+
+    Read off the functions that already name them — `at.services.caddy
+    .directory`, `paths.services_dir` — and not retyped as a second list: this
+    is the ONE place that says "AT wrote it, and nobody typed it", and both
+    `ignore_text` (what git leaves out) and `at.core.scanner` (what a scan
+    skips) read it rather than carrying their own copy.
+    """
+    return (caddy.directory(), paths.services_dir())
+
+
 def ignore_text() -> str:
     """The ignore AT generates, written the way §3 writes what it generates: in
     the active language, and with the binary names read off `paths` and never
@@ -489,7 +504,11 @@ def ignore_text() -> str:
         for name in (paths.ARTIFACT, paths.DEPLOY)
         for extension in (paths.WINDOWS, paths.UNIX)
     )
-    return tr("versioning.ignore.body", artifacts=artifacts)
+    generated = "\n".join(
+        f"{where.relative_to(paths.working_folder()).as_posix()}/"
+        for where in generated_dirs()
+    )
+    return tr("versioning.ignore.body", artifacts=artifacts, generated=generated)
 
 
 def _create(root: Path) -> bool:

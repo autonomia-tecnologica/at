@@ -208,6 +208,11 @@ class ScannerCase(unittest.TestCase):
                     FOREIGN=versioning.FOREIGN,
                     BARE=versioning.BARE,
                     MISSING=versioning.MISSING,
+                    # `_excluded` reads this off the SAME module — the real one,
+                    # untouched: what generates `App/caddy/` and `App/services/`
+                    # is a fact of the folder, not of the versioning STATE this
+                    # helper exists to fake.
+                    generated_dirs=versioning.generated_dirs,
                 ),
             )
         )
@@ -325,6 +330,58 @@ class TheWalk(ScannerCase):
         code, text = self.scan()
         self.assertEqual(code, 0)
         self.assertIn(tr("secrets.scan.clean"), text)
+
+
+class TheExclusion(ScannerCase):
+    """What AT itself fills — `App/caddy/`, `App/services/` — scans clean
+    (item 51: a path exemption, not the vault's constructive one)."""
+
+    def test_a_finding_under_the_caddys_storage_is_not_accused(self):
+        self.state(versioning.BARE)
+        self.tool([leak("generic-api-key", "App/caddy/storage/root.key", 1)], code=1)
+        code, text = self.scan()
+        self.assertEqual(code, 0)
+        self.assertIn(tr("secrets.scan.clean"), text)
+
+    def test_a_finding_under_a_services_own_state_is_not_accused(self):
+        self.state(versioning.BARE)
+        self.tool(
+            [leak("generic-api-key", "App/services/notifier/token", 1)], code=1
+        )
+        code, text = self.scan()
+        self.assertEqual(code, 0)
+        self.assertIn(tr("secrets.scan.clean"), text)
+
+    def test_a_secret_outside_those_two_paths_is_accused_as_before(self):
+        self.state(versioning.BARE)
+        self.tool(
+            [
+                leak("generic-api-key", "App/caddy/storage/root.key", 1),
+                leak("aws-access-token", "Arquivos/nota.md", 3),
+            ],
+            code=1,
+        )
+        code, text = self.scan()
+        self.assertEqual(code, 0)
+        self.assertIn(tr("secrets.scan.found"), text)
+        self.assertIn("Arquivos/nota.md:3", text)
+        self.assertNotIn("root.key", text)
+
+    def test_a_history_finding_under_a_generated_path_is_excluded_too(self):
+        self.state(versioning.OWNED)
+        self.tool(
+            [],
+            [leak("generic-api-key", "App/services/identity/secrets/session",
+                  2, commit="a" * 40)],
+            code=1,
+        )
+        code, text = self.scan()
+        self.assertEqual(code, 0)
+        self.assertIn(tr("secrets.scan.clean"), text)
+
+    def test_the_exclusion_is_the_same_list_the_gitignore_writes(self):
+        excluded = {where.name for where in versioning.generated_dirs()}
+        self.assertEqual(excluded, {"caddy", "services"})
 
 
 class TheAnswer(ScannerCase):

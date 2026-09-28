@@ -354,6 +354,65 @@ class TheCompletion(Scratch):
         self.assertNotIn("webapp", script)
 
 
+class TheFpathReminder(Scratch):
+    """`version` repeats the zsh line while `$FPATH` does not carry it yet."""
+
+    def version(self, fpath: str | None = None) -> tuple[int, str]:
+        env = {"FPATH": fpath} if fpath is not None else {}
+        output = io.StringIO()
+        with mock.patch.dict(os.environ, env):
+            if fpath is None:
+                os.environ.pop("FPATH", None)
+            with redirect_stdout(output):
+                code = main(["version"])
+        return code, output.getvalue()
+
+    def test_no_completion_at_all_is_nothing_to_remind(self):
+        self.assertIsNone(install.fpath_needed(paths.ARTIFACT))
+
+    def test_a_bash_completion_is_nothing_to_remind_either(self):
+        # bash-completion needs no line in a configuration file: the reminder
+        # is zsh's own problem, because zsh is the shell that reads `fpath`.
+        self.act(("--bin", str(self.bin)), shell="bash")
+        self.assertIsNone(install.fpath_needed(paths.ARTIFACT))
+
+    def test_a_freshly_written_zsh_completion_needs_the_reminder(self):
+        self.act(("--bin", str(self.bin)), shell="zsh")
+        self.assertEqual(
+            install.fpath_needed(paths.ARTIFACT), self.completion(shell="zsh").parent
+        )
+
+    def test_a_directory_already_on_the_inherited_fpath_is_not_reminded(self):
+        self.act(("--bin", str(self.bin)), shell="zsh")
+        directory = self.completion(shell="zsh").parent
+        with mock.patch.dict(os.environ, {"FPATH": str(directory)}):
+            self.assertIsNone(install.fpath_needed(paths.ARTIFACT))
+
+    def test_a_different_directory_on_fpath_still_needs_the_reminder(self):
+        self.act(("--bin", str(self.bin)), shell="zsh")
+        with mock.patch.dict(os.environ, {"FPATH": str(self.bin)}):
+            self.assertIsNotNone(install.fpath_needed(paths.ARTIFACT))
+
+    def test_version_says_nothing_with_no_completion_installed(self):
+        code, text_ = self.version()
+        self.assertEqual(code, 0)
+        self.assertNotIn("fpath=(", text_)
+
+    def test_version_repeats_the_line_while_fpath_does_not_carry_it(self):
+        self.act(("--bin", str(self.bin)), shell="zsh")
+        code, text_ = self.version()
+        self.assertEqual(code, 0)
+        self.assertIn("fpath=(", text_)
+        self.assertIn(str(self.completion(shell="zsh").parent), text_)
+
+    def test_version_stops_once_the_inherited_fpath_carries_it(self):
+        self.act(("--bin", str(self.bin)), shell="zsh")
+        directory = self.completion(shell="zsh").parent
+        code, text_ = self.version(fpath=str(directory))
+        self.assertEqual(code, 0)
+        self.assertNotIn("fpath=(", text_)
+
+
 class TheUndo(Scratch):
     """`uninstall` takes back what AT put there, and only that."""
 

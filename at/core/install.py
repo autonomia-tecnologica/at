@@ -417,6 +417,45 @@ def _write_completion(word: str, words: Words, shell: str | None) -> Path | None
     return path
 
 
+# The variable zsh ties its `fpath` array to, and the one this module can ask
+# a CHILD process about: `fpath` itself is a shell-local array, and a person's
+# `.zshrc` has to export it (or `typeset -g -x FPATH`) for a process AT starts
+# to see it at all. A shell that never exports it answers the same as one that
+# has not been fixed yet — the safe side is asking again.
+FPATH_ENV = "FPATH"
+
+
+def fpath_needed(word: str) -> Path | None:
+    """The zsh completion's directory, while the person has not put it on
+    `fpath` yet — or `None` when there is nothing to remind about.
+
+    Asked on every run of `version`, and not only right after `install`: the
+    shell reads its own `fpath` once, at start, and a completion written a
+    minute — or a week — ago is not on it until the `.zshrc` line is added AND
+    the shell is restarted, which is a gap `install`'s own one-time print
+    cannot close on its own.
+
+    A folder with no zsh completion written at all has nothing to remind about
+    (`None`, the same answer `completion_path` gives a shell with no home),
+    and neither does one whose directory is already in the INHERITED
+    `$FPATH` — the heuristic this door has: a directory a person's `.zshrc`
+    already put there is a line already fixed, and asking again would be
+    noise nobody needs. `$FPATH` unset or not carrying it yet reads as "not
+    resolved", which is the floor this reminder cannot go below: repeating a
+    line that was already fixed costs a sentence, and going quiet on one that
+    was not costs the completion itself.
+    """
+    path = completion_path(word, ZSH)
+    if path is None or not path.is_file():
+        return None
+    directory = path.parent
+    inherited = os.environ.get(FPATH_ENV, "")
+    entries = [Path(entry).expanduser() for entry in inherited.split(os.pathsep) if entry]
+    if any(_is(entry, directory) for entry in entries):
+        return None
+    return directory
+
+
 def mark(word: str) -> str:
     """The line that makes a completion file AT's.
 

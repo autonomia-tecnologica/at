@@ -1,6 +1,6 @@
 {
   "pt_BR": {
-    "ignore.body": "# Escrito pelo AT. Fica de fora o que é derivado ou se regenera sozinho —\nnunca o que você escreveu.\n\n# Os binários do AT e do at-deploy: atualizar é trocá-los na pasta.\n{artifacts}\n\n# O que o AT extraiu para rodar, e o que um serviço reconstrói.\nApp/caddy/\nApp/services/\n\n# Caches, e o que o escritor deixa quando um processo morre no meio.\n__pycache__/\n*.py[cod]\n*.tmp\n",
+    "ignore.body": "# Escrito pelo AT. Fica de fora o que é derivado ou se regenera sozinho —\nnunca o que você escreveu.\n\n# Os binários do AT e do at-deploy: atualizar é trocá-los na pasta.\n{artifacts}\n\n# O que o AT extraiu para rodar, e o que um serviço reconstrói.\n{generated}\n\n# Caches, e o que o escritor deixa quando um processo morre no meio.\n__pycache__/\n*.py[cod]\n*.tmp\n",
     "born": "A pasta nasceu sob versionamento: o histórico mora em `.git/` e viaja com a cópia da pasta.",
     "foreign": "Esta pasta carrega um repositório que não é do AT — o AT não versiona nela, e o histórico é de quem o criou.",
     "missing": "O git não está nesta máquina: sem ele a pasta não tem histórico, e é só a última escrita.",
@@ -15,7 +15,7 @@
     "commit.file": "{path} escrito."
   },
   "en_US": {
-    "ignore.body": "# Written by AT. What is derived or regenerates on its own stays out —\nnever what you wrote.\n\n# AT's binary and at-deploy's: updating is replacing them in the folder.\n{artifacts}\n\n# What AT extracted to run, and what a service rebuilds.\nApp/caddy/\nApp/services/\n\n# Caches, and what the writer leaves when a process dies mid-way.\n__pycache__/\n*.py[cod]\n*.tmp\n",
+    "ignore.body": "# Written by AT. What is derived or regenerates on its own stays out —\nnever what you wrote.\n\n# AT's binary and at-deploy's: updating is replacing them in the folder.\n{artifacts}\n\n# What AT extracted to run, and what a service rebuilds.\n{generated}\n\n# Caches, and what the writer leaves when a process dies mid-way.\n__pycache__/\n*.py[cod]\n*.tmp\n",
     "born": "The folder was born under versioning: the history lives in `.git/` and travels with the folder's copy.",
     "foreign": "This folder carries a repository that is not AT's — AT does not version in it, and the history is its owner's.",
     "missing": "Git is not on this machine: without it the folder has no history, and it is only ever the last write.",

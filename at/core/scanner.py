@@ -56,6 +56,21 @@ own about it. **Measured** against the tool the person named, `gitleaks 8.30.1`
 with its default list: a folder carrying a sealed row scans CLEAN, so the
 exemption is a fact about the envelope and not a hope about the rules.
 
+**What the CONTAINER path filled is exempt by PATH, and that is a different
+kind of exemption.** The `--no-git` walk reads the disk raw — it is what lets a
+folder with no repository still be scanned — and raw means no `.gitignore`
+either: the TLS storage the Caddy writes into `App/caddy/` and the credentials
+a service materializes into `App/services/` are AT's own output, drawn or
+provisioned and never typed by a person, and a scan that found them would be
+finding what item 51 already excuses by construction elsewhere and only fails
+to here because nothing reads a filesystem's ignore file without git. The two
+paths are `versioning.generated_dirs()` — the SAME list `ignore_text` writes
+into the `.gitignore`, read here rather than carried a second time — and
+`_excluded` drops a finding under either one after the tool answers, which
+works against any version of the vendored binary and needs no flag of its own.
+A secret outside those two paths — `Arquivos/`, `Tabelas/`, `Projetos/`, a
+hand-edited row — is accused exactly as before.
+
 **The seam is one.** `found` answers where the tool is — the one unpacked out of
 the artifact —, and `run` is the only call to it: the arguments are composed here
 and the binary is resolved there, so a scanner that could not be unpacked is a
@@ -229,8 +244,26 @@ def scan() -> Report:
             if walked is None:
                 return Report(FAILED, name)
             findings += walked
-    distinct = _distinct(findings)
+    distinct = _distinct(_excluded(findings))
     return Report(FOUND if distinct else CLEAN, name, distinct)
+
+
+def _excluded(findings: list[Finding]) -> list[Finding]:
+    """The findings that are not under a path AT itself filled.
+
+    `versioning.generated_dirs()` is the ONE list — the same one `ignore_text`
+    writes into the `.gitignore` — made relative the same way `_relative`
+    already makes every finding's `where`. A finding under one of them is the
+    Caddy's TLS storage or a service's own credential, drawn or provisioned and
+    never typed by a person: item 51's exemption, applied by PATH here instead
+    of by the envelope's format, and dropped whatever the tool's own version —
+    no flag of the vendored binary is asked.
+    """
+    prefixes = tuple(
+        f"{where.relative_to(paths.working_folder()).as_posix()}/"
+        for where in versioning.generated_dirs()
+    )
+    return [finding for finding in findings if not finding.where.startswith(prefixes)]
 
 
 def _modes() -> tuple[tuple[str, ...], ...]:

@@ -77,6 +77,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         if rest:
             return _reject(word)
         print(tr("cli.version.line", version=__version__))
+        # A completion written for zsh is not on its `fpath` until the person's
+        # `.zshrc` puts it there — `install` said it once, and there is no
+        # terminal-free way to know it was read, let alone acted on. `version`
+        # is asked often enough to carry the reminder until the inherited
+        # `$FPATH` says it was (`install.fpath_needed`'s own heuristic).
+        folder = install.fpath_needed(paths.ARTIFACT)
+        if folder is not None:
+            print(tr("install.completion.fpath", folder=folder))
         return OK
 
     if word == "license":

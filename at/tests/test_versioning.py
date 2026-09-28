@@ -173,6 +173,13 @@ class TheRepository(ScratchCase):
         for kept in ("Tabelas/", "Arquivos/", "Projetos/", "settings.json", "App/i18n/"):
             self.assertNotIn(kept, written)
 
+    def test_generated_dirs_is_the_one_list_the_ignore_and_the_scanner_share(self):
+        found = versioning.generated_dirs()
+        names = {where.name for where in found}
+        self.assertEqual(names, {"caddy", "services"})
+        for where in found:
+            self.assertTrue(where.is_relative_to(paths.working_folder()))
+
     def test_a_person_s_ignore_file_is_never_overwritten(self):
         # The folder is made WITHOUT a repository first, so the `.gitignore` that
         # is there when the repository arrives is somebody's edit (§3: a
