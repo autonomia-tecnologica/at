@@ -1222,8 +1222,21 @@
      shrinks and `body { height: 100vh }` becomes taller than the window.
      The negative offset solves both at once — the overflow to the LEFT (and
      UP) is not reachable by scrolling, so it puts no bar at all. And the
-     measure does not change: the width is the FONT's, not the position's. */
-  .probe { position: absolute; left: -10000px; visibility: hidden;
+     measure does not change: the width is the FONT's, not the position's.
+
+     IT IS `fixed`, AND THAT IS THE SECOND HALF OF THE SAME BUG (2026-09-28).
+     `absolute` positions the box against the nearest POSITIONED ancestor —
+     and inside the content column none is, so the containing block was the
+     initial one and the box's TOP stayed where its static position put it:
+     deep inside the scrolled table. A scroll container clips what is inside
+     it, but a box whose containing block lives OUTSIDE the scroller escapes
+     that clip, and **Firefox counts it**: the document grew by the table's
+     own overflow, and the whole shell — topbar and sidebar with it — scrolled
+     away under the wheel ("a tela inteira dá uma subidinha"). Chromium does
+     not count it, which is why nobody had seen it. A FIXED box is out of the
+     scrollable overflow by definition, so it leaves the page for good — and
+     the width measured is the same one, because the width is the font's. */
+  .probe { position: fixed; left: -10000px; visibility: hidden;
            white-space: pre; pointer-events: none; }
   /* A COLUMN's name is one line — never wrapped: a header broken in two is not
      the column's name any more (2026-09-12). Values below still wrap. */

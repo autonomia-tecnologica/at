@@ -319,7 +319,21 @@ tbody td { border-bottom: 1px solid var(--border-soft); transition: background-c
    steps UP instead of down (item 1): a table is where a person spends the day,
    and 15px on a 1440 screen is a table read with the nose against it. */
 td { overflow: hidden; overflow-wrap: break-word; font-size: var(--text-md); }
-.probe { position: absolute; left: -10000px; visibility: hidden; white-space: pre; pointer-events: none; }
+/* A hidden span the page measures a string with — its width in the active font.
+   NEVER SEEN, AND IT HAS TO BE OUT OF THE WAY TWICE. Off the page to the left,
+   because a 200-character string with `white-space: pre` is a ~1500px box and
+   such a box hanging on the body is a lying bar for the whole window; and
+   `fixed`, because `absolute` would position it against the nearest POSITIONED
+   ancestor — and inside the content column none is, so its containing block is
+   the initial one and its top stays where its static position put it: deep
+   inside the scrolled table. The scroller clips what is inside it, but a box
+   whose containing block sits OUTSIDE the scroller escapes that clip, and
+   Firefox counts it — the document grows by the table's own overflow and the
+   whole shell scrolls away under the wheel. Chromium does not count it, which
+   is why it went unseen (`base.css` carries the long version). A fixed box is
+   out of the scrollable overflow by definition, and the width measured is the
+   same one: the width is the font's, not the position's. */
+.probe { position: fixed; left: -10000px; visibility: hidden; white-space: pre; pointer-events: none; }
 th {
   color: var(--ink-3); font-weight: var(--weight-semibold); font-size: var(--text-xs);
   letter-spacing: .04em; text-transform: uppercase;
