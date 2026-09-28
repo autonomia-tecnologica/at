@@ -9,10 +9,11 @@
 import { createApp } from "vue";
 import App from "./App.vue";
 import "./styles/app.css";
-import { registerView, registerType, TASKS_KEY, FILES_KEY, TABLES_KEY } from "./lib/views";
+import { registerView, registerType, TASKS_KEY, FILES_KEY, TABLES_KEY, BOARD_KEY } from "./lib/views";
 import TasksView from "./views/TasksView.vue";
 import FilesView from "./views/FilesView.vue";
 import TablesView from "./views/TablesView.vue";
+import BoardView from "./views/BoardView.vue";
 import SettingsView from "./views/SettingsView.vue";
 import ChatView from "./views/ChatView.vue";
 import ProjectView from "./views/ProjectView.vue";
@@ -35,6 +36,10 @@ registerView(TASKS_KEY, TasksView);
 // being the fold's id.
 registerView(FILES_KEY, FilesView);
 registerView(TABLES_KEY, TablesView);
+// THE BOARD: not a section's own fold, but the door right after ORPHANS in the
+// same tree (`Sidebar.vue`) — a view like any other, with an address of its
+// own (`/board`).
+registerView(BOARD_KEY, BoardView);
 registerView("chat", ChatView);
 registerView("settings", SettingsView);
 registerView("orphans", OrphansView);

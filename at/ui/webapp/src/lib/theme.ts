@@ -100,15 +100,17 @@ export function applyTheme(): ThemeRow | null {
   if (savedTheme()) params.push("theme=" + encodeURIComponent(row.id));
   if (darkOn()) params.push("dark");
   node.setAttribute("href", "/theme.css" + (params.length ? "?" + params.join("&") : ""));
-  // THE SECOND LINK, THE SAME DOOR, AND THE SAME QUERY (2026-09-28). Almost every
-  // theme names no `base` of its own, and it was tempting to leave the query off
-  // for them — "`/base.css` with no query is what it always was". It is not: with
-  // no query the server resolves its OWN default theme, and the day that default
-  // is a theme walking its own design system (`at2`, through `AT_THEME` or the
-  // registry) a browser wearing `paper` is served `base2.css`. The query is what
-  // says WHICH theme's base this is, so it goes whenever this browser has chosen
-  // one — the most any link can know — and it stays off when the choice is the
-  // server's, because then the server is right by definition.
+  // THE SECOND LINK, THE SAME DOOR, AND THE SAME QUERY (2026-09-28). Only `at`
+  // names no `base` of its own — every other theme declares `base-shared.css`
+  // explicitly — and it was tempting to leave the query off for `at` alone:
+  // "`/base.css` with no query is what it always was". It is not: with no
+  // query the server resolves its OWN default theme, and that default is `at`
+  // (through `AT_THEME` or the registry), so a browser wearing `paper` would
+  // be served `at`'s `base.css` while it still needs `base-shared.css`. The
+  // query is what says WHICH theme's base this is, so it goes whenever this
+  // browser has chosen one — the most any link can know — and it stays off
+  // when the choice is the server's, because then the server is right by
+  // definition.
   const base = baseLink();
   if (base) {
     const chosen = savedTheme();

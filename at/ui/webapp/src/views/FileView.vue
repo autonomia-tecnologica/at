@@ -85,8 +85,18 @@ watch(() => nav.tick, () => {
 
 <template>
   <div class="file-page">
-    <div v-if="payload && payload.writable" class="page-actions">
-      <button type="button" class="btn" @click="toggleWrite">
+    <!-- QUIET, NOT THE LOUD FILL, AND IN THE CARD'S OWN CORNER (2026-09-28):
+         the fill is what marks a page's ONE action among others — a dialog's
+         submit beside its cancel, a form's save beside its fields — and this
+         row has never had a second control to be told apart from: the file
+         autosaves, so `write`/`leave_write` is always alone here. Loud with
+         nothing to outshine read as a lone button shouting at an empty room;
+         quiet is what the step back already wears on a record's own page
+         (`RecordView.vue`). The CORNER (`base.css`) is what stops it being a
+         room of its own: it belongs to the card under it, so it sits ON that
+         card, not above it in a strip nothing else shares. -->
+    <div v-if="payload && payload.writable" class="page-actions corner">
+      <button type="button" class="btn btn-quiet" @click="toggleWrite">
         {{ mode === "write" ? word("leave_write") : word("write") }}
       </button>
       <!-- THE LINE OF THE SAVE IS THE PAGE TALKING ABOUT ITSELF, and a save that

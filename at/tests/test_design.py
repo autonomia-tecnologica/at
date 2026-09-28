@@ -98,13 +98,14 @@ class TheTokenContract(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        # ALMOST EVERY THEME SHARES ONE BASE (`base.css`), and that is still the
-        # file `cls.read` names for anything that asks about "the" base. A theme
-        # MAY walk its own door instead (`"base"` in the registry row — `at2`
-        # reads `base2.css`), and its token contract is checked against THAT
-        # file, not this one: `base2.css` does not read `--sidebar-item-bg-on`
-        # any more than `base.css` reads `--nav-bg`, and holding every theme to
-        # the same file's vocabulary would fail the second system by construction.
+        # `base.css` IS `at`'s OWN BASE, and the fallback: any theme that names
+        # none of its own reads it, which is `cls.read`. Almost every OTHER
+        # theme walks its own door instead (`"base"` in the registry row, which
+        # for ten of the eleven points at `base-shared.css`), and its token
+        # contract is checked against THAT file, not this one: `base-shared.css`
+        # does not read `--sidebar-item-bg-on` any more than `base.css` reads
+        # `--nav-bg`, and holding every theme to the same file's vocabulary
+        # would fail the from-scratch system by construction.
         cls._base_cache: dict[str, dict[str, bool]] = {}
         cls.base = (ASSETS / "base.css").read_text(encoding="utf-8")
         cls.read = read_of(cls.base)
@@ -215,11 +216,11 @@ class TheTypefaces(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        # EVERY BASE THAT DECLARES FACES, and not only the shared one: a theme
-        # that walks its own design system brings its own typefaces with it
-        # (`at2` → `base2.css`), and the @font-face is an at-rule — a theme may
-        # never hold one — so the faces live in the base beside it. The door is
-        # the same one `TheTokenContract` walks; the pin is over the files.
+        # EVERY BASE THAT DECLARES FACES, and not only the default one: the ten
+        # themes that walk `base-shared.css` bring its typefaces with them, and
+        # the @font-face is an at-rule — a theme may never hold one — so the
+        # faces live in the base beside it. The door is the same one
+        # `TheTokenContract` walks; the pin is over the files.
         names = {"base.css"}
         for row in webapp.theme_rows():
             if isinstance(row.get("base"), str):

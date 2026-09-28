@@ -62,14 +62,14 @@ onMounted(() => {
 <template>
   <!-- `data-branch` is the ID, ON THE HEAD. The id is a prop and never reaches
        the DOM by itself, and the head is where a theme hangs the mark of what a
-       fold holds (`nav .folder[data-branch="tasks"]`, base2.css) — which is a
+       fold holds (`nav .folder[data-branch="tasks"]`, base.css) — which is a
        drawing and not behaviour, so it belongs to whoever dresses the control
        and not to whoever knows what it opens. -->
   <button :data-branch="id" :class="[headClass, 'fold-head', { closed: !isOpen, on: view && isCurrent(view) }]"
           type="button" @click="head">
     <span class="caret">▾</span>
     <!-- `.t` is the WORD, and it is named because a theme may have to place it:
-         what follows it — the caret — belongs to the RIGHT EDGE (`base2.css`). -->
+         what follows it — the caret — belongs to the RIGHT EDGE (`base.css`). -->
     <span class="t">{{ label }}</span>
   </button>
   <div class="foldable" :class="[boxClass, { closed: !isOpen }]">

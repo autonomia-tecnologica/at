@@ -53,9 +53,9 @@ try {
   // THE SECOND STYLESHEET GOES THROUGH THE SAME DOOR, and by the ID alone — a
   // base has no side, so `dark` stays out of it. It is not an optimisation:
   // `/base.css` with NO query is the base of the SERVER's default theme, so a
-  // browser that chose `paper` on a server whose default is `at2` would wear
-  // `base2.css` for the first paint and be corrected after it — the very flash
-  // this file exists to kill, one link over. With no saved id nothing is set:
+  // browser that chose `paper` on a server whose default is `at` would wear
+  // `at`'s `base.css` for the first paint and be corrected after it — the very
+  // flash this file exists to kill, one link over. With no saved id nothing is set:
   // then the server's default IS the choice, and it is right by definition.
   const baseLink = document.getElementById("base");
   if (baseLink && id) {

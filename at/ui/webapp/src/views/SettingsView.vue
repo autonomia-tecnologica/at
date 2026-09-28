@@ -17,7 +17,7 @@
 // SECOND look existed. It left on 2026-09-27 because a list of one is a caption
 // and not a choice — and that was true: with Paper the only row, the control let
 // a person leave the one look the product had. What changed is not the rule but
-// the count: `at2` is a design system of its own, walked through its own base
+// the count: `at` is a design system of its own, walked through its own base
 // (`base_css_path`), and whoever is comparing two looks needs the row that moves
 // between them. The whole mechanism stayed ready under the removal — the
 // registry, `chooseTheme`, the `.theme` rows — which is what this restores, and

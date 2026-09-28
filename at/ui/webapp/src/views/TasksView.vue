@@ -129,7 +129,7 @@ watch(() => nav.tick, load);
     <!-- THE SAME NUMBERS AS ONE BAR, because a proportion is read faster than
          four counts: the parts are the statuses, in the table's order, and the
          width is the share of the whole. It is `--accent`'s ramp and the
-         semantics the theme declares (`base2.css`) — the page names neither a
+         semantics the theme declares (`base.css`) — the page names neither a
          colour nor a width. -->
     <div class="bars" v-if="total">
       <span v-for="status in statuses" :key="status.key" class="bar-part"

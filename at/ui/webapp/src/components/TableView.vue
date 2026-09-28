@@ -84,7 +84,7 @@ const cell = (rec: RecordRow, name: string): string =>
   name === "id" ? String(rec.id ?? "") : value(rec, name).value || "";
 
 // WHICH MEMBER OF A CLOSED LIST the row carries, when the column declares one —
-// the marker the theme dresses a cell by (`data-value`, base2.css), the same
+// the marker the theme dresses a cell by (`data-value`, base.css), the same
 // idiom the file tree already uses for a row's bucket. The page says WHICH
 // value it is and never what it should look like: a column of prose carries
 // nothing here, and a vocabulary a theme does not know keeps its plain text.

@@ -1,399 +1,153 @@
-/* at — the face of Autonomia Tecnológica, in the light of the office.
+/* at — a from-scratch reading of the AT brand, for base.css.
 
-   THE RUNTIME DEFAULT IS `paper` (`app.DEFAULT_THEME`) WHILE THIS FILE IS UNDER THE
-   KNIFE — its bare rules make the layout easy to read while this theme is repainted
-   against it. `at` is the one meant to carry that seat once it is done: the house
-   theme of Autonomia Tecnológica, named for it in `assets/themes.jsonl`.
-   Everything BELOW the raw palette is the theme this was before the repaint
-   (2026-09-28): the grey ladder that replaced a wireframe of
-   drawn boxes, the line ranked by the JOB it does instead of one weight for every
-   job, the flat relief, the middle corner. NONE OF THAT MOVED — a theme changes
-   variables, and the variables that changed are the COLOUR ones. The two are worth
-   telling apart, because the maturity is in the first set and the repaint is only
-   the second.
+   Independent token vocabulary, independent spacing/radius/motion scale,
+   independent shadow model — nothing here was copied from the theme it
+   replaced (the earlier `at`, now retired; this file wore `at2` while both
+   lived side by side, until it proved itself and took the name).
+   Where a number repeats (a breakpoint, a JS-read property name) it is because
+   base.css's own comment says so, not because this file remembered the old one.
 
-   THE REPAINT. The house colour is #6e005a — deep, fully saturated magenta-violet,
-   named ROXO by the people who chose it, and it is dark enough to do something the
-   port's blue never could: sit directly on white at 11.6:1 and need NO darker
-   understudy for the one place a blue accent always needed one — its own text on
-   its own wash. `--color-selected` is gone as a distinct value in this file; it is
-   `var(--accent)`, unchanged, because the brand colour already clears AA wherever
-   the old blue needed a correction. THE GREYS TOOK THE HOUSE HUE TOO, at a whisper
-   of saturation (13%, against the accent's 100%) — the ladder is still read as
-   neutral, the way a photograph read as black-and-white still carries the warmth of
-   its paper, and the whisper is what keeps six steps of the same ground from ever
-   being mistaken for six different colours. THE CONTROL LINE and the SCROLLBAR
-   THUMB carry more of it (16%) for the same reason the old theme gave the control
-   line the strongest weight: what a person presses earns the most of everything.
+   THE COLOUR IS THE VIOLET (2026-09-28). It was #6e005a — the magenta the
+   retired theme carried — and it is #7c3aed now: the violet the AT admin template walks
+   its own rows in, chosen on purpose (§8 of the brief reads "roxo + branco",
+   and the two systems agreeing about the HUE is worth more than either hue).
+   The logo mark is monochrome (`assets/icons/at.svg`), so the accent never had
+   a drawing to obey — only a scheme.
 
-   IT WEARS THE DARK SIDE BY ITSELF (`"side": "dark"` in `assets/themes.jsonl`),
-   which is the default every suite it came from ships. This file is the LIGHT
-   side, the one for a bright room.
-
-   THE ICONS AND THE WORDMARK ARE ITS OWN (`icons/at-*.svg`), and the mark is
-   drawn as OUTLINES of Inter — a drawing has to be a path, because an SVG served
-   as a background-image cannot see a web font. THE MARK'S FILL IS THE THEME'S INK,
-   literal inside the SVG (a `background-image` cannot read `currentColor`), so a
-   repaint of the ink repaints the two files in `icons/` along with it — done here
-   for `#1f1a20`. */
+   THE HOUSE COLOUR CARRIES THE CANVAS AND THE CHROME DIFFERENTLY: the content
+   area is white/near-white with the brand only in accents (links, focus,
+   selection) — a working screen is read, not worn — while the SIDEBAR is a
+   solid dark violet, because that is the one surface a person sees before they
+   see anything else, and it is where a product says its own name. `--accent`
+   (#7c3aed) measures 5.9:1 on white — AA for text, AAA for the large — and the
+   ramp around it is the template's own 50→900 scale at H 262°. */
 
 :root {
-  /* ===== the raw palette ==============================================
-     THE HOUSE COLOUR IS #6e005a — RGB(110, 0, 90), full saturation, and it
-     measures 11.6:1 against white: AAA with room to spare, which is what lets it
-     stand alone below instead of needing the darker understudy a weaker accent
-     would. THE GREYS ARE THE SAME HUE (311°) AT 13% SATURATION — a whisper, there
-     so the six steps of the ladder read as ONE material warmed by the brand
-     rather than six unrelated colours. */
-  --bg: #ece6eb;                 /* the window ground: the deepest step */
-  --panel: #ffffff;              /* a panel, a card, a popover — the top step */
-  --line: #ebe5ea;               /* EVERY rule, and the whisper is the point */
-  --ink: #1f1a20;                /* the text */
-  --dim: #6a606f;                /* the support: labels, headers, counts */
-  --accent: #6e005a;             /* the signal: id, link, selection, focus — the house colour */
-  --danger: #c0392b;             /* what destroys */
-  --hi: #f7e9f4;                 /* the wash under the pointer: the accent, spent */
-
-  /* ===== colour by role =============================================== */
-  --color-link: var(--accent);   /* the link is the accent word */
-  /* THE OLD BLUE NEEDED A DARKER UNDERSTUDY HERE (see `at-dark`'s history): the
-     active row paints its WORDS in the accent on top of its own wash
-     (`--sidebar-item-bg-on`), and a weak accent on its own wash falls under AA.
-     #6e005a does not — 9.9:1 on `--hi` — so the selected label is simply the
-     accent, and this token stops being a second value to keep in step with it. */
-  --color-selected: var(--accent);
-
-  /* ===== typography ===================================================
-     INTER, named by this theme and brought by the BASE (section 1b declares the
-     `@font-face` and serves it from `/vendor/`) — a theme cannot carry a font, and
-     before 2026-09-21 this stack fell all the way to Noto Sans on a machine that
-     had none of its names, which is half of why every theme looked homemade.
-
-     THE SIZE IS THE POINT: 13px, and the line-height is 1.45 — the app is DENSE.
-     A working application shows a lot and asks the eye to travel; air is a
-     consumer magazine's, and this theme is not one. THE METRICS OF THE DENSITY
-     DID NOT CHANGE on 2026-09-22 — 13px, 1.45, 6px of cell padding, `--cell-pad`:
-     the surface was redrawn and these were left alone. What DID change below them
-     are three holes nobody had noticed: the foot of the panel had no breathing
-     room at the window edge (`--bottom-gap`), and the body of a settings group had
-     none at all (`--group-pad`, `--group-row-gap`). Those are room the layout owed
-     and never paid, not a loosening of the grid. */
-  --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
-             Arial, sans-serif;
-  --font-size: 13px;
-  --line-height: 1.45;
-  --weight-normal: 400;
+  /* ===== type ============================================================ */
+  --font-sans: "Nunito Sans", system-ui, -apple-system, "Segoe UI", Roboto,
+               "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Quicksand", "Nunito Sans", system-ui, sans-serif;
+  /* THE SCALE WENT UP TWO POINTS, STEP BY STEP (2026-09-28). The report was
+     "the fonts feel small across the whole system, and I wanted two points more
+     on each one" — and step by step is what keeps the scale ONE scale: the `xs`
+     grows two and the `2xl` grows two, so the RATIO between them shifts a
+     little, but nothing on the ladder jumps in size, which is what raising only
+     the body would have done. The line heights are multiples
+     (`--leading-normal`), so they come along on their own. */
+  --text-xs: 14.5px;
+  --text-sm: 15.5px;
+  --text-base: 17px;
+  --text-md: 18px;
+  --text-lg: 21px;
+  --text-2xl: 32px;
+  --leading-normal: 1.55;
+  --leading-tight: 1.25;
   --weight-medium: 500;
-  --weight-bold: 600;            /* Inter's 600: a bold that does not shout */
-  /* THE SECTION LABEL: upper-case, spaced — the one place the theme raises its voice */
-  --caps-spacing: .06em;
-  --caps-transform: uppercase;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --letter-tight: -0.01em;
 
-  /* ===== sidebar ======================================================
-     A WORKING PANEL, not a rail of destinations: a little wider than the other
-     themes (248px), because the panel carries the file tree and the names in it
-     are long. The item's breathing room is TIGHT — 6px of vertical padding — so
-     that the list reads as a list of rows and not as a column of buttons, which is
-     what a document app's panel is. NONE OF THAT MOVED (2026-09-28).
+  /* ===== spacing scale (8px base, 4px half-step) ========================= */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 32px;
+  --space-7: 40px;
+  --space-8: 64px;
 
-     THE PANEL IS CHROME NOW, not one more step of the ladder (2026-09-28,
-     answering "it still looks like the old theme with a different accent" —
-     true of the first repaint, and the reason this second pass exists). Every
-     OTHER theme in this file keeps the sidebar a shade of the same material as
-     the canvas; this one gives it the HOUSE COLOUR instead — solid, dark, its own
-     material — the way the product a person is meant to recognise at a glance
-     puts its colour where the eye lands FIRST, not where the content is. The
-     canvas stays exactly what section "main window" already had: white cards on
-     a whisper-warmed grey, because that half was never the complaint — the
-     complaint was that the chrome did not say "Autonomia Tecnológica" loudly
-     enough to be believed. `--sidebar-border: 0` still holds: two flatly
-     different materials meeting at an edge do not need a line to prove it. */
-  --sidebar-width: 248px;
-  --sidebar-rail: 44px;
-  --sidebar-bg: #3e0f35;         /* the house colour, dark: the chrome, not a step of the ladder */
-  --sidebar-border: 0;
-  --sidebar-pad: 10px;           /* the helper the rows below are written against */
-  --sidebar-indent: 14px;
-  --sidebar-gap: 6px;
+  /* ===== radius scale ===================================================== */
+  --r-sm: 8px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-full: 999px;
 
-  /* the name at the top of the panel: the mark is DRAWN (below); the written one
-     stays as the accessible name and is buried by ink, never by `display: none`.
-     The underline under it went with the rest of the drawn structure: the mark and
-     the tree are separated by the title's own padding, and a rule there was
-     boxing a region that the ground already separates.
-     THE INK IS LIGHT NOW, because the ground it sits on is dark chrome and not
-     the panel any more — `--sidebar-title-color`/`-strong` answer to
-     `--sidebar-bg`, and every other ink on this panel does the same from here on. */
-  --sidebar-title-color: #d9b9d0;
-  --sidebar-title-strong: #fdf6fc;
-  --sidebar-title-size: 13px;
-  --sidebar-title-family: var(--font-ui);
-  --sidebar-title-weight: var(--weight-bold);
-  --sidebar-title-style: normal;
-  --sidebar-title-pad-x: 12px;
-  --sidebar-title-border: 0;
-  /* THE MARK BORROWS THE NIGHT DRAWING (2026-09-28): a `background-image` cannot
-     read `currentColor`, so the fill is literal inside the SVG — and the chrome
-     this mark sits on is dark now, in the LIGHT theme too, so the light-ink file
-     `at-dark.svg` already made for the night side is the one that reads here. */
-  --brand-mark: url("icons/at-dark.svg");
-  --brand-mark-w: 2.55em;        /* the mark's own viewBox is 44.13 x 26 */
-  --brand-mark-h: 1.5em;
-  --brand-word-ink: transparent;
-  /* the language is the CODE, in the support body, and no flag: a tool says pt_BR */
+  /* ===== motion: real duration, a decelerate curve ======================== */
+  --dur-fast: 140ms;
+  --dur-base: 240ms;
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+
+  /* ===== surfaces (canvas → card → raised) ================================ */
+  --surface-0: #f7f6fb;
+  --surface-1: #ffffff;
+  --surface-2: #faf9fd;
+  --ink-1: #211a33;
+  --ink-2: #57506d;
+  --ink-3: #8b849c;
+  --border-soft: #e6e1f4;
+  --border-strong: #d5cdec;
+  --row-hover: #f5f3fb;
+  --control-track: #e2dcf0;
+
+  /* ===== the brand, as a ramp (H 262°, --accent at step 600) ============== */
+  --accent-50:  #f5f3ff;
+  --accent-100: #ede9fe;
+  --accent-200: #ddd6fe;
+  --accent-300: #c4b5fd;
+  --accent-400: #a78bfa;
+  --accent-500: #8b5cf6;
+  --accent-600: #7c3aed; /* the brand colour, exactly */
+  --accent-700: #6d28d9;
+  --accent-800: #5b21b6;
+  --accent: var(--accent-600);
+  --accent-hover: var(--accent-700);
+  --accent-active: var(--accent-800);
+  --accent-ink: #ffffff;
+  --accent-soft: var(--accent-50);
+  --accent-ring: rgb(124 58 237 / 35%);
+
+  /* ===== semantics: the loud colours the brief allows, used loud nowhere
+     but a badge, a ring, a status dot ======================================= */
+  --success: #16a34a;
+  --success-soft: #ecfdf3;
+  --warning: #d97706;
+  --warning-soft: #fffaeb;
+  --danger: #dc2626;
+  --danger-soft: #fef2f2;
+  --info: #2563eb;
+  --info-soft: #eff4ff;
+
+  /* ===== elevation: soft, tinted with the brand hue, never black ========== */
+  --shadow-xs: 0 1px 2px rgb(31 16 51 / 7%);
+  --shadow-sm: 0 3px 10px rgb(31 16 51 / 8%), 0 1px 3px rgb(31 16 51 / 6%);
+  --shadow-card: 0 10px 30px rgb(31 16 51 / 8%), 0 2px 8px rgb(31 16 51 / 5%);
+  --shadow-lg: 0 28px 70px rgb(31 16 51 / 20%), 0 10px 24px rgb(31 16 51 / 10%);
+
+  /* ===== scrollbars ========================================================= */
+  --scrollbar-thumb: #d5cdec;
+  --scrollbar-thumb-hover: #bfb3e0;
+
+  /* ===== the chrome: a solid violet sidebar, the brand's own room ========== */
+  --nav-w: 272px;
+  /* 44px, NOT A GUESS (2026-09-28): the rail holds one icon (the tree hides
+     under it, `html.nav-rail #kinds`), centered, and 72px around an 18px
+     glyph was most of the strip being nothing. 44px is WCAG 2.5.5's own
+     floor for a target a thumb has to land on — the smallest this button was
+     ever allowed to be, which makes it the right width for a rail that is
+     that button and nothing else. */
+  --nav-rail-w: 44px;
+  --nav-toggle-size: 18px;
+  --header-h: 64px;
+  --nav-bg: #1f1033;
+  --nav-border: rgb(255 255 255 / 8%);
+  --nav-edge: 4px 0 24px rgb(31 16 51 / 18%);
+  --nav-ink-1: #ffffff;
+  --nav-ink-2: #d9d0f0;
+  --nav-ink-3: #9c8fc0;
+  --nav-item-hover: rgb(255 255 255 / 6%);
+  --nav-item-on-bg: rgb(139 92 246 / 22%);
+  --nav-item-on-ink: #ffffff;
+  --nav-item-on-edge: var(--accent-500);
+  --accent-ink-on-nav: var(--accent-400);
+  --nav-brand-bg: var(--accent); /* chapada: a telha não tem gradiente */
+  --nav-brand-ink: #ffffff;
   --locale-raw: inline;
   --locale-name: none;
   --locale-flag: none;
-  --locale-size: 11px;
-  --nav-toggle-size: 18px;
 
-  /* THE FOLDER is a section header, and that is the idiom kept from the suites:
-     small, upper-case, spaced, in the support ink — it names a group, it is not a
-     place to click. It also does the work the separators used to do. */
-  --sidebar-folder-color: #c48fb8;
-  --sidebar-folder-size: 11px;
-  --sidebar-folder-family: var(--font-ui);
-  --sidebar-folder-weight: var(--weight-bold);
-  --sidebar-folder-style: normal;
-  --sidebar-folder-pad: 10px var(--sidebar-pad) 4px;
-  --sidebar-folder-hover: #fdf6fc;
-  /* THE ROW: a card with a middle corner, and the SELECTED one is a filled band of
-     the accent's wash plus a 2px accent bar on the left. THE BAR STAYED when the
-     rest of the lines went, and it is the one place this theme keeps a drawn mark
-     that a modern surface would drop: the wash alone is a difference in LIGHT, and
-     a light difference does not survive a colour-blind eye or a bad panel. The bar
-     is a difference in SHAPE, and it is what makes the selection legible to
-     everybody.
-     REST, HOVER AND SELECTED ARE NOW THREE STEPS OF THE CHROME, not of the
-     ladder: `--sidebar-item-bg-hover` lifts off `--sidebar-bg` the way a hover
-     always has, and `--sidebar-item-bg-on` lifts further still and takes on more
-     of the house saturation — a SELECTED row does not just sit higher, it reads
-     more like the brand than a row someone is merely passing over.
-     `--sidebar-selected` IS A NEW TOKEN (`base.css`, `nav button.on`, with a
-     fallback to `--color-selected` so every theme that never asked this
-     question is untouched): the selected row's ink and bar need a colour built
-     for THIS dark ground, and `--color-selected` is `#6e005a` here — built for
-     WHITE, which is where its other four jobs still live (a value picker, a
-     popover row, a radio, a checkbox — all on the panel, all unmoved). One ink
-     cannot answer to both grounds at 4.5:1; asking it to was the bug a first
-     draft of this file shipped with. */
-  --sidebar-item-color: #e6d7e3;
-  --sidebar-item-family: var(--font-ui);
-  --sidebar-item-weight: var(--weight-normal);
-  --sidebar-item-style: normal;
-  --sidebar-item-pad: 6px var(--sidebar-pad);
-  --sidebar-item-bg-hover: #511546;
-  --sidebar-item-bg-on: #641758;
-  --sidebar-selected: #f9e3f4;
-  --sidebar-item-mark: 2px solid transparent;
-  --sidebar-count-color: #c48fb8;
-  --sidebar-sep-border: 1px solid #5c1f51;
-  --sidebar-sep-margin: 8px var(--sidebar-pad);
-
-  /* the fold's triangle: small, and it takes the CHROME's ink, not the canvas's —
-     the caret lives in the sidebar, and the sidebar is dark now. */
-  --caret-size: 9px;
-  --caret-color: #c48fb8;
-  --caret-open: #f9e3f4;
-  --caret-hover: #fdf6fc;
-
-  /* THE ICONS ARE THIS THEME'S OWN DRAWING (`icons/at-*.svg`), used as a MASK
-     and inked with `currentColor`: one shape per bucket, and the icon takes the
-     colour of the row it sits in — it dims, highlights and turns selected exactly
-     like the name beside it, which is the reason the mask door exists at all. */
-  --icon-show: inline;
-  --icon-size: 14px;
-  --icon-ink: currentColor;
-  --icon-pic-code: url("icons/at-code.svg");
-  --icon-pic-text: url("icons/at-text.svg");
-  --icon-pic-data: url("icons/at-data.svg");
-  --icon-pic-other: url("icons/at-other.svg");
-
-  /* ===== main window ================================================== */
-  --main-bg: #f6f4f6;
-  /* the header keeps its rule, and it is the RULE rank: `--main-border` is read
-     here, under `.prose hr` and under the table's head, so it cannot go to zero
-     without taking the other two with it. At the whisper it does the same job with
-     a third of the contrast. */
-  --main-border: 1px solid var(--line);
-  /* THE CARD IS OUTLINED (2026-09-22). With the shadow gone, a card had only the
-     ladder to say it was a card, and the rung between the canvas and the panel is
-     1.09:1 — a real separation on a large area, and not enough for a white table
-     over a very light grey. So the card takes the hairline back, and this is the one
-     place the theme still draws a box: an OUTLINED card over a tonal ground is what
-     the surface it is modelled on does, and it costs nothing the shadow was doing.
-     Read by `.prose`, `.write-wrap`, `pre.text` and `.record-body`. */
-  --surface-border: 1px solid var(--line);
-  --header-color: var(--dim);
-  --header-strong: var(--ink);
-  --header-pad-x: 16px;
-  --body-pad: 0;
-  --bottom-gap: 10px;
-  --page-pad-x: 16px;
-  --page-pad-y: 14px;
-
-  /* ===== table ========================================================
-     THE DENSEST SCREEN IS THE ONE THAT MATTERS. The grid shows many rows and keeps
-     them legible: 13px of type on a 1.45 line, 6px of vertical padding per cell,
-     and the row line only under the DATA. The head band is a shade off the card
-     rather than a band of its own — on a white table it reads as the top of the
-     same surface, which is what it is. */
-  --table-head-color: var(--dim);
-  --table-head-weight: var(--weight-bold);
-  --table-head-hover: var(--ink);
-  --table-head-bg: #fbf9fa;
-  /* the table is a card too, and it reads its OWN token (base.css draws its frame
-     with `--table-border`, never `--surface-border`) — the bottom of the frame is
-     zeroed there, because the last row's line already lands on it. */
-  --table-border: 1px solid var(--line);
-  --table-line: 1px solid var(--line);
-  --table-row-hover: var(--hi);
-  --table-row-radius: 7px;
-  --cell-pad: 10px;
-  --cell-pad-y: 6px;
-  --measure: 72ch;
-  --id-color: var(--dim);        /* the id is furniture, not data: it recedes */
-  --drag-opacity: .4;
-  --drop-mark: var(--accent);
-  --drop-mark-width: 2px;
-  --pill-color: var(--dim);
-  --pill-hover: var(--accent);
-
-  /* ===== links and detail lists ======================================= */
-  --link-underline: 1px solid transparent;   /* a 2026 link underlines on hover */
-  --link-underline-hover: 1px solid var(--accent);
-  --dl-pad: 0;
-  --dt-color: var(--dim);
-  --dt-gap: 4px;
-  --dd-indent: 0;                /* a property list, not indented prose */
-  --back-color: var(--dim);
-  --back-pad: 4px 8px;
-  --empty-color: var(--dim);
-  --empty-pad: 24px;
-  --subs-border: 1px solid var(--line);
-  --sub-pad: 6px var(--sidebar-pad);
-  --sub-gap: 8px;
-  --sub-color: var(--ink);
-  --sub-strong: var(--accent);
-  --sub-dim: var(--dim);
-  --sub-bg-hover: var(--hi);
-
-  /* ===== popover ====================================================== */
-  --pop-bg: var(--panel);
-  --pop-border: 1px solid var(--line);
-  --pop-pad: 6px;
-  --pop-min-w: 180px;
-  --pop-max-h: 320px;
-  --pop-item-pad: 6px 8px;
-  --pop-item-bg-hover: var(--hi);
-  --funnel: 11px;
-  --funnel-color: var(--dim);
-  --funnel-hover: var(--ink);
-  --funnel-on: var(--accent);
-  --pick-gap: 5px;
-  --pick-caret: 8px;
-  --pick-caret-color: var(--dim);
-  --pick-caret-hover: var(--accent);
-
-  /* ===== settings =====================================================
-     THE ONE RANK THAT GOT STRONGER. `--set-border`, `--switch-border` and
-     `--radio-border` are read by the button, the form field, the switch and the
-     radio — every one of them a thing a person PRESSES. They sit at roughly 1.5:1
-     where the rules sit at 1.15:1, and the gap between those two numbers is the
-     hierarchy this theme did not have: the eye finds the controls and reads past
-     the dividers. */
-  --set-gap: 8px;
-  --set-pad: 8px 10px;
-  --set-border: 1px solid #ded2dc;
-  --set-mark: 2px solid var(--accent);
-  --switch-w: 30px;
-  --switch-h: 16px;
-  --switch-knob: 12px;
-  --switch-inset: 2px;
-  --switch-radius: 8px;          /* a 16px track: 8 is the pill, not a choice */
-  --switch-border: 1px solid #ded2dc;
-  --switch-track: #e4dce3;
-  --switch-track-on: var(--accent);
-  --switch-knob-color: #ffffff;
-  --switch-knob-on: #ffffff;
-  --radio-size: 13px;
-  --radio-border: 1px solid #ded2dc;
-  --radio-checked: 1px solid var(--accent);
-  --radio-mark: var(--accent);
-  --radio-gap: 6px;
-  --group-gap: 8px;
-  --group-bg: var(--panel);
-  --group-border: 1px solid var(--line);
-  --group-radius: 10px;
-  --group-pad: 6px 14px 14px;   /* the body of a group: the room the head never gave it */
-  --group-row-gap: 14px;        /* and the room the rows never had between them */
-  --group-head-pad: 8px 14px;
-  --group-head-color: var(--dim);
-  --group-head-hover: var(--ink);
-  --group-head-size: 11px;
-  --group-head-family: var(--font-ui);
-  --group-head-weight: var(--weight-bold);
-
-  /* ===== scrollbars ===================================================
-     THIN AND INSET, and they never take the eye: a 12px gutter with the thumb
-     clipped to its middle (3px of transparent border on each side) is what every
-     professional application ships, and the whole point is that the CONTENT keeps
-     its width whether or not the bar is showing. */
-  --scrollbar-size: 12px;
-  --scrollbar-width: thin;
-  --scrollbar-inset: 3px;
-  --scrollbar-radius: 6px;
-  --scrollbar-track: transparent;
-  --scrollbar-thumb-rest: #d2c4d0;
-  --scrollbar-thumb: #b69ab1;
-  --scrollbar-corner: transparent;
-
-  /* ===== shape, material and motion ===================================
-     THE CORNER IS MIDDLE-SIZED, and it grew from 4px on 2026-09-22. A 4px corner
-     is the corner of software that has to line up; a 16px one belongs to a phone
-     app and is the fastest way to make a tool look like a toy. 10px on a card and
-     7px on a row is the middle of those two, and the row stays concentric with the
-     card it sits in (10 minus the padding it is inset by).
-     THERE IS NO RELIEF. `--control-elev` is `none`, and it went all the way rather
-     than getting lighter, because a drop under a control is the one thing this
-     surface does not need: a control already says it is a control with the
-     strongest LINE in the theme, and a second voice saying the same thing in light
-     is what made the panel rows read as buttons in a list of rows.
-     AND THE CARD IS FLAT TOO — `--shadow-card` took the same correction. A card
-     separated from its canvas by its own GROUND does not also need to be lifted
-     off it, and a page whose every panel floats is a page with no ground to work
-     with. What carries the separation now is the ladder, one rung at a time.
-     THE OVERLAY IS THE EXCEPTION, and it stays the only one: `--shadow-pop` is
-     deep, because a popover floats over CONTENT of unknown depth and the shadow is
-     the only thing left that can say how high it is.
-     THE MOTION IS ALMOST NOT THERE: 100ms and a curve that leaves at once. A
-     working application answers; it does not perform, and it does not make the
-     view arrive from anywhere (`--enter-shift: 0`). */
-  --radius: 10px;
-  --item-radius: 7px;
-  --control-elev: none;
-  --shadow-card: none;
-  --shadow-pop: 0 12px 32px rgba(50, 8, 42, .16),
-                0 2px 8px rgba(50, 8, 42, .06);
-  --panel-blur: none;            /* the surfaces are OPAQUE */
-  --sheen: none;
-
-  /* THE CHASSIS LINES ARE CRISP — no dissolve, and that is a decision, not an
-     omission. `none` is the escape hatch the base documents: the divider goes back
-     to the plain `border-bottom` of the strip, which is one solid hairline with two
-     ends. The dissolve is the idiom of the 2020s web app; this theme is the one
-     that says no to it. */
-  --divider-side: none;
-  --divider-title: none;
-  --divider-head: none;
-
-  /* THE TOP BAR IS NOT A BAND ANY MORE. `--sheen-head` painted a wash over the
-     whole strip — a light the bar catches, which is what made it read as a title
-     bar instead of as the first row of the content. At `none` the bar is separated
-     by the RULE under it (`--main-border`) and by nothing else, and the gloss it
-     used to catch is the thing that dated it. */
-  --sheen-head: none;
-  --speed: .1s;
-  --ease: cubic-bezier(.2, 0, 0, 1);
-  --enter-shift: 0px;
+  /* ===== table/measure: the three names TableView.vue reads by hand ======= */
+  --cell-pad: 16px;
+  --cell-pad-y: 11px;
+  --measure: 70ch;
 }

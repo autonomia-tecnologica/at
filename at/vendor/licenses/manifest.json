@@ -38,7 +38,7 @@
       "license": "MIT",
       "artifacts": ["at-cli"],
       "text": "at/ui/webapp/vendor/licenses/iconoir-LICENSE",
-      "note": "The at2 theme's nav and bucket icons are individual strokes lifted from the set (icons/regular/*.svg) and served as plain SVG from at/ui/webapp/assets/icons/at2-*.svg, the same door the theme's own bucket drawings already use — not a byte-for-byte vendor copy, so it carries no entry in the WebApp's own pinned manifest."
+      "note": "The at theme's nav and bucket icons are individual strokes lifted from the set (icons/regular/*.svg) and served as plain SVG from at/ui/webapp/assets/icons/at2-*.svg, the same door the theme's own bucket drawings already use — not a byte-for-byte vendor copy, so it carries no entry in the WebApp's own pinned manifest."
     },
     "font-nunito-sans": {
       "name": "Nunito Sans",

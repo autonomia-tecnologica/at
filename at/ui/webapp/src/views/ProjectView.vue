@@ -14,7 +14,7 @@ import { ref, computed, watch, onMounted } from "vue";
 import { api } from "../lib/api";
 import { store, setFields, word } from "../lib/store";
 import { nav, markPage, leave, open, openRef, setTrail, showError } from "../lib/views";
-import TableView from "../components/TableView.vue";
+import TaskBoard from "../components/TaskBoard.vue";
 import RecordView from "../components/RecordView.vue";
 import ProseField from "../components/ProseField.vue";
 import type { FieldSpec, RecordRow } from "../lib/record";
@@ -126,10 +126,13 @@ watch(() => props.id, () => {
         <span class="n">{{ child.tasks }} {{ word("tasks") }}</span>
       </button>
     </div>
-    <!-- The table below is the TASKS' — the table the server said declares the
-         TYPE `task`, never the word "task" read as a table's name. -->
-    <TableView v-if="store.types.task" :entity="store.types.task" :records="payload.records"
-               :schema="payload.fields" view-key="project" :page="page" rule
-               :actions="payload.actions" @ref="openRef" />
+    <!-- THE BOARD BELOW IS THE TASKS' — the table the server said declares the
+         TYPE `task`, never the word "task" read as a table's name. It hides
+         the project chip a card would otherwise carry (`show-project`
+         false): every card here already lives inside this project's own
+         page, the same reason the table declares `hide: ["project"]` for the
+         column a plain table would have drawn. -->
+    <TaskBoard v-if="store.types.task" :entity="store.types.task" :records="payload.records"
+               :schema="payload.fields" :page="page" :show-project="false" @ref="openRef" />
   </div>
 </template>

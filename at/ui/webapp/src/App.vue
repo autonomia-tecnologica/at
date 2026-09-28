@@ -15,7 +15,7 @@ import { computed, onMounted, watch } from "vue";
 import { api, whenRefused } from "./lib/api";
 import { enter, lost, session, signedIn } from "./lib/session";
 import { store, applyState, label, word, tableOf } from "./lib/store";
-import { nav, ui, isKind, viewFor, open, markPage, poke, resumePath, setTrail, CHAT_KEY, NLU_UI_ENABLED, ORPHANS_KEY } from "./lib/views";
+import { nav, ui, isKind, viewFor, open, markPage, poke, resumePath, setTrail, CHAT_KEY, NLU_UI_ENABLED, ORPHANS_KEY, BOARD_KEY } from "./lib/views";
 import { applyTheme, watchSystem } from "./lib/theme";
 import { applyMotion } from "./lib/motion";
 import { writingState } from "./lib/writing";
@@ -61,7 +61,7 @@ const section = computed(() => {
   const view = nav.current?.view || "";
   if (tableOf(view)) return word("tables");        // a table is met in the tables
   if (view.startsWith(FILE_PREFIX)) return word("files");
-  if (view.startsWith(PROJECT_PREFIX) || view === ORPHANS_KEY) return word("tasks");
+  if (view.startsWith(PROJECT_PREFIX) || view === ORPHANS_KEY || view === BOARD_KEY) return word("tasks");
   if (view.startsWith(ACTOR_PREFIX) || view.startsWith(ROLE_PREFIX)) return word("settings");
   return "";
 });
@@ -276,7 +276,7 @@ defineExpose({ refresh });
                way in. The separator is an ELEMENT and not a `content:` in the
                CSS: the two design systems dress the band differently, and one
                of them not at all, so what the band says has to be in the page
-               (`base2.css` draws it). -->
+               (`base.css` draws it). -->
           <template v-for="(step, i) in trail" :key="i">
             <span v-if="i" class="sep">›</span>
             <b v-if="i === trail.length - 1">{{ step }}</b>

@@ -38,7 +38,7 @@ function openFile(full: string): void {
          tree carries the same fold, but it is not the same LEVEL of item — the
          panel's four top-level rows are its chapters, and a folder is a name
          inside one of them. A level that wears the cloth of the level above it
-         is a tree with no hierarchy left to read (`base2.css`, `nav .node`). -->
+         is a tree with no hierarchy left to read (`base.css`, `nav .node`). -->
     <Foldable :id="'tree:' + join(name)" :label="name" box-class="branch"
               head-class="node">
       <FileTreeNode :node="child" :prefix="join(name)" />

@@ -399,7 +399,7 @@ class TheLook(ServerCase):
         status, headers, body = self.get("/base.css")
         self.assertEqual(status, 200)
         self.assertIn("text/css", headers["Content-Type"])
-        self.assertIn(b"THE RULES", body)
+        self.assertEqual(body, (webapp.ASSETS / "base.css").read_bytes())
 
     def test_a_theme_is_resolved_by_lookup(self):
         _, _, body = self.get("/theme.css?theme=gothic")

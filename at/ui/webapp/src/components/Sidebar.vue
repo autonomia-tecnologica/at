@@ -17,8 +17,7 @@
 
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { store, word } from "../lib/store";
-import { session } from "../lib/session";
-import { CHAT_KEY, NLU_UI_ENABLED, TASKS_KEY, FILES_KEY, TABLES_KEY, isCurrent, open, countOf } from "../lib/views";
+import { CHAT_KEY, NLU_UI_ENABLED, TASKS_KEY, FILES_KEY, TABLES_KEY, BOARD_KEY, isCurrent, open, countOf } from "../lib/views";
 import { byName } from "../lib/order";
 import { navRail, toggleNav } from "../lib/nav";
 import Foldable from "./Foldable.vue";
@@ -40,6 +39,14 @@ const PEOPLE_TABLES = ["actor", "role"];
 
 const hasProjects = computed(() => Boolean(store.types.project && store.types.task));
 
+// THE BOARD'S OWN NUMBER is the task table's count, and that count is already
+// the one that matters here: `tables.rows` (the server's) answers by the
+// STATUS the schema marks `show` — todo and doing — the same reason a done or
+// a cancelled row never inflates a count anywhere else in the panel. The board
+// draws every status in its own column, but what the row before it promises is
+// what still needs doing, not the total.
+const boardCount = computed(() => store.tables.find(kind => kind.key === store.types.task)?.count ?? 0);
+
 // The list is ALPHABETICAL, by the name the panel prints. The store declares an
 // `order` of its own; what a person does with a list of tables is look one up,
 // and the name is the index (order.ts).
@@ -48,11 +55,6 @@ const kinds = computed(() =>
     .filter(kind => !PEOPLE_TABLES.includes(kind.key))
     .sort((a, b) => byName(a.label, b.label)),
 );
-
-// The mark of the person, cut to what a circle holds. It is the NAME's own
-// first letter and never a picture: the folder keeps no face for anybody, and
-// an avatar drawn from nothing but a name is either a letter or a lie.
-const initials = computed(() => (session.actor?.name || "").trim().slice(0, 1).toUpperCase());
 
 function openKind(key: string): void {
   open(key, null);
@@ -109,6 +111,14 @@ onUnmounted(() => {
     <Foldable v-if="hasProjects" id="tasks" :label="word('tasks')" box-class="branch"
               :view="TASKS_KEY">
       <ProjectsTree />
+      <!-- THE BOARD SITS RIGHT AFTER "SEM PROJETO" — the tree's own last row
+           (`ProjectTreeNode.vue` sorts the orphans line last), so this button
+           lands right under it without knowing where that row ends. -->
+      <button type="button" class="file" :data-view="BOARD_KEY"
+              :class="{ on: isCurrent(BOARD_KEY) }" @click="openKind(BOARD_KEY)">
+        <span>{{ word("board") }}</span>
+        <span class="n">{{ countOf(BOARD_KEY, boardCount) }}</span>
+      </button>
     </Foldable>
     <Foldable id="files" :label="word('files')" box-class="branch" :view="FILES_KEY">
       <FileTree />
@@ -165,14 +175,6 @@ onUnmounted(() => {
          hears the ACTION and not the position. That flip is also what keeps the
          accessible name matching the visible one where the visible one exists
          (WCAG 2.5.3, and the reason the label is not a fixed "Painel"). -->
-    <!-- WHO IS IN, when the folder asked anybody. A run that asks nobody has no
-         actor to name (`/api/session` answers `null`), and the row is not there
-         at all: a circle with nobody's initials in it is worse than no circle,
-         and this panel is drawn on the very machines an install begins on. -->
-    <div v-if="session.actor" class="side-who">
-      <span class="avatar" aria-hidden="true">{{ initials }}</span>
-      <span class="who-name">{{ session.actor.name }}</span>
-    </div>
     <!-- THE LINE ABOVE THE CONTROL. `hr.sep` is the separator this file already
          uses to close the foot off from the tree, so the control is set apart by
          the same mark and not by a second idiom invented here. -->

@@ -149,7 +149,7 @@ from at.ui.webapp import keys, session
 
 HOST = "127.0.0.1"
 DEFAULT_PORT = 12345
-DEFAULT_THEME = "paper"
+DEFAULT_THEME = "at"
 
 # The face of the loop, by name. It is the host the person reaches by default,
 # and it is the only NAME this module answers for itself: with the Caddy in
@@ -271,11 +271,12 @@ def theme_css(requested: str | None, dark: bool) -> str | None:
 
 
 def base_css_path(requested: str | None) -> Path:
-    """Which `base.css` the active theme wears — almost always the one file every
-    theme shares; a theme MAY declare its own (`"base"` in the registry row), the
-    door a from-scratch design system walks through without touching the one
-    every other theme still reads. The name is a bare filename or the door is
-    refused: no separator survives to become a path."""
+    """Which base the active theme wears. A theme MAY declare one by name
+    (`"base"` in the registry row) — the door every theme but `at` walks, to
+    the one file they all still share (`base-shared.css`) — and a theme that
+    declares none gets the bare `base.css`, which is `at`'s own from-scratch
+    design system and the server's default. The name is a bare filename or
+    the door is refused: no separator survives to become a path."""
     row = active_theme(requested)
     name = row.get("base") if row and isinstance(row.get("base"), str) else None
     if name and "/" not in name and "\\" not in name and name.endswith(".css"):
@@ -427,7 +428,7 @@ PAGE_WORDS = (
     "brand", "brand_name",
     "tasks", "files", "tables", "settings", "general", "appearance", "language",
     "dark_mode", "dark_system", "dark_theme", "dark_light", "dark_dark",
-    "motion", "themes", "no_project", "new_project", "delete_project",
+    "motion", "themes", "no_project", "board", "new_project", "delete_project",
     "move_to_project", "records", "hidden", "no_records", "error", "filter",
     "columns", "refers", "panel", "collapse_menu", "expand_menu",
     # The context menu's own items (TASK-120, fatia 1): what the row's menu

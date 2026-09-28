@@ -16,6 +16,13 @@ const DEPTH = 20; // a path deeper than this is no longer a path
 // there too. It names no PROJECT — it is the node that is not one.
 export const ORPHANS_KEY = "orphans";
 
+// THE BOARD: every task across every project that is not yet closed, as a row
+// of columns — one per status — a card moved between them by dragging it. It
+// sits right after ORPHANS in the panel (`Sidebar.vue`), the same tree it is
+// one more door out of, and it is a VIEW of its own for the same reason
+// ORPHANS is: a reload has to land there too.
+export const BOARD_KEY = "board";
+
 // THE SECTION'S OWN PAGE, AND THE SECTION IS THE FOLD. There is no item called
 // "overview": the panel's folds ARE its sections, and a section's head is
 // SELECTABLE — clicking TASKS opens and closes the tree under it and opens the
