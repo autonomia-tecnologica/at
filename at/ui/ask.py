@@ -88,7 +88,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 
 from at import nlu
 from at.core import (
@@ -99,6 +99,7 @@ from at.core import (
     jobs,
     permissions,
     projects,
+    reminder,
     risk,
     scanner,
     settings,
@@ -801,6 +802,47 @@ def _shown(finding: scanner.Finding) -> str:
             commit=finding.commit[:7],
         )
     return tr("secrets.scan.finding", rule=finding.rule, where=where)
+
+
+# ----------------------------------------------------------- the reminder ---
+
+
+def reminder_due(args: list[str]) -> tuple[int, str]:
+    """`reminder due` — which reminders a DAY is about (item 29's first slice).
+
+    **The act is the table's own, and it does not walk `run`.** `due` is not one
+    of the engine's six: it reads the store and rewrites no row, the way `scan`
+    reads the folder and rewrites none — so it is a read on §4's scale, with no
+    actor and no via in the signature and no line to leave.
+
+    **The day is `--at`, and it defaults to today — the engine's own, never the
+    machine's read a second time here.** A day already past is not refused: the
+    fatia this door belongs to is decision, checkable against any day, and the
+    push that reaches a phone on the day itself is another slice's work.
+    """
+    at = reminder.today()
+    rest = list(args)
+    if rest[:1] == ["--at"]:
+        if len(rest) != 2:
+            return USAGE, tr("reminder.due.error.arguments")
+        try:
+            at = date.fromisoformat(rest[1])
+        except ValueError:
+            return USAGE, tr("reminder.due.error.arguments")
+        rest = []
+    if rest:
+        return USAGE, tr("reminder.due.error.arguments")
+    found = reminder.due(at)
+    lines = [tr("reminder.due.today", date=at.isoformat())]
+    lines.append(
+        rendered(reminder.REMINDER, found["due"]) if found["due"] else tr("table.word.empty")
+    )
+    lines.append("")
+    lines.append(tr("reminder.due.warn"))
+    lines.append(
+        rendered(reminder.REMINDER, found["warn"]) if found["warn"] else tr("table.word.empty")
+    )
+    return OK, "\n".join(lines)
 
 
 # ------------------------------------------------------------- the settings ---

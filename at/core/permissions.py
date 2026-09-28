@@ -44,7 +44,7 @@ object's and the action's.
 
 from __future__ import annotations
 
-from at.core import tables
+from at.core import reminder, tables
 from at.data import schema
 from at.i18n import tr
 
@@ -86,6 +86,15 @@ SECRET = "secret"
 # `NARROWED` and nowhere else, exactly as the `job`'s own three acts are.
 SCAN = "scan"
 
+# The name of the `reminder` object, and the act that is its OWN — `at-cli
+# reminder due` (item 29's first slice). `REMINDER` is read off the table
+# module and not spelled a second time here, because the two constants this
+# object needs (`REMINDER`, `DUE`) already live where the recurrence they name
+# is decided. `DUE` reads the store and rewrites no row, so it is not one of the
+# engine's six either, for the reason `SCAN` is not.
+REMINDER = reminder.REMINDER
+DUE = reminder.DUE
+
 # The objects whose acts are THEIR OWN, narrowed here in the same shape a table
 # writes in its own declaration — permission → the actions it answers.
 #
@@ -124,6 +133,13 @@ NARROWED: dict[str, dict[str, tuple[str, ...]]] = {
     # administrator's. There is no second act under this object, and a closing
     # and a deletion stay the two permissions the table does not have.
     SECRET: {SCAN: (SCAN,)},
+    # `reminder` keeps every one of the engine's six under its own name — the
+    # table does not narrow itself, so this is the identity a table with no
+    # declaration of its own already answers with — and adds `due`, the one act
+    # the engine does not have. Read off `tables.ACTIONS` rather than spelled
+    # out here, so a sixth action the engine grows is a sixth permission this
+    # object already answers for, and not a silent gap.
+    REMINDER: {action: (action,) for action in tables.ACTIONS} | {DUE: (DUE,)},
 }
 
 # The objects that are not a table, and the actions each one accepts. §4 names
@@ -185,6 +201,9 @@ RISK_BY_ACTION: dict[str, float] = {
     # The scan READS the folder: it reports what it found and corrects nothing
     # (`secrets scan`), so it is a read like a listing and it moves no ceiling.
     "scan": RISK_READ,
+    # `due` READS the store: it says which reminders a day is about and writes
+    # no row, the same reason `scan` is a read and not a write.
+    "due": RISK_READ,
     "cancel": RISK_REMOVE,
     "delete": RISK_REMOVE,
     # The two halves of the approval are ONE act with two outcomes, and they are

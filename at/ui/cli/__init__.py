@@ -500,15 +500,24 @@ def _job(rest: list[str]) -> int:
 
 # --------------------------------------------------------------- tables ---
 
+# The acts that are a TABLE's own — read the folder or the store and write no
+# row, so none of them walks `run` and none of them is one of `tables.ACTIONS`.
+# `secret scan` is the one item 51 gave; `reminder due` is item 29's first
+# slice. A third one is a third entry, not a third `if`.
+_OWN_ACTS: dict[tuple[str, str], Callable[[list[str]], tuple[int, str]]] = {
+    (permissions.SECRET, permissions.SCAN): door.scan,
+    (permissions.REMINDER, permissions.DUE): door.reminder_due,
+}
+
+
 def _table(table: str, rest: list[str]) -> int:
     action = rest[0] if rest else "list"
     args = rest[1:] if rest else []
     if action not in tables.ACTIONS:
         # An act the engine does not have is the object's OWN, and it does not
         # walk `run`: `secret scan` reads the folder and writes nothing, so it
-        # records no line and versions nothing. It is the one such act a table
-        # declares today, and the catalogue (`permissions.actions`) is the closed
-        # list that says so.
+        # records no line and versions nothing. `_OWN_ACTS` is the closed list of
+        # them, held to the same names `permissions.actions` answers with.
         #
         # The engine's own words keep dispatching exactly as they always did,
         # including the ones a narrowed table does not answer: `audit delete`
@@ -516,10 +525,11 @@ def _table(table: str, rest: list[str]) -> int:
         # (§3). A word the table does not answer is a refusal to RECORD, and a
         # dispatch that turned it into a usage error would be a wall with no
         # trail behind it.
-        if table != permissions.SECRET or action != permissions.SCAN:
+        own = _OWN_ACTS.get((table, action))
+        if own is None:
             print(tr("table.error.unknown_action", action=action))
             return USAGE
-        code, answer = door.scan(args)
+        code, answer = own(args)
         print(answer)
         return code
     try:

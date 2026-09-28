@@ -1,0 +1,12 @@
+{
+  "pt_BR": {
+    "due.today": "Vencem em {date}:",
+    "due.warn": "Na janela de aviso:",
+    "due.error.arguments": "Use `reminder due` ou `reminder due --at <AAAA-MM-DD>`."
+  },
+  "en_US": {
+    "due.today": "Due on {date}:",
+    "due.warn": "In the warning window:",
+    "due.error.arguments": "Use `reminder due` or `reminder due --at <YYYY-MM-DD>`."
+  }
+}
