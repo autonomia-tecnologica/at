@@ -58,7 +58,7 @@ SAID = (
     # it — one of them carrying the VALUE, which is what makes it the one
     # message of this product a person has to be able to read twice.
     "services.notifier.phone.drawn", "services.notifier.phone.held",
-    "deploy.services.notify.about", "deploy.services.phone.about",
+    "deploy.services.notify.about", "deploy.services.notify.ask",
 )
 
 

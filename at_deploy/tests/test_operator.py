@@ -1,12 +1,14 @@
 """Item 27's operator acts: the phone's credential, and the gate's.
 
 Two things the environment has and had no door for, and each one is the other
-end of something already built. `services phone` is §7f's read end — AT
-publishes, the phone reads — and it is the one value this product PRINTS, once,
-because it has to reach a phone. `services credential` is §7b's — who is an
-actor is AT's, how it is proved is the gate's — and it is the act that makes
-the two meet: the row, the `users.yml` derived from it, and the restart that
-makes the new derivation the one Authelia proves.
+end of something already built. `services notify creds` is §7f's read end — AT
+publishes, the phone reads — and it is the act that PRINTS the one credential
+this product ever hands a person, because it has to reach a phone. It draws the
+pair if there is none, and shows it either way (2026-09-28: replacing the
+earlier print-once door). `services credential` is §7b's — who is an actor is
+AT's, how it is proved is the gate's — and it is the act that makes the two
+meet: the row, the `users.yml` derived from it, and the restart that makes the
+new derivation the one Authelia proves.
 
 The notifier is a container and the provider is one, so what is provable here is
 everything around them: the calls the acts make through the runtime's seam
@@ -14,10 +16,10 @@ everything around them: the calls the acts make through the runtime's seam
 Nothing touches the network, and nothing here starts a container.
 
 The two rules this file exists for: **the value travels to the phone and to
-nowhere else** — printed once, never in an argv, never a second time —, and
-**the restart does not evict the sessions already open**, because the session
-secret is drawn once and kept. The second one is a security decision and it is
-recorded in §3; here it is measured off the folder.
+nowhere else** — never in an argv, and open only behind the Frase de Acesso
+that seals it —, and **the restart does not evict the sessions already open**,
+because the session secret is drawn once and kept. The second one is a
+security decision and it is recorded in §3; here it is measured off the folder.
 """
 
 from __future__ import annotations
@@ -61,8 +63,8 @@ PHRASE = "a frase de acesso da suite, e ela nao abre nada de ninguem"
 # added to `notifier.py`, `environment.py` or `cli.py` without a line here is a
 # message nobody checks.
 SAID = (
-    "deploy.services.phone.about", "deploy.services.credential.about",
-    "deploy.services.credential.ask",
+    "deploy.services.notify.about", "deploy.services.notify.ask",
+    "deploy.services.credential.about", "deploy.services.credential.ask",
     "services.notifier.phone.drawn", "services.notifier.phone.held",
     "services.notifier.phone.at", "services.notifier.phone.absent",
     # §7f's read, proved at the end of the word: what closing looks like, and the
@@ -131,7 +133,7 @@ class FakeEdge:
 
     Ela responde pelo NOME: o pedido que traz o token do celular no cabeçalho lê
     o tópico, e o que não traz nenhum é recusado — as duas metades que a palavra
-    `phone` prova. Cada metade tem a sua resposta, para que os dois defeitos
+    `notify creds` prova. Cada metade tem a sua resposta, para que os dois defeitos
     possam ser encenados: um token que não lê, e um notificador que responde a
     quem não traz token nenhum. `nothing` é a borda que não respondeu: "não deu
     para saber", que não é prova de nada.
@@ -253,7 +255,7 @@ class FolderCase(unittest.TestCase):
 # ------------------------------------------------------------ the phone ---
 
 class TheReadToken(FolderCase):
-    """§7f's other end: the phone's credential, drawn once and printed once."""
+    """§7f's other end: the phone's credential, drawn if missing, shown always."""
 
     def setUp(self):
         super().setUp()
@@ -289,14 +291,15 @@ class TheReadToken(FolderCase):
                        "user", "add", "--role", "user", notifier.PHONE_USER],
                       fake.argv())
 
-    def test_the_value_is_printed_once_and_it_is_the_one_the_notifier_drew(self):
-        # The token has to reach a phone, and the only road there is the
+    def test_the_value_is_printed_and_it_is_the_one_the_notifier_drew(self):
+        # The credential has to reach a phone, and the only road there is the
         # person's eyes: this is the one message of the product that carries a
         # credential, and it carries it because there is no other way it could
         # travel.
         _, outcome, text = self.subscribe()
         self.assertEqual(outcome, notifier.PHONE_DRAWN)
         self.assertIn(DRAWN_TOKEN, text)
+        self.assertIn(self.secret, text)
         # What a person needs beside the value: where the alert comes from, and
         # which topic to subscribe to.
         self.assertIn(notifier.TOPIC, text)
@@ -321,8 +324,8 @@ class TheReadToken(FolderCase):
                          / "pki" / "authorities" / "local" / "root.crt")
 
     def test_a_second_run_still_names_the_road_and_the_certificate(self):
-        # A segunda rodada não imprime o valor, e continua dizendo o que fazer no
-        # aparelho: quem reabre isto é quem está com o celular na mão.
+        # A segunda rodada também mostra o valor, e continua dizendo o que fazer
+        # no aparelho: quem reabre isto é quem está com o celular na mão.
         self.subscribe()
         _, outcome, text = self.subscribe()
         self.assertEqual(outcome, notifier.PHONE_HELD)
@@ -335,15 +338,21 @@ class TheReadToken(FolderCase):
         self.assertEqual(where, env.state(env.NOTIFIER) / "phone-token")
         self.assertEqual(stat.S_IMODE(where.stat().st_mode), 0o600)
         self.assertEqual(notifier.phone_token(self.key()), DRAWN_TOKEN)
+        # A senha da conta de verdade fica ao lado, com o mesmo modo — é o par
+        # que o app do ntfy loga com (2026-09-28).
+        pwhere = notifier.phone_password_file()
+        self.assertEqual(pwhere, env.state(env.NOTIFIER) / "phone-password")
+        self.assertEqual(stat.S_IMODE(pwhere.stat().st_mode), 0o600)
+        self.assertEqual(notifier.phone_password(self.key()), self.secret)
 
-    def test_a_second_run_never_prints_the_value_again(self):
-        # The rule is once, and it is the rule because the value came out in a
-        # scrollback the first time: what is kept is what the phone kept, and
-        # the file is where a person reads it a second time.
+    def test_a_second_run_shows_the_same_value_again(self):
+        # 2026-09-28: a Frase de Acesso é o único portão — quem já a digitou uma
+        # vez não precisa de uma segunda regra para ver o que ela abre de novo.
         self.subscribe()
         fake, outcome, text = self.subscribe()
         self.assertEqual(outcome, notifier.PHONE_HELD)
-        self.assertNotIn(DRAWN_TOKEN, text)
+        self.assertIn(DRAWN_TOKEN, text)
+        self.assertIn(self.secret, text)
         self.assertIn(str(notifier.phone_file()), text)
         self.assertEqual(fake.calls, [])
         self.assertEqual(notifier.phone_token(self.key()), DRAWN_TOKEN)
@@ -382,9 +391,11 @@ class TheReadToken(FolderCase):
         for word in ("user", "access", "token"):
             with self.subTest(step=word):
                 notifier.phone_file().unlink(missing_ok=True)
+                notifier.phone_password_file().unlink(missing_ok=True)
                 _, outcome, text = self.subscribe(fails=(word,))
                 self.assertEqual(outcome, notifier.FAILED)
                 self.assertIsNone(notifier.phone_token(self.key()))
+                self.assertIsNone(notifier.phone_password(self.key()))
                 self.assertIn(f"ntfy {word}", text)
 
     def test_a_notifier_that_never_stands_is_said_and_not_guessed(self):
@@ -413,6 +424,7 @@ class TheReadToken(FolderCase):
                               where=notifier.phone_file(), topic=notifier.TOPIC,
                               scope=notifier.PHONE_SCOPE), text)
         self.assertNotIn(DRAWN_TOKEN, text)
+        self.assertNotIn(self.secret, text)
 
     def test_the_delivery_still_uses_bills_own_credential(self):
         # The two ends do not borrow each other: the phone's token is drawn and
@@ -422,6 +434,43 @@ class TheReadToken(FolderCase):
         self.assertIsNone(notifier.token(self.key()))
         self.assertEqual(notifier.phone_token(self.key()), DRAWN_TOKEN)
 
+    def test_a_folder_with_only_the_old_token_is_rotated_and_not_locked(self):
+        # A migração (2026-09-28): uma pasta que só tinha o token (o par de antes
+        # de a senha ficar) entra pela MESMA porta de "não há credencial ainda" —
+        # a conta é removida e redesenhada, e o par novo sai completo.
+        self.machine()
+        with mock.patch.object(env, "GRACE", 0.0):
+            self.quiet(env.up, secret=self.phrase)
+        notifier.write_phone_token("tk_" + "0" * 29, self.key())
+        self.assertTrue(notifier.has_phone())
+        self.assertFalse(notifier.has_phone_password())
+        _, outcome, text = self.subscribe()
+        self.assertEqual(outcome, notifier.PHONE_DRAWN)
+        self.assertEqual(notifier.phone_token(self.key()), DRAWN_TOKEN)
+        self.assertEqual(notifier.phone_password(self.key()), self.secret)
+        self.assertIn(DRAWN_TOKEN, text)
+
+    def test_a_key_that_does_not_open_what_is_kept_is_said_and_not_guessed(self):
+        # Uma Frase diferente da que selou não é "não há credencial": é "não
+        # abre o que há" — a mesma conferência de qualquer subida
+        # (`environment._ask_phrase`, que a Chave desta chamada também pede),
+        # porque as duas pontas do notificador entram em `_sealed_files` e uma
+        # Frase errada se recusa ALI, antes de `subscribe` ler coisa nenhuma.
+        self.subscribe()
+        other = "outra frase de acesso, e ela e bem longa"
+        self.machine()
+        with mock.patch.object(env, "GRACE", 0.0):
+            outcome, text = self.quiet(
+                notifier.subscribe, FakeEdge(), secret=lambda question: other)
+        self.assertEqual(outcome, notifier.FAILED)
+        self.assertNotIn(DRAWN_TOKEN, text)
+        self.assertNotIn(self.secret, text)
+        self.assertIn(i18n.tr("services.phrase.unopened",
+                              where=notifier.phone_file()), text)
+        # A Chave certa continua abrindo o que já estava lá — nada foi
+        # sobrescrito por uma tentativa que não abriu.
+        self.assertEqual(notifier.phone_token(self.key()), DRAWN_TOKEN)
+
 
 class TheReadProved(FolderCase):
     """A leitura do celular, provada pelo NOME — com o token e sem ele.
@@ -429,7 +478,7 @@ class TheReadProved(FolderCase):
     `TheReadToken` prova que o token nasce e fica guardado; isto prova o que a
     ponta da ACL precisa dizer, e que um arquivo com um token dentro não é a
     mesma coisa: o celular não é a máquina onde o ambiente roda, então a palavra
-    `phone` pergunta à BORDA, pelo nome que o aparelho vai digitar, e diz o que
+    `notify creds` pergunta à BORDA, pelo nome que o aparelho vai digitar, e diz o que
     não fechou. As duas metades são o token lendo e o token sendo a porta.
     """
 
@@ -530,11 +579,11 @@ class TheReadProved(FolderCase):
                               authority=env.authority_file(),
                               code=notifier.NO_TOKEN_REFUSED), text)
 
-    def test_a_second_run_proves_the_read_again_and_prints_no_value(self):
+    def test_a_second_run_proves_the_read_again_and_shows_the_value_again(self):
         self.subscribe()
         _, _, outcome, text = self.subscribe()
         self.assertEqual(outcome, notifier.PHONE_HELD)
-        self.assertNotIn(DRAWN_TOKEN, text)
+        self.assertIn(DRAWN_TOKEN, text)
         self.assertIn(i18n.tr("services.notifier.phone.proved",
                               url=notifier.phone_url(), topic=notifier.TOPIC),
                       text)
@@ -694,32 +743,33 @@ class TheDoor(FolderCase):
         said = list(values)
         return lambda question: said.pop(0) if said else ""
 
-    def test_the_phone_door_answers_ok_and_draws_the_credential(self):
+    def test_the_notify_creds_door_answers_ok_and_draws_the_credential(self):
         self.machine()
         with mock.patch.object(env, "GRACE", 0.0):
-            code, text = self.quiet(services, ["phone"], answer=FakeEdge(),
-                                    secret=self.phrase)
+            code, text = self.quiet(services, ["notify", "creds"],
+                                    answer=FakeEdge(), secret=self.phrase)
         self.assertEqual(code, OK)
         self.assertIn(DRAWN_TOKEN, text)
         self.assertEqual(notifier.phone_token(self.key()), DRAWN_TOKEN)
 
-    def test_the_phone_door_is_a_refusal_when_the_credential_is_not_made(self):
+    def test_the_notify_creds_door_is_a_refusal_when_the_credential_is_not_made(self):
         self.machine(fails=("access",))
         with mock.patch.object(env, "GRACE", 0.0):
-            code, _ = self.quiet(services, ["phone"], answer=FakeEdge())
+            code, _ = self.quiet(services, ["notify", "creds"],
+                                 answer=FakeEdge())
         self.assertEqual(code, REFUSED)
 
-    def test_the_phone_door_is_a_refusal_when_the_read_is_not_proved(self):
+    def test_the_notify_creds_door_is_a_refusal_when_the_read_is_not_proved(self):
         # A palavra promete a LEITURA, e não o arquivo: um token que não lê pelo
         # nome é uma credencial sorteada e um celular que não alcança o tópico —
-        # a mesma resposta que `notify` dá quando o alerta não sai.
+        # a mesma resposta que `notify` (sem `creds`) dá quando o alerta não sai.
         self.machine()
         with mock.patch.object(env, "GRACE", 0.0):
-            code, text = self.quiet(services, ["phone"],
+            code, text = self.quiet(services, ["notify", "creds"],
                                     answer=FakeEdge(read=403),
                                     secret=self.phrase)
         self.assertEqual(code, REFUSED)
-        self.assertIn(DRAWN_TOKEN, text)   # o valor saiu uma vez, e fica no arquivo
+        self.assertIn(DRAWN_TOKEN, text)   # o valor foi sorteado, e fica no arquivo
         self.assertEqual(notifier.phone_token(self.key()), DRAWN_TOKEN)
 
     def test_the_credential_door_reads_it_twice_and_without_echo(self):
@@ -777,11 +827,22 @@ class TheDoor(FolderCase):
         self.assertIn(i18n.tr("deploy.services.credential.ask"), text)
 
     def test_a_word_that_takes_no_argument_still_takes_none(self):
-        for words in (["services", "phone", "extra"], ["services", "credential",
+        for words in (["services", "down", "extra"], ["services", "credential",
                                                        "a", "b"]):
             with self.subTest(words=words):
                 code, _ = self.quiet(main, words)
                 self.assertEqual(code, USAGE)
+
+    def test_notify_takes_no_word_but_creds(self):
+        # `notify` is the one word with a CLOSED optional vocabulary: nothing,
+        # or `creds` — anything else is the same usage refusal as an argument a
+        # word never asked for.
+        for words in (["services", "notify", "extra"],
+                      ["services", "notify", "creds", "extra"]):
+            with self.subTest(words=words):
+                code, text = self.quiet(main, words)
+                self.assertEqual(code, USAGE)
+                self.assertIn(i18n.tr("deploy.services.notify.ask"), text)
 
     def test_no_terminal_means_no_credential_to_change(self):
         # The suite runs with no tty, which is the state the door refuses in.
@@ -819,8 +880,8 @@ class TheWords(unittest.TestCase):
         # and where the address it comes from is.
         for code in i18n.SUPPORTED:
             text = i18n.text("services.notifier.phone.drawn", code)
-            for placeholder in ("{token}", "{topic}", "{url}", "{where}",
-                                "{scope}", "{authority}"):
+            for placeholder in ("{token}", "{password}", "{topic}", "{url}",
+                                "{where}", "{scope}", "{authority}"):
                 with self.subTest(key=placeholder, language=code):
                     self.assertIn(placeholder, text)
 

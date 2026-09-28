@@ -1939,10 +1939,17 @@ html.no-motion *::before, html.no-motion *::after {
      the same as section 2's (the choice) on purpose — the two doors give the same
      state, and nothing here may diverge from there. */
   html.shell:not(.nav-open) nav { width: var(--sidebar-rail); flex-basis: var(--sidebar-rail); }
+  /* THE FOOT KEEPS ITS LAST ROW ON THE RAIL, HERE TOO (fixed 2026-09-27): this
+     door used to hide `.side-foot` WHOLE, and the toggle button lives inside it
+     — a hidden door with no handle, the exact failure section 4's rule (line
+     221) already exists to avoid. The fix is the same split: only the rows that
+     are DESTINATIONS fade, the row that is a CONTROL stays. */
   html.shell:not(.nav-open) #kinds, html.shell:not(.nav-open) .brand,
-  html.shell:not(.nav-open) .side-foot {
+  html.shell:not(.nav-open) .side-foot > .file,
+  html.shell:not(.nav-open) .side-foot > .sep {
     opacity: 0; visibility: hidden;
     transition: opacity var(--speed) var(--ease), visibility 0s var(--speed); }
+  html.shell:not(.nav-open) .side-foot { width: var(--sidebar-rail); }
   html.shell:not(.nav-open) .brand { position: absolute; }
   html.shell:not(.nav-open) nav h1 { justify-content: center; padding-inline: 0; }
   html.shell:not(.nav-open) .nav-toggle { margin-left: 0; }

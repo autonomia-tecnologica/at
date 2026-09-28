@@ -1059,8 +1059,8 @@ def _drawn_files() -> tuple[Path, ...]:
     subirem (`notifier.provision`): um arquivo que falta é um sorteio que vem
     aí, e um sorteio SELA.
 
-    **A do celular NÃO entra**: quem a sorteia é o `phone`, um ato da pessoa e
-    não da subida — quem responde por ela é a porta de quem sela
+    **A do celular NÃO entra**: quem a sorteia é o `notify creds`, um ato da
+    pessoa e não da subida — quem responde por ela é a porta de quem sela
     (`sealing_key`).
     """
     from at_deploy import notifier  # noqa: PLC0415 — notifier reads this module
@@ -1096,7 +1096,8 @@ def _sealed_files() -> tuple[tuple[Path, str], ...]:
         found += tuple((state(service.name) / name, service.name)
                        for name, _ in service.writes)
     found += ((notifier.token_file(), NOTIFIER),
-              (notifier.phone_file(), NOTIFIER))
+              (notifier.phone_file(), NOTIFIER),
+              (notifier.phone_password_file(), NOTIFIER))
     return found
 
 
@@ -1159,8 +1160,8 @@ def _needs_phrase() -> bool:
     o que sortear. **E as duas pontas do notificador entram na pergunta**: a
     credencial do AT é um dos arquivos que o `up` sorteia (`_drawn_files`), e a
     do celular, que o `up` não sorteia, é conferida como qualquer selo da pasta
-    (`_sealed_files`) — quem a abre no dia a dia é o `phone`, pela porta de quem
-    sela.
+    (`_sealed_files`) — quem a abre no dia a dia é o `notify creds`, pela porta
+    de quem sela.
     """
     for where in _drawn_files():
         if not where.exists():
@@ -1250,9 +1251,9 @@ def sealing_key(secret: Ask | None) -> tuple[bytes | None, str | None]:
     a Chave", e é a diferença que um ato que SELA não pode ignorar: uma pasta que
     nasceu antes do selo não tem o que ABRIR e, no entanto, o valor que o ato vai
     sortear tem de sair selado — sem Chave ele iria para a pasta em claro, que é
-    exatamente o que o item 50 existe para não haver. Quem a usa é o `phone`
-    (`notifier.subscribe`), que sorteia uma credencial, imprime o valor e sela o
-    que fica.
+    exatamente o que o item 50 existe para não haver. Quem a usa é o `notify
+    creds` (`notifier.subscribe`), que sorteia o par se faltar, mostra o que há
+    e sela o que fica.
 
     A recusa é a mesma das outras portas: sem terminal não se pergunta (§3, a
     postura fechada), e uma Frase que não abre o que a pasta guarda não sela nada

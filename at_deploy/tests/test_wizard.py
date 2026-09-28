@@ -5,8 +5,8 @@ is a word the `cli` offers, reached through the `cli`'s own dispatch, so the
 screen cannot do anything the command line cannot. **The sequence holds itself
 back** — a required step that did not close does not open the next one, and
 "closed" is the environment standing and not the exit code, which is the whole
-reason §7a's way out needed its own answer. And **the phone's token is shown
-once**, in the instant it is born, by the same code the `cli` prints it with.
+reason §7a's way out needed its own answer. And **the phone's credential is
+shown on demand** (2026-09-28), by the same code the `cli` prints it with.
 
 The window is the `tkinter` that never draws, the way `at/tests/test_wizard.py`
 does it: this machine HAS a display, so a test that opened a real one would be a
@@ -43,8 +43,8 @@ def edge(url: str, headers: dict[str, str]) -> int:
     """A borda, sem socket — o seam `gate.Answer` da prova do celular (§7f).
 
     O que se prova aqui não é a PROVA — ela é do `test_operator` —, e sim que o
-    passo da janela a alcança: a palavra `phone` pergunta pelo nome ao fim do
-    ato, e um `Tk` não pode abrir um socket para responder.
+    passo da janela a alcança: `notify creds` pergunta pelo nome ao fim do ato,
+    e um `Tk` não pode abrir um socket para responder.
     """
     return 200 if headers.get("Authorization") else 403
 
@@ -291,7 +291,12 @@ class TheStepsAreTheClisWords(unittest.TestCase):
         # follows (a witness has to exist before the gate can be proved), and
         # §7f's two close it.
         self.assertEqual([step.word for step in wizard.STEPS],
-                         ["up", "credential", "switch", "notify", "phone"])
+                         ["up", "credential", "switch", "notify", "notify"])
+        # `notify` twice, and not a duplicate: §7f's two acts share the CLI word
+        # (2026-09-28) — the last Step's `argv` is what makes the second one
+        # `notify creds` and not the same screen run again.
+        self.assertEqual([step.argv for step in wizard.STEPS],
+                         [(), (), (), (), ("creds",)])
 
     def test_every_step_is_a_word_the_cli_offers(self):
         # `cli.WORDS` is read off the tree that OFFERS the words, so a step that
@@ -520,7 +525,8 @@ class TheWindow(FolderCase):
             fake.button(i18n.tr("deploy.wizard.run")).press()
 
         self.assertIn(i18n.tr("services.notifier.phone.drawn",
-                              token=DRAWN_TOKEN, topic=notifier.TOPIC,
+                              token=DRAWN_TOKEN, password=self.secret,
+                              topic=notifier.TOPIC,
                               scope=notifier.PHONE_SCOPE,
                               url=env.notifier_public_url(),
                               authority=env.authority_file(),
@@ -533,25 +539,25 @@ class TheWindow(FolderCase):
                               url=notifier.phone_url(), topic=notifier.TOPIC),
                       fake.area().content)
 
-    def test_the_phone_token_is_shown_once_and_never_again(self):
-        # §3's rule for the phone, kept by the code that keeps it in the `cli`:
-        # the value is drawn in the instant it is born, and the second run prints
-        # the file's name and never the value.
+    def test_the_phone_credential_is_shown_every_time_the_step_runs(self):
+        # 2026-09-28: the print-once rule is gone — a value sealed behind the
+        # Frase de Acesso does not need a SECOND gate on top, so the step shows
+        # it again on every run, not just the first.
         self.machine()
         with mock.patch.object(env, "GRACE", 0.0):
-            _, first = wizard.run_step("phone", secret=lambda q: PHRASE,
-                                       answer=edge)
-            _, second = wizard.run_step("phone", secret=lambda q: PHRASE,
-                                        answer=edge)
+            _, first = wizard.run_step("notify", secret=lambda q: PHRASE,
+                                       answer=edge, argv=("creds",))
+            _, second = wizard.run_step("notify", secret=lambda q: PHRASE,
+                                        answer=edge, argv=("creds",))
         self.assertIn(DRAWN_TOKEN, first)
-        self.assertNotIn(DRAWN_TOKEN, second)
-        self.assertIn(str(notifier.phone_file()), second)
+        self.assertIn(DRAWN_TOKEN, second)
+        self.assertIn(self.secret, second)
 
-    def test_the_window_holds_the_phone_token_in_the_instant_it_is_born(self):
-        # The screen's half of the same rule, and the one place a value the
-        # product prints ONCE could quietly outlive its once: what the window
-        # shows is replaced on every run, so the second press of the button
-        # reads the file's name and the value is gone with the run that drew it.
+    def test_the_window_shows_the_phone_credential_again_on_a_second_press(self):
+        # The screen's half of the same rule: what the window shows is replaced
+        # on every run, and the second press still has the value to replace it
+        # WITH, because the step opens the same envelope again instead of
+        # refusing a second look.
         self.machine()
         fake, walk = self.window(ask=lambda q: "", secret=lambda q: PHRASE,
                                  answer=edge)
@@ -560,8 +566,8 @@ class TheWindow(FolderCase):
             fake.button(i18n.tr("deploy.wizard.run")).press()
             self.assertIn(DRAWN_TOKEN, fake.area().content)
             fake.button(i18n.tr("deploy.wizard.run")).press()
-        self.assertNotIn(DRAWN_TOKEN, fake.area().content)
-        self.assertIn(str(notifier.phone_file()), fake.area().content)
+        self.assertIn(DRAWN_TOKEN, fake.area().content)
+        self.assertIn(self.secret, fake.area().content)
 
     def test_the_finish_button_is_the_last_steps_next_and_closes_the_window(self):
         self.machine()

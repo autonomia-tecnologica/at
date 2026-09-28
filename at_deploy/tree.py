@@ -23,10 +23,12 @@ WORDS: tuple[Node, ...] = (
     # `notify` is §7f's, and it is the one word that proves the delivery by hand:
     # one alert, through the credential `up` created, to the topic.
     #
-    # `phone` and `credential` are the OPERATOR's acts (item 27), and they are
+    # `notify` and `credential` are the OPERATOR's acts (item 27), and they are
     # the environment's because the two things they change are: §7f's other end
-    # of the topic's ACL, and the credential §7b's gate proves. `credential` is
-    # the one word of this artifact that takes an argument — a NAME.
+    # of the topic's ACL, and the credential §7b's gate proves. `credential`
+    # takes an OPEN argument — a NAME; `notify` takes an OPTIONAL closed one —
+    # with none it sends the test alert, and with `creds` it shows the phone's
+    # credential instead (`at_deploy/cli.py`).
     Node(
         "services",
         "deploy.services.about",
@@ -37,7 +39,6 @@ WORDS: tuple[Node, ...] = (
             Node("switch", "deploy.services.switch.about"),
             Node("forms", "deploy.services.forms.about"),
             Node("notify", "deploy.services.notify.about"),
-            Node("phone", "deploy.services.phone.about"),
             Node("credential", "deploy.services.credential.about"),
         ),
     ),

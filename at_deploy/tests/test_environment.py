@@ -2625,7 +2625,7 @@ class TheDoor(FolderCase):
         assert node is not None
         self.assertEqual(
             [child.name for child in node.children],
-            ["up", "down", "status", "switch", "forms", "notify", "phone",
+            ["up", "down", "status", "switch", "forms", "notify",
              "credential"],
             "a word the dispatch takes and the help does not offer (or the "
             "other way round) is the defect §5's one-way rule exists for",
@@ -2658,7 +2658,7 @@ class TheDoor(FolderCase):
         self.assertEqual(code, OK)
         self.assertIn("services", text)
         self.assertIn(
-            "up, down, status, switch, forms, notify, phone, credential", text)
+            "up, down, status, switch, forms, notify, credential", text)
 
     def test_the_delivery_is_proved_by_hand_and_says_where_it_would_come_from(self):
         # §7f's proof, walked from the `cli`: one alert, through the credential,
