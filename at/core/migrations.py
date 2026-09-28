@@ -926,6 +926,20 @@ def _clock(ask: Ask | None) -> list[Report]:
     return _extend(CLOCK)
 
 
+# O que a seção do Cofre (TASK-156) demanda, e nenhum papel nascido antes
+# desta versão teve a CHANCE de carregar — a mesma razão de `GROWN` e `ADDED`.
+COFRE_GRANTED = ("cofre:read",)
+
+
+def _cofre_permission(ask: Ask | None) -> list[Report]:
+    """Migration vinte: `cofre:read`, que a seção do Cofre (TASK-156) demanda.
+
+    A mesma forma de `_catalogue` e `_objects`: só o administrador, só o que
+    falta, e não pergunta — o ganho é só leitura de uma lista de nomes.
+    """
+    return _hand_over(COFRE_GRANTED)
+
+
 def _cofre_folder(ask: Ask | None) -> list[Report]:
     """`Cofre/` — a pasta que sela sozinha, chega numa pasta que já existia
     (TASK-152, TASK-154).
@@ -960,6 +974,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(17, _tags),
     Migration(18, _clock),
     Migration(19, _cofre_folder),
+    Migration(20, _cofre_permission),
 )
 
 

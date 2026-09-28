@@ -427,7 +427,7 @@ PAGE_WORDS = (
     # came out with an empty one. The panel's `#brand` was drawing nothing all
     # along.
     "brand", "brand_name",
-    "tasks", "files", "tables", "settings", "general", "appearance", "language",
+    "tasks", "files", "cofre", "tables", "settings", "general", "appearance", "language",
     "dark_mode", "dark_system", "dark_theme", "dark_light", "dark_dark",
     "motion", "themes", "no_project", "board", "new_project", "delete_project",
     "move_to_project", "records", "hidden", "no_records", "error", "filter",
@@ -1325,6 +1325,14 @@ class Handler(BaseHTTPRequestHandler):
             if not self._may("prose:read"):
                 return
             self._get_file(query.get("path", [""])[0])
+            return
+
+        if rest == ["cofre"]:
+            # TASK-156: a lista, e só — o que sela é o vigia (TASK-154), não
+            # um gesto desta rota.
+            if not self._may("cofre:read"):
+                return
+            self._json({"files": [{"path": path} for path in cofre.listed()]})
             return
 
         if len(rest) == 2 and rest[0] == "table":

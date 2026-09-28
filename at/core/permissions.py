@@ -165,6 +165,10 @@ EXTRA: dict[str, tuple[str, ...]] = {
     "service": ("read", "edit"),
     "plugin": ("read", "edit"),
     "vocabulary": ("read", "edit"),
+    # TASK-156: a seção lê a lista dos `.enc` — nada aqui edita nada, porque o
+    # que entra em `Cofre/` sela sozinho (o vigia, TASK-154), e não por um
+    # gesto da página.
+    "cofre": ("read",),
 }
 
 # ------------------------------------------------------------------- risk ---

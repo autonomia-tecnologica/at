@@ -58,6 +58,24 @@ def sealed_name(path: Path) -> Path:
     return path.with_name(path.name + SUFFIX)
 
 
+def listed() -> list[str]:
+    """Todo `.enc` de `Cofre/`, como caminhos POSIX relativos a ela, em ordem
+    de nome (TASK-156) — a mesma forma de `at.prose.listing.listed`.
+
+    **Só o `.enc`.** Um claro ainda esperando o selo não é o que a seção
+    mostra: o que ela lista é o que já é do Cofre, e um arquivo em trânsito
+    não é.
+    """
+    base = folder()
+    if not base.is_dir():
+        return []
+    out: list[str] = []
+    for entry in sorted(base.rglob("*")):
+        if entry.is_file() and entry.suffix == SUFFIX:
+            out.append(entry.relative_to(base).as_posix())
+    return out
+
+
 def seal_file(path: Path, key: bytes) -> Path:
     """Sela `path`: escreve o `.enc` com o fingerprint, apaga o claro, devolve
     o caminho do selado.

@@ -30,6 +30,7 @@ from at.core import (
     actors,
     audit,
     boot,
+    cofre,
     paths,
     permissions,
     projects,
@@ -770,6 +771,31 @@ class TheProseDoors(ServerCase):
         self.assertFalse(answer["error"].startswith(("prose.", "webapp.")))
 
 
+class TheCofreDoor(ServerCase):
+    """`GET /api/cofre` — a lista dos `.enc`, e só (TASK-156, fatia 3/3).
+
+    A recusa por permissão é a de `TheCeiling` (o mesmo teste que cobre TODA
+    rota de leitura, `/api/cofre` incluída) — aqui só o que a rota é dona de
+    provar: o que ela lista.
+    """
+
+    def test_the_listing_carries_every_enc_and_nothing_else(self):
+        (paths.cofre_dir() / "claro.txt").write_text("ainda nao selado", encoding="utf-8")
+        cofre.seal_file(paths.cofre_dir() / "claro.txt", b"k" * 32)
+        _, _, body = self.get("/api/cofre")
+        listing = json.loads(body)
+        self.assertEqual([f["path"] for f in listing["files"]], ["claro.txt.enc"])
+
+    def test_an_empty_cofre_answers_an_empty_list(self):
+        _, _, body = self.get("/api/cofre")
+        self.assertEqual(json.loads(body)["files"], [])
+
+    def test_a_file_still_clear_does_not_show_up(self):
+        (paths.cofre_dir() / "claro.txt").write_text("ainda nao selado", encoding="utf-8")
+        _, _, body = self.get("/api/cofre")
+        self.assertEqual(json.loads(body)["files"], [])
+
+
 class TheAskDoor(ServerCase):
     """`POST /api/ask` — the box's door, and the words it reads back.
 
@@ -1372,7 +1398,8 @@ class TheCeiling(ServerCase):
     # `_get_api` and the writes of `do_POST`, minus the entrance, which is the
     # one that has to answer before anybody is in.
     READS = ("/api/state", "/api/projects", "/api/orphans", "/api/project/1",
-             "/api/tree", "/api/file?path=nota.md", "/api/table/task")
+             "/api/tree", "/api/file?path=nota.md", "/api/table/task",
+             "/api/cofre")
     WRITES = (
         ("/api/file", {"path": "nota.md", "text": "x", "base": ""}),
         ("/api/ask", {"text": "cria uma tarefa pra hoje"}),

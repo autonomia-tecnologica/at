@@ -17,12 +17,13 @@
 
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { store, word } from "../lib/store";
-import { CHAT_KEY, NLU_UI_ENABLED, TASKS_KEY, FILES_KEY, TABLES_KEY, BOARD_KEY, isCurrent, open, countOf } from "../lib/views";
+import { CHAT_KEY, NLU_UI_ENABLED, TASKS_KEY, FILES_KEY, COFRE_KEY, TABLES_KEY, BOARD_KEY, isCurrent, open, countOf } from "../lib/views";
 import { byName } from "../lib/order";
 import { navRail, toggleNav } from "../lib/nav";
 import Foldable from "./Foldable.vue";
 import ProjectsTree from "./ProjectsTree.vue";
 import FileTree from "./FileTree.vue";
+import CofreTree from "./CofreTree.vue";
 
 const foot = ref<HTMLElement | null>(null);
 let footWatcher: ResizeObserver | null = null;
@@ -122,6 +123,11 @@ onUnmounted(() => {
     </Foldable>
     <Foldable id="files" :label="word('files')" box-class="branch" :view="FILES_KEY">
       <FileTree />
+    </Foldable>
+    <!-- THE COFRE, right after Arquivos — a fourth fold, the same shape as the
+         third (TASK-156): what it lists is what the vigia already sealed. -->
+    <Foldable id="cofre" :label="word('cofre')" box-class="branch" :view="COFRE_KEY">
+      <CofreTree />
     </Foldable>
     <Foldable id="tables" :label="word('tables')" box-class="kinds" :view="TABLES_KEY">
       <button v-for="kind in kinds" :key="kind.key" type="button"

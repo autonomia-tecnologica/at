@@ -9,9 +9,10 @@
 import { createApp } from "vue";
 import App from "./App.vue";
 import "./styles/app.css";
-import { registerView, registerType, TASKS_KEY, FILES_KEY, TABLES_KEY, BOARD_KEY } from "./lib/views";
+import { registerView, registerType, TASKS_KEY, FILES_KEY, COFRE_KEY, TABLES_KEY, BOARD_KEY } from "./lib/views";
 import TasksView from "./views/TasksView.vue";
 import FilesView from "./views/FilesView.vue";
+import CofreView from "./views/CofreView.vue";
 import TablesView from "./views/TablesView.vue";
 import BoardView from "./views/BoardView.vue";
 import SettingsView from "./views/SettingsView.vue";
@@ -35,6 +36,9 @@ registerView(TASKS_KEY, TasksView);
 // THE OTHER TWO SECTIONS, one line each — which is the whole point of the key
 // being the fold's id.
 registerView(FILES_KEY, FilesView);
+// THE COFRE'S OWN SCREEN (TASK-156), a fourth line for the same reason: the
+// fold's id is the view's address (`/cofre`).
+registerView(COFRE_KEY, CofreView);
 registerView(TABLES_KEY, TablesView);
 // THE BOARD: not a section's own fold, but the door right after ORPHANS in the
 // same tree (`Sidebar.vue`) — a view like any other, with an address of its

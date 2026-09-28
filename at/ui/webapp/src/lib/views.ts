@@ -41,6 +41,12 @@ export const TASKS_KEY = "tasks";
 export const FILES_KEY = "files";
 export const TABLES_KEY = "tables";
 
+// THE COFRE'S OWN SCREEN (TASK-156): a fourth fold, sibling of FILES — it
+// lists what the vigia-driven seal already sealed (`/api/cofre`), and reads
+// nothing else — the fold has no gesture of its own, because sealing is the
+// Watcher's (`at.core.cofre`) and never a click on this page.
+export const COFRE_KEY = "cofre";
+
 // The interpreter's chat, which is a view of the page like the others — and one
 // the page does not OFFER when the interpreter is off (`store.interpreter`),
 // because turning it off takes the chat away and an address that still opened one
