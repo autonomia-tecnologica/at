@@ -37,7 +37,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from release import floor
+from release import floor, sbom
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
@@ -164,7 +164,13 @@ def main(argv: list[str] | None = None) -> int:
     published = sorted((where / "dist").iterdir())
     for built in published:
         shutil.copy2(built, ROOT / "dist" / built.name)
-    print("Published: " + ", ".join(built.name for built in published))
+    # Item 46: the SBOM, beside the binaries. Every number it carries is read
+    # from the checkout at ROOT — `builder.json`, the two requirements files,
+    # the vendored Caddy tarball, the frontend's lock — and none of it depends
+    # on the container that just ran, so it is written from the HOST.
+    manifest = sbom.write(said, ROOT / "dist")
+    print("Published: " + ", ".join(built.name for built in published)
+          + f", {manifest.name}")
     print(f"The scratch stays in {scratch} — root owns it, and the disk is cheap.")
     return 0
 

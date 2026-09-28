@@ -13,6 +13,7 @@ built the artifact gets mistaken for the floor the artifact demands.
 
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import subprocess
@@ -22,7 +23,8 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
 
-from release import build, floor
+from at.services import caddy
+from release import build, floor, sbom
 
 # A REAL `objdump -T` of a machine whose glibc publishes `cosh` as an IFUNC: the
 # versioned `UND` entries are what the object asks for, and the `g DF .text`
@@ -288,6 +290,87 @@ class TheDeclaration(unittest.TestCase):
             ["LICENSE.md", "LICENSE.txt", "COPYING.txt", "manifest.json",
              "gitleaks_8.30.1_linux_x64.tar.gz"],
         )
+
+
+class TheSbom(unittest.TestCase):
+    """Item 46: the composition published as one CycloneDX artifact.
+
+    Every number here is read off a REAL file this checkout already carries —
+    `builder.json`, the two requirements files, the vendored Caddy tarball, the
+    frontend's lock — so the suite reads the same sources the generator does
+    and compares, instead of a fixture nobody keeps in step with them.
+    """
+
+    def setUp(self):
+        self.said = build.declared()
+        self.doc = sbom.build(self.said)
+
+    def by_name(self, name: str) -> dict:
+        return next(c for c in self.doc["components"] if c["name"] == name)
+
+    def test_the_document_names_its_own_format(self):
+        self.assertEqual(self.doc["bomFormat"], "CycloneDX")
+        self.assertEqual(self.doc["specVersion"], "1.5")
+        self.assertEqual(self.doc["metadata"]["component"]["name"], "at")
+
+    def test_the_interpreter_is_the_builders_own_pin(self):
+        python = self.by_name("python")
+        self.assertEqual(python["version"], self.said["version"])
+        digest = self.said["pinned"].partition("@sha256:")[2]
+        self.assertEqual(python["hashes"], [{"alg": "SHA-256", "content": digest}])
+
+    def test_caddy_is_versioned_by_its_own_tarball_and_hashed_from_it(self):
+        tarball = caddy.payload()
+        if tarball is None:
+            self.skipTest("no vendored Caddy for this machine's platform")
+        component = self.by_name("caddy")
+        name = caddy.platform_name()
+        self.assertEqual(
+            component["version"],
+            tarball.name.removeprefix("caddy_").removesuffix(f"_{name}.tar.gz"),
+        )
+        self.assertEqual(component["hashes"],
+                         [{"alg": "SHA-256",
+                           "content": hashlib.sha256(tarball.read_bytes()).hexdigest()}])
+
+    def test_every_pinned_package_of_both_requirements_files_is_a_component(self):
+        for path, scope in ((build.ROOT / "requirements.txt", "required"),
+                            (build.ROOT / "requirements-dev.txt", "excluded")):
+            for line in path.read_text(encoding="utf-8").splitlines():
+                if "==" not in line or line.startswith((" ", "#")):
+                    continue
+                name, _, version = line.partition("==")
+                version = version.split()[0].rstrip("\\").strip()
+                with self.subTest(package=name):
+                    component = self.by_name(name)
+                    self.assertEqual(component["version"], version)
+                    self.assertEqual(component["scope"], scope)
+                    self.assertTrue(component["hashes"])
+                    for entry in component["hashes"]:
+                        self.assertEqual(entry["alg"], "SHA-256")
+                        self.assertEqual(len(entry["content"]), 64)
+
+    def test_an_apt_package_with_no_pinned_version_does_not_enter(self):
+        # `builder.json` names `binutils` for the container, and no version:
+        # a component without a home to read one from is not invented.
+        names = [c["name"] for c in self.doc["components"]]
+        self.assertNotIn("binutils", names)
+
+    def test_the_frontends_one_runtime_dependency_is_the_locks_resolved_version(self):
+        lock = json.loads((build.ROOT / "at" / "ui" / "webapp" / "package-lock.json")
+                          .read_text(encoding="utf-8"))
+        resolved = lock["packages"]["node_modules/vue"]
+        vue = self.by_name("vue")
+        self.assertEqual(vue["version"], resolved["version"])
+        self.assertTrue(vue["hashes"])
+        self.assertEqual(vue["hashes"][0]["alg"], "SHA-512")
+
+    def test_write_lands_the_file_beside_where_the_binaries_would_go(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            out = Path(scratch)
+            where = sbom.write(self.said, out)
+            self.assertEqual(where, out / sbom.FILENAME)
+            self.assertEqual(json.loads(where.read_text(encoding="utf-8")), self.doc)
 
 
 if __name__ == "__main__":
