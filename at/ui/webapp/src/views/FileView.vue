@@ -12,7 +12,7 @@
 import { ref, watch, onMounted, onBeforeUnmount, watchEffect } from "vue";
 import { api } from "../lib/api";
 import { word } from "../lib/store";
-import { nav, setTitle } from "../lib/views";
+import { nav, setTrail } from "../lib/views";
 import { writingState } from "../lib/writing";
 import ProseField from "../components/ProseField.vue";
 import WriteField from "../components/WriteField.vue";
@@ -66,7 +66,10 @@ onMounted(() => {
 
 onBeforeUnmount(() => document.removeEventListener("keydown", onKey, true));
 
-watchEffect(() => setTitle(props.path));
+// THE PATH IS THE TRAIL: `Arquivos › Notas › uma nota.md`. Every folder it
+// passes through is a step, which is what the path already says — and the
+// section is the shell's to add (`App.vue`).
+watchEffect(() => setTrail(...String(props.path).split("/")));
 
 watch(() => props.path, () => {
   payload.value = null;

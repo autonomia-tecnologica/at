@@ -8,10 +8,15 @@ import type { Plugin } from "vite";
 // does not find `/theme.css` or `/base.css` in the project, and makes them
 // disappear. In the first build the page came out without `base.css` — that is,
 // without a single rule — and with no error at all.
+// THE ORDER IS theme, base, SCRIPT, and it is load-bearing twice: the base
+// stylesheet must still come AFTER the theme (the two both write `:root`, and
+// the later one wins), and `boot.js` must run after BOTH links exist — it moves
+// the two of them, and a script that reaches for a link the parser has not
+// written yet moves nothing.
 const LOOK = [
   '<link id="theme" rel="stylesheet" href="/theme.css">',
-  '<script src="/js/boot.js"></script>',
   '<link id="base" rel="stylesheet" href="/base.css">',
+  '<script src="/js/boot.js"></script>',
 ].join("\n");
 
 const lookFromTheServer = (): Plugin => ({

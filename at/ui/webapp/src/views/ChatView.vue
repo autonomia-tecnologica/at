@@ -18,14 +18,14 @@ import { ref, nextTick, watchEffect } from "vue";
 import { ask } from "../lib/ask";
 import { chatState, remember } from "../lib/chat";
 import { word } from "../lib/store";
-import { setTitle } from "../lib/views";
+import { setTrail } from "../lib/views";
 import AskTurn from "../components/AskTurn.vue";
 
 const sentence = ref("");
 const busy = ref(false);
 const log = ref<HTMLElement | null>(null);
 
-watchEffect(() => setTitle(word("chat")));
+watchEffect(() => setTrail(word("chat")));
 
 async function send(): Promise<void> {
   const text = sentence.value.trim();

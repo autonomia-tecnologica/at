@@ -16,10 +16,17 @@ const DEPTH = 20; // a path deeper than this is no longer a path
 // there too. It names no PROJECT — it is the node that is not one.
 export const ORPHANS_KEY = "orphans";
 
-// The panel's own front door: a summary of what the folder holds, drawn from
-// tables that already exist (`task`, `project`) — it invents no data of its
-// own, only a different READ of the same rows KindView already fetches.
-export const OVERVIEW_KEY = "overview";
+// THE SECTION'S OWN PAGE, AND THE SECTION IS THE FOLD. There is no item called
+// "overview": the panel's folds ARE its sections, and a section's head is
+// SELECTABLE — clicking TASKS opens and closes the tree under it and opens the
+// tasks screen, which is one gesture over one row because the row is one thing.
+// The key is the fold's own id, so the address of a section is the name of the
+// section (`/tasks`), and the next fold to get a page gets it for free (FILES).
+//
+// It is a summary of what the folder holds, drawn from tables that already
+// exist (`task`, `project`) — it invents no data of its own, only a different
+// READ of the same rows KindView already fetches.
+export const TASKS_KEY = "tasks";
 
 // The interpreter's chat, which is a view of the page like the others — and one
 // the page does not OFFER when the interpreter is off (`store.interpreter`),
@@ -47,14 +54,25 @@ export const nav = reactive({
   tick: 0,
 });
 
-// The band's title. A table writes the COUNT; the other pages write text. No page
-// invents a word — they come from the catalog.
+// THE BAND SAYS WHERE THE PAGE IS, and it says it as a TRAIL: the section, and
+// then the way in — `Tarefas › WebApp`, `Arquivos › Notas › uma nota.md`,
+// `Tabelas › Audit`. It used to say a COUNT ("17 record(s)"), which named the
+// contents of a page without ever naming the page, and four different screens
+// came out with the same band (the report: "esses números de topbar são
+// péssimos"). A count is not a place, and the band is the one line a person
+// reads to know where they are.
+//
+// THE PAGE WRITES ITS OWN STEPS. It is the only side that knows the name of the
+// thing it is showing — a project's title, a path's segments, a table's name —
+// and the shell writes the SECTION, because the section is a fact of the VIEW
+// and not of the page (`App.vue`).
 export const ui = reactive({
-  title: "",
-  bold: "",
-  rest: "",
-  count: null as { shown: number; hidden: number } | null,
+  trail: [] as string[],
 });
+
+export function setTrail(...steps: (string | null | undefined)[]): void {
+  ui.trail = steps.filter((step): step is string => Boolean(step && step.trim()));
+}
 
 // THE PANEL'S NUMBER for the view ON SCREEN. The count the server sends is the
 // STORE'S total, and the filter that hides rows is the person's — the server
@@ -71,32 +89,10 @@ export function countOf(view: string, total: number): number {
   return live === undefined ? total : live;
 }
 
-export function setTitle(text: string): void {
-  ui.title = text || "";
-  ui.bold = "";
-  ui.rest = "";
-  ui.count = null;
-}
-
-export function setHeading(bold: string, rest: string): void {
-  ui.bold = bold || "";
-  ui.rest = rest || "";
-  ui.title = "";
-  ui.count = null;
-}
-
-export function setCount(shown: number, hidden: number): void {
-  ui.count = { shown, hidden };
-  ui.title = "";
-  ui.bold = "";
-  ui.rest = "";
-}
-
 // A page that could not be drawn says so where the page's own words go — the
 // panel keeps whatever it was showing.
 export function showError(err: Error): void {
-  ui.title = `${word("error")} ${err.message}`;
-  ui.count = null;
+  setTrail(`${word("error")} ${err.message}`);
 }
 
 // --- the page registry ---------------------------------------------------------

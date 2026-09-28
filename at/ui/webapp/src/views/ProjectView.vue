@@ -13,7 +13,7 @@
 import { ref, computed, watch, onMounted } from "vue";
 import { api } from "../lib/api";
 import { store, setFields, word } from "../lib/store";
-import { nav, markPage, leave, open, openRef, setHeading, showError } from "../lib/views";
+import { nav, markPage, leave, open, openRef, setTrail, showError } from "../lib/views";
 import TableView from "../components/TableView.vue";
 import RecordView from "../components/RecordView.vue";
 import ProseField from "../components/ProseField.vue";
@@ -56,20 +56,14 @@ const prose = computed(() =>
   (payload.value?.project.record.fields || []).filter(field => field.type === "markdown" && field.value),
 );
 
-// The band's sentence, built once: what the page IS — the item, its state, and
-// the priority the queue is ordered by when the row carries one — and how much
-// of it the filter leaves. A migrated row has no priority, and it says nothing
-// rather than a placeholder: the ORDER already reads a missing value as the
-// declared default, and the band does not have to spell it out.
-function describe(shown: number, hidden = 0): void {
+// THE BAND IS THE WAY IN: `Tarefas › WebApp`, and the section is the shell's
+// to add (`App.vue`). The state, the priority and the counts it used to spell
+// out here are all IN the page, where a person reads them with the rows they
+// describe — a band that recites four values is a band that stops being a
+// place.
+function describe(): void {
   if (!payload.value) return;
-  const { id, title, status } = payload.value;
-  const priority = payload.value.project.record.fields.find(field => field.name === "priority");
-  const parts = [title, status];
-  if (priority?.raw) parts.push(priority.value);
-  parts.push(shown + " " + word("tasks"));
-  if (hidden) parts.push(hidden + " " + word("hidden"));
-  setHeading(String(id), " · " + parts.join(" · "));
+  setTrail(payload.value.title);
 }
 
 const record = computed(() => {
@@ -86,7 +80,7 @@ async function load(): Promise<void> {
     payload.value = data;
     setFields(data.fields);
     markPage("project:" + data.id, wasOpen);
-    describe(data.records.length);
+    describe();
   } catch (err) {
     // A project can have been CLOSED, and the preference outlives what it names:
     // the page falls to the first table, never to an error page.
@@ -101,12 +95,6 @@ async function load(): Promise<void> {
 function go(id: number): void {
   leave();
   markPage("project:" + id, null);
-}
-
-// The band carries what the FILTER leaves, like the panel's line does — the two
-// numbers describe the same rows and may not disagree.
-function onCount(shown: number, hidden: number): void {
-  describe(shown, hidden);
 }
 
 onMounted(load);
@@ -142,6 +130,6 @@ watch(() => props.id, () => {
          TYPE `task`, never the word "task" read as a table's name. -->
     <TableView v-if="store.types.task" :entity="store.types.task" :records="payload.records"
                :schema="payload.fields" view-key="project" :page="page" rule
-               :actions="payload.actions" @count="onCount" @ref="openRef" />
+               :actions="payload.actions" @ref="openRef" />
   </div>
 </template>

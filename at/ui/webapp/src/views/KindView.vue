@@ -8,8 +8,8 @@
 
 import { ref, computed, watch, onMounted } from "vue";
 import { api } from "../lib/api";
-import { setFields } from "../lib/store";
-import { nav, openRef, setCount, showError } from "../lib/views";
+import { setFields, kindLabel } from "../lib/store";
+import { nav, openRef, setTrail, showError } from "../lib/views";
 import TableView from "../components/TableView.vue";
 import RecordView from "../components/RecordView.vue";
 import type { TablePayload } from "../lib/record";
@@ -33,6 +33,9 @@ async function load(): Promise<void> {
     payload.value = data;
     setFields(data.fields);
     total.value = data.records.length;
+    // THE STEP IS THE TABLE'S OWN NAME, and the section above it is the
+    // shell's (`Tabelas › Audit`) — the page names the thing it draws.
+    setTrail(kindLabel(props.view));
   } catch (err) {
     payload.value = null;
     showError(err as Error);
@@ -53,5 +56,5 @@ watch(() => props.view, () => {
               @ref="openRef" />
   <TableView v-else-if="payload" :entity="view" :records="payload.records"
              :schema="payload.fields" :defaults="payload.columns" :page="view"
-             :actions="payload.actions" @count="setCount" @ref="openRef" />
+             :actions="payload.actions" @ref="openRef" />
 </template>

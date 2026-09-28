@@ -1,5 +1,11 @@
 <script setup lang="ts">
-// OverviewView — the panel's front door: what the folder HOLDS, at a glance.
+// TasksView — THE TASKS SECTION'S OWN SCREEN, and the section is the fold.
+//
+// There is no screen called "overview" and no row that opens one: the panel's
+// folds ARE its sections, and a section's head is selectable — the TASKS row
+// opens the projects tree and opens this page, in one gesture over one row
+// (`views.ts`, `Foldable.vue`). The address is the section's own name,
+// `/tasks`, and the day FILES has a screen it will be `/files` for free.
 //
 // IT INVENTS NO DATA, and that is the whole discipline of this page. Every
 // number is a count of rows the server already returns for two tables that
@@ -11,8 +17,8 @@
 // IT ALSO INVENTS NO WORDS. The names of the statuses are the TABLE's own
 // vocabulary (`fields[].enum`, handed over with the rows), the name of the
 // project table is the table's own name (the panel already draws it), and what
-// is left over is the page's own — `overview`, from the catalog like every
-// other word on screen.
+// is left over is the page's own — the section's word, from the catalog like
+// every other word on screen.
 //
 // WHAT IT IS NOT is a place to act: nothing here is clickable but the doors
 // OUT of it (a project), because a summary that also edits is a second way to
@@ -21,7 +27,7 @@
 import { ref, computed, watch, onMounted } from "vue";
 import { api } from "../lib/api";
 import { store, setFields, word, label, kindLabel } from "../lib/store";
-import { nav, open, setHeading, showError, OVERVIEW_KEY } from "../lib/views";
+import { nav, open, setTrail, showError, TASKS_KEY } from "../lib/views";
 import type { TablePayload, RecordRow, RecordField } from "../lib/record";
 
 const tasks = ref<TablePayload | null>(null);
@@ -76,7 +82,7 @@ function doneOf(projectId: number): number {
 
 const projectRows = computed(() => projects.value?.records || []);
 
-const projectsLabel = computed(() => kindLabel("project") || word("overview"));
+const projectsLabel = computed(() => kindLabel("project") || word("tasks"));
 
 async function load(): Promise<void> {
   try {
@@ -89,7 +95,7 @@ async function load(): Promise<void> {
     // The schema the OPEN RECORD of a task would draw with, so the table this
     // page cuts is the table the page hands over — one vocabulary, not two.
     setFields(taskPage.fields);
-    setHeading(word("overview"), " · " + taskPage.records.length + " " + word("tasks"));
+    setTrail(word("tasks"));
   } catch (err) {
     tasks.value = null;
     projects.value = null;
@@ -106,7 +112,7 @@ watch(() => nav.tick, load);
 </script>
 
 <template>
-  <div v-if="tasks" class="overview">
+  <div v-if="tasks" class="section">
     <!-- THE NUMBERS, one card each, drawn from the table's own vocabulary. -->
     <div class="stats">
       <div v-for="status in statuses" :key="status.key" class="stat"

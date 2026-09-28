@@ -32,7 +32,7 @@ import { store, word } from "../lib/store";
 import { DARK_STATES, chooseDark, chooseTheme, darkState, themeState } from "../lib/theme";
 import { motionOn, setMotion } from "../lib/motion";
 import { byName } from "../lib/order";
-import { setTitle } from "../lib/views";
+import { setTrail } from "../lib/views";
 import Foldable from "../components/Foldable.vue";
 import PeopleView from "../components/PeopleView.vue";
 import RiskRuler from "../components/RiskRuler.vue";
@@ -72,7 +72,7 @@ function pickSide(state: DarkState): void {
   chooseDark(state);
 }
 
-watchEffect(() => setTitle(word("settings")));
+watchEffect(() => setTrail(word("settings")));
 </script>
 
 <template>

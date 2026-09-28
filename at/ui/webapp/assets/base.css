@@ -523,7 +523,13 @@
      it belongs to the THEME, which is who knows how to draw a line (2026-09-13). */
   nav hr.sep { margin: var(--sidebar-sep-margin); border: 0;
                border-top: var(--sidebar-sep-border); }
-  nav .folder { justify-content: flex-start; gap: 6px; padding: var(--sidebar-folder-pad);
+  /* `.node` IS THE SAME CLOTH AS `.folder` HERE, and on purpose: a directory
+     inside the file tree is a fold like the panel's own, and the two have looked
+     alike in every theme since the tree was born. What separated them is
+     `base2.css`, which gave the panel's four top-level rows a weight of their
+     own — and this file is not the one to re-decide that look for the eleven
+     themes that walk it. */
+  nav .folder, nav .node { justify-content: flex-start; gap: 6px; padding: var(--sidebar-folder-pad);
                 align-items: center;
                 color: var(--sidebar-folder-color);
                 font-family: var(--sidebar-folder-family);
@@ -531,7 +537,7 @@
                 font-weight: var(--sidebar-folder-weight);
                 font-style: var(--sidebar-folder-style);
                 letter-spacing: var(--caps-spacing); text-transform: var(--caps-transform); }
-  nav .folder:hover { background: none; color: var(--sidebar-folder-hover); }
+  nav .folder:hover, nav .node:hover { background: none; color: var(--sidebar-folder-hover); }
   /* The TRIANGLE is a TEXT glyph: its size is its font's, never the label's — that
      is how it ends up bigger than the label without touching the label. It belongs
      to the FOLD, not to a screen: the panel folder and the page group draw it the
@@ -957,6 +963,13 @@
      being more specific. */
   header > * { font-size: var(--font-size); }
   header b { color: var(--header-strong); font-weight: var(--weight-bold); }
+  /* THE BAND IS A TRAIL AND NOT A SENTENCE (2026-09-28): it reads `Tabelas ›
+     Tasks`, and the steps and the separator are the PAGE's (`App.vue`) — what
+     belongs to the look is the room around the separator and the ink of the way
+     in, which is the part the person is NOT. The last step keeps `header b`'s,
+     because the step you are standing on is the heading. */
+  #head-title .crumb, #head-title .sep { color: var(--dim); }
+  #head-title .sep { margin: 0 6px; }
   /* THE FOLDER'S VERSIONING (§4, item 30). A strip of its own between the bar and
      the body — the bar's own boxes hold every word of the strip above, so this
      one is a SIBLING of it and not a fourth thing inside it. It is drawn only

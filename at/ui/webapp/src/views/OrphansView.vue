@@ -8,7 +8,7 @@
 import { ref, computed, watch, onMounted } from "vue";
 import { api } from "../lib/api";
 import { store, setFields, word } from "../lib/store";
-import { nav, openRef, setHeading, showError, ORPHANS_KEY } from "../lib/views";
+import { nav, openRef, setTrail, showError, ORPHANS_KEY } from "../lib/views";
 import TableView from "../components/TableView.vue";
 import RecordView from "../components/RecordView.vue";
 import type { TablePayload } from "../lib/record";
@@ -26,21 +26,11 @@ async function load(): Promise<void> {
     const data = await api<TablePayload>("/api/orphans");
     payload.value = data;
     setFields(data.fields);
-    setHeading(word("no_project"), " · " + data.records.length + " " + word("tasks"));
+    setTrail(word("no_project"));
   } catch (err) {
     payload.value = null;
     showError(err as Error);
   }
-}
-
-// The band carries what the FILTER leaves, like the panel's line does: the two
-// numbers describe the same rows and may not disagree. It arrives from the table
-// itself, which is who holds the rows.
-function onCount(shown: number, hidden: number): void {
-  if (!payload.value) return;
-  setHeading(word("no_project"),
-             " · " + shown + " " + word("tasks")
-             + (hidden ? " · " + hidden + " " + word("hidden") : ""));
 }
 
 onMounted(load);
@@ -55,5 +45,5 @@ watch(() => nav.tick, load);
        table declares `hide: ["project", "orphans"]` for both. -->
   <TableView v-else-if="payload" :entity="store.types.task" :records="payload.records"
              :schema="payload.fields" :view-key="ORPHANS_KEY" :page="ORPHANS_KEY" rule
-             :actions="payload.actions" @count="onCount" @ref="openRef" />
+             :actions="payload.actions" @ref="openRef" />
 </template>

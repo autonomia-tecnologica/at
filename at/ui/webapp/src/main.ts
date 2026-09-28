@@ -9,8 +9,8 @@
 import { createApp } from "vue";
 import App from "./App.vue";
 import "./styles/app.css";
-import { registerView, registerType, OVERVIEW_KEY } from "./lib/views";
-import OverviewView from "./views/OverviewView.vue";
+import { registerView, registerType, TASKS_KEY } from "./lib/views";
+import TasksView from "./views/TasksView.vue";
 import SettingsView from "./views/SettingsView.vue";
 import ChatView from "./views/ChatView.vue";
 import ProjectView from "./views/ProjectView.vue";
@@ -19,14 +19,16 @@ import FileView from "./views/FileView.vue";
 import ActorView from "./views/ActorView.vue";
 import RoleView from "./views/RoleView.vue";
 
-// The pages that are a SINGLE key (no rest): the overview, the chat, Settings
-// and the "no project". The chat has an address like every other view, which is
-// what makes a reload land back in the conversation.
+// The pages that are a SINGLE key (no rest): the section screens, the chat,
+// Settings and the "no project". The chat has an address like every other view,
+// which is what makes a reload land back in the conversation.
 //
-// THE OVERVIEW REGISTERS LIKE THE OTHERS, which is the point of the registry: it
-// is a page with an address (`/overview`), a line in the panel and a step back
-// like any other, and nothing in the shell had to learn that it exists.
-registerView(OVERVIEW_KEY, OverviewView);
+// THE SECTION SCREEN REGISTERS LIKE THE OTHERS, which is the point of the
+// registry: it is a page with an address (`/tasks`), a row in the panel and a
+// step back like any other, and nothing in the shell had to learn that it
+// exists. Its key is the fold's own id, so a section's address is the section's
+// name — and FILES, when it has a screen, is one line here.
+registerView(TASKS_KEY, TasksView);
 registerView("chat", ChatView);
 registerView("settings", SettingsView);
 registerView("orphans", OrphansView);

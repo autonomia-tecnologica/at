@@ -425,7 +425,7 @@ PAGE_WORDS = (
     # came out with an empty one. The panel's `#brand` was drawing nothing all
     # along.
     "brand",
-    "overview", "tasks", "files", "tables", "settings", "general", "appearance", "language",
+    "tasks", "files", "tables", "settings", "general", "appearance", "language",
     "dark_mode", "dark_system", "dark_theme", "dark_light", "dark_dark",
     "motion", "themes", "no_project", "new_project", "delete_project",
     "move_to_project", "records", "hidden", "no_records", "error", "filter",

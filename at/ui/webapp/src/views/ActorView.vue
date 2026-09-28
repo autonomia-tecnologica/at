@@ -17,7 +17,7 @@
 import { ref, computed, watch, onMounted } from "vue";
 import { api, post } from "../lib/api";
 import { label as worded, setFields, word } from "../lib/store";
-import { back, markPage, nav, openRef, poke, setCount, setTitle, showError } from "../lib/views";
+import { back, markPage, nav, openRef, poke, setTrail, showError } from "../lib/views";
 import TableView from "../components/TableView.vue";
 import MachineMint from "../components/MachineMint.vue";
 import type { RecordRow, TablePayload } from "../lib/record";
@@ -150,7 +150,7 @@ function stepBack(): void {
 }
 
 watch(() => record.value?.id, seed, { immediate: true });
-watch(() => record.value?.title, title => { if (title) setTitle(title); }, { immediate: true });
+watch(() => record.value?.title, title => { if (title) setTrail(title); }, { immediate: true });
 
 onMounted(() => {
   void loadRoles();
@@ -228,6 +228,6 @@ watch(() => nav.current?.view, view => {
 
     <TableView :entity="ACTOR" :records="payload.records" :schema="payload.fields"
                :defaults="payload.columns" :page="ACTOR" :actions="payload.actions"
-               @count="setCount" @ref="openRef" />
+               @ref="openRef" />
   </div>
 </template>

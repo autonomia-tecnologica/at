@@ -13,6 +13,7 @@
 
 import { ref, onMounted } from "vue";
 import { foldPrefs, savePrefs, PREFS_KEY } from "../lib/prefs";
+import { isCurrent, open } from "../lib/views";
 
 const props = withDefaults(
   defineProps<{
@@ -28,8 +29,14 @@ const props = withDefaults(
     // `null` where nothing has counted: a number invented here would be the
     // page guessing at its own data.
     count?: number | null;
+    // THE PAGE THIS HEAD ALSO OPENS. A fold is a DISCLOSURE, and a section of
+    // the panel is also a PLACE: the TASKS fold is where the tasks live, and the
+    // same row opens the tree and opens the screen — one gesture, because the
+    // row is one thing. `null` is a fold that is only a fold, which is what
+    // every fold was before there was a screen to lead to.
+    view?: string | null;
   }>(),
-  { label: "", boxClass: null, headClass: "folder", count: null },
+  { label: "", boxClass: null, headClass: "folder", count: null, view: null },
 );
 
 const prefs = foldPrefs();
@@ -43,6 +50,15 @@ function toggle(): void {
   if (isOpen.value) loadedOnce.value = true;
 }
 
+// The head's ONE click: the fold opens or closes, and — when the fold is a
+// section with a page — the section opens. The tree is the section's content and
+// the page is its front, so the two travel together; giving them a click each
+// would be two controls for one thing.
+function head(): void {
+  if (props.view) open(props.view, null);
+  toggle();
+}
+
 onMounted(() => {
   if (isOpen.value) loadedOnce.value = true;
 });
@@ -54,10 +70,13 @@ onMounted(() => {
        fold holds (`nav .folder[data-branch="tasks"]`, base2.css) — which is a
        drawing and not behaviour, so it belongs to whoever dresses the control
        and not to whoever knows what it opens. -->
-  <button :data-branch="id" :class="[headClass, 'fold-head', { closed: !isOpen }]"
-          type="button" @click="toggle">
+  <button :data-branch="id" :class="[headClass, 'fold-head', { closed: !isOpen, on: view && isCurrent(view) }]"
+          type="button" @click="head">
     <span class="caret">▾</span>
-    <span>{{ label }}</span>
+    <!-- `.t` is the WORD, and it is named because a theme may have to place it:
+         what follows it — the count and the caret — belongs to the RIGHT EDGE,
+         with or without a count to carry it there (`base2.css`). -->
+    <span class="t">{{ label }}</span>
     <span v-if="count !== null" class="n">{{ count }}</span>
   </button>
   <div class="foldable" :class="[boxClass, { closed: !isOpen }]">

@@ -18,7 +18,7 @@
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { store, word, tableOf } from "../lib/store";
 import { session } from "../lib/session";
-import { CHAT_KEY, NLU_UI_ENABLED, OVERVIEW_KEY, isCurrent, open, countOf } from "../lib/views";
+import { CHAT_KEY, NLU_UI_ENABLED, TASKS_KEY, isCurrent, open, countOf } from "../lib/views";
 import { byName } from "../lib/order";
 import { navRail, toggleNav } from "../lib/nav";
 import Foldable from "./Foldable.vue";
@@ -68,10 +68,6 @@ function openKind(key: string): void {
   open(key, null);
 }
 
-function openOverview(): void {
-  open(OVERVIEW_KEY, null);
-}
-
 function openSettings(): void {
   open(SETTINGS_KEY, null);
 }
@@ -114,16 +110,14 @@ onUnmounted(() => {
        and the foot below is NOT part of it: a thing that must always be on screen
        cannot live inside the thing that leaves it. -->
   <div id="kinds">
-    <!-- THE FRONT DOOR, and it is FIRST: what the folder holds, before the doors
-         that hold one part of it (`views.ts`, OVERVIEW_KEY). It is a row of the
-         same cloth as the foot's, and it sits above the folds because it is not
-         a fold — there is nothing inside it to open. -->
-    <button type="button" class="file" :data-view="OVERVIEW_KEY"
-            :class="{ on: isCurrent(OVERVIEW_KEY) }" @click="openOverview">
-      <span>{{ word("overview") }}</span>
-    </button>
+    <!-- THE SECTION IS THE FOLD, and its head is SELECTABLE: this one row opens
+         the tree under it and opens the section's screen (`views.ts`, TASKS_KEY)
+         — clicking it once is arriving in the tasks. That is why there is no
+         row called "Overview" above the others: the panel's folds ARE its
+         sections, and a second door to the same place would be a door with
+         nothing behind it. -->
     <Foldable v-if="hasProjects" id="tasks" :label="word('tasks')" box-class="branch"
-              :count="projectCount">
+              :count="projectCount" :view="TASKS_KEY">
       <ProjectsTree />
     </Foldable>
     <Foldable id="files" :label="word('files')" box-class="branch">

@@ -61,7 +61,6 @@ nav {
   display: flex; flex-direction: column; overflow: hidden;
   background: var(--nav-bg);
   box-shadow: var(--nav-edge);
-  padding-bottom: var(--space-5);
   transition: width var(--dur-base) var(--ease-out),
               flex-basis var(--dur-base) var(--ease-out);
 }
@@ -77,15 +76,22 @@ html.nav-rail nav h1 { justify-content: center; padding-inline: 0; }
 html.nav-rail .nav-toggle { justify-content: center; padding-inline: 0; margin-left: 0; }
 html.nav-rail .nav-toggle > .t { display: none; }
 
+/* THE TWO SCROLLERS SCROLL ONE WAY, AND ONLY ONE (2026-09-28). A horizontal bar
+   is never welcome here and it is never possible: the table is `table-layout:
+   fixed` at `100%`, a cell breaks its own long word, and the panel's rows are
+   clipped rather than pushed — so what a sideways scrollbar would have been
+   reserving room for is a state this system does not have. The prose's own
+   `<pre>` keeps its own sideways scroll: a code block is content, and wrapping
+   it would break the thing being read. */
 #kinds {
-  flex: 1; min-height: 0; overflow-y: auto;
+  flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
   width: var(--nav-w);
   padding: var(--space-2) 0 var(--foot-space, 140px);
 }
 .side-foot {
   position: absolute; left: 0; right: 0; bottom: 0;
   width: var(--nav-w);
-  padding: var(--space-2) 0 var(--space-5);
+  padding: var(--space-2) 0 var(--space-3);
   background: var(--nav-bg);
 }
 #kinds, .brand, .side-foot { transition: opacity var(--dur-fast) var(--ease-out), visibility 0s; }
@@ -97,13 +103,18 @@ html.nav-rail .nav-toggle > .t { display: none; }
    surface a direction without adding a single element: nothing is drawn on it,
    and the wash moves with the theme because it is the theme's own `--accent-50`
    (`base.css` draws the bare `--surface-0`). */
+/* AND IT REACHES THE BOTTOM EDGE. `main`, `nav` and the panel's foot each kept a
+   `padding-bottom` that left a strip of nothing under everything — the usual
+   room for a scrollbar that shows up across the bottom of the window. It cannot
+   show up (see the two scrollers above, which do not scroll sideways at all),
+   and a strip reserved for something that cannot happen is a strip that is
+   always there: the panel and the page now end where the window ends. */
 main {
   flex: 1; display: flex; flex-direction: column; min-width: 0;
   background-color: var(--surface-0);
   background-image: radial-gradient(1100px 460px at 100% -8%,
                                     var(--accent-50), transparent 72%);
   background-repeat: no-repeat;
-  padding-bottom: var(--space-5);
 }
 header {
   display: flex; align-items: center; gap: var(--space-3);
@@ -116,28 +127,23 @@ header {
 }
 header > * { font-size: var(--text-base); }
 header b { color: var(--ink-1); font-weight: var(--weight-semibold); }
-/* THE PAGE SAYS ITS OWN NAME, and it says it loud (item 1): the display face at
-   the step this system keeps for a page — the largest type either theme has,
-   tight, because a title that whispers is a title nobody finds. What follows it
-   is the sentence about it (the count, the project), and it stays small and
-   grey so the two never compete. */
-/* A page that wrote its OWN title (Settings, a file, an actor) reaches the band
-   as one string, and it is a title too: the display face, one step down from the
-   name a table gets, so the two read as the same kind of thing. `min-width: 0`
-   and the clip are what keep a long path — a filename is a path here — from
-   pushing the language off the right edge. */
+/* THE BAND IS A TRAIL — `Tarefas › WebApp` —, and the two kinds of step are two
+   sizes: the WAY IN stays small and grey (it is context, and it is read once),
+   and the page itself takes the display face at the step this system keeps for
+   a page. The eye lands on the end of the line, which is where the person is.
+   `min-width: 0` and the clip keep a long path — a filename is a path here —
+   from pushing the language off the right edge. */
 #head-title {
-  display: inline-flex; align-items: baseline; min-width: 0;
-  font-family: var(--font-display); font-size: var(--text-lg);
-  letter-spacing: var(--letter-tight);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  display: inline-flex; align-items: baseline; gap: var(--space-1);
+  min-width: 0; white-space: nowrap; overflow: hidden;
 }
+#head-title .crumb { color: var(--ink-3); font-size: var(--text-md); }
+#head-title .sep { color: var(--border-strong); font-size: var(--text-md); }
 #head-title b {
   font-family: var(--font-display); font-size: var(--text-xl);
   font-weight: var(--weight-bold); letter-spacing: var(--letter-tight);
   line-height: var(--leading-tight);
 }
-#head-title span { color: var(--ink-3); font-size: var(--text-sm); }
 #versioning {
   margin: 0; padding: var(--space-2) var(--space-6);
   border-bottom: 1px solid var(--border-soft); color: var(--ink-2);
@@ -149,7 +155,7 @@ header b { color: var(--ink-1); font-weight: var(--weight-semibold); }
 #head-right .name { display: var(--locale-name); }
 #head-right .flag { display: var(--locale-flag); }
 
-#body { flex: 1; overflow: auto; padding: 0; }
+#body { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 0; }
 
 .scrim {
   display: none; position: fixed; inset: 0; z-index: 15;
@@ -183,14 +189,52 @@ nav hr.sep {
   margin: var(--space-3) var(--space-5); border: 0;
   border-top: 1px solid var(--nav-border);
 }
+/* THE PANEL'S TOP-LEVEL ROWS ARE ONE KIND OF ROW — the sections, which are the
+   folds — and this is the cloth they all wear (`Foldable.vue` puts `folder` on
+   every section head). A section head is ALSO the door to its section
+   (`View`/`views.ts`), and behaviour is not what the eye reads first: the WEIGHT
+   is. They are the panel's own chapters, in the brightest ink the sidebar has,
+   bold, in caps — a section head that whispers is a section head nobody
+   finds.
+   THE RESTING COLOUR IS THE LIGHT ONE AND NOT PURE WHITE: four rows of 12.5px
+   caps in `#ffffff` on the dark violet are four small lights, and the eye pays
+   for each. `--nav-ink-2` is the same family one step down — bright enough to
+   lead, quiet enough to sit in the panel — and the POINTER is what lifts it to
+   white. */
 nav .folder {
   display: flex; justify-content: flex-start; align-items: center; gap: var(--space-2);
-  padding: var(--space-4) var(--space-5) var(--space-1);
-  color: var(--nav-ink-3);
-  font-size: var(--text-xs); font-weight: var(--weight-semibold);
+  /* THE BOX IS THE TEXT'S, now that a section head is also a ROW. It used to be
+     `16px 20px 4px` — the air above a head that could only open and close — and
+     the day the row became selectable the wash drew that asymmetric box around
+     the label and the row read as BIGGER than the ones beside it, because it
+     was. The air a section needs above it is a MARGIN now: it does not belong
+     to the control, and the control is what the wash draws. */
+  margin: var(--space-4) var(--space-3) var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  color: var(--nav-ink-2);
+  font-size: var(--text-xs); font-weight: var(--weight-bold);
   letter-spacing: .07em; text-transform: uppercase;
+  transition: color var(--dur-fast) var(--ease-out);
 }
-nav .folder:hover { color: var(--nav-ink-2); }
+nav .folder:hover { color: var(--nav-ink-1); }
+/* WHAT FOLLOWS THE WORD BELONGS TO THE RIGHT EDGE, with or without a count: the
+   word carries the `auto` here and the count drops the one it carries
+   everywhere else (`nav .n`), so a section WITH a count and a section without
+   one put their caret in the same place. Two `auto`s would split the room
+   between them and leave the count floating in the middle. */
+nav .folder > .t { margin-right: auto; }
+nav .folder > .n { margin-left: 0; }
+
+/* AND A FOLDER INSIDE THE TREE IS NOT A CHAPTER — it is a NAME. It carries the
+   same fold (and the same caret), but it sits at another level, and a level
+   that wears the cloth of the one above it leaves the tree with no hierarchy
+   left to read: sentence case in the middle ink, with the INDENTATION saying
+   where it sits. Everything else is the panel's own button, unaltered. */
+nav .node {
+  justify-content: flex-start; gap: var(--space-2);
+  color: var(--nav-ink-2);
+}
+nav .node:hover { color: var(--nav-ink-1); }
 .caret {
   display: inline-block; line-height: 1;
   font-size: 9px; color: var(--nav-ink-3);
@@ -219,9 +263,15 @@ nav button:hover { background: var(--nav-item-hover); color: var(--nav-ink-1); }
    apart from its neighbours, and the bar on the left edge is the one mark a
    glance finds without reading (`--nav-item-on-edge`, which the theme names
    apart from the ink because it is a BRAND bar and not a white one). */
+/* THE STATE IS A COLOUR AND A BAR, AND NEVER A TYPE. `font-weight` used to ride
+   along here — the open row went to 500 — and on a section head, which is BOLD,
+   the selected row came out LIGHTER than the ones beside it and the panel
+   looked like it had two font schemes (the report: "o esquema de fontes está
+   pouco controlado"). A word does not change its weight because the page it
+   names is the one on screen; what changes is where the eye lands, and that is
+   the wash and the bar. */
 nav button.on {
   background: var(--nav-item-on-bg); color: var(--nav-item-on-ink);
-  font-weight: var(--weight-medium);
   box-shadow: inset 3px 0 0 var(--nav-item-on-edge);
 }
 nav .file { color: var(--nav-ink-2); }
@@ -241,7 +291,13 @@ nav .entry { justify-content: flex-start; gap: var(--space-2); align-items: cent
    the position, the size) would be five rules A DOOR, and the door is the one
    thing that differs. */
 nav .entry .icon,
-nav .folder[data-branch]::before,
+/* ONE DOOR AT A TIME, and never `[data-branch]` alone: the file tree's own
+   folders are Foldables too — they carry a `data-branch` of their own — and a
+   rule that matched them would hand a box to a row whose shape nobody named,
+   which `mask: none` paints as a solid square. What has a shape is listed. */
+nav .folder[data-branch="tasks"]::before,
+nav .folder[data-branch="files"]::before,
+nav .folder[data-branch="tables"]::before,
 nav .file:not(.entry)::before,
 .caret::before,
 .nav-toggle::before,
@@ -269,7 +325,6 @@ nav .entry[data-bucket="data"] .icon { --i: url("/icons/at2-data.svg"); }
 nav .folder[data-branch="tasks"]::before { --i: url("/icons/at2-nav-tasks.svg"); }
 nav .folder[data-branch="files"]::before { --i: url("/icons/at2-nav-files.svg"); }
 nav .folder[data-branch="tables"]::before { --i: url("/icons/at2-nav-tables.svg"); }
-nav .file:not(.entry)[data-view="overview"]::before { --i: url("/icons/at2-nav-overview.svg"); }
 nav .file:not(.entry)[data-view="settings"]::before { --i: url("/icons/at2-nav-settings.svg"); }
 nav .file:not(.entry)[data-view="chat"]::before { --i: url("/icons/at2-nav-chat.svg"); }
 /* the two rows that were a word and a guess (`base.css` has the long version) */
@@ -704,9 +759,9 @@ a.ref:hover, a.url:hover { border-bottom-color: currentColor; background: var(--
 .ruler-note { margin: 0; color: var(--ink-3); font-size: var(--text-xs); }
 .ruler-none { margin: 0; color: var(--ink-3); font-size: var(--text-xs); }
 
-/* ===== overview: what the folder holds ===================================== */
+/* ===== the section page: what a section of the folder holds ================= */
 
-.overview {
+.section {
   display: flex; flex-direction: column; gap: var(--space-6);
   padding: var(--space-6);
 }

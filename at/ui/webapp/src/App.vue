@@ -14,8 +14,8 @@
 import { computed, onMounted, watch } from "vue";
 import { api, whenRefused } from "./lib/api";
 import { enter, lost, session, signedIn } from "./lib/session";
-import { store, applyState, label, word, kindLabel } from "./lib/store";
-import { nav, ui, isKind, viewFor, open, markPage, poke, resumePath, CHAT_KEY, NLU_UI_ENABLED } from "./lib/views";
+import { store, applyState, label, word, tableOf } from "./lib/store";
+import { nav, ui, isKind, viewFor, open, markPage, poke, resumePath, setTrail, CHAT_KEY, NLU_UI_ENABLED, ORPHANS_KEY } from "./lib/views";
 import { applyTheme, watchSystem } from "./lib/theme";
 import { applyMotion } from "./lib/motion";
 import { writingState } from "./lib/writing";
@@ -42,16 +42,33 @@ const balloon = computed(
   () => NLU_UI_ENABLED && store.interpreter && balloonOn.value && nav.current?.view !== CHAT_KEY,
 );
 
-// THE NAME OF THE PAGE ON SCREEN, for the one case where the page does not
-// write its own: a table's own table writes the COUNT and nothing else (`setCount`),
-// and a band that says "17 record(s)" says what is in the page without ever
-// saying WHICH page — the four tables of the folder would share one heading.
-// The name is the TABLE's (`kindLabel` → the server's own word), so the shell
-// names the view it is already drawing and invents nothing.
-const pageName = computed(() => {
+// The view PREFIXES that name a record and not a table — the same ones
+// `main.ts` registers (`registerView`), read here to know where a page sits.
+const FILE_PREFIX = "file:";
+const PROJECT_PREFIX = "project:";
+const ACTOR_PREFIX = "actor:";
+const ROLE_PREFIX = "role:";
+
+// THE FIRST STEP OF THE TRAIL: WHICH SECTION THIS PAGE BELONGS TO. It is the
+// shell's to say and not the page's, because it is a fact of the VIEW — a
+// project lives in the tasks, a file in the files, a table in the tables — and
+// the page it belongs to would have to repeat the mapping to know it.
+//
+// A PAGE THAT IS ITSELF A SECTION (the tasks screen, Settings, the chat) has no
+// section above it, and answers with nothing: then the page's own first step is
+// the whole band (`Trail`), and it says its name like any other page.
+const section = computed(() => {
   const view = nav.current?.view || "";
-  return isKind(view) ? kindLabel(view) : "";
+  if (tableOf(view)) return word("tables");        // a table is met in the tables
+  if (view.startsWith(FILE_PREFIX)) return word("files");
+  if (view.startsWith(PROJECT_PREFIX) || view === ORPHANS_KEY) return word("tasks");
+  if (view.startsWith(ACTOR_PREFIX) || view.startsWith(ROLE_PREFIX)) return word("settings");
+  return "";
 });
+
+// The band: the section, and then what the page wrote for itself.
+const trail = computed(() => (section.value ? [section.value, ...ui.trail] : ui.trail));
+
 
 // The page the panel shows: whoever draws it is the module that registered itself
 // for it, and a table's own table is what is left over when nobody claims the
@@ -163,7 +180,7 @@ async function load(): Promise<void> {
     applyTheme();
     showSaved();
   } catch (err) {
-    ui.title = word("error") + " " + (err as Error).message;
+    setTrail(word("error") + " " + (err as Error).message);
   }
 }
 
@@ -220,7 +237,7 @@ onMounted(async () => {
     // way, which is the state that was already true.)
     session.auth = false;
     session.ready = true;
-    ui.title = word("error") + " " + (err as Error).message;
+    setTrail(word("error") + " " + (err as Error).message);
   }
 });
 
@@ -249,11 +266,18 @@ defineExpose({ refresh });
           <!-- The separator is the TEXT's and not the layout's: this band is
                drawn by two design systems, and a `gap` that only one of them
                declares would leave the other reading "Tasks17 record(s)". -->
-          <template v-if="ui.count"><b>{{ pageName }}</b><span> · {{ ui.count.shown }}
-            {{ word("records") }}<template v-if="ui.count.hidden"> · {{ ui.count.hidden }}
-            {{ word("hidden") }}</template></span></template>
-          <template v-else-if="ui.bold"><b>{{ ui.bold }}</b><span>{{ ui.rest }}</span></template>
-          <template v-else>{{ ui.title }}</template>
+          <!-- THE TRAIL: every step but the last is where the page was reached
+               from, and the LAST one is the page itself — the only one that
+               wears the strong ink, so the eye lands there after reading the
+               way in. The separator is an ELEMENT and not a `content:` in the
+               CSS: the two design systems dress the band differently, and one
+               of them not at all, so what the band says has to be in the page
+               (`base2.css` draws it). -->
+          <template v-for="(step, i) in trail" :key="i">
+            <span v-if="i" class="sep">›</span>
+            <b v-if="i === trail.length - 1">{{ step }}</b>
+            <span v-else class="crumb">{{ step }}</span>
+          </template>
         </span>
         <span id="head-right">
           <span class="loc">
