@@ -696,7 +696,9 @@ class TheUpdate(FolderCase):
         self.assertIn(i18n.tr("services.update.unprovisioned"), text)
         self.assertEqual(fake.calls, [], "`update` touched a never-provisioned folder")
 
-    def test_update_re_pins_and_recreates_every_container(self):
+    def test_update_re_pins_and_recreates_every_container_but_the_redis(self):
+        # TASK-172: o Redis é a UMA exceção — ele carrega o registro de sessão
+        # em memória, e recriá-lo aqui derrubaria toda sessão aberta.
         self.runtime()
         self.quiet(env.up, secret=self.phrase)
         fake = self.runtime()
@@ -704,10 +706,42 @@ class TheUpdate(FolderCase):
         self.assertEqual(outcome, env.UPDATED)
         self.assertIn(i18n.tr("services.update.done"), text)
         for service in env.SERVICES:
+            if service.name == env.REDIS:
+                continue
             with self.subTest(service=service.name):
                 self.assertIn(["rm", "--force", env.container(service.name)],
                               fake.calls)
                 _call(fake, env.container(service.name))
+        self.assertNotIn(["rm", "--force", env.container(env.REDIS)], fake.calls)
+
+    def test_update_leaves_the_redis_container_standing_when_its_pin_did_not_move(self):
+        # A sessão sobrevive porque o container SEGUE de pé — não porque algo o
+        # recria com o mesmo conteúdo, que é impossível: o Redis não guarda nada
+        # em disco.
+        self.runtime()
+        self.quiet(env.up, secret=self.phrase)
+        fake = self.runtime()
+        self.quiet(env.update, secret=self.phrase)
+        self.assertNotIn("run", [call[0] for call in fake.calls
+                                  if env.container(env.REDIS) in call])
+
+    def test_update_recreates_the_redis_when_its_own_pin_moved(self):
+        # A exceção é só enquanto o PIN não muda: um Redis desatualizado é
+        # recriado como qualquer outro serviço, e o registro que se perde com
+        # ele é o preço que `restart` já aceitava para um reinício do PRÓPRIO
+        # Redis.
+        self.runtime()
+        self.quiet(env.up, secret=self.phrase)
+        pins = env.held()
+        pins[env.REDIS] = {"version": "1.0", "digest": "sha256:" + "a" * 64}
+        env.pin_file().write_text(json.dumps(pins), encoding="utf-8")
+        fake = self.runtime()
+        outcome, _ = self.quiet(env.update, secret=self.phrase)
+        self.assertEqual(outcome, env.UPDATED)
+        self.assertIn(["rm", "--force", env.container(env.REDIS)], fake.calls)
+        _call(fake, env.container(env.REDIS))
+        self.assertEqual(env.held()[env.REDIS]["version"],
+                          _service(env.REDIS).image.version)
 
     def test_update_leaves_what_was_already_drawn_exactly_as_it_was(self):
         self.runtime()

@@ -2502,6 +2502,18 @@ def _start(service: Service, pins: dict[str, dict], key: bytes | None) -> bool:
             print(tr("services.up.no_address", service=name, address=address))
             return False
 
+    # §7b, TASK-172: o Redis já de pé, no MESMO pin, fica onde está. Recriá-lo
+    # aqui — como `update` recria todo o resto — derrubaria o registro de
+    # sessão que ele guarda em MEMÓRIA (nenhum volume o persiste, e essa regra
+    # não muda), então o preço que `restart` já aceitava para um reinício do
+    # PRÓPRIO Redis só é cobrado quando o PIN dele muda de fato.
+    if (service.name == REDIS and decide(service, pins) == CURRENT
+            and _state_of(service) == RUNNING):
+        _record(service, image)
+        print(tr("services.up.service", service=name, image=image.shown(),
+                 where=where))
+        return True
+
     # Whatever carries that name is AT's and is about to be replaced: the name
     # is the service, and two containers cannot share one.
     podman.run(["rm", "--force", container(service.name)])
@@ -2592,14 +2604,19 @@ def update(ask: Ask | None = None, secret: Ask | None = None) -> str:
     à frente do pin avisa e segue** — a mesma regra de sempre (`decide`,
     `_start`): não é rebaixada.
 
-    **O que persiste é a PASTA, e isto não a toca**: o cofre, `App/`, o estado
-    de cada serviço, e o que já foi SORTEADO — o segredo do portão, os três do
-    provedor, a credencial do AT no notificador. `bring_up` sorteia esses
-    valores só quando faltam (`_drawn`, `draw_gate`): uma pasta que já os tem
-    selados não vê nada mudar neles, e é por isso que rodar isto sobre um
-    ambiente de pé não derruba as sessões que já estavam abertas — o segredo
-    que as assina é o mesmo, e o volume onde a sessão mora não é limpo por
-    `_start` (§ `FILLED_BY_CONTAINERS`).
+    **A UMA exceção é o Redis (TASK-172).** Todo o resto é recriado sempre;
+    o container do Redis é o único que `_start` deixa de pé quando o PIN
+    dele não mudou (`decide(service, pins) == CURRENT`) — porque é ele quem
+    guarda, só em MEMÓRIA, o registro de quem está logado (§7b), e recriá-lo
+    aqui apagaria esse registro do mesmo jeito que reiniciar o PRÓPRIO Redis
+    já apagava (`restart`). **O que persiste é a PASTA, e isto não a toca**:
+    o cofre, `App/`, o estado de cada serviço, e o que já foi SORTEADO — o
+    segredo do portão, os três do provedor, a credencial do AT no
+    notificador. `bring_up` sorteia esses valores só quando faltam
+    (`_drawn`, `draw_gate`): uma pasta que já os tem selados não vê nada
+    mudar neles, e é por isso que rodar isto sobre um ambiente de pé não
+    derruba as sessões que já estavam abertas — o segredo que as assina é o
+    mesmo, e o registro que as nomeia sobrevive porque o Redis sobrevive.
 
     Uma pasta que NUNCA subiu — sem pin nenhum registrado (`held`) — não tem o
     que `update`: o word certo para ela é `up`, e é o que a recusa diz.
@@ -2788,11 +2805,13 @@ def restart(name: str, secret: Ask | None = None) -> bool:
     deste container: é o Redis do §7b (`REDIS`), um serviço do ambiente que este
     reinício não toca. **É esta fatia que faz a frase ser verdade**: antes dela
     o provedor guardava o registro na memória, e o reinício que troca uma
-    credencial derrubava, de fato, toda sessão que estava aberta. Um `update`
-    derruba as duas coisas — ele recria TODOS os containers, o Redis incluso —,
-    e esse é o preço declarado. §3 declares that price where the operator's act
-    is recorded, because it is the one thing a person changing a credential has
-    to know.
+    credencial derrubava, de fato, toda sessão que estava aberta. **Um
+    `update` não derruba mais o Redis** (TASK-172, `_start`): ele recria todo
+    o resto, mas o container do Redis fica de pé quando o PIN dele não
+    mudou, e é assim que o registro atravessa junto com o segredo que o
+    assina. O preço que sobra é o de sempre — reiniciar o PRÓPRIO Redis, um
+    crash ou um `podman restart` avulso dele, leva o registro com ele — e §3
+    declara esse preço onde o ato do operador é registrado.
 
     **E ele PEDE a Frase de Acesso, porque ele monta de novo** (`unlock`): o
     `_prepare` reescreve o `configuration.yml` — os três do provedor entram
