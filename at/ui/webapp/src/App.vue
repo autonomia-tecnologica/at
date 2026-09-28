@@ -255,8 +255,12 @@ defineExpose({ refresh });
        the entrance would be a box talking to nobody. -->
   <template v-if="signedIn">
     <nav>
+      <!-- A MARCA E O NOME DELA, lado a lado: a telha é a sigla, e o que vem
+           depois dela é o nome inteiro — quem chega não tem como saber o que
+           "AT" quer dizer, e a sidebar é onde o produto se apresenta. -->
       <h1 id="brand">
         <span class="brand">{{ word("brand") }}</span>
+        <span class="brand-name">{{ word("brand_name") }}</span>
       </h1>
       <Sidebar />
     </nav>

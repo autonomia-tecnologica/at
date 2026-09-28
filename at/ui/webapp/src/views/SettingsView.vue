@@ -39,6 +39,11 @@ import RiskRuler from "../components/RiskRuler.vue";
 import type { DarkState } from "../lib/theme";
 import type { ThemeRow } from "../lib/store";
 
+// AS ABAS, na ordem em que a tela se apresenta: o que a pasta é (o idioma), o
+// que se vê, quem age nela e o que ela mede de risco.
+const TABS = ["general", "appearance", "people", "risk"] as const;
+
+const tab = ref<(typeof TABS)[number]>("general");
 const motion = ref(motionOn());
 const side = ref(darkState());
 
@@ -76,78 +81,78 @@ watchEffect(() => setTrail(word("settings")));
 </script>
 
 <template>
-  <div class="groups">
-    <div class="group">
-      <Foldable id="settings:general" :label="word('general')"
-                head-class="group-head" box-class="group-body">
-        <dl>
-          <dt>{{ word("language") }}</dt>
-          <dd>{{ store.lang }}<template v-if="store.origin"> ({{ store.origin }})</template></dd>
-        </dl>
-      </Foldable>
+  <!-- AS ABAS SÃO OS GRUPOS, e cada parte é uma seção. A tela configura a pasta
+       inteira — o idioma, o que se vê, quem age e o que é risco —, e agrupar
+       isso em dobras fazia a pessoa ABRIR para descobrir o que havia dentro; o
+       que uma aba guarda não é surpresa, é a outra metade da mesma tela. -->
+  <div class="page">
+    <div class="tabs" role="tablist">
+      <button v-for="name in TABS" :key="name" type="button" role="tab"
+              class="tab" :class="{ on: tab === name }"
+              :aria-selected="tab === name" @click="tab = name">{{ word(name) }}</button>
     </div>
 
-    <!-- PEOPLE (§5, item 11): who may act, with which ceiling. It is an
-         adjustment of the folder, not a table to browse, which is why it sits
-         here and not in the Tabelas fold any more — `PeopleView` is a fragment
-         (two `.group`s of its own), dropped straight into this page's `.groups`
-         box instead of nesting one flex column inside another. -->
-    <PeopleView />
+    <div class="panel">
+      <section v-if="tab === 'general'" class="block">
+        <h2>{{ word("language") }}</h2>
+        <div class="block-body">
+          {{ store.lang }}<template v-if="store.origin"> ({{ store.origin }})</template>
+        </div>
+      </section>
 
-    <div class="group">
-      <Foldable id="settings:appearance" :label="word('appearance')"
-                head-class="group-head" box-class="group-body">
-        <dl>
-          <!-- THE THEMES ARE APPEARANCE, and not a section of their own: a theme
-               IS the page's look, and the list lives beside whoever governs it.
-               What it has of its own is the CEILING — there are twelve themes
-               and there may be more (the vocabulary is data), so the list
-               scrolls inside itself instead of pushing the page down without
-               end (`base.css`, `.settings`). -->
-          <dt>{{ word("themes") }}</dt>
-          <dd>
-            <div class="settings">
-              <button v-for="row in themeList" :key="row.id" type="button" class="theme"
-                      :class="{ on: themeState.id === row.id }"
-                      :aria-pressed="themeState.id === row.id"
-                      @click="pick(row)">
-                <b>{{ row.label }}</b>
-                <span class="key">{{ row.id }}</span>
-                <span v-if="descOf(row)" class="desc">{{ descOf(row) }}</span>
-              </button>
-            </div>
-          </dd>
+      <!-- OS TEMAS: the whole list, which is what a person comparing two looks
+           came here for. -->
+      <section v-if="tab === 'appearance'" class="block">
+        <h2>{{ word("themes") }}</h2>
+        <div class="block-body">
+          <div class="settings">
+            <button v-for="row in themeList" :key="row.id" type="button" class="theme"
+                    :class="{ on: themeState.id === row.id }"
+                    :aria-pressed="themeState.id === row.id"
+                    @click="pick(row)">
+              <b>{{ row.label }}</b>
+              <span class="key">{{ row.id }}</span>
+              <span v-if="descOf(row)" class="desc">{{ descOf(row) }}</span>
+            </button>
+          </div>
+        </div>
+      </section>
 
-          <dt>{{ word("dark_mode") }}</dt>
-          <dd>
-            <div class="radios" role="radiogroup" :aria-label="word('dark_mode')">
-              <label v-for="state in DARK_STATES" :key="state" class="radio-row"
-                     :class="{ on: side === state }">
-                <input type="radio" class="radio" name="dark-side" :value="state"
-                       :checked="side === state" @change="pickSide(state)">
-                <span>{{ word(WORDS[state]) }}</span>
-              </label>
-            </div>
-          </dd>
+      <section v-if="tab === 'appearance'" class="block">
+        <h2>{{ word("dark_mode") }}</h2>
+        <div class="block-body">
+          <div class="radios" role="radiogroup" :aria-label="word('dark_mode')">
+            <label v-for="state in DARK_STATES" :key="state" class="radio-row"
+                   :class="{ on: side === state }">
+              <input type="radio" class="radio" name="dark-side" :value="state"
+                     :checked="side === state" @change="pickSide(state)">
+              <span>{{ word(WORDS[state]) }}</span>
+            </label>
+          </div>
+        </div>
+      </section>
 
-          <dt>{{ word("motion") }}</dt>
-          <dd>
-            <button type="button" class="switch" role="switch"
-                    :aria-label="word('motion')" :class="{ on: motion }"
-                    :aria-checked="motion" @click="toggleMotion"></button>
-          </dd>
-        </dl>
-      </Foldable>
-    </div>
+      <section v-if="tab === 'appearance'" class="block">
+        <h2>{{ word("motion") }}</h2>
+        <div class="block-body">
+          <button type="button" class="switch" role="switch"
+                  :aria-label="word('motion')" :class="{ on: motion }"
+                  :aria-checked="motion" @click="toggleMotion"></button>
+        </div>
+      </section>
 
-    <!-- THE RULER — the demand filter's scale, drawn from what the product
-         declares (§4). It is a read and not a choice: nothing here is configured,
-         and the page invents no risk. -->
-    <div class="group">
-      <Foldable id="settings:risk" :label="word('risk')"
-                head-class="group-head" box-class="group-body">
-        <RiskRuler />
-      </Foldable>
+      <!-- PESSOAS (§5, item 11): quem pode agir, com qual teto. É ajuste da
+           pasta, e o componente traz as DUAS seções dele (atores e papéis). -->
+      <PeopleView v-if="tab === 'people'" />
+
+      <!-- O RISCO — a escala do filtro de demanda, desenhada a partir do que o
+           produto declara. É leitura e não escolha. -->
+      <section v-if="tab === 'risk'" class="block">
+        <h2>{{ word("risk") }}</h2>
+        <div class="block-body">
+          <RiskRuler />
+        </div>
+      </section>
     </div>
   </div>
 </template>

@@ -24,11 +24,6 @@ const props = withDefaults(
     boxClass?: string | null;
     // The HEAD's cloth: the panel's folder (`folder`) or a page's group.
     headClass?: string;
-    // WHAT THE FOLD HOLDS, when whoever opened it already knows — the panel's
-    // own count, drawn at the head's right edge (`nav .n`, base2.css). It is
-    // `null` where nothing has counted: a number invented here would be the
-    // page guessing at its own data.
-    count?: number | null;
     // THE PAGE THIS HEAD ALSO OPENS. A fold is a DISCLOSURE, and a section of
     // the panel is also a PLACE: the TASKS fold is where the tasks live, and the
     // same row opens the tree and opens the screen — one gesture, because the
@@ -36,7 +31,7 @@ const props = withDefaults(
     // every fold was before there was a screen to lead to.
     view?: string | null;
   }>(),
-  { label: "", boxClass: null, headClass: "folder", count: null, view: null },
+  { label: "", boxClass: null, headClass: "folder", view: null },
 );
 
 const prefs = foldPrefs();
@@ -74,10 +69,8 @@ onMounted(() => {
           type="button" @click="head">
     <span class="caret">▾</span>
     <!-- `.t` is the WORD, and it is named because a theme may have to place it:
-         what follows it — the count and the caret — belongs to the RIGHT EDGE,
-         with or without a count to carry it there (`base2.css`). -->
+         what follows it — the caret — belongs to the RIGHT EDGE (`base2.css`). -->
     <span class="t">{{ label }}</span>
-    <span v-if="count !== null" class="n">{{ count }}</span>
   </button>
   <div class="foldable" :class="[boxClass, { closed: !isOpen }]">
     <div class="fold">

@@ -16,9 +16,9 @@
 // a mark exists.
 
 import { computed, onMounted, onUnmounted, ref } from "vue";
-import { store, word, tableOf } from "../lib/store";
+import { store, word } from "../lib/store";
 import { session } from "../lib/session";
-import { CHAT_KEY, NLU_UI_ENABLED, TASKS_KEY, isCurrent, open, countOf } from "../lib/views";
+import { CHAT_KEY, NLU_UI_ENABLED, TASKS_KEY, FILES_KEY, TABLES_KEY, isCurrent, open, countOf } from "../lib/views";
 import { byName } from "../lib/order";
 import { navRail, toggleNav } from "../lib/nav";
 import Foldable from "./Foldable.vue";
@@ -48,16 +48,6 @@ const kinds = computed(() =>
     .filter(kind => !PEOPLE_TABLES.includes(kind.key))
     .sort((a, b) => byName(a.label, b.label)),
 );
-
-// WHAT EACH FOLD HOLDS, at its head — the count the STORE already carries, and
-// nothing else: a number this file worked out for itself would be the panel
-// guessing at its own data. The FILES fold carries none, because nothing here
-// has counted the tree (the tree's own page is what lists it), and a fold with
-// no number says less than a fold with a wrong one.
-const projectCount = computed(() => {
-  const kind = tableOf("project");
-  return kind ? countOf("project", kind.count) : null;
-});
 
 // The mark of the person, cut to what a circle holds. It is the NAME's own
 // first letter and never a picture: the folder keeps no face for anybody, and
@@ -117,13 +107,13 @@ onUnmounted(() => {
          sections, and a second door to the same place would be a door with
          nothing behind it. -->
     <Foldable v-if="hasProjects" id="tasks" :label="word('tasks')" box-class="branch"
-              :count="projectCount" :view="TASKS_KEY">
+              :view="TASKS_KEY">
       <ProjectsTree />
     </Foldable>
-    <Foldable id="files" :label="word('files')" box-class="branch">
+    <Foldable id="files" :label="word('files')" box-class="branch" :view="FILES_KEY">
       <FileTree />
     </Foldable>
-    <Foldable id="tables" :label="word('tables')" box-class="kinds" :count="kinds.length">
+    <Foldable id="tables" :label="word('tables')" box-class="kinds" :view="TABLES_KEY">
       <button v-for="kind in kinds" :key="kind.key" type="button"
               :data-view="kind.key" :class="{ on: isCurrent(kind.key) }"
               @click="openKind(kind.key)">

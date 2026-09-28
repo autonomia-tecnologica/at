@@ -9,8 +9,10 @@
 import { createApp } from "vue";
 import App from "./App.vue";
 import "./styles/app.css";
-import { registerView, registerType, TASKS_KEY } from "./lib/views";
+import { registerView, registerType, TASKS_KEY, FILES_KEY, TABLES_KEY } from "./lib/views";
 import TasksView from "./views/TasksView.vue";
+import FilesView from "./views/FilesView.vue";
+import TablesView from "./views/TablesView.vue";
 import SettingsView from "./views/SettingsView.vue";
 import ChatView from "./views/ChatView.vue";
 import ProjectView from "./views/ProjectView.vue";
@@ -29,6 +31,10 @@ import RoleView from "./views/RoleView.vue";
 // exists. Its key is the fold's own id, so a section's address is the section's
 // name — and FILES, when it has a screen, is one line here.
 registerView(TASKS_KEY, TasksView);
+// THE OTHER TWO SECTIONS, one line each — which is the whole point of the key
+// being the fold's id.
+registerView(FILES_KEY, FilesView);
+registerView(TABLES_KEY, TablesView);
 registerView("chat", ChatView);
 registerView("settings", SettingsView);
 registerView("orphans", OrphansView);

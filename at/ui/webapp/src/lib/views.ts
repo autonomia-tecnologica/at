@@ -28,6 +28,12 @@ export const ORPHANS_KEY = "orphans";
 // READ of the same rows KindView already fetches.
 export const TASKS_KEY = "tasks";
 
+// THE OTHER TWO SECTIONS WITH A SCREEN, by the same design: the key is the
+// fold's id, so the address is the section's own name (`/files`, `/tables`), and
+// the section has no step above it — it IS the first step of the band.
+export const FILES_KEY = "files";
+export const TABLES_KEY = "tables";
+
 // The interpreter's chat, which is a view of the page like the others — and one
 // the page does not OFFER when the interpreter is off (`store.interpreter`),
 // because turning it off takes the chat away and an address that still opened one

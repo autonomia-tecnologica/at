@@ -22,7 +22,6 @@ import { nav, openRef, showError } from "../lib/views";
 import TableView from "./TableView.vue";
 import MachineMint from "./MachineMint.vue";
 import RoleCreate from "./RoleCreate.vue";
-import Foldable from "./Foldable.vue";
 import type { TablePayload } from "../lib/record";
 
 const people = ref<TablePayload | null>(null);
@@ -50,26 +49,26 @@ watch(() => nav.tick, load);
 </script>
 
 <template>
-  <!-- THE ACTORS: the who, the role each one wears, and the credential a
-       machine proves. The bands count nothing: two tables share the page and a
-       single count in the header would belong to whichever spoke last. -->
-  <div class="group">
-    <Foldable id="people:actors" :label="kindLabel('actor')"
-              head-class="group-head" box-class="group-body">
+  <!-- AS DUAS SEÇÕES DA PESSOA: quem age e o que cada um pode. Elas não dobram
+       (2026-09-28): são os dois assuntos da tela, e o que uma seção esconde a
+       outra não mostra — quem veio mexer em papel quer ver o papel. -->
+  <section class="block">
+    <h2>{{ kindLabel('actor') }}</h2>
+    <div class="block-body">
       <MachineMint v-if="people" :roles="roles ? roles.records : []" :fields="people.fields" />
       <TableView v-if="people" entity="actor" :records="people.records"
                  :schema="people.fields" :defaults="people.columns" page="actor"
                  :actions="people.actions" @ref="openRef" />
-    </Foldable>
-  </div>
+    </div>
+  </section>
 
-  <div class="group">
-    <Foldable id="people:roles" :label="kindLabel('role')"
-              head-class="group-head" box-class="group-body">
+  <section class="block">
+    <h2>{{ kindLabel('role') }}</h2>
+    <div class="block-body">
       <RoleCreate v-if="roles" :fields="roles.fields" />
       <TableView v-if="roles" entity="role" :records="roles.records"
                  :schema="roles.fields" :defaults="roles.columns" page="role"
                  :actions="roles.actions" @ref="openRef" />
-    </Foldable>
-  </div>
+    </div>
+  </section>
 </template>

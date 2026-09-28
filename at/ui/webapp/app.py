@@ -424,7 +424,7 @@ PAGE_WORDS = (
     # the brand, and the second entrance — the one a dead session brings back —
     # came out with an empty one. The panel's `#brand` was drawing nothing all
     # along.
-    "brand",
+    "brand", "brand_name",
     "tasks", "files", "tables", "settings", "general", "appearance", "language",
     "dark_mode", "dark_system", "dark_theme", "dark_light", "dark_dark",
     "motion", "themes", "no_project", "new_project", "delete_project",
@@ -437,6 +437,7 @@ PAGE_WORDS = (
     "saved", "save_failed", "language_name", "language_flag",
     "ft_text", "ft_markdown", "ft_python", "ft_json", "ft_yaml", "ft_shell",
     "ft_dockerfile", "ft_binary", "ft_other",
+    "bucket_code", "bucket_text", "bucket_data", "bucket_other",
     # The interpreter's box, the switch that hides the balloon, and the ruler of
     # the demand filter (§4).
     "chat", "ask", "ask_hint", "proposal", "interpreter", "balloon",
