@@ -39,6 +39,9 @@ NAMES: dict[str, dict[str, str]] = {
     "prose": {"pt_BR": "Arquivos", "en_US": "Files"},
     "projects": {"pt_BR": "Projetos", "en_US": "Projects"},
     "shared": {"pt_BR": "Compartilhada", "en_US": "Shared"},
+    # A pasta que sela sozinha (TASK-154) — irmã de `prose`, e não dentro dela:
+    # o que entra aqui não é material solto, é o que a pessoa quer cifrado.
+    "cofre": {"pt_BR": "Cofre", "en_US": "Vault"},
     # The one whose name is the same word in both languages, like `App/`: a
     # person looking for what an agent loads looks for `harness` in either, and
     # pt_BR took the word whole. It is declared here rather than spelled in the
@@ -250,6 +253,16 @@ def shared_dir() -> Path:
     treated later: the transport, and what this does to the backup promise, are
     the session that comes after (§3)."""
     return folder("shared")
+
+
+def cofre_dir() -> Path:
+    """`Cofre/` — the folder that seals on its own (TASK-152, TASK-154).
+
+    A sibling of `Arquivos/` and not a folder inside it: what a person drops
+    here is not loose material, it is asking to be ciphered — the vigia watches
+    it and the Cofre's own consumer is the one that answers.
+    """
+    return folder("cofre")
 
 
 def harness_dir() -> Path:

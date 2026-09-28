@@ -33,8 +33,11 @@ import os
 # under.
 WEBAPP_KEY_ENV = "AT_WEBAPP_KEY"
 NOTIFIER_KEY_ENV = "AT_NOTIFIER_KEY"
+# TASK-154: o Cofre sela com a chave derivada do escopo `cofre`
+# (`at.core.cofre.SCOPE`), pela mesma porta.
+COFRE_KEY_ENV = "AT_COFRE_KEY"
 
-_ENV_VARS = (WEBAPP_KEY_ENV, NOTIFIER_KEY_ENV)
+_ENV_VARS = (WEBAPP_KEY_ENV, NOTIFIER_KEY_ENV, COFRE_KEY_ENV)
 
 _keys: dict[str, bytes] = {}
 
@@ -66,3 +69,9 @@ def notifier_key() -> bytes | None:
     """The notifier's derived key — the same one `at_deploy.notifier` seals
     and opens its credential with — kept since `boot`, or `None`."""
     return _keys.get(NOTIFIER_KEY_ENV)
+
+
+def cofre_key() -> bytes | None:
+    """The Cofre's derived key — what `core.cofre.Watcher.tick` seals a
+    settled write with — kept since `boot`, or `None`."""
+    return _keys.get(COFRE_KEY_ENV)

@@ -93,7 +93,7 @@ Os dois specs — `at-cli.spec` e `at-deploy.spec` — são o único lugar que d
 
 A pasta em que o binário foi aberto é a pasta do binário, e essa pasta é a Pasta de Trabalho (§3). Na primeira execução o AT descreve a pasta e pergunta antes de escrever qualquer coisa; `App/settings.json` é o que faz uma pasta ser uma pasta configurada.
 
-**O nome no disco é a face; a máquina lê o nome interno.** Cada pasta tem um nome interno — `app`, `data`, `prose`, `projects`, `shared` e `harness` —, e é ele que o motor usa e que as declarações citam. O nome que a pessoa lê vem do idioma ativo, e a tabela de `paths.py` é a única que o conhece: `Tabelas/`, `Arquivos/`, `Projetos/` e `Compartilhada/` em `pt_BR`; `Tables/`, `Files/`, `Projects/` e `Shared/` em `en_US`. Duas pastas são a exceção, e as duas são deliberadas: a pasta da instância não segue o idioma, porque o idioma mora dentro dela — `App/` nos dois —, e a `Harness/` não segue porque o `pt_BR` tomou a palavra inteira, então os dois idiomas a escrevem igual.
+**O nome no disco é a face; a máquina lê o nome interno.** Cada pasta tem um nome interno — `app`, `data`, `prose`, `projects`, `shared`, `harness` e `cofre` —, e é ele que o motor usa e que as declarações citam. O nome que a pessoa lê vem do idioma ativo, e a tabela de `paths.py` é a única que o conhece: `Tabelas/`, `Arquivos/`, `Projetos/`, `Compartilhada/` e `Cofre/` em `pt_BR`; `Tables/`, `Files/`, `Projects/`, `Shared/` e `Vault/` em `en_US`. Duas pastas são a exceção, e as duas são deliberadas: a pasta da instância não segue o idioma, porque o idioma mora dentro dela — `App/` nos dois —, e a `Harness/` não segue porque o `pt_BR` tomou a palavra inteira, então os dois idiomas a escrevem igual.
 
 Uma pasta nasce com:
 
@@ -111,6 +111,7 @@ Arquivos/                 tudo o que não é dado estruturado, com a nota de boa
 Projetos/                 o que pertence a um projeto — nomeada, ainda vazia
 Compartilhada/            o que for compartilhado com outras pessoas — nomeada, ainda vazia
 Harness/                  o que governa quem trabalha na pasta — nomeada, ainda vazia
+Cofre/                    o que sela sozinho — nomeada, ainda vazia
 ```
 
 A listagem acima é aquilo com que a pasta nasce. Uma pasta chega depois, e só se a

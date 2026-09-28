@@ -131,6 +131,7 @@ from at.core import (
     actors,
     audit,
     clock,
+    cofre,
     files,
     gate,
     paths,
@@ -1677,10 +1678,20 @@ def beat(times: int | None = None, pause: Callable[[float], None] = time.sleep) 
     boot with no key still rounds — `notifier.publish` answers `no_token`
     rather than sending an envelope nobody here could open.
 
+    **The Cofre's round shares the same guard, and its own `Watcher` is born
+    once, here** (TASK-154): a `cofre.Watcher` holds the pasta's retrato and
+    the writes still settling between two rounds, so it has to be the SAME
+    object across the whole rhythm and not one built fresh inside the loop —
+    a fresh one every round would never see a write settle, because settling
+    is read against the round before. It rounds on the job clock's own
+    cadence and not a faster one of its own: a Cofre is not a chat, and one
+    more thread with one more rhythm is a cost this fatia does not ask for.
+
     `times` and `pause` are the seams a test drives: the pass is proven with the
     instant handed to `at.ui.ask.tick`, and these are how the same pass is
     proven without the machine's hour and without sleeping through a cadence.
     """
+    watcher = cofre.Watcher()
     done = 0
     while times is None or done < times:
         try:
@@ -1690,6 +1701,10 @@ def beat(times: int | None = None, pause: Callable[[float], None] = time.sleep) 
         try:
             door.remind(key=keys.notifier_key())
         except Exception as error:  # noqa: BLE001 — same guard, the other round
+            print(i18n.tr("webapp.clock_failed", error=error))
+        try:
+            watcher.tick(keys.cofre_key())
+        except Exception as error:  # noqa: BLE001 — same guard, the third round
             print(i18n.tr("webapp.clock_failed", error=error))
         done += 1
         if times is None or done < times:

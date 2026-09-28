@@ -32,7 +32,7 @@ from types import SimpleNamespace
 from unittest import mock
 
 from at import i18n
-from at.core import actors, boot, files, tables
+from at.core import actors, boot, cofre, files, tables
 from at.encryption import vault
 from at.services import caddy
 from at.ui.webapp import app as webapp
@@ -1660,6 +1660,17 @@ class TheWebappContainer(FolderCase):
         # para o que já existe (`notifier.VAULT_SCOPE`).
         self.assertEqual(notifier_key,
                           vault.derived_key(self.phrase_key(), notifier.VAULT_SCOPE))
+
+    def test_the_webapp_is_handed_the_cofres_derived_key_too(self):
+        # TASK-154: a terceira porta, pela mesma regra — o escopo `cofre`.
+        fake = self.up()
+        argv = _call(fake, env.container(env.WEBAPP))
+        cofre_key = vault.derived_key(self.phrase_key(), cofre.SCOPE)
+        self.assertIn(
+            f"{webapp_keys.COFRE_KEY_ENV}="
+            f"{base64.urlsafe_b64encode(cofre_key).decode()}",
+            argv,
+        )
 
 
 class TheWebappBehindIt(FolderCase):

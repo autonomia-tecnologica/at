@@ -2375,27 +2375,33 @@ class TheDerivedKeys(unittest.TestCase):
         self.addCleanup(webapp_keys._keys.clear)
         self.addCleanup(webapp_keys._keys.update, self._held)
 
-    def test_boot_reads_both_variables_and_pops_them_from_the_environment(self):
+    def test_boot_reads_every_variable_and_pops_them_from_the_environment(self):
         webapp_key = b"w" * 32
         notifier_key = b"n" * 32
+        cofre_key = b"c" * 32
         env = {
             webapp_keys.WEBAPP_KEY_ENV: base64.urlsafe_b64encode(webapp_key).decode(),
             webapp_keys.NOTIFIER_KEY_ENV: base64.urlsafe_b64encode(notifier_key).decode(),
+            webapp_keys.COFRE_KEY_ENV: base64.urlsafe_b64encode(cofre_key).decode(),
         }
         with mock.patch.dict(os.environ, env):
             webapp_keys.boot()
             self.assertNotIn(webapp_keys.WEBAPP_KEY_ENV, os.environ)
             self.assertNotIn(webapp_keys.NOTIFIER_KEY_ENV, os.environ)
+            self.assertNotIn(webapp_keys.COFRE_KEY_ENV, os.environ)
         self.assertEqual(webapp_keys.webapp_key(), webapp_key)
         self.assertEqual(webapp_keys.notifier_key(), notifier_key)
+        self.assertEqual(webapp_keys.cofre_key(), cofre_key)
 
     def test_a_process_that_never_got_a_variable_has_no_key(self):
         with mock.patch.dict(os.environ, {}, clear=False):
             os.environ.pop(webapp_keys.WEBAPP_KEY_ENV, None)
             os.environ.pop(webapp_keys.NOTIFIER_KEY_ENV, None)
+            os.environ.pop(webapp_keys.COFRE_KEY_ENV, None)
             webapp_keys.boot()
         self.assertIsNone(webapp_keys.webapp_key())
         self.assertIsNone(webapp_keys.notifier_key())
+        self.assertIsNone(webapp_keys.cofre_key())
 
     def test_a_value_that_does_not_decode_is_skipped_and_not_raised(self):
         with mock.patch.dict(os.environ, {webapp_keys.WEBAPP_KEY_ENV: "not base64 at all!!"}):

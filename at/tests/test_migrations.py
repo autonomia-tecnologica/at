@@ -299,6 +299,20 @@ class TheFoldersFollowTheLanguage(FolderCase):
         self.assertIn(i18n.tr("boot.migration.folders.collision", names="data"), output)
         self.assertTrue((self.root / "data").is_dir())
 
+    def test_the_cofre_folder_arrives_by_its_own_migration(self):
+        # TASK-152/TASK-154: uma pasta nascida antes deste release não tem
+        # `Cofre/`, e é a migração 19 que a traz — a mesma forma da 5
+        # (`Harness/`), publicada e nunca editada.
+        self.born()
+        (self.root / "Cofre").rmdir()
+        migrations.stamp_file().write_text(
+            json.dumps(list(range(1, 19))) + "\n", encoding="utf-8"
+        )
+        output = self.caught_up()
+        self.assertTrue((self.root / "Cofre").is_dir())
+        self.assertEqual(list((self.root / "Cofre").iterdir()), [])
+        self.assertIn(i18n.tr("boot.migration.folders.born", names="Cofre"), output)
+
 
 # ------------------------------------------------------- the declaration ---
 

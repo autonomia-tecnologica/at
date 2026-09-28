@@ -112,7 +112,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from at.core import actors, files, gate, paths, tables
+from at.core import actors, cofre, files, gate, paths, tables
 from at.core.migrations import is_yes
 from at.encryption import vault
 from at.i18n import tr
@@ -798,17 +798,19 @@ def _webapp_env(key: bytes | None) -> tuple[tuple[str, str], ...]:
     declares in its own words (`Containerfile`), and naming it here costs one
     variable.
 
-    **§4, item 50: the two derived keys ride the same door, and only when there
-    is a Vault Key to derive them from.** `key` is `None` on a subida whose
-    folder had nothing to open, draw or migrate this round (`unlock`) — a folder
-    already entirely sealed does not get asked the Frase again, so it does not
-    get these variables either, and the WebApp inside it simply has no derived
-    key this boot (`at.ui.webapp.keys.get`'s own contract). When there IS a key,
-    it never travels itself — only `vault.derived_key`'s answer does, one scope
-    at a time: the WebApp's own (`WEBAPP`), and the notifier's, which is the
-    SAME key `at_deploy.notifier` already derives to seal and open its
-    credential (`notifier.VAULT_SCOPE`) — no envelope is resealed, this only
-    hands the WebApp a second door into the one that exists.
+    **§4, item 50: the THREE derived keys ride the same door, and only when
+    there is a Vault Key to derive them from.** `key` is `None` on a subida
+    whose folder had nothing to open, draw or migrate this round (`unlock`) —
+    a folder already entirely sealed does not get asked the Frase again, so
+    it does not get these variables either, and the WebApp inside it simply
+    has no derived key this boot (`at.ui.webapp.keys.get`'s own contract).
+    When there IS a key, it never travels itself — only `vault.derived_key`'s
+    answer does, one scope at a time: the WebApp's own (`WEBAPP`), the
+    notifier's, which is the SAME key `at_deploy.notifier` already derives to
+    seal and open its credential (`notifier.VAULT_SCOPE`) — no envelope is
+    resealed, this only hands the WebApp a second door into the one that
+    exists — and the Cofre's (TASK-154, `at.core.cofre.SCOPE`), what
+    `cofre.Watcher.tick` seals a settled write in `Cofre/` with.
 
     **And the notifier's ADDRESS, unconditionally** (§4, item 29's second
     slice): the key above is what OPENS the credential the WebApp reads
@@ -828,6 +830,9 @@ def _webapp_env(key: bytes | None) -> tuple[tuple[str, str], ...]:
     if key is not None:
         env.append((webapp_keys.WEBAPP_KEY_ENV, _derived_b64(key, WEBAPP)))
         env.append((webapp_keys.NOTIFIER_KEY_ENV, _derived_b64(key, NOTIFIER)))
+        # TASK-154: a terceira porta para o que já existe — a mesma Vault Key,
+        # o escopo `cofre` (`at.core.cofre.SCOPE`), nenhum envelope resselado.
+        env.append((webapp_keys.COFRE_KEY_ENV, _derived_b64(key, cofre.SCOPE)))
     return tuple(env)
 
 

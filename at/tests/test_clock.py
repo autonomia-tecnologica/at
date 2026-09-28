@@ -50,6 +50,7 @@ from at.core import (
     audit,
     boot,
     clock,
+    cofre,
     jobs,
     migrations,
     paths,
@@ -571,6 +572,27 @@ class TheProcess(ClockCase):
         output = StringIO()
         with mock.patch.object(door, "tick"), \
              mock.patch.object(door, "remind", side_effect=RuntimeError("quebrou")):
+            with redirect_stdout(output):
+                webapp.beat(times=1)
+        self.assertIn("quebrou", output.getvalue())
+
+    def test_the_cofres_round_shares_the_pass_and_its_own_key(self):
+        held = webapp_keys._keys.get(webapp_keys.COFRE_KEY_ENV)
+        webapp_keys._keys[webapp_keys.COFRE_KEY_ENV] = b"c" * 32
+        self.addCleanup(webapp_keys._keys.pop, webapp_keys.COFRE_KEY_ENV, None)
+        if held is not None:
+            self.addCleanup(webapp_keys._keys.__setitem__,
+                            webapp_keys.COFRE_KEY_ENV, held)
+        with mock.patch.object(door, "tick"), mock.patch.object(door, "remind"), \
+                mock.patch.object(cofre.Watcher, "tick") as ticked:
+            webapp.beat(times=1, pause=lambda seconds: None)
+        ticked.assert_called_once_with(b"c" * 32)
+
+    def test_a_cofre_pass_that_raises_does_not_take_the_clock_down_either(self):
+        output = StringIO()
+        with mock.patch.object(door, "tick"), mock.patch.object(door, "remind"), \
+                mock.patch.object(cofre.Watcher, "tick",
+                                   side_effect=RuntimeError("quebrou")):
             with redirect_stdout(output):
                 webapp.beat(times=1)
         self.assertIn("quebrou", output.getvalue())

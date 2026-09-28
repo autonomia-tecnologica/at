@@ -926,6 +926,20 @@ def _clock(ask: Ask | None) -> list[Report]:
     return _extend(CLOCK)
 
 
+def _cofre_folder(ask: Ask | None) -> list[Report]:
+    """`Cofre/` — a pasta que sela sozinha, chega numa pasta que já existia
+    (TASK-152, TASK-154).
+
+    A mesma forma de `_harness_folder`: nasce nomeada e vazia, e o impacto de
+    fora é nulo — nada aponta para ela ainda —, então não pergunta.
+    """
+    target = paths.cofre_dir()
+    if target.exists():
+        return []
+    target.mkdir(parents=True, exist_ok=True)
+    return [("boot.migration.folders.born", {"names": target.name})]
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, _legacy_instance),
     Migration(2, _capitalized_instance),
@@ -945,6 +959,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(16, _scanner),
     Migration(17, _tags),
     Migration(18, _clock),
+    Migration(19, _cofre_folder),
 )
 
 

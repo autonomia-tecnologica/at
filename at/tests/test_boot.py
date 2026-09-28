@@ -79,9 +79,11 @@ class FirstRun(unittest.TestCase):
         self.assertTrue((self.root / "Projetos").is_dir())
         self.assertTrue((self.root / "Compartilhada").is_dir())
         self.assertTrue((self.root / "Harness").is_dir())
+        self.assertTrue((self.root / "Cofre").is_dir())
         self.assertEqual(list((self.root / "Projetos").iterdir()), [])
         self.assertEqual(list((self.root / "Compartilhada").iterdir()), [])
         self.assertEqual(list((self.root / "Harness").iterdir()), [])
+        self.assertEqual(list((self.root / "Cofre").iterdir()), [])
 
     def test_a_folder_born_now_has_nothing_to_catch_up_on(self):
         # The stamp exists so the first start of an OLD folder differs from the
@@ -191,6 +193,7 @@ class FirstRun(unittest.TestCase):
         self.assertTrue((self.root / "Files").is_dir())
         self.assertTrue((self.root / "Projects").is_dir())
         self.assertTrue((self.root / "Shared").is_dir())
+        self.assertTrue((self.root / "Vault").is_dir())
         # `Harness/` does not move with the language either: pt_BR took the word
         # whole, so both languages spell it the same way.
         self.assertTrue((self.root / "Harness").is_dir())

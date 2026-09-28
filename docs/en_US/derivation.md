@@ -94,7 +94,7 @@ The two specs — `at-cli.spec` and `at-deploy.spec` — are the one place that 
 
 The folder the binary was opened in is the binary's folder, and that folder is the Working Folder (§3). On the first run AT describes the folder and asks before writing anything; `App/settings.json` is what makes a folder configured.
 
-**The name on disk is the face; the machine reads the internal name.** Every folder has an internal name — `app`, `data`, `prose`, `projects`, `shared` and `harness` — and that is the one the engine uses and the one the declarations cite. The name a person reads comes from the active language, and the table in `paths.py` is the only thing that knows it: `Tabelas/`, `Arquivos/`, `Projetos/` and `Compartilhada/` in `pt_BR`; `Tables/`, `Files/`, `Projects/` and `Shared/` in `en_US`. Two folders are the exception, and both are deliberate: the instance folder does not follow the language, because the language lives inside it — `App/` in both — and `Harness/` does not, because `pt_BR` took the word whole, so both languages spell it the same way.
+**The name on disk is the face; the machine reads the internal name.** Every folder has an internal name — `app`, `data`, `prose`, `projects`, `shared`, `harness` and `cofre` — and that is the one the engine uses and the one the declarations cite. The name a person reads comes from the active language, and the table in `paths.py` is the only thing that knows it: `Tabelas/`, `Arquivos/`, `Projetos/`, `Compartilhada/` and `Cofre/` in `pt_BR`; `Tables/`, `Files/`, `Projects/`, `Shared/` and `Vault/` in `en_US`. Two folders are the exception, and both are deliberate: the instance folder does not follow the language, because the language lives inside it — `App/` in both — and `Harness/` does not, because `pt_BR` took the word whole, so both languages spell it the same way.
 
 A folder is born with:
 
@@ -112,6 +112,7 @@ Files/                    everything that is not structured data, with a welcome
 Projects/                 what belongs to a project — named, still empty
 Shared/                   what is shared with other people — named, still empty
 Harness/                  what governs whoever works in the folder — named, still empty
+Vault/                    what seals on its own — named, still empty
 ```
 
 That listing is what a folder is born with. One folder arrives later, and only if
