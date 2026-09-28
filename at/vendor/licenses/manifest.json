@@ -32,12 +32,34 @@
       "artifacts": ["at-cli"],
       "text": "at/ui/webapp/vendor/licenses/inter-LICENSE"
     },
+    "iconoir": {
+      "name": "Iconoir",
+      "version": "7.12.1",
+      "license": "MIT",
+      "artifacts": ["at-cli"],
+      "text": "at/ui/webapp/vendor/licenses/iconoir-LICENSE",
+      "note": "The at2 theme's nav and bucket icons are individual strokes lifted from the set (icons/regular/*.svg) and served as plain SVG from at/ui/webapp/assets/icons/at2-*.svg, the same door the theme's own bucket drawings already use — not a byte-for-byte vendor copy, so it carries no entry in the WebApp's own pinned manifest."
+    },
+    "font-nunito-sans": {
+      "name": "Nunito Sans",
+      "version": "5.3.0",
+      "license": "OFL-1.1",
+      "artifacts": ["at-cli"],
+      "text": "at/ui/webapp/vendor/licenses/nunito-sans-LICENSE"
+    },
     "font-open-sans": {
       "name": "Open Sans",
       "version": "5.3.0",
       "license": "OFL-1.1",
       "artifacts": ["at-cli"],
       "text": "at/ui/webapp/vendor/licenses/open-sans-LICENSE"
+    },
+    "font-quicksand": {
+      "name": "Quicksand",
+      "version": "5.3.0",
+      "license": "OFL-1.1",
+      "artifacts": ["at-cli"],
+      "text": "at/ui/webapp/vendor/licenses/quicksand-LICENSE"
     },
     "font-silkscreen": {
       "name": "Silkscreen",

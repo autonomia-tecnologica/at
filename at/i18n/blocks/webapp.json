@@ -1,6 +1,7 @@
 {
   "pt_BR": {
     "serving": "AT WebApp em {url}",
+    "source_open": "Rodando do código-fonte: esta pasta não pede entrada, e o Forms é do bundle. Feche este servidor quando terminar.",
     "port_taken": "A porta {port} já está em uso — quem responde nela não é este AT. Rode `at-cli webapp --port <outra>` para escolher outra porta, ou feche o que está atendendo nela.",
     "instance_up": "Já responde um AT em {url}, na versão {version} — a mesma deste at-cli. Solto ou como serviço, é a mesma instância que este comando levantaria; nada para fazer.",
     "instance_ahead": "A instância em {url} responde na versão {theirs}, à frente da versão {mine} deste at-cli. Atualize este at-cli para a versão {theirs} (ou mais nova) e repita.",
@@ -18,6 +19,7 @@
     "forms_off": "Nesta pasta quem entra é o portão, pelo caminho container. O Forms está fora do caminho.",
     "title": "AT",
     "brand": "AT",
+    "overview": "Visão geral",
     "tasks": "Tarefas",
     "files": "Arquivos",
     "tables": "Tabelas",
@@ -90,6 +92,7 @@
   },
   "en_US": {
     "serving": "AT WebApp at {url}",
+    "source_open": "Running from source: this folder asks nobody in, and the Forms belongs to the bundle. Stop this server when you are done.",
     "port_taken": "Port {port} is already in use — whatever answers on it is not this AT. Run `at-cli webapp --port <another>` to pick another port, or close whatever is serving on it.",
     "instance_up": "An AT already answers at {url}, at version {version} — the same as this at-cli. Loose or as a service, it is the same instance this command would have started; nothing to do.",
     "instance_ahead": "The instance at {url} answers at version {theirs}, ahead of this at-cli's version {mine}. Update this at-cli to version {theirs} (or newer) and try again.",
@@ -107,6 +110,7 @@
     "forms_off": "In this folder the gate is what enters, on the container path. The Forms is off the path.",
     "title": "AT",
     "brand": "AT",
+    "overview": "Overview",
     "tasks": "Tasks",
     "files": "Files",
     "tables": "Tables",

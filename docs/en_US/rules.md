@@ -14,6 +14,7 @@
   - No secret lives in `settings.json`: it holds permission and adjustment, never a credential — [General settings](architecture.md#general-settings).
   - Every function of the core API is protected by RBAC; the permission is `object:action`, a role is a set of permissions, and a machine credential has a declared role — [Tables](architecture.md#tables).
   - The first admin is born on the first start, with a terminal in front; with no actor at all AT does not expose — [Interfaces](interfaces.md).
+  - **Running from source the WebApp asks nobody in**; the `dist`/release binary always asks, even in debug — and the key is the artifact, never a flag — [Access and exposure](#access-and-exposure).
   - Role and permission are a WebApp screen, and only an admin touches them — [Interfaces](interfaces.md).
   - **Installing a service is the Wizard's and only the Wizard's** — [Interfaces](interfaces.md).
   - A machine secret is stored hashed, with a role; a secret AT **uses**, such as a service credential, is stored encrypted in the `secret` table — [The Vault](architecture.md#the-vault).
@@ -48,6 +49,10 @@
 - Exposing demands authentication **and** TLS. Since the TLS is Caddy's, and Caddy is embedded (§3, Code and delivery), exposure on the hosted path happens through `at-cli webapp --include-caddy`: the Caddy terminates the TLS and publishes AT, and the WebApp answers on the loop behind it. On the container path, whoever sits at the edge is the Caddy in a container, for the isolation.
 
 - AT does not deliver HSTS, for an obvious reason: it serves with its own certificate, and HSTS would turn the browser's warning into an error with no way out. That is the price of not depending on a public domain, and of not being able to guarantee trusted TLS.
+
+- **Running from source the WebApp asks nobody in; the `dist`/release binary always asks.** It is the same line that already separates the two worlds in `paths.py`: the `at-cli` from `dist/` owns the folder it sits in, and the checkout's `python -m at` is wherever it was called. What answers is the **artifact** — `sys.frozen`, which the freezer writes and nobody types — and that is why there is no flag and no environment variable for it: both travel, one on a shortcut's command line and one exported in front of a process, and the release would carry the switch that closes its own door. **"Even in debug" is a consequence and not an exception**: there is no execution mode that turns the door off from outside.
+
+- What a run from source waives is the **entrance**, and only it. The folder is still the folder, the tables are still the tables, and `App/settings.json` still holds: a run from the checkout on a folder that has an admin does not start ignoring the admin — it simply asks nobody to prove themselves, and the sentence it prints says so. With no actor at all, the refusal to expose does not apply there either, because it is about an entrance that does not exist.
 
 ### The threat model
 

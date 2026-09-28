@@ -52,7 +52,10 @@ function goBack(): void {
 <template>
   <div class="record-page">
     <div class="page-actions">
-      <button type="button" class="btn" @click="goBack"
+      <!-- `btn-quiet`: the step back is a way OUT of the page and not its
+           action, and a system that fills every button by default (base2.css)
+           has to be told which one is not the action. -->
+      <button type="button" class="btn btn-quiet" @click="goBack"
               >← {{ record.shown_id }} · {{ total }} {{ word("records") }}</button>
     </div>
     <dl class="record-body">

@@ -217,7 +217,10 @@ The page is a **Vue 3 + TypeScript** app, built by Vite (§5). The build is deri
 cd at/ui/webapp
 npm ci && npm run build      # writes dist/, which the server serves
 npm run typecheck            # vue-tsc
+npm run dev                  # the app with hot reload, to work in
 ```
+
+`npm run dev` starts Vite **and needs the server behind it**: Vite serves the app — the modules, the hot reload — and `at-cli webapp` keeps everything that is not the app (the words, the tables, the look, the icons, the pinned files), on its own port (`AT_WEBAPP_PORT`, defaulting to AT's own — 12345). Two processes and one origin, which is why the look enters the head the same way: the `transformIndexHtml` plugin runs in dev too, and `/theme.css` and `/base.css` cross the proxy.
 
 Two settings in `vite.config.ts` are not taste: the modulepreload polyfill and the inline-asset limit are OFF, because both would emit an inline `<script>` or a `data:` and the policy would refuse them. And the look is injected into the head by a `transformIndexHtml` plugin — Vite treats `<link rel="stylesheet">` as something to bundle and **silently removes** what it cannot find on disk, which is how a build once shipped without a single rule.
 

@@ -1,0 +1,152 @@
+<script setup lang="ts">
+// OverviewView — the panel's front door: what the folder HOLDS, at a glance.
+//
+// IT INVENTS NO DATA, and that is the whole discipline of this page. Every
+// number is a count of rows the server already returns for two tables that
+// exist (`task`, `project`), read through the very routes their own pages read
+// them with — the same payload, a different cut. A row the page was not handed
+// is a row the page does not count, and a summary that guessed would be a
+// dashboard that lies about the folder it describes.
+//
+// IT ALSO INVENTS NO WORDS. The names of the statuses are the TABLE's own
+// vocabulary (`fields[].enum`, handed over with the rows), the name of the
+// project table is the table's own name (the panel already draws it), and what
+// is left over is the page's own — `overview`, from the catalog like every
+// other word on screen.
+//
+// WHAT IT IS NOT is a place to act: nothing here is clickable but the doors
+// OUT of it (a project), because a summary that also edits is a second way to
+// do what the page already does.
+
+import { ref, computed, watch, onMounted } from "vue";
+import { api } from "../lib/api";
+import { store, setFields, word, label, kindLabel } from "../lib/store";
+import { nav, open, setHeading, showError, OVERVIEW_KEY } from "../lib/views";
+import type { TablePayload, RecordRow, RecordField } from "../lib/record";
+
+const tasks = ref<TablePayload | null>(null);
+const projects = ref<TablePayload | null>(null);
+
+// The rows as they arrive, in the shape this page reads them: a field looked up
+// by NAME. The payload is a list of fields per record, and every question here
+// is about one field.
+function fieldOf(rec: RecordRow, name: string): RecordField | null {
+  return rec.fields.find(f => f.name === name) || null;
+}
+
+function rawOf(rec: RecordRow, name: string): unknown {
+  const field = fieldOf(rec, name);
+  return field ? field.raw : null;
+}
+
+// THE STATUSES, in the order the TABLE declares them — never a list written
+// here. A vocabulary that grows a status is a column this page gains without
+// being touched (`task.json`, `fields.status.enum`).
+const statuses = computed(() => {
+  const spec = tasks.value?.fields.find(f => f.name === "status");
+  return Object.entries(spec?.enum || {}).map(([key, labels]) => ({ key, labels }));
+});
+
+// One status, one number: what the panel says the table holds, cut the other
+// way. The count is the ROWS, and the rows are what the server sent.
+function countOfStatus(key: string): number {
+  const rows = tasks.value?.records || [];
+  return rows.filter(rec => rawOf(rec, "status") === key).length;
+}
+
+const total = computed(() => tasks.value?.records.length || 0);
+
+// A task that points at no project at all — the panel has a page for it
+// (`orphans`), and the summary is where its number belongs.
+const orphans = computed(
+  () => (tasks.value?.records || []).filter(rec => rawOf(rec, "project") === null).length,
+);
+
+// WHAT EACH PROJECT HOLDS. A task names its project by NUMBER (`raw`, the way
+// the engine stores a reference to one table), so the two are joined on the id
+// and not on the title — a title is a translation, and two projects may share
+// one in another language.
+function tasksOf(projectId: number): RecordRow[] {
+  return (tasks.value?.records || []).filter(rec => rawOf(rec, "project") === projectId);
+}
+
+function doneOf(projectId: number): number {
+  return tasksOf(projectId).filter(rec => rawOf(rec, "status") === "done").length;
+}
+
+const projectRows = computed(() => projects.value?.records || []);
+
+const projectsLabel = computed(() => kindLabel("project") || word("overview"));
+
+async function load(): Promise<void> {
+  try {
+    const [taskPage, projectPage] = await Promise.all([
+      api<TablePayload>("/api/table/task?all"),
+      api<TablePayload>("/api/table/project?all"),
+    ]);
+    tasks.value = taskPage;
+    projects.value = projectPage;
+    // The schema the OPEN RECORD of a task would draw with, so the table this
+    // page cuts is the table the page hands over — one vocabulary, not two.
+    setFields(taskPage.fields);
+    setHeading(word("overview"), " · " + taskPage.records.length + " " + word("tasks"));
+  } catch (err) {
+    tasks.value = null;
+    projects.value = null;
+    showError(err as Error);
+  }
+}
+
+function openProject(id: number): void {
+  if (store.types.project) open(store.types.project + ":" + id, null);
+}
+
+onMounted(load);
+watch(() => nav.tick, load);
+</script>
+
+<template>
+  <div v-if="tasks" class="overview">
+    <!-- THE NUMBERS, one card each, drawn from the table's own vocabulary. -->
+    <div class="stats">
+      <div v-for="status in statuses" :key="status.key" class="stat"
+           :data-state="status.key">
+        <b>{{ countOfStatus(status.key) }}</b>
+        <span>{{ label(status.labels) }}</span>
+      </div>
+      <div v-if="orphans" class="stat">
+        <b>{{ orphans }}</b>
+        <span>{{ word("no_project") }}</span>
+      </div>
+    </div>
+
+    <!-- THE SAME NUMBERS AS ONE BAR, because a proportion is read faster than
+         four counts: the parts are the statuses, in the table's order, and the
+         width is the share of the whole. It is `--accent`'s ramp and the
+         semantics the theme declares (`base2.css`) — the page names neither a
+         colour nor a width. -->
+    <div class="bars" v-if="total">
+      <span v-for="status in statuses" :key="status.key" class="bar-part"
+            :data-state="status.key" :style="{ flexGrow: countOfStatus(status.key) }"
+            :title="label(status.labels) + ': ' + countOfStatus(status.key)"></span>
+    </div>
+
+    <!-- WHAT THE PROJECTS HOLD. Each row is a door: the project's own page is
+         where its tasks are, and a summary is not a second way to read them. -->
+    <section class="cards">
+      <h2>{{ projectsLabel }}</h2>
+      <button v-for="project in projectRows" :key="project.id" type="button" class="card"
+              @click="openProject(project.id)">
+        <span class="card-top">
+          <b>{{ project.title }}</b>
+          <span class="n">{{ doneOf(project.id) }}/{{ tasksOf(project.id).length }}</span>
+        </span>
+        <span class="progress" aria-hidden="true">
+          <span class="progress-part"
+                :style="{ width: (tasksOf(project.id).length
+                  ? (100 * doneOf(project.id)) / tasksOf(project.id).length : 0) + '%' }"></span>
+        </span>
+      </button>
+    </section>
+  </div>
+</template>

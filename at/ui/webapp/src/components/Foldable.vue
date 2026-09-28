@@ -23,8 +23,13 @@ const props = withDefaults(
     boxClass?: string | null;
     // The HEAD's cloth: the panel's folder (`folder`) or a page's group.
     headClass?: string;
+    // WHAT THE FOLD HOLDS, when whoever opened it already knows — the panel's
+    // own count, drawn at the head's right edge (`nav .n`, base2.css). It is
+    // `null` where nothing has counted: a number invented here would be the
+    // page guessing at its own data.
+    count?: number | null;
   }>(),
-  { label: "", boxClass: null, headClass: "folder" },
+  { label: "", boxClass: null, headClass: "folder", count: null },
 );
 
 const prefs = foldPrefs();
@@ -44,9 +49,16 @@ onMounted(() => {
 </script>
 
 <template>
-  <button :class="[headClass, 'fold-head', { closed: !isOpen }]" type="button" @click="toggle">
+  <!-- `data-branch` is the ID, ON THE HEAD. The id is a prop and never reaches
+       the DOM by itself, and the head is where a theme hangs the mark of what a
+       fold holds (`nav .folder[data-branch="tasks"]`, base2.css) — which is a
+       drawing and not behaviour, so it belongs to whoever dresses the control
+       and not to whoever knows what it opens. -->
+  <button :data-branch="id" :class="[headClass, 'fold-head', { closed: !isOpen }]"
+          type="button" @click="toggle">
     <span class="caret">▾</span>
     <span>{{ label }}</span>
+    <span v-if="count !== null" class="n">{{ count }}</span>
   </button>
   <div class="foldable" :class="[boxClass, { closed: !isOpen }]">
     <div class="fold">

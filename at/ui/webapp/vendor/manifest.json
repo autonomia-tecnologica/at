@@ -58,6 +58,34 @@
       "bytes": 24356,
       "sha256": "6f56409fd3d64bb85f7d070bce20749db2d66b6d63cec586cc22d1c761be2491"
     },
+    "font-nunito-sans-400": {
+      "package": "@fontsource/nunito-sans",
+      "version": "5.3.0",
+      "upstream": "files/nunito-sans-latin-400-normal.woff2",
+      "bytes": 13892,
+      "sha256": "d9976dd1dc9c0d65046b52810e7cc69cfc229ee9939628ffe637e17efe4ef1ed"
+    },
+    "font-nunito-sans-600": {
+      "package": "@fontsource/nunito-sans",
+      "version": "5.3.0",
+      "upstream": "files/nunito-sans-latin-600-normal.woff2",
+      "bytes": 14008,
+      "sha256": "e03e312b8b7abd8b69ecef4060ded626f80e45723becd13676ad8273cf568a6e"
+    },
+    "font-nunito-sans-700": {
+      "package": "@fontsource/nunito-sans",
+      "version": "5.3.0",
+      "upstream": "files/nunito-sans-latin-700-normal.woff2",
+      "bytes": 13836,
+      "sha256": "cb84238e7b852f2d22b91a598289f13b31cbc7a2d618fd2c0628ecb69459fbeb"
+    },
+    "font-nunito-sans-800": {
+      "package": "@fontsource/nunito-sans",
+      "version": "5.3.0",
+      "upstream": "files/nunito-sans-latin-800-normal.woff2",
+      "bytes": 13876,
+      "sha256": "4c839e56cbef1bbdfd509670f523730e24298aaf9a7791e0151031b023c12e4c"
+    },
     "font-open-sans-400": {
       "package": "@fontsource/open-sans",
       "version": "5.3.0",
@@ -85,6 +113,27 @@
       "upstream": "files/open-sans-latin-700-normal.woff2",
       "bytes": 18204,
       "sha256": "594a622208d1dad5d1dd58aef74f212ce7132d8f0aa5bacea6cfeb86d308c17a"
+    },
+    "font-quicksand-500": {
+      "package": "@fontsource/quicksand",
+      "version": "5.3.0",
+      "upstream": "files/quicksand-latin-500-normal.woff2",
+      "bytes": 15788,
+      "sha256": "eb8add2effc4883b14a0470be949cab435ca77b72c762d24a7b12472d34a8aa4"
+    },
+    "font-quicksand-600": {
+      "package": "@fontsource/quicksand",
+      "version": "5.3.0",
+      "upstream": "files/quicksand-latin-600-normal.woff2",
+      "bytes": 15864,
+      "sha256": "d7b2a752a20177cbd2a98775062aca67795b79bda8a98dfe863cd4d7b3e701a2"
+    },
+    "font-quicksand-700": {
+      "package": "@fontsource/quicksand",
+      "version": "5.3.0",
+      "upstream": "files/quicksand-latin-700-normal.woff2",
+      "bytes": 15124,
+      "sha256": "00bfba44dde0dd81d9296cacc53f0ffa3ceff85997e69abd2891cbb9518ff40e"
     },
     "font-silkscreen-400": {
       "package": "@fontsource/silkscreen",

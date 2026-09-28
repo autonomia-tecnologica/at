@@ -16,8 +16,9 @@
 // a mark exists.
 
 import { computed, onMounted, onUnmounted, ref } from "vue";
-import { store, word } from "../lib/store";
-import { CHAT_KEY, NLU_UI_ENABLED, isCurrent, open, countOf } from "../lib/views";
+import { store, word, tableOf } from "../lib/store";
+import { session } from "../lib/session";
+import { CHAT_KEY, NLU_UI_ENABLED, OVERVIEW_KEY, isCurrent, open, countOf } from "../lib/views";
 import { byName } from "../lib/order";
 import { navRail, toggleNav } from "../lib/nav";
 import Foldable from "./Foldable.vue";
@@ -48,8 +49,27 @@ const kinds = computed(() =>
     .sort((a, b) => byName(a.label, b.label)),
 );
 
+// WHAT EACH FOLD HOLDS, at its head — the count the STORE already carries, and
+// nothing else: a number this file worked out for itself would be the panel
+// guessing at its own data. The FILES fold carries none, because nothing here
+// has counted the tree (the tree's own page is what lists it), and a fold with
+// no number says less than a fold with a wrong one.
+const projectCount = computed(() => {
+  const kind = tableOf("project");
+  return kind ? countOf("project", kind.count) : null;
+});
+
+// The mark of the person, cut to what a circle holds. It is the NAME's own
+// first letter and never a picture: the folder keeps no face for anybody, and
+// an avatar drawn from nothing but a name is either a letter or a lie.
+const initials = computed(() => (session.actor?.name || "").trim().slice(0, 1).toUpperCase());
+
 function openKind(key: string): void {
   open(key, null);
+}
+
+function openOverview(): void {
+  open(OVERVIEW_KEY, null);
 }
 
 function openSettings(): void {
@@ -94,13 +114,22 @@ onUnmounted(() => {
        and the foot below is NOT part of it: a thing that must always be on screen
        cannot live inside the thing that leaves it. -->
   <div id="kinds">
-    <Foldable v-if="hasProjects" id="tasks" :label="word('tasks')" box-class="branch">
+    <!-- THE FRONT DOOR, and it is FIRST: what the folder holds, before the doors
+         that hold one part of it (`views.ts`, OVERVIEW_KEY). It is a row of the
+         same cloth as the foot's, and it sits above the folds because it is not
+         a fold — there is nothing inside it to open. -->
+    <button type="button" class="file" :data-view="OVERVIEW_KEY"
+            :class="{ on: isCurrent(OVERVIEW_KEY) }" @click="openOverview">
+      <span>{{ word("overview") }}</span>
+    </button>
+    <Foldable v-if="hasProjects" id="tasks" :label="word('tasks')" box-class="branch"
+              :count="projectCount">
       <ProjectsTree />
     </Foldable>
     <Foldable id="files" :label="word('files')" box-class="branch">
       <FileTree />
     </Foldable>
-    <Foldable id="tables" :label="word('tables')" box-class="kinds">
+    <Foldable id="tables" :label="word('tables')" box-class="kinds" :count="kinds.length">
       <button v-for="kind in kinds" :key="kind.key" type="button"
               :data-view="kind.key" :class="{ on: isCurrent(kind.key) }"
               @click="openKind(kind.key)">
@@ -152,6 +181,14 @@ onUnmounted(() => {
          hears the ACTION and not the position. That flip is also what keeps the
          accessible name matching the visible one where the visible one exists
          (WCAG 2.5.3, and the reason the label is not a fixed "Painel"). -->
+    <!-- WHO IS IN, when the folder asked anybody. A run that asks nobody has no
+         actor to name (`/api/session` answers `null`), and the row is not there
+         at all: a circle with nobody's initials in it is worse than no circle,
+         and this panel is drawn on the very machines an install begins on. -->
+    <div v-if="session.actor" class="side-who">
+      <span class="avatar" aria-hidden="true">{{ initials }}</span>
+      <span class="who-name">{{ session.actor.name }}</span>
+    </div>
     <!-- THE LINE ABOVE THE CONTROL. `hr.sep` is the separator this file already
          uses to close the foot off from the tree, so the control is set apart by
          the same mark and not by a second idiom invented here. -->

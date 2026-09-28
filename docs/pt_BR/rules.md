@@ -14,6 +14,7 @@
   - Nenhum segredo mora no `settings.json`: ele guarda permissão e ajuste, nunca credencial — [Configurações gerais](architecture.md#configurações-gerais).
   - Toda função da API do core é protegida por RBAC; a permissão é `objeto:ação`, o papel é um conjunto de permissões, e credencial de máquina tem papel declarado — [Tabelas](architecture.md#tabelas).
   - O primeiro admin nasce na primeira subida, com terminal na frente; sem ator nenhum o AT não expõe — [Interfaces](interfaces.md).
+  - **Rodando do código-fonte o WebApp não pede entrada**; o binário do `dist` sempre pede, mesmo em modo de depuração — e a chave é o artefato, nunca uma bandeira — [Acesso e exposição](#acesso-e-exposição).
   - Papel e permissão são tela do WebApp, e só admin mexe neles — [Interfaces](interfaces.md).
   - **Instalar serviço é do Wizard e só dele** — [Interfaces](interfaces.md).
   - Segredo de máquina se guarda hasheado, com papel; segredo que o AT **usa**, como a credencial de um serviço, se guarda criptografado na tabela `secret` — [O Cofre](architecture.md#o-cofre).
@@ -48,6 +49,10 @@
 - Expor exige autenticação **e** TLS. Como o TLS é do Caddy, e o Caddy é embarcado (§3, Código e delivery), a exposição no caminho hospedado acontece por `at-cli webapp --include-caddy`: o Caddy termina o TLS e publica o AT, e o WebApp responde no laço atrás dele. No caminho container quem fica na borda é o Caddy em container, pelo isolamento.
 
 - O AT não entrega HSTS, por motivo óbvio: ele serve com certificado próprio, e HSTS transformaria o aviso do navegador em erro sem saída. É o preço de não depender de um domínio público, e de não poder garantir TLS confiável.
+
+- **Rodando do código-fonte o WebApp não pede entrada; o binário do `dist` sempre pede.** É a mesma linha que já separa os dois mundos em `paths.py`: o `at-cli` do `dist/` é dono da pasta onde ele está, e o `python -m at` do checkout é onde foi chamado. Quem responde é o **artefato** — `sys.frozen`, que o empacotador escreve e ninguém digita —, e é por isso que não existe bandeira nem variável de ambiente para isso: as duas viajam, uma na linha de um atalho e outra exportada na frente de um processo, e o release carregaria o interruptor que fecha a própria porta. **"Mesmo com depuração" é consequência e não exceção**: não há modo de execução que desligue a porta por fora.
+
+- O que uma execução a partir do fonte dispensa é a **entrada**, e só ela. A pasta continua a pasta, as tabelas continuam as tabelas, e o `App/settings.json` continua valendo: uma execução do checkout numa pasta que tem admin não passa a ignorar o admin — ele simplesmente não pede que ninguém se prove, e a frase que ele imprime diz isso. Sem ator nenhum a recusa de expor também não se aplica ali, porque ela é sobre uma entrada que não existe.
 
 ### O modelo de ameaças
 

@@ -13,26 +13,51 @@
 // The page is made of GROUPS THAT FOLD — the SAME fold as the panel's folder, and
 // what changes is the cloth: here the PAGE's (`--group-*`), there the PANEL's.
 //
-// THE THEME PICKER IS GONE (2026-09-27). AT wears one look now — Paper — and a
-// list of one is not a choice, it is a caption. The eleven other themes stay
-// exactly as they were (nobody touched a line of their CSS): the REGISTRY still
-// declares them, and `theme.ts` still resolves whichever one the server hands
-// over, which is what keeps the whole mechanism ready the day this comes back.
-// What is gone is the ROW that let a person leave Paper — the side (light/dark)
-// is not that choice, it is Paper's own two faces, and it stays.
+// THE THEME PICKER IS BACK (2026-09-28), and the day it came back is the day a
+// SECOND look existed. It left on 2026-09-27 because a list of one is a caption
+// and not a choice — and that was true: with Paper the only row, the control let
+// a person leave the one look the product had. What changed is not the rule but
+// the count: `at2` is a design system of its own, walked through its own base
+// (`base_css_path`), and whoever is comparing two looks needs the row that moves
+// between them. The whole mechanism stayed ready under the removal — the
+// registry, `chooseTheme`, the `.theme` rows — which is what this restores, and
+// nothing more.
+//
+// IT SITS FIRST, because the side is the THEME's: a control that asks which of a
+// theme's two faces to wear, placed above the list that picks the theme, asks
+// the question backwards.
 
-import { ref, watchEffect } from "vue";
+import { computed, ref, watchEffect } from "vue";
 import { store, word } from "../lib/store";
-import { DARK_STATES, chooseDark, darkState } from "../lib/theme";
+import { DARK_STATES, chooseDark, chooseTheme, darkState, themeState } from "../lib/theme";
 import { motionOn, setMotion } from "../lib/motion";
+import { byName } from "../lib/order";
 import { setTitle } from "../lib/views";
 import Foldable from "../components/Foldable.vue";
 import PeopleView from "../components/PeopleView.vue";
 import RiskRuler from "../components/RiskRuler.vue";
 import type { DarkState } from "../lib/theme";
+import type { ThemeRow } from "../lib/store";
 
 const motion = ref(motionOn());
 const side = ref(darkState());
+
+// The theme's description is PER SIDE: the same theme describes itself
+// differently in light and dark, and what is read is the side being worn —
+// `themeState.dark` is the signal that follows the swap, so changing sides
+// needs no redraw.
+const descOf = (row: ThemeRow): string =>
+  row.desc ? (themeState.dark ? row.desc.dark : row.desc.light) || "" : "";
+
+// THE THEMES IN ALPHABETICAL ORDER, by the name the page PRINTS. The registry
+// declares them in the order they were born, which is a history and not an
+// index — and what somebody does with a list of themes is look one up. It is the
+// same rule the panel already follows for the tables (`order.ts`).
+const themeList = computed(() => [...store.themes].sort((a, b) => byName(a.label, b.label)));
+
+function pick(row: ThemeRow): void {
+  chooseTheme(row.id);
+}
 
 const WORDS: Record<DarkState, string> = {
   system: "dark_system", theme: "dark_theme", light: "dark_light", dark: "dark_dark",
@@ -73,6 +98,26 @@ watchEffect(() => setTitle(word("settings")));
       <Foldable id="settings:appearance" :label="word('appearance')"
                 head-class="group-head" box-class="group-body">
         <dl>
+          <!-- THE THEMES ARE APPEARANCE, and not a section of their own: a theme
+               IS the page's look, and the list lives beside whoever governs it.
+               What it has of its own is the CEILING — there are twelve themes
+               and there may be more (the vocabulary is data), so the list
+               scrolls inside itself instead of pushing the page down without
+               end (`base.css`, `.settings`). -->
+          <dt>{{ word("themes") }}</dt>
+          <dd>
+            <div class="settings">
+              <button v-for="row in themeList" :key="row.id" type="button" class="theme"
+                      :class="{ on: themeState.id === row.id }"
+                      :aria-pressed="themeState.id === row.id"
+                      @click="pick(row)">
+                <b>{{ row.label }}</b>
+                <span class="key">{{ row.id }}</span>
+                <span v-if="descOf(row)" class="desc">{{ descOf(row) }}</span>
+              </button>
+            </div>
+          </dd>
+
           <dt>{{ word("dark_mode") }}</dt>
           <dd>
             <div class="radios" role="radiogroup" :aria-label="word('dark_mode')">

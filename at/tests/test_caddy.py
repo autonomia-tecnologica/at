@@ -53,6 +53,20 @@ def free_port() -> int:
     return port
 
 
+def built_once_at(built: mock.Mock, port: int, host: str) -> None:
+    """WHAT THE SERVER WAS BUILT WITH: one call, and the ADDRESS it named.
+
+    The address is what these tests read. Whether that server draws an entrance
+    at all is the ARTIFACT's answer (`asks`, off `paths.source`) and not this
+    suite's, so pinning the whole call would make every one of them a test about
+    which artifact the suite happens to be running as.
+    """
+    built.assert_called_once()
+    where = built.call_args.args if built.call_args else ()
+    if where != (port, host):
+        raise AssertionError(f"the server was built at {where}, not {(port, host)}")
+
+
 class FolderCase(unittest.TestCase):
     """A scratch Working Folder, which is what every path below resolves to."""
 
@@ -551,7 +565,7 @@ class TheExposedRun(FolderCase):
         # Two processes cannot share one port, and what has to stay stable is the
         # address the person reaches — so the WebApp is the one that moves.
         _, built, _ = self.probe(include_caddy=True)
-        built.assert_called_once_with(0, webapp.HOST)
+        built_once_at(built, 0, webapp.HOST)
 
     def test_with_the_flag_the_address_is_the_name_and_not_the_folders_choice(self):
         # With the Caddy in front, `--host` is the NAME the certificate is issued
@@ -628,18 +642,18 @@ class TheAddress(FolderCase):
 
     def test_the_loop_is_the_default_and_what_the_product_recommends(self):
         self.assertEqual(webapp.chosen_host(), webapp.HOST)
-        self.served().assert_called_once_with(12399, webapp.HOST)
+        built_once_at(self.served(), 12399, webapp.HOST)
 
     def test_the_folder_may_name_another_address(self):
         # The door is `settings.json`, on the same shelf `basic_auth` sits on:
         # an adjustment of the installation, and never a credential.
         self.chose("0.0.0.0")
         self.assertEqual(webapp.chosen_host(), "0.0.0.0")
-        self.served().assert_called_once_with(12399, "0.0.0.0")
+        built_once_at(self.served(), 12399, "0.0.0.0")
 
     def test_the_command_line_says_it_for_one_run(self):
         self.chose("0.0.0.0")
-        self.served(host="192.168.1.10").assert_called_once_with(12399, "192.168.1.10")
+        built_once_at(self.served(host="192.168.1.10"), 12399, "192.168.1.10")
 
     def test_a_value_that_is_not_a_name_answers_the_default(self):
         for value in (7, "", "   ", True, ["0.0.0.0"]):

@@ -154,8 +154,10 @@ class TheWebappObeysThePath(FolderCase):
     """§7c: with the Forms off, the person's door is the gate's — and no other."""
 
     def server(self) -> SimpleNamespace:
-        """A server with the one thing the transports read: its registry."""
-        return SimpleNamespace(sessions=webapp.session.Sessions())
+        """A server with the two things the transports read: its registry, and
+        whether it draws an entrance at all (`asks`, which is the artifact's
+        answer and not this suite's — here it is the BUNDLE's, which asks)."""
+        return SimpleNamespace(sessions=webapp.session.Sessions(), asks=True)
 
     def test_forms_off_takes_the_cookie_session_with_it(self):
         # The cookie a Forms entrance opened is the LOCAL door; a folder on the

@@ -111,12 +111,29 @@ def _extension() -> str:
     return WINDOWS if sys.platform == "win32" else UNIX
 
 
+def source() -> bool:
+    """Whether this run is the CHECKOUT and not the bundle.
+
+    The one place that asks, and the three that read it ask for reasons of their
+    own: `working_folder` asks whose folder this is, and the WebApp asks whether
+    to expose the Forms (`ui/webapp/app.py`) — a run from the source tree serves
+    whoever is testing it, and it serves them without an entrance.
+
+    **It is the ARTIFACT that answers, and nothing else does.** No flag and no
+    environment variable turns the entrance off, because both of them travel:
+    one typed on the row of a shortcut, one exported in front of a process, and
+    the release would carry the switch that closes its own door. What the bundle
+    IS cannot be typed by accident.
+    """
+    return not getattr(sys, "frozen", False)
+
+
 def working_folder() -> Path:
     """Where AT is running. Resolved fresh on every call, never cached."""
     override = os.environ.get(ROOT_ENV)
     if override:
         return Path(override).expanduser().resolve()
-    if getattr(sys, "frozen", False):
+    if not source():
         # Packaged as the single binary: the binary IS the folder's owner, so
         # the folder is wherever the binary sits — not where it was called from.
         return Path(sys.executable).resolve().parent

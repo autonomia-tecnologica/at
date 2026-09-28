@@ -11,7 +11,7 @@ import type { Plugin } from "vite";
 const LOOK = [
   '<link id="theme" rel="stylesheet" href="/theme.css">',
   '<script src="/js/boot.js"></script>',
-  '<link rel="stylesheet" href="/base.css">',
+  '<link id="base" rel="stylesheet" href="/base.css">',
 ].join("\n");
 
 const lookFromTheServer = (): Plugin => ({
@@ -22,9 +22,36 @@ const lookFromTheServer = (): Plugin => ({
   },
 });
 
+// WHERE THE AT SERVER IS, for `npm run dev`. Vite serves the app — the modules,
+// the hot reload — and the server behind it keeps everything that is NOT the
+// app: the words, the tables, the look (`/theme.css`, `/base.css`), the icons
+// and the vendored files. One origin, two processes, and the page changes as
+// the source does, which is the whole reason to run it this way.
+//
+// The default is AT's own port (`app.DEFAULT_PORT`). A session running its
+// instance elsewhere says so on the command line:
+//
+//     AT_WEBAPP_PORT=12399 npm run dev
+// `process` is Node's, and this file is CONFIGURATION — it runs in Node, never
+// in the page — so it is declared here instead of dragging `@types/node` into a
+// project whose only runtime dependency is Vue. It is the smallest declaration
+// that reads one variable.
+declare const process: { env: Record<string, string | undefined> };
+
+const AT = `http://127.0.0.1:${process.env.AT_WEBAPP_PORT || "12345"}`;
+
+// The doors that belong to the AT server and not to Vite. `/src`, `@vite` and
+// `/node_modules` are Vite's own and must NOT be proxied — they are the app
+// itself, and the server has never heard of them.
+const SERVER_DOORS = ["/api", "/theme.css", "/base.css", "/icons", "/vendor", "/js"];
+
 export default defineConfig({
   base: "/",
   plugins: [vue(), lookFromTheServer()],
+  server: {
+    port: 5173,
+    proxy: Object.fromEntries(SERVER_DOORS.map(door => [door, AT])),
+  },
   build: {
     outDir: "dist",
     emptyOutDir: true,

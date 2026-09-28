@@ -23,6 +23,9 @@ export interface ThemeRow {
   side: "light" | "dark";
   // The theme describes ITSELF, one description per side.
   desc: { light?: string; dark?: string } | null;
+  // Almost always null: the shared `base.css`. A theme walking its own design
+  // system names the file here (`theme.ts` swaps the second link on it).
+  base: string | null;
 }
 
 // A mark of the risk ruler: one catalogue entry and the number it is MEASURED

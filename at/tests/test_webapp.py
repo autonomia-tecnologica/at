@@ -13,6 +13,7 @@ import json
 import os
 import re
 import socket
+import sys
 import tempfile
 import threading
 import unittest
@@ -58,7 +59,24 @@ def interface_fields(name: str, source_name: str = "store.ts") -> set[str]:
     return set(re.findall(r"^\s*(\w+)\??:", body.group(1), re.M))
 
 
+def bundle():
+    """This process, made into the FROZEN artifact for the length of a `with`.
+
+    `sys.frozen` is the one attribute the frozen loader sets, so patching it is
+    how a test is the bundle without building one — and it is the artifact that
+    answers the WebApp's entrance (`paths.source`), not a flag a test could set
+    any other way.
+    """
+    return mock.patch.object(sys, "frozen", True, create=True)
+
+
 class ServerCase(unittest.TestCase):
+    # What `make_server` is handed, and it is here so a class that wants a
+    # DIFFERENT server says which one without rebuilding the harness: the server
+    # a run from the source tree builds is this one with `asks=False`
+    # (`TheDevServer`), and everything else about the folder is untouched.
+    server_args: dict = {}
+
     def setUp(self):
         self.scratch = tempfile.TemporaryDirectory()
         self.root = Path(self.scratch.name)
@@ -72,7 +90,7 @@ class ServerCase(unittest.TestCase):
         with redirect_stdout(io.StringIO()):
             tables.create("task", {"text": "primeira"})
 
-        self.server = webapp.make_server(0)
+        self.server = webapp.make_server(0, **self.server_args)
         self.port = self.server.server_address[1]
         self.thread = threading.Thread(
             target=self.server.serve_forever,
@@ -1933,12 +1951,69 @@ class TheFolderWithNobodyToAsk(ServerCase):
         self.assertEqual(self.status("/api/table/task"), 200)
 
 
+class TheDevServer(ServerCase):
+    """The server a run from the source tree builds: it asks nobody in.
+
+    It is the SAME harness every other class here uses, with the one difference
+    that matters — `asks=False`, which is what `run` hands it when the artifact
+    IS the checkout (`paths.source`). Everything else about the folder is
+    untouched, and that is the point: the admin is still there, the tables are
+    still the tables, and nobody has to prove who they are to read them.
+
+    What it is NOT is an open door: the folder has no entrance to open. That is
+    what the API answers, and what the page reads to draw the shell instead of
+    the form.
+    """
+
+    server_args = {"asks": False}
+
+    def setUp(self):
+        super().setUp()
+        actors.create_admin("Rafael", "uma-frase-bem-longa")
+
+    def test_the_entrance_says_it_draws_none(self):
+        _, _, body = self.get("/api/session")
+        answer = json.loads(body)
+        self.assertIs(answer["auth"], False)
+        self.assertIsNone(answer["actor"])
+
+    def test_the_api_answers_with_no_session(self):
+        # The folder HAS a person to prove themselves — and asking them is
+        # exactly what this server does not do.
+        self.assertTrue(actors.can_expose())
+        self.assertEqual(self.status("/api/state"), 200)
+        self.assertEqual(self.status("/api/table/task"), 200)
+
+    def test_the_ceiling_is_nobody(self):
+        # No actor was proved, so no role was read: what a person carries is
+        # what the gate is FOR, and a gate that asked nobody has nothing to
+        # measure. The write is allowed because it was never gated.
+        status, _ = self.post("/api/table/task", {"action": "create", "values": {"text": "outra"}})
+        self.assertEqual(status, 200)
+        self.assertEqual(len(tables.rows("task")), 2)
+
+
+class TheArtifact(unittest.TestCase):
+    """The switch between the checkout and the bundle — `paths.source`.
+
+    It is a property of the ARTIFACT and not of a flag (`paths.source` says
+    why), so the test moves the artifact and not a switch.
+    """
+
+    def test_the_checkout_is_the_source_and_the_bundle_is_not(self):
+        self.assertTrue(paths.source())
+        with bundle():
+            self.assertFalse(paths.source())
+
+
 class TheExposure(unittest.TestCase):
     """`at-cli webapp` in a folder with nobody to enter it.
 
     "Sem ator nenhum o AT não expõe" (§3): the command refuses BEFORE it takes
     the port, and the engine's row does not count — it does not enter, the person
-    does (`actors.can_expose`).
+    does (`actors.can_expose`). The refusal is about an ENTRANCE, so it is asked
+    of a run that has one: the bundle, which is what `bundle()` makes this
+    process for the length of a test.
     """
 
     def setUp(self):
@@ -1960,10 +2035,24 @@ class TheExposure(unittest.TestCase):
 
     def test_a_folder_with_no_person_does_not_expose(self):
         output = io.StringIO()
-        with redirect_stdout(output):
+        with bundle(), redirect_stdout(output):
             code = webapp.run(0)
         self.assertEqual(code, 1)
         self.assertIn(i18n.tr("webapp.no_admin"), output.getvalue())
+
+    def test_a_run_from_the_source_does_not_refuse_and_says_why(self):
+        # Running from the checkout there is no entrance to close, so the coin
+        # of "no actor yet" — the one thing an install does not have on its
+        # first minute — does not stand between the person and the page. What
+        # the command owes them is the sentence saying so.
+        output = io.StringIO()
+        # `serve_forever` is what a run never leaves; Ctrl-C is how it ends, and
+        # raising it here is the same ending without a port held for the test.
+        with mock.patch.object(webapp.Server, "serve_forever", side_effect=KeyboardInterrupt):
+            with redirect_stdout(output):
+                code = webapp.run(0)
+        self.assertEqual(code, 0)
+        self.assertIn(i18n.tr("webapp.source_open"), output.getvalue())
 
     def test_the_person_makes_the_folder_expose_it(self):
         actors.create_admin("Rafael", "uma-frase-bem-longa")

@@ -98,28 +98,49 @@ class TheTokenContract(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        # ALMOST EVERY THEME SHARES ONE BASE (`base.css`), and that is still the
+        # file `cls.read` names for anything that asks about "the" base. A theme
+        # MAY walk its own door instead (`"base"` in the registry row — `at2`
+        # reads `base2.css`), and its token contract is checked against THAT
+        # file, not this one: `base2.css` does not read `--sidebar-item-bg-on`
+        # any more than `base.css` reads `--nav-bg`, and holding every theme to
+        # the same file's vocabulary would fail the second system by construction.
+        cls._base_cache: dict[str, dict[str, bool]] = {}
         cls.base = (ASSETS / "base.css").read_text(encoding="utf-8")
         cls.read = read_of(cls.base)
+        cls._base_cache["base.css"] = cls.read
         cls.by_name = read_by_the_page()
         cls.themes = sorted(THEMES.glob("*.css"))
         cls.declared = {theme.name: declared_in(theme.read_text(encoding="utf-8"))
                         for theme in cls.themes}
+        cls._registry = {row["id"]: row for row in webapp.theme_rows() if row.get("id")}
+
+    def _reads_for(self, theme_path: Path) -> dict[str, bool]:
+        stem = theme_path.stem
+        ident = stem[: -len("-dark")] if stem.endswith("-dark") else stem
+        name = self._registry.get(ident, {}).get("base")
+        name = name if isinstance(name, str) else "base.css"
+        if name not in self._base_cache:
+            self._base_cache[name] = read_of((ASSETS / name).read_text(encoding="utf-8"))
+        return self._base_cache[name]
 
     def test_the_page_reads_at_least_one_token_by_name(self):
         # The gate below is only worth having if it has something to check.
         self.assertTrue(self.by_name)
 
     def test_every_token_read_without_a_fallback_is_declared_by_every_theme(self):
-        demanded = {token for token, has_fallback in self.read.items() if not has_fallback}
-        for name, declared in self.declared.items():
-            missing = sorted(demanded - declared)
-            self.assertEqual(missing, [], f"{name} does not declare {missing}")
+        for theme in self.themes:
+            reads = self._reads_for(theme)
+            demanded = {token for token, has_fallback in reads.items() if not has_fallback}
+            missing = sorted(demanded - self.declared[theme.name])
+            self.assertEqual(missing, [], f"{theme.name} does not declare {missing}")
 
     def test_a_token_the_page_reads_by_name_is_declared_somewhere(self):
         # The page asks for these for its own arithmetic (a column's width is
         # measured, never guessed). A theme MAY leave one out — the page carries a
         # fallback for that — but a name no file declares is a name that quietly
-        # reads as nothing.
+        # reads as nothing. These three are read BY NAME regardless of which base
+        # is active, so every base's themes are expected to supply them.
         declared_somewhere: set[str] = set(self.read)
         for declared in self.declared.values():
             declared_somewhere |= declared
@@ -127,11 +148,15 @@ class TheTokenContract(unittest.TestCase):
 
     def test_no_theme_declares_a_token_nobody_reads(self):
         # A token nobody reads is a value a theme carries for nothing — and, more
-        # to the point, it hides which decorations are actually in use.
-        read_somewhere = set(self.read) | self.by_name
-        for declared in self.declared.values():
-            read_somewhere |= declared
+        # to the point, it hides which decorations are actually in use. "Reads"
+        # includes the theme's OWN composition (`--sidebar-item-pad: 6px
+        # var(--sidebar-pad)` is `--sidebar-pad` in real use, even though only
+        # the composed name ever reaches base.css) — a theme is one file, and a
+        # token feeding another token in it is not a token nobody reads.
         for name, declared in self.declared.items():
+            theme = next(t for t in self.themes if t.name == name)
+            own_reads = read_of(theme.read_text(encoding="utf-8"))
+            read_somewhere = set(self._reads_for(theme)) | self.by_name | set(own_reads)
             unused = sorted(declared - read_somewhere)
             self.assertEqual(unused, [], f"{name} declares unread {unused}")
 
@@ -190,12 +215,33 @@ class TheTypefaces(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.base = without_comments((ASSETS / "base.css").read_text(encoding="utf-8"))
+        # EVERY BASE THAT DECLARES FACES, and not only the shared one: a theme
+        # that walks its own design system brings its own typefaces with it
+        # (`at2` → `base2.css`), and the @font-face is an at-rule — a theme may
+        # never hold one — so the faces live in the base beside it. The door is
+        # the same one `TheTokenContract` walks; the pin is over the files.
+        names = {"base.css"}
+        for row in webapp.theme_rows():
+            if isinstance(row.get("base"), str):
+                names.add(row["base"])
+        cls.bases = {
+            name: without_comments((ASSETS / name).read_text(encoding="utf-8"))
+            for name in sorted(names)
+        }
         cls.manifest = json.loads((VENDOR / "manifest.json").read_text(encoding="utf-8"))
         cls.files = cls.manifest["files"]
 
-    def test_every_face_base_css_declares_is_pinned(self):
-        keys = set(re.findall(r"""url\(\s*["']?/vendor/([^"')]+)["']?\s*\)""", self.base))
+    def faces(self) -> set[str]:
+        """Every `/vendor/` file NAMED by a base that declares faces."""
+        found: set[str] = set()
+        for body in self.bases.values():
+            if "@font-face" not in body:
+                continue
+            found |= set(re.findall(r"""url\(\s*["']?/vendor/([^"')]+)["']?\s*\)""", body))
+        return found
+
+    def test_every_face_a_base_declares_is_pinned(self):
+        keys = self.faces()
         self.assertTrue(keys)
         self.assertEqual(sorted(keys - set(self.files)), [])
 
@@ -211,7 +257,9 @@ class TheTypefaces(unittest.TestCase):
             self.assertEqual(where.stat().st_size, entry["bytes"], key)
 
     def test_every_face_swaps_and_carries_its_format(self):
-        faces = re.findall(r"@font-face\s*\{[^}]*\}", self.base)
+        faces: list[str] = []
+        for body in self.bases.values():
+            faces += re.findall(r"@font-face\s*\{[^}]*\}", body)
         self.assertTrue(faces)
         for face in faces:
             self.assertIn("font-display: swap", face)
@@ -221,10 +269,10 @@ class TheTypefaces(unittest.TestCase):
         # Neither side may carry a face the other does not: a face with no file
         # is a 404 the theme hides behind a fallback, and a file with no face is
         # a file that was copied to sit there.
-        faces = re.findall(r"""url\(\s*["']?/vendor/([^"')]+)["']?\s*\)""", self.base)
+        faces = self.faces()
         pinned = {key for key in self.files if key.startswith("font-")}
-        self.assertEqual(sorted(set(faces) - pinned), [])
-        self.assertEqual(sorted(pinned - set(faces)), [])
+        self.assertEqual(sorted(faces - pinned), [])
+        self.assertEqual(sorted(pinned - faces), [])
 
 
 if __name__ == "__main__":

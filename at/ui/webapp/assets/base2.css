@@ -1,0 +1,852 @@
+/* base2 — a second design system for AT, built independently of base.css.
+   Served instead of base.css only for a theme that names it
+   (`"base": "base2.css"` in themes.jsonl) — every other theme is untouched.
+
+   THE SELECTORS BELOW ARE A CONTRACT WITH THE COMPILED VUE APP, not a choice:
+   the class names, the two breakpoints (960/640), the `nav-rail`/`nav-open`/
+   `shell`/`write-full`/`no-motion` classes, `#scrim`, `td[data-label]` and the
+   three tokens TableView.vue reads by name (`--measure`, `--cell-pad`,
+   `--page-pad-x`) are wiring, not look — the JS was compiled against them and
+   changing a name here without changing the JS breaks the app. Everything
+   ELSE — the token vocabulary, the spacing scale, the corners, the shadows,
+   the type scale, the motion, the material — is this system's own, designed
+   without reference to base.css's actual values.
+
+   A THEME DECLARES ONLY `:root`. This file declares every selector. */
+
+/* ===== the typefaces (2026-09-28) =======================================
+   Two families, both OFL-1.1, served through the same `/vendor/` door
+   `base.css` already uses for its own five — Nunito Sans for the body
+   (`--font-sans`), Quicksand for anything that has to carry weight on the
+   page (`--font-display`: the brand mark, a page's own title, a stat's big
+   number). A theme that walks base2.css always names both, so the two rules
+   below are base2's own and not a copy of base.css's block — same DOOR,
+   independent declaration. */
+@font-face { font-family: "Nunito Sans"; font-style: normal; font-weight: 400;
+             font-display: swap; src: url("/vendor/font-nunito-sans-400") format("woff2"); }
+@font-face { font-family: "Nunito Sans"; font-style: normal; font-weight: 600;
+             font-display: swap; src: url("/vendor/font-nunito-sans-600") format("woff2"); }
+@font-face { font-family: "Nunito Sans"; font-style: normal; font-weight: 700;
+             font-display: swap; src: url("/vendor/font-nunito-sans-700") format("woff2"); }
+@font-face { font-family: "Nunito Sans"; font-style: normal; font-weight: 800;
+             font-display: swap; src: url("/vendor/font-nunito-sans-800") format("woff2"); }
+@font-face { font-family: "Quicksand"; font-style: normal; font-weight: 500;
+             font-display: swap; src: url("/vendor/font-quicksand-500") format("woff2"); }
+@font-face { font-family: "Quicksand"; font-style: normal; font-weight: 600;
+             font-display: swap; src: url("/vendor/font-quicksand-600") format("woff2"); }
+@font-face { font-family: "Quicksand"; font-style: normal; font-weight: 700;
+             font-display: swap; src: url("/vendor/font-quicksand-700") format("woff2"); }
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0; height: 100vh; display: flex;
+  background: var(--surface-0); color: var(--ink-1);
+  font-family: var(--font-sans);
+  font-size: var(--text-base); line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* WHAT IS SELECTED IS OURS, and not the browser's blue: the brand at one of its
+   lightest steps, which is the one field of solid colour a page may wear — it
+   is the person's own mark, made by dragging, and it is gone the moment they
+   let go. */
+::selection { background: var(--accent-200); color: var(--ink-1); }
+
+/* ===== shell: nav / main / header ===================================== */
+
+nav {
+  position: relative;
+  width: var(--nav-w); flex: 0 0 var(--nav-w);
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--nav-bg);
+  box-shadow: var(--nav-edge);
+  padding-bottom: var(--space-5);
+  transition: width var(--dur-base) var(--ease-out),
+              flex-basis var(--dur-base) var(--ease-out);
+}
+html.nav-rail nav { width: var(--nav-rail-w); flex-basis: var(--nav-rail-w); }
+html.nav-rail #kinds, html.nav-rail .brand, html.nav-rail .side-foot > .file,
+html.nav-rail .side-foot > .sep {
+  opacity: 0; visibility: hidden;
+  transition: opacity var(--dur-fast) var(--ease-out), visibility 0s var(--dur-fast);
+}
+html.nav-rail .side-foot { width: var(--nav-rail-w); }
+html.nav-rail .brand { position: absolute; }
+html.nav-rail nav h1 { justify-content: center; padding-inline: 0; }
+html.nav-rail .nav-toggle { justify-content: center; padding-inline: 0; margin-left: 0; }
+html.nav-rail .nav-toggle > .t { display: none; }
+
+#kinds {
+  flex: 1; min-height: 0; overflow-y: auto;
+  width: var(--nav-w);
+  padding: var(--space-2) 0 var(--foot-space, 140px);
+}
+.side-foot {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  width: var(--nav-w);
+  padding: var(--space-2) 0 var(--space-5);
+  background: var(--nav-bg);
+}
+#kinds, .brand, .side-foot { transition: opacity var(--dur-fast) var(--ease-out), visibility 0s; }
+
+/* THE CANVAS IS NOT A VOID (item 10). A page of the AT is mostly empty by
+   design — a handful of rows on a large screen — and a flat field of grey is
+   what makes that read as UNFINISHED rather than as calm. One soft wash of the
+   brand, off the top-right corner and under everything, is enough to give the
+   surface a direction without adding a single element: nothing is drawn on it,
+   and the wash moves with the theme because it is the theme's own `--accent-50`
+   (`base.css` draws the bare `--surface-0`). */
+main {
+  flex: 1; display: flex; flex-direction: column; min-width: 0;
+  background-color: var(--surface-0);
+  background-image: radial-gradient(1100px 460px at 100% -8%,
+                                    var(--accent-50), transparent 72%);
+  background-repeat: no-repeat;
+  padding-bottom: var(--space-5);
+}
+header {
+  display: flex; align-items: center; gap: var(--space-3);
+  min-height: var(--header-h);
+  padding-inline: var(--space-6);
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--border-soft);
+  color: var(--ink-2);
+  position: relative; z-index: 1;
+}
+header > * { font-size: var(--text-base); }
+header b { color: var(--ink-1); font-weight: var(--weight-semibold); }
+/* THE PAGE SAYS ITS OWN NAME, and it says it loud (item 1): the display face at
+   the step this system keeps for a page — the largest type either theme has,
+   tight, because a title that whispers is a title nobody finds. What follows it
+   is the sentence about it (the count, the project), and it stays small and
+   grey so the two never compete. */
+/* A page that wrote its OWN title (Settings, a file, an actor) reaches the band
+   as one string, and it is a title too: the display face, one step down from the
+   name a table gets, so the two read as the same kind of thing. `min-width: 0`
+   and the clip are what keep a long path — a filename is a path here — from
+   pushing the language off the right edge. */
+#head-title {
+  display: inline-flex; align-items: baseline; min-width: 0;
+  font-family: var(--font-display); font-size: var(--text-lg);
+  letter-spacing: var(--letter-tight);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#head-title b {
+  font-family: var(--font-display); font-size: var(--text-xl);
+  font-weight: var(--weight-bold); letter-spacing: var(--letter-tight);
+  line-height: var(--leading-tight);
+}
+#head-title span { color: var(--ink-3); font-size: var(--text-sm); }
+#versioning {
+  margin: 0; padding: var(--space-2) var(--space-6);
+  border-bottom: 1px solid var(--border-soft); color: var(--ink-2);
+  font-size: var(--text-xs);
+}
+#head-right { margin-left: auto; display: flex; align-items: center; gap: var(--space-3); }
+#head-right .loc { font-size: var(--text-xs); color: var(--ink-3); }
+#head-right .raw { display: var(--locale-raw); }
+#head-right .name { display: var(--locale-name); }
+#head-right .flag { display: var(--locale-flag); }
+
+#body { flex: 1; overflow: auto; padding: 0; }
+
+.scrim {
+  display: none; position: fixed; inset: 0; z-index: 15;
+  background: color-mix(in srgb, var(--ink-1) 45%, transparent);
+  backdrop-filter: blur(2px);
+}
+.veil {
+  position: fixed; inset: 0; z-index: 30;
+  background: color-mix(in srgb, var(--ink-1) 45%, transparent);
+  backdrop-filter: blur(3px);
+  animation: veil-in var(--dur-base) var(--ease-out);
+}
+
+/* ===== sidebar rows ===================================================== */
+
+nav h1, header { display: flex; align-items: center; gap: var(--space-3); }
+nav h1 {
+  min-height: var(--header-h);
+  margin: 0; padding-inline: var(--space-5);
+  font-weight: var(--weight-bold); letter-spacing: .01em;
+  color: var(--nav-ink-1);
+}
+nav h1 .brand {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: var(--r-md);
+  background: var(--nav-brand-bg); color: var(--nav-brand-ink);
+  font-weight: var(--weight-bold); font-size: var(--text-sm);
+}
+nav .n { color: var(--nav-ink-3); margin-left: auto; font-variant-numeric: tabular-nums; }
+nav hr.sep {
+  margin: var(--space-3) var(--space-5); border: 0;
+  border-top: 1px solid var(--nav-border);
+}
+nav .folder {
+  display: flex; justify-content: flex-start; align-items: center; gap: var(--space-2);
+  padding: var(--space-4) var(--space-5) var(--space-1);
+  color: var(--nav-ink-3);
+  font-size: var(--text-xs); font-weight: var(--weight-semibold);
+  letter-spacing: .07em; text-transform: uppercase;
+}
+nav .folder:hover { color: var(--nav-ink-2); }
+.caret {
+  display: inline-block; line-height: 1;
+  font-size: 9px; color: var(--nav-ink-3);
+  transition: transform var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.fold-head:hover .caret { color: var(--nav-ink-1); }
+.fold-head:not(.closed) .caret { color: var(--accent-ink-on-nav); }
+.fold-head.closed .caret { transform: rotate(-90deg); }
+.foldable { display: grid; grid-template-rows: 1fr; transition: grid-template-rows var(--dur-base) var(--ease-out); }
+.foldable.closed { grid-template-rows: 0fr; }
+.fold { min-height: 0; overflow: hidden; }
+nav .kinds, nav .branch { padding-left: var(--space-4); }
+
+nav button {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: var(--space-2); width: calc(100% - 2 * var(--space-3));
+  margin-inline: var(--space-3);
+  padding: var(--space-2) var(--space-3); background: none; border: 0;
+  border-radius: var(--r-sm);
+  color: var(--nav-ink-2);
+  font: inherit; font-size: var(--text-sm); text-align: left; cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+nav button:hover { background: var(--nav-item-hover); color: var(--nav-ink-1); }
+/* The open row says so twice, and the two say the same thing: the wash puts it
+   apart from its neighbours, and the bar on the left edge is the one mark a
+   glance finds without reading (`--nav-item-on-edge`, which the theme names
+   apart from the ink because it is a BRAND bar and not a white one). */
+nav button.on {
+  background: var(--nav-item-on-bg); color: var(--nav-item-on-ink);
+  font-weight: var(--weight-medium);
+  box-shadow: inset 3px 0 0 var(--nav-item-on-edge);
+}
+nav .file { color: var(--nav-ink-2); }
+nav .entry { justify-content: flex-start; gap: var(--space-2); align-items: center; }
+
+/* ===== icons: the vendored sprite =======================================
+   The shapes are iconoir's (MIT — `vendor/licenses/iconoir-LICENSE`), vendored
+   under `assets/icons/at2-*.svg` and served by the same `/icons/` door the
+   theme marks already use. They are painted with `mask` and NOT with
+   `background-image`: a mask is filled with the colour the rule gives it, so
+   ONE file wears the sidebar's grey, the white of the open row or the accent
+   of a pressed control — `background-image` would paint whatever the SVG
+   carries, and no theme could move it.
+
+   The shape travels in `--i`, and each door names its own below. A property
+   per rule (the `-webkit-` prefix the older engines still want, the repeat,
+   the position, the size) would be five rules A DOOR, and the door is the one
+   thing that differs. */
+nav .entry .icon,
+nav .folder[data-branch]::before,
+nav .file:not(.entry)::before,
+.caret::before,
+.nav-toggle::before,
+th .fbtn::before,
+.back::before {
+  content: ""; flex: none; display: inline-block;
+  width: 1.15em; height: 1.15em; vertical-align: -.2em;
+  background-color: currentColor;
+  /* No shape named is a door that draws nothing — `none` is the empty mask, and
+     a door that forgot its own file is a filled box, which is exactly the
+     mistake worth seeing. */
+  -webkit-mask-image: var(--i, none); mask-image: var(--i, none);
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-position: center; mask-position: center;
+  -webkit-mask-size: contain; mask-size: contain;
+}
+
+/* the file tree: one mark per BUCKET, which is what the row declares */
+nav .entry .icon { --i: url("/icons/at2-other.svg"); color: var(--nav-ink-3); }
+nav .entry[data-bucket="code"] .icon { --i: url("/icons/at2-code.svg"); }
+nav .entry[data-bucket="text"] .icon { --i: url("/icons/at2-text.svg"); }
+nav .entry[data-bucket="data"] .icon { --i: url("/icons/at2-data.svg"); }
+
+/* the panel's own doors: the three folds, and the three at the foot */
+nav .folder[data-branch="tasks"]::before { --i: url("/icons/at2-nav-tasks.svg"); }
+nav .folder[data-branch="files"]::before { --i: url("/icons/at2-nav-files.svg"); }
+nav .folder[data-branch="tables"]::before { --i: url("/icons/at2-nav-tables.svg"); }
+nav .file:not(.entry)[data-view="overview"]::before { --i: url("/icons/at2-nav-overview.svg"); }
+nav .file:not(.entry)[data-view="settings"]::before { --i: url("/icons/at2-nav-settings.svg"); }
+nav .file:not(.entry)[data-view="chat"]::before { --i: url("/icons/at2-nav-chat.svg"); }
+/* the two rows that were a word and a guess (`base.css` has the long version) */
+.caret::before { --i: url("/icons/at2-caret.svg"); }
+th .fbtn::before { --i: url("/icons/at2-nav-filter.svg"); }
+.back::before { --i: url("/icons/at2-nav-back.svg"); }
+
+/* The fold's caret is a GLYPH in the template (`Foldable.vue`), and this system
+   draws it: the character leaves by `font-size`, which takes the box with it
+   and leaves the `::before` above free to be the same control every other door
+   is — including the quarter turn that says a fold is closed.
+   THE BOX IS SIZED HERE, and it has to be: `1.15em` of a zero font is zero, and
+   the shared rule above is written in `em` because every other door hangs off
+   type. A caret is the one mark whose size is nobody's text.
+   AND IT SITS AT THE FAR END (`order`): a fold says "there is more inside" where
+   the eye finishes the row, not before the name of the thing — the same place
+   every tree in every file manager has drawn it for thirty years. */
+.caret { font-size: 0; order: 3; }
+.caret::before { width: 13px; height: 13px; }
+.nav-toggle { justify-content: flex-start; gap: var(--space-2); align-items: center; user-select: none; }
+.nav-toggle::before {
+  --i: url("/icons/at2-nav-collapse.svg");
+  /* The mark is the size the theme declares for it — the one number two
+     systems agreed on before either drew the arrow (`base.css`). */
+  width: var(--nav-toggle-size); height: var(--nav-toggle-size);
+}
+html.nav-rail .nav-toggle::before { --i: url("/icons/at2-nav-expand.svg"); }
+/* The rows that are a MARK AND A WORD — the ones with an icon. The file tree's
+   own rows (`.entry`) are the exception twice over: their mark hangs on the
+   `.icon` span they carry, and what they hold is the name alone. */
+nav .file:not(.entry) { justify-content: flex-start; gap: var(--space-2); }
+
+/* ===== table ============================================================ */
+
+table { border-collapse: separate; border-spacing: 0; width: 100%; table-layout: fixed; }
+#body table:not(.prose table) {
+  margin: var(--space-6) var(--space-6) 0;
+  width: calc(100% - 2 * var(--space-6));
+  background: var(--surface-1);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+th, td { text-align: left; padding: var(--cell-pad-y) var(--cell-pad); vertical-align: top; }
+tbody td { border-bottom: 1px solid var(--border-soft); transition: background-color var(--dur-fast) var(--ease-out); }
+/* THE CELLS ARE THE READING SURFACE, so they are the one place the body type
+   steps UP instead of down (item 1): a table is where a person spends the day,
+   and 15px on a 1440 screen is a table read with the nose against it. */
+td { overflow: hidden; overflow-wrap: break-word; font-size: var(--text-md); }
+.probe { position: absolute; left: -10000px; visibility: hidden; white-space: pre; pointer-events: none; }
+th {
+  color: var(--ink-3); font-weight: var(--weight-semibold); font-size: var(--text-xs);
+  letter-spacing: .04em; text-transform: uppercase;
+  position: sticky; top: 0; background: var(--surface-2);
+  white-space: nowrap; border-bottom: 1px solid var(--border-strong);
+  transition: color var(--dur-fast) var(--ease-out);
+}
+th.sortable { cursor: pointer; user-select: none; }
+th.sortable:hover { color: var(--ink-1); }
+th.drag { opacity: .45; }
+th.drop-before { box-shadow: inset 2px 0 0 var(--accent); }
+th.drop-after { box-shadow: inset -2px 0 0 var(--accent); }
+th .fbtn { margin-left: 6px; background: none; border: 0; padding: 1px; cursor: pointer; line-height: 0; vertical-align: -1px; }
+/* The mark its own size, because a column head is not a sidebar row: the sprite
+   rule above hands it 1.15em of the header's own small type, which is the noise
+   the drawn funnel replaced. */
+th .fbtn::before { color: var(--ink-3); width: 12px; height: 12px; vertical-align: -2px; }
+th .fbtn:hover::before { color: var(--ink-1); }
+th .fbtn.on::before { color: var(--accent); }
+th .to { color: var(--ink-3); margin-left: 4px; }
+tbody tr { cursor: pointer; }
+tbody tr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+tbody tr:hover td { background: var(--row-hover); }
+td.id { color: var(--ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* ===== the value of a CLOSED LIST ========================================
+   The status of a task, the priority of a row: the page marks WHICH member the
+   record carries (`data-value`, the same idiom `data-bucket` already uses for
+   the file tree) and the tone is the theme's. A vocabulary the rules below do
+   not know keeps the plain text it always had, which is what makes this a
+   DRESSING and not a second declaration of the table.
+
+   THE TONE IS RESTRAINT. The ends are the ones worth a colour — doing and done,
+   high and critical — and the everyday middle (to do, medium) stays the quiet
+   neutral. A table where every row wears a colour is a table where the colour
+   stopped meaning anything. */
+td[data-value] .v {
+  display: inline-block; padding: 2px var(--space-3);
+  border-radius: var(--r-full);
+  background: var(--surface-2); color: var(--ink-2);
+  font-size: var(--text-xs); font-weight: var(--weight-semibold);
+}
+td[data-value="doing"] .v { background: var(--info-soft); color: var(--info); }
+td[data-value="done"] .v { background: var(--success-soft); color: var(--success); }
+td[data-value="cancelled"] .v, td[data-value="low"] .v { color: var(--ink-3); }
+td[data-value="high"] .v { background: var(--warning-soft); color: var(--warning); }
+td[data-value="critical"] .v { background: var(--danger-soft); color: var(--danger); }
+
+/* WHAT AN EMPTY PAGE SAYS. It is the one screen the product shows on a folder
+   that was just born, and "no records" in the middle of a table card is the
+   first thing a person reads — so it is given the room and the type of a
+   sentence, and not the 12px of a row that is not there. */
+.empty {
+  color: var(--ink-3); padding: var(--space-8) var(--space-6);
+  text-align: center; font-size: var(--text-md);
+}
+.hidden-count { margin: var(--space-3) var(--space-6) 0; text-align: right; color: var(--ink-3); font-size: var(--text-xs); }
+.hidden-count button, .hidden-count span { padding: 0; background: none; border: 0; color: inherit; font: inherit; }
+.hidden-count button { cursor: pointer; }
+.hidden-count button:hover { color: var(--accent); }
+
+/* ===== popover / dialog / balloon ======================================= */
+
+.pop {
+  position: absolute; z-index: 10; max-height: 320px; overflow: auto;
+  background: var(--surface-1); border: 1px solid var(--border-soft);
+  border-radius: var(--r-md); padding: var(--space-2);
+  min-width: 190px; box-shadow: var(--shadow-lg);
+  animation: pop-in var(--dur-fast) var(--ease-out);
+}
+.pop .opt {
+  display: flex; gap: var(--space-2); align-items: center; padding: var(--space-2) var(--space-3);
+  border-radius: var(--r-sm); color: var(--ink-1); cursor: pointer; white-space: nowrap;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+button.opt { background: none; border: 0; font: inherit; width: 100%; text-align: left; color: var(--ink-1); }
+.pop .opt:hover { background: var(--surface-2); }
+.pop .opt.on { color: var(--accent); font-weight: var(--weight-medium); }
+.pop-note { margin: 0 0 var(--space-2); color: var(--ink-3); font-size: var(--text-xs); }
+
+.pick { display: inline-flex; align-items: center; gap: 5px; background: none; border: 0;
+        color: var(--ink-1); font: inherit; text-align: left; cursor: pointer;
+        transition: color var(--dur-fast) var(--ease-out); }
+.pick::after { content: ""; display: inline-block; width: 8px; height: 8px;
+               background: var(--ink-3); clip-path: polygon(0 0, 100% 0, 50% 100%); }
+.pick:hover, .pick.on { color: var(--accent); }
+.pick:hover::after, .pick.on::after { background: var(--accent); }
+
+.dialog {
+  position: fixed; z-index: 31; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(var(--measure), calc(100vw - 2 * var(--space-6)));
+  max-height: calc(100vh - 2 * var(--space-6)); overflow: auto;
+  display: flex; flex-direction: column; gap: var(--space-4);
+  padding: var(--space-7); background: var(--surface-1);
+  border-radius: var(--r-lg); box-shadow: var(--shadow-lg);
+  animation: dialog-in var(--dur-base) var(--ease-out);
+}
+.dialog h2 { margin: 0; font-size: var(--text-lg); font-weight: var(--weight-bold); }
+.dialog p { margin: 0; color: var(--ink-2); }
+.dialog .refused { color: var(--danger); }
+.dialog-actions { display: flex; justify-content: flex-end; gap: var(--space-3); }
+.dialog-facts { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-3); margin: 0; }
+.dialog-facts dt { color: var(--ink-3); }
+.dialog-facts dd { margin: 0; }
+.dialog form { display: flex; flex-direction: column; gap: var(--space-4); }
+.dialog label { display: flex; flex-direction: column; gap: var(--space-1); }
+.dialog label > span { color: var(--ink-2); font-size: var(--text-sm); }
+.dialog .btn:disabled { opacity: .5; cursor: default; }
+.dialog input {
+  padding: var(--space-3); background: var(--surface-0);
+  border: 1px solid var(--border-strong); border-radius: var(--r-sm);
+  color: var(--ink-1); font: inherit;
+}
+.dialog input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.balloon {
+  position: fixed; z-index: 20; right: var(--space-5); bottom: var(--space-5);
+  width: min(var(--measure), calc(100vw - 2 * var(--space-5)));
+  max-height: calc(100vh - 2 * var(--space-5)); overflow: auto;
+  display: flex; flex-direction: column; gap: var(--space-3);
+  padding: var(--space-4); background: var(--surface-1);
+  border-radius: var(--r-lg); box-shadow: var(--shadow-lg);
+  animation: balloon-in var(--dur-base) var(--ease-out);
+}
+
+/* ===== controls: buttons, switch, radio, check, forms =================== */
+
+/* A BUTTON IS FILLED, AND THAT IS THE DEFAULT (item 8). It was neutral here —
+   surface, hairline, `--ink-1` — with a single `button[type=submit]` painted
+   solid, which made the login's "Sign in" the one confident door in the product
+   and left every other screen's save, create and mint looking exactly like the
+   filter sitting beside them. The page's action is the page's action on a
+   dialog and on a form: the fill is what says so, and what is NOT the action
+   says so out loud (`.btn-quiet`). */
+.btn {
+  padding: var(--space-3) var(--space-4);
+  background: var(--accent); color: var(--accent-ink);
+  border: 1px solid transparent; border-radius: var(--r-sm);
+  font: inherit; font-weight: var(--weight-semibold); cursor: pointer;
+  box-shadow: var(--shadow-xs);
+  transition: background-color var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out),
+              transform var(--dur-fast) var(--ease-out);
+}
+.btn:hover { background: var(--accent-hover); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+.btn:active { background: var(--accent-active); transform: translateY(0); }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn:disabled { opacity: .5; cursor: default; transform: none; }
+/* Destroying something is not the page's action — it is the one door that may
+   take a row away — so it wears the loud colour, and wears it filled: the
+   brief's own rule is that red means danger, and a red hairline is a red
+   nothing. */
+.btn.danger { background: var(--danger); color: #fff; border-color: transparent; }
+.btn.danger:hover { background: color-mix(in srgb, var(--danger) 85%, #000); }
+/* AND THE ONE THAT IS NOT THE ACTION. A step back, a count, a control that
+   sits beside the real door: neutral, hairline, and afterwards in the file so
+   one class still beats the other. */
+.btn-quiet { background: var(--surface-1); color: var(--ink-1); border-color: var(--border-strong); }
+.btn-quiet:hover { background: var(--surface-2); }
+
+.switch {
+  position: relative; display: inline-block; vertical-align: middle;
+  width: 36px; height: 20px; padding: 0; background: var(--control-track);
+  border: 1px solid var(--border-strong); border-radius: var(--r-full); cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+.switch::after {
+  content: ""; position: absolute; top: 50%; margin-top: -8px; left: 2px;
+  width: 16px; height: 16px; background: #fff; border-radius: 50%;
+  box-shadow: var(--shadow-xs);
+  transition: left var(--dur-base) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+}
+.switch.on { background: var(--accent); border-color: var(--accent); }
+.switch.on::after { left: calc(100% - 18px); }
+
+.radios, .checks { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.radio-row, .check-row {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  cursor: pointer; color: var(--ink-1);
+  transition: color var(--dur-fast) var(--ease-out);
+}
+.radio-row.on, .check-row.on { color: var(--accent); font-weight: var(--weight-medium); }
+.radio, .check {
+  appearance: none; flex: none; width: 16px; height: 16px; margin: 0; padding: 0;
+  background: var(--surface-0); border: 1px solid var(--border-strong);
+  cursor: pointer; vertical-align: middle;
+  transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+}
+.radio { border-radius: 50%; }
+.check { border-radius: 5px; }
+.radio:hover:not(:checked), .check:hover:not(:checked) { border-color: var(--accent); }
+.radio:checked {
+  border-color: var(--accent);
+  background-image: radial-gradient(circle, var(--accent) 4px, transparent 4px);
+}
+.check:checked { border-color: var(--accent); background: var(--accent); }
+
+.form { display: flex; flex-direction: column; gap: var(--space-4); }
+.form label { display: flex; flex-direction: column; gap: var(--space-1); }
+.form label > span { color: var(--ink-2); font-size: var(--text-sm); }
+.form input, .form textarea, .form select {
+  padding: var(--space-3); background: var(--surface-0);
+  border: 1px solid var(--border-strong); border-radius: var(--r-sm);
+  color: var(--ink-1); font: inherit;
+}
+/* A CONTROL IN FOCUS WEARS THE RING, and it is the theme's own (`--accent-ring`,
+   the brand at a third): the solid outline is the line a keyboard needs, and
+   the halo around it is what says "here" from across the screen. */
+.form input:focus-visible, .form textarea:focus-visible, .form select:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 1px;
+  box-shadow: 0 0 0 4px var(--accent-ring);
+}
+.form textarea { min-height: 4em; resize: vertical; }
+.form-block { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-4); }
+.form-block h2, .form-block h3 { margin: 0; font-size: var(--text-base); font-weight: var(--weight-medium); color: var(--ink-2); }
+.form-block > h2 { color: var(--ink-1); }
+.unknown { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4);
+           border: 1px solid var(--border-strong); border-radius: var(--r-md); }
+.unknown h3 { margin: 0; font-weight: var(--weight-medium); color: var(--danger); }
+.unknown p { margin: 0; color: var(--ink-2); }
+
+/* ===== settings groups =================================================== */
+
+.settings { display: flex; flex-direction: column; gap: var(--space-3); max-height: calc(5 * 6.5em); overflow-y: auto; }
+.theme {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: var(--space-3) var(--space-4); background: var(--surface-1);
+  border: 1px solid var(--border-soft); border-radius: var(--r-md);
+  color: var(--ink-1); font: inherit; text-align: left; cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+.theme:hover { background: var(--surface-2); }
+.theme.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.theme.on b { color: var(--accent); }
+.theme b { font-weight: var(--weight-medium); }
+.theme .key, .theme .desc { color: var(--ink-3); font-size: var(--text-sm); }
+
+.groups { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-6); }
+.group { background: var(--surface-1); border: 1px solid var(--border-soft); border-radius: var(--r-lg); box-shadow: var(--shadow-sm); }
+.group-body { padding: var(--space-2) var(--space-5) var(--space-5); }
+.group-body dt { margin-top: var(--space-4); color: var(--ink-3); font-size: var(--text-sm); }
+.group-body dl > dt:first-child { margin-top: 0; }
+.group-head {
+  display: flex; align-items: center; gap: var(--space-2); width: 100%;
+  padding: var(--space-4) var(--space-5); background: none; border: 0; text-align: left; cursor: pointer;
+  color: var(--ink-2); font-size: var(--text-xs); font-weight: var(--weight-semibold);
+  letter-spacing: .06em; text-transform: uppercase;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+.group-head:hover { color: var(--ink-1); }
+
+dl { margin: 0; padding: 0; }
+dt { color: var(--ink-3); margin-top: var(--space-3); font-size: var(--text-sm); }
+dd { margin: 4px 0 0; word-break: break-word; }
+.back {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-3); color: var(--ink-2); cursor: pointer;
+  border-radius: var(--r-sm); border: 1px solid transparent; user-select: none;
+  transition: color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out),
+              transform var(--dur-fast) var(--ease-out);
+}
+.back:hover { background: var(--surface-2); transform: translateX(-2px); }
+
+.subs { border-bottom: 1px solid var(--border-soft); }
+.subs .sub {
+  display: flex; gap: var(--space-3); align-items: baseline; width: 100%;
+  padding: var(--space-3) var(--space-6); background: none; border: 0;
+  color: var(--ink-1); font: inherit; text-align: left; cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+.subs .sub:hover { background: var(--surface-1); }
+.subs .sub b { color: var(--accent); font-weight: var(--weight-medium); }
+.subs .sub .st, .subs .sub .n { color: var(--ink-3); }
+.subs .sub .n { margin-left: auto; }
+
+/* ===== content surfaces: prose / write / file ============================ */
+
+.prose, .write-wrap, pre.text, .record-body {
+  margin: var(--space-6) var(--space-6) 0;
+  padding: var(--space-7); background: var(--surface-1); border-radius: var(--r-lg);
+  box-shadow: var(--shadow-card);
+}
+.file-page, .record-page { display: flex; flex-direction: column; min-height: 100%; }
+.file-page > .prose, .file-page > .write-wrap, .file-page > pre.text,
+.record-page > .record-body { flex: 1 0 auto; }
+pre.text { overflow-wrap: break-word; white-space: pre-wrap; word-break: break-word; font-size: var(--text-sm); }
+.prose { overflow-wrap: break-word; }
+.prose:not(.field-prose) > :first-child { margin-block-start: 0; }
+.prose:not(.field-prose) > :last-child { margin-block-end: 0; }
+.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 { line-height: 1.3; margin-block: 1.4em .5em; font-weight: var(--weight-bold); }
+.prose p, .prose ul, .prose ol, .prose blockquote, .prose pre, .prose table, .prose dl { margin-block: 0 1em; }
+.prose a { color: var(--accent); }
+.prose code { background: var(--surface-2); border-radius: 5px; padding: .1em .35em; font-size: .92em; }
+.prose pre { background: var(--surface-2); border-radius: var(--r-md); padding: var(--space-4); overflow-x: auto; }
+.prose pre code { background: none; padding: 0; }
+.prose blockquote { border-inline-start: 3px solid var(--accent); color: var(--ink-2); padding-inline-start: var(--space-4); }
+.prose hr { border: 0; border-block-start: 1px solid var(--border-soft); }
+.prose th, .prose td { text-align: start; padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--border-soft); }
+.prose th { color: var(--ink-3); font-weight: var(--weight-semibold); }
+.prose img { max-width: 100%; border-radius: var(--r-sm); }
+.prose.field-prose { margin: 0; padding: 0; background: none; border-radius: 0; box-shadow: none; }
+
+html.write-full .write-wrap { margin: 0; border-radius: 0; box-shadow: none; }
+.write { position: relative; }
+.write-field, .write-marks {
+  margin: 0; padding: 0; border: 0; box-sizing: border-box; width: 100%;
+  font: inherit; line-height: inherit; letter-spacing: inherit; word-spacing: inherit;
+  text-align: start; text-indent: 0; tab-size: 4; white-space: pre-wrap; overflow-wrap: break-word;
+  word-break: normal; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; color: var(--ink-1);
+}
+.write-field { display: block; resize: none; overflow: hidden; background: none; touch-action: manipulation; }
+.write-field:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.write-marks { position: absolute; inset: 0; overflow: hidden; pointer-events: none; user-select: none; color: transparent; }
+.write-marks .mark { text-decoration: underline wavy var(--danger); text-decoration-skip-ink: none; text-decoration-thickness: 1px; }
+
+.page-actions { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;
+                margin: var(--space-6) var(--space-6) 0; padding: 0; }
+.file-state { color: var(--ink-2); }
+.file-state.bad { color: var(--danger); }
+html.write-full nav, html.write-full .scrim { display: none; }
+html.write-full-os .page-actions .btn { display: none; }
+html.write-full-os .page-actions { display: none; }
+html.write-full-os .page-actions:has(.file-state.bad) { display: flex; }
+
+a.ref, a.url {
+  color: var(--accent); text-decoration: none; border-bottom: 1px solid transparent;
+  border-radius: 4px; padding: 0 2px; margin: 0 -2px; cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out),
+              background-color var(--dur-fast) var(--ease-out);
+}
+/* Under the pointer the wash goes ONE STEP STRONGER (`--accent-100`, where the
+   resting soft is the `--accent-50` behind it) — the difference between a
+   reference you are near and one you are leaving. */
+a.ref:hover, a.url:hover { border-bottom-color: currentColor; background: var(--accent-100); }
+
+/* ===== interpreter: chat / balloon / turn ================================ */
+
+.turn { display: flex; flex-direction: column; gap: var(--space-2); }
+.turn .said, .turn .proposal, .turn .answer { margin: 0; }
+.turn .said { color: var(--ink-3); }
+.turn .answer { white-space: pre-wrap; }
+.turn .proposal .tag { color: var(--ink-3); margin-right: var(--space-2); }
+.turn[data-kind="question"] .answer, .turn[data-kind="refused"] .answer { color: var(--ink-2); }
+.chat { display: flex; flex-direction: column; height: 100%; gap: var(--space-3); }
+.chat-log { flex: 1; display: flex; flex-direction: column; gap: var(--space-3); overflow-y: auto; padding: var(--space-4); }
+.chat-form, .balloon-form { display: flex; align-items: center; gap: var(--space-3); }
+.chat-form { padding: 0 var(--space-4) var(--space-4); }
+.chat-say, .balloon-say {
+  flex: 1; min-width: 0; padding: var(--space-3); background: var(--surface-0); color: var(--ink-1);
+  border: 1px solid var(--border-strong); border-radius: var(--r-sm); font: inherit;
+}
+.chat-say:focus-visible, .balloon-say:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* ===== ruler (risk gate) ================================================= */
+
+.ruler { display: flex; flex-direction: column; gap: var(--space-2); }
+.ruler-track { position: relative; display: flex; overflow: hidden; height: 10px;
+               border: 1px solid var(--border-strong); border-radius: var(--r-full); }
+.ruler-part { display: block; height: 100%; }
+.ruler-part.runs { background: var(--accent-soft); }
+.ruler-part.waits { flex: 1; background: var(--surface-2); }
+.ruler-line { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--accent); }
+.ruler-mark { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--ink-1); }
+.ruler-legend { display: flex; color: var(--ink-3); font-size: var(--text-xs); }
+.ruler-legend .runs, .ruler-legend .waits { display: block; text-align: center; }
+.ruler-legend .waits { flex: 1; }
+.ruler-note { margin: 0; color: var(--ink-3); font-size: var(--text-xs); }
+.ruler-none { margin: 0; color: var(--ink-3); font-size: var(--text-xs); }
+
+/* ===== overview: what the folder holds ===================================== */
+
+.overview {
+  display: flex; flex-direction: column; gap: var(--space-6);
+  padding: var(--space-6);
+}
+
+.stats {
+  display: grid; gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+}
+.stat {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: var(--space-5); background: var(--surface-1);
+  border: 1px solid var(--border-soft); border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+}
+/* THE NUMBER CARRIES THE TYPE SCALE THE REST OF THE APP NEVER HAD (item 1): the
+   display face, at the step this system keeps for exactly this — a count on a
+   card, where a page has one thing to say and the eye should land on it first. */
+.stat b {
+  font-family: var(--font-display); font-size: var(--text-2xl);
+  font-weight: var(--weight-bold); line-height: var(--leading-tight);
+  letter-spacing: var(--letter-tight);
+  font-variant-numeric: tabular-nums; color: var(--ink-1);
+}
+.stat span { color: var(--ink-3); font-size: var(--text-sm); }
+/* The TONE is the vocabulary's, not this file's invention: the table declares
+   which statuses there are, the theme says what a finished one looks like. A
+   key no rule here knows keeps the ink it would have had. */
+.stat[data-state="done"] b { color: var(--success); }
+.stat[data-state="doing"] b { color: var(--warning); }
+.stat[data-state="todo"] b { color: var(--info); }
+
+/* THE SAME FOUR NUMBERS AS ONE PROPORTION. A bar is read before a count is, and
+   the parts are the table's own order — so the shape of the bar is the shape of
+   the vocabulary, not a second one drawn here. */
+.bars { display: flex; gap: 4px; height: 12px; }
+.bar-part {
+  display: block; min-width: 6px; border-radius: var(--r-full);
+  background: var(--border-strong);
+  transition: flex-grow var(--dur-base) var(--ease-out);
+}
+.bar-part[data-state="done"] { background: var(--success); }
+.bar-part[data-state="doing"] { background: var(--warning); }
+.bar-part[data-state="todo"] { background: var(--info); }
+
+.cards { display: flex; flex-direction: column; gap: var(--space-3); }
+.cards h2 {
+  margin: 0; color: var(--ink-3); font-size: var(--text-xs);
+  font-weight: var(--weight-semibold); letter-spacing: .06em; text-transform: uppercase;
+}
+.card {
+  display: flex; flex-direction: column; gap: var(--space-3); width: 100%;
+  padding: var(--space-4) var(--space-5); text-align: left; cursor: pointer;
+  background: var(--surface-1); color: var(--ink-1); font: inherit;
+  border: 1px solid var(--border-soft); border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+  transition: border-color var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out),
+              transform var(--dur-fast) var(--ease-out);
+}
+.card:hover { border-color: var(--accent-300); box-shadow: var(--shadow-card); transform: translateY(-1px); }
+.card-top { display: flex; align-items: baseline; gap: var(--space-3); }
+.card-top b { font-weight: var(--weight-semibold); }
+.card-top .n { margin-left: auto; color: var(--ink-3); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+.card .progress {
+  display: block; height: 6px; border-radius: var(--r-full);
+  background: var(--surface-2); overflow: hidden;
+}
+.card .progress-part {
+  display: block; height: 100%; background: var(--accent);
+  border-radius: var(--r-full);
+  transition: width var(--dur-base) var(--ease-out);
+}
+
+/* ===== scrollbars ========================================================= */
+
+@supports (-moz-appearance: none) {
+  #kinds, #body, .pop, .settings {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+}
+@supports not (-moz-appearance: none) {
+  #kinds::-webkit-scrollbar, #body::-webkit-scrollbar, .pop::-webkit-scrollbar, .settings::-webkit-scrollbar {
+    width: 10px; height: 10px;
+  }
+  #kinds::-webkit-scrollbar-track, #body::-webkit-scrollbar-track,
+  .pop::-webkit-scrollbar-track, .settings::-webkit-scrollbar-track { background: transparent; }
+  #kinds::-webkit-scrollbar-thumb, #body::-webkit-scrollbar-thumb,
+  .pop::-webkit-scrollbar-thumb, .settings::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb); background-clip: content-box;
+    border: 3px solid transparent; border-radius: var(--r-full);
+  }
+  #kinds::-webkit-scrollbar-thumb:hover, #body::-webkit-scrollbar-thumb:hover,
+  .pop::-webkit-scrollbar-thumb:hover, .settings::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
+  }
+}
+
+/* ===== motion ============================================================= */
+
+@keyframes veil-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes dialog-in { from { opacity: 0; transform: translate(-50%, -46%) scale(.97); }
+                        to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+@keyframes balloon-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pop-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important;
+                            transition-duration: .001ms !important; scroll-behavior: auto !important; }
+}
+html.no-motion *, html.no-motion *::before, html.no-motion *::after {
+  animation-duration: .001ms !important; transition-duration: .001ms !important;
+}
+
+/* ===== responsive: the two literal bands (contract with breakpoint.ts/nav.ts) */
+
+@media (max-width: 960px) {
+  html.shell nav { position: fixed; z-index: 20; top: 0; bottom: 0; left: 0; }
+  html.shell main { margin-left: var(--nav-rail-w); }
+  html.shell:not(.nav-open) nav { width: var(--nav-rail-w); flex-basis: var(--nav-rail-w); }
+  html.shell:not(.nav-open) #kinds, html.shell:not(.nav-open) .brand,
+  html.shell:not(.nav-open) .side-foot > .file, html.shell:not(.nav-open) .side-foot > .sep {
+    opacity: 0; visibility: hidden;
+    transition: opacity var(--dur-fast) var(--ease-out), visibility 0s var(--dur-fast);
+  }
+  html.shell:not(.nav-open) .side-foot { width: var(--nav-rail-w); }
+  html.shell:not(.nav-open) .brand { position: absolute; }
+  html.shell:not(.nav-open) nav h1 { justify-content: center; padding-inline: 0; }
+  html.shell:not(.nav-open) .nav-toggle { margin-left: 0; }
+  html.shell.nav-open .scrim { display: block; }
+  html.write-full main { margin-left: 0; }
+  #kinds, #body, .pop, .settings { scrollbar-width: none; }
+  #kinds::-webkit-scrollbar, #body::-webkit-scrollbar, .pop::-webkit-scrollbar, .settings::-webkit-scrollbar { display: none; }
+  #body table:not(.prose table) { margin: var(--space-4) 0 0; width: 100%; border-radius: var(--r-md); }
+  .prose, .write-wrap, pre.text, .record-body { margin: var(--space-4) var(--space-4) 0; padding: var(--space-5); }
+  .groups { padding: var(--space-4); }
+  .page-actions, .hidden-count { margin-left: var(--space-4); margin-right: var(--space-4); }
+}
+
+@media (max-width: 640px) {
+  .hidden-count { margin-top: var(--space-3); }
+  th, td { padding: var(--space-2) var(--space-2); }
+  .pop { max-width: calc(100vw - 24px); }
+  #head-right .loc { display: none; }
+  table, tbody, tr, td { display: block; }
+  thead { display: none; }
+  tr {
+    margin-bottom: var(--space-3); padding: var(--space-4);
+    background: var(--surface-1); border: 1px solid var(--border-soft);
+    border-radius: var(--r-md); box-shadow: var(--shadow-xs);
+  }
+  td { display: flex; gap: var(--space-3); padding: 0; }
+  td + td { margin-top: var(--space-1); border-bottom: 0; }
+  td::before { content: attr(data-label); flex: 0 0 auto; color: var(--ink-3); min-width: 34%; }
+  tbody tr:hover { background: var(--row-hover); box-shadow: var(--shadow-sm); }
+  tbody tr:hover td { background: none; }
+}

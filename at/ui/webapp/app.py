@@ -270,6 +270,21 @@ def theme_css(requested: str | None, dark: bool) -> str | None:
     return None
 
 
+def base_css_path(requested: str | None) -> Path:
+    """Which `base.css` the active theme wears — almost always the one file every
+    theme shares; a theme MAY declare its own (`"base"` in the registry row), the
+    door a from-scratch design system walks through without touching the one
+    every other theme still reads. The name is a bare filename or the door is
+    refused: no separator survives to become a path."""
+    row = active_theme(requested)
+    name = row.get("base") if row and isinstance(row.get("base"), str) else None
+    if name and "/" not in name and "\\" not in name and name.endswith(".css"):
+        candidate = ASSETS / name
+        if candidate.is_file():
+            return candidate
+    return ASSETS / "base.css"
+
+
 def theme_label(row: dict) -> str:
     from at.i18n import active_code
 
@@ -410,7 +425,7 @@ PAGE_WORDS = (
     # came out with an empty one. The panel's `#brand` was drawing nothing all
     # along.
     "brand",
-    "tasks", "files", "tables", "settings", "general", "appearance", "language",
+    "overview", "tasks", "files", "tables", "settings", "general", "appearance", "language",
     "dark_mode", "dark_system", "dark_theme", "dark_light", "dark_dark",
     "motion", "themes", "no_project", "new_project", "delete_project",
     "move_to_project", "records", "hidden", "no_records", "error", "filter",
@@ -436,7 +451,7 @@ PAGE_WORDS = (
 )
 
 
-def entry_payload(open_session: session.Session | None) -> dict:
+def entry_payload(open_session: session.Session | None, asks: bool = True) -> dict:
     """Who is in, and the words the entrance needs before anybody is.
 
     It is the ONE public answer of the API, and it carries no table and no
@@ -450,13 +465,19 @@ def entry_payload(open_session: session.Session | None) -> dict:
     from "nobody can enter" by this boolean, and only one of the two draws a
     form.
 
+    **`asks` is the OTHER reason a server has no entrance**, and it comes from
+    the caller and not from here: a run from the source tree does not draw one
+    (`server.asks`, `run`). The page reads the same `false` for both, which is
+    the point — what it must not do is draw a form, and why the form is not
+    there is not a thing the form could say.
+
     `version` rides along for a reader that is not the page: `at-cli webapp`,
     landing on a port another AT already holds, asks THIS route to find out
     which one — it stays the ONE public answer instead of a second route, and
     the page itself has no use for the field and reads past it.
     """
     return {
-        "auth": actors.can_expose(),
+        "auth": asks and actors.can_expose(),
         "actor": {"name": open_session.name} if open_session else None,
         "lang": i18n.active_code(),
         "version": __version__,
@@ -498,7 +519,11 @@ def state_payload() -> dict:
              "side": "dark" if theme.get("side") == "dark" else "light",
              # The theme describes ITSELF, one description per side: the page
              # shows the one being worn, and follows the swap without asking.
-             "desc": theme.get("desc") if isinstance(theme.get("desc"), dict) else None}
+             "desc": theme.get("desc") if isinstance(theme.get("desc"), dict) else None,
+             # Almost always absent: the shared `base.css` needs no name of its
+             # own. A theme that walks its OWN door (`base_css_path`) says so
+             # here, and `theme.ts` reads it to swap the second link.
+             "base": theme.get("base") if isinstance(theme.get("base"), str) else None}
             for theme in theme_rows()
         ],
         "tables": [
@@ -807,16 +832,22 @@ class Handler(BaseHTTPRequestHandler):
     # ---------------------------------------------------------- the entrance --
 
     def _asks(self) -> bool:
-        """Whether this folder asks anybody to enter.
+        """Whether this server asks anybody to enter.
 
-        It is `actors.can_expose()` — the folder with somebody to enter it —
-        read HERE and not only in `run`: the command refusing to take the port
-        says nothing about a server somebody built by hand, and a gate that
-        closed over a folder with nothing to prove would be a door with no key
-        in it. §3: with no authentication configured, AT listens on loopback
-        and asks nothing.
+        Two facts, and both have to hold. It is `actors.can_expose()` — the
+        folder with somebody to enter it — read HERE and not only in `run`: the
+        command refusing to take the port says nothing about a server somebody
+        built by hand, and a gate that closed over a folder with nothing to
+        prove would be a door with no key in it. §3: with no authentication
+        configured, AT listens on loopback and asks nothing.
+
+        **And it is whether THIS server draws an entrance at all**
+        (`server.asks`). A run from the source tree does not (`run`), and the
+        difference is the whole of what "sem forms" means: the folder is still
+        the folder, the tables are still the tables, and nobody has to prove who
+        they are to read them.
         """
-        return actors.can_expose()
+        return self.server.asks and actors.can_expose()
 
     def _in(self) -> session.Session | None:
         """The session this request carries, or `None`.
@@ -1126,7 +1157,7 @@ class Handler(BaseHTTPRequestHandler):
         head, rest = segments[0], segments[1:]
 
         if head == "base.css" and not rest:
-            self._file(ASSETS / "base.css")
+            self._file(base_css_path(query.get("theme", [None])[0]))
             return
 
         if head == "theme.css" and not rest:
@@ -1230,7 +1261,7 @@ class Handler(BaseHTTPRequestHandler):
         # Who is in, and above the gate: the page asks this before it has a
         # session, and the entrance cannot be drawn without it.
         if rest == ["session"]:
-            self._json(entry_payload(self._in()))
+            self._json(entry_payload(self._in(), asks=self.server.asks))
             return
 
         if not self._gate():
@@ -1578,12 +1609,20 @@ class Server(ThreadingHTTPServer):
     on one port, and two of them — which is what the suite builds, one per test
     — are two of them, each with its own entrances open. A shared registry would
     hand one test's session to another test's folder.
+
+    **And the ASKING lives here for the same reason** (`asks`): whether this
+    server draws an entrance is a fact of THIS server, and `run` is the one that
+    decides it from the artifact (`paths.source`). The suite builds bare servers,
+    which ask as the bundle does — a test that wants the dev answer asks for it
+    out loud (`make_server(asks=False)`), which is what keeps every other test's
+    refusals exactly what they were.
     """
 
     def __init__(self, address: tuple[str, int],
-                 handler: type[BaseHTTPRequestHandler]) -> None:
+                 handler: type[BaseHTTPRequestHandler], asks: bool = True) -> None:
         super().__init__(address, handler)
         self.sessions = session.Sessions()
+        self.asks = asks
 
 
 def chosen_host() -> str:
@@ -1609,8 +1648,8 @@ def chosen_host() -> str:
     return held.strip() if isinstance(held, str) and held.strip() else HOST
 
 
-def make_server(port: int = DEFAULT_PORT, host: str = HOST) -> Server:
-    return Server((host, port), Handler)
+def make_server(port: int = DEFAULT_PORT, host: str = HOST, asks: bool = True) -> Server:
+    return Server((host, port), Handler, asks=asks)
 
 
 def beat(times: int | None = None, pause: Callable[[float], None] = time.sleep) -> None:
@@ -1762,10 +1801,19 @@ def run(port: int = DEFAULT_PORT, host: str | None = None,
 
     keys.boot()
 
+    # WHETHER THIS RUN ASKS. A run from the source tree does not: it serves
+    # whoever is testing it, on the loop, and the install-time coin of "no actor
+    # yet" must not stand between that person and the page. The BUNDLE always
+    # asks, and that is the whole rule — `paths.source` is the artifact
+    # answering, and there is no flag beside it (`paths.source` says why).
+    asks = not paths.source()
+
     # "Sem ator nenhum o AT não expõe" (§3, Acesso e exposição): a folder with
     # nobody to enter it does not open its page. The engine's row does not count
-    # — it does not enter, the person does (`actors.can_expose`).
-    if not actors.can_expose():
+    # — it does not enter, the person does (`actors.can_expose`). It is asked
+    # only of a run that ASKS: the refusal is about an entrance, and a run with
+    # none is not a run with a door to close.
+    if asks and not actors.can_expose():
         print(tr("webapp.no_admin"))
         return 1
 
@@ -1780,7 +1828,7 @@ def run(port: int = DEFAULT_PORT, host: str | None = None,
     # WebApp is the move that keeps the exposed address the stable one.
     try:
         server = make_server(0 if include_caddy else port,
-                             HOST if include_caddy else where)
+                             HOST if include_caddy else where, asks=asks)
     except OSError as error:
         if error.errno != errno.EADDRINUSE:
             raise
@@ -1815,6 +1863,11 @@ def run(port: int = DEFAULT_PORT, host: str | None = None,
     url = f"https://{where}:{port}" if include_caddy else f"http://{where}:{port}"
     print(tr("caddy.serving", url=url) if include_caddy
           else tr("webapp.serving", url=url))
+    # AND WHETHER THIS RUN ASKS, said out loud: a person who expected an
+    # entrance and does not find one should not have to guess why — and the
+    # sentence is the same fact (`asks`), said once in the language on screen.
+    if not asks:
+        print(tr("webapp.source_open"))
     # The clock, kept by the process that is already up (§4, item 24). It is a
     # DAEMON: it dies with the server, and nothing has to stop it — the folder
     # that is idle is exactly the one it is here for.

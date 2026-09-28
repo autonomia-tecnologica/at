@@ -83,6 +83,18 @@ const value = (rec: RecordRow, name: string): RecordField =>
 const cell = (rec: RecordRow, name: string): string =>
   name === "id" ? String(rec.id ?? "") : value(rec, name).value || "";
 
+// WHICH MEMBER OF A CLOSED LIST the row carries, when the column declares one —
+// the marker the theme dresses a cell by (`data-value`, base2.css), the same
+// idiom the file tree already uses for a row's bucket. The page says WHICH
+// value it is and never what it should look like: a column of prose carries
+// nothing here, and a vocabulary a theme does not know keeps its plain text.
+const enumOf = (rec: RecordRow, name: string): string | undefined => {
+  const spec = byName.value[name];
+  if (!spec || !spec.enum || !Object.keys(spec.enum).length) return undefined;
+  const raw = value(rec, name).raw;
+  return raw === null || raw === undefined || raw === "" ? undefined : String(raw);
+};
+
 // A DATE SORTS BY WHAT IS STORED, never by what is shown: the locale writes
 // `22/09/2026`, and that text sorts by the day of the month. The stored value is
 // ISO, which sorts the way time does — so the display is free to be a display.
@@ -520,10 +532,14 @@ function openRecord(rec: RecordRow): void {
             <td v-if="name === 'id'" class="id"
                 :data-label="label(byName[name]?.labels) || name">{{ cell(rec, name) }}</td>
             <td v-else :data-label="label(byName[name]?.labels) || name"
+                :data-value="enumOf(rec, name)"
                 :title="String(value(rec, name).value || '').length > limitOf(name)
                   ? String(value(rec, name).value) : undefined">
-              <FieldValue :field="value(rec, name)" :limit="limitOf(name)" by-title
-                          @ref="emit('ref', $event)" />
+              <!-- The `.v` is the cell's VALUE as ONE thing, and it is what a
+                   theme dresses when the column declares a closed list — the
+                   mark `data-value` sits on the cell and the drawing on this. -->
+              <span class="v"><FieldValue :field="value(rec, name)" :limit="limitOf(name)" by-title
+                          @ref="emit('ref', $event)" /></span>
             </td>
           </template>
         </tr>

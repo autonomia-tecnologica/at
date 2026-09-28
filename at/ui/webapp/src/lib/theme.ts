@@ -32,6 +32,10 @@ function link(): HTMLElement | null {
   return document.getElementById("theme");
 }
 
+function baseLink(): HTMLElement | null {
+  return document.getElementById("base");
+}
+
 export function themeRow(id: string | null): ThemeRow | null {
   if (!id) return null;
   return store.themes.find(row => row.id === id) || null;
@@ -96,6 +100,17 @@ export function applyTheme(): ThemeRow | null {
   if (savedTheme()) params.push("theme=" + encodeURIComponent(row.id));
   if (darkOn()) params.push("dark");
   node.setAttribute("href", "/theme.css" + (params.length ? "?" + params.join("&") : ""));
+  // THE SECOND LINK, the same door: almost every theme names no `base` of its
+  // own, and `/base.css` with no query is exactly what it always was. Only a
+  // theme walking its OWN design system (`row.base`) needs the query at all —
+  // and only once it is the SAVED choice, the same guard `theme=` already uses,
+  // so a machine default never sends a query the server was not asked for.
+  const base = baseLink();
+  if (base && row.base && savedTheme()) {
+    base.setAttribute("href", "/base.css?theme=" + encodeURIComponent(row.id));
+  } else if (base) {
+    base.setAttribute("href", "/base.css");
+  }
   return row;
 }
 
