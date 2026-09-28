@@ -301,10 +301,14 @@ class TheManifest(unittest.TestCase):
         # §7a: "dnsmasq e o Caddy são os primeiros serviços". §7b adds the gate
         # and §7c the WebApp, and the order is the ORDER THINGS COME UP: the
         # edge asks the provider about every request and proxies to the WebApp,
-        # so both stand before it. §7f's notifier stands last, and it is the one
-        # nothing in front of it depends on.
+        # so both stand before it. **O Redis vem ANTES do provedor** porque é
+        # ele quem lê o registro de sessões quando sobe, e um portão que sobe
+        # com o registro atrás é um portão sem onde guardar quem está dentro.
+        # §7f's notifier stands last, and it is the one nothing in front of it
+        # depends on.
         self.assertEqual([service.name for service in env.SERVICES],
-                         ["dnsmasq", env.IDENTITY, env.WEBAPP, "caddy", env.NOTIFIER])
+                         ["dnsmasq", env.REDIS, env.IDENTITY, env.WEBAPP,
+                          "caddy", env.NOTIFIER])
 
     def test_every_image_is_pinned_in_version_and_hashing(self):
         # §3 (Dependência externa): "Dependências de pacotes e imagens são
@@ -395,6 +399,28 @@ class TheManifest(unittest.TestCase):
                         "", [mount.host for mount in service.mounts],
                         f"{service.name} does not mount its own state folder",
                     )
+
+    def test_the_session_store_joins_the_environment_network_and_publishes_nothing(self):
+        # §7b's session store: quem o lê é o provedor, e só ele — então ele está
+        # na rede do ambiente e NÃO na DMZ, que é do DNS sozinho, o único
+        # serviço que não fala com ninguém. **E ele não publica porta nenhuma**:
+        # a porta dele é a da rede, entre containers, e uma porta desta máquina
+        # abriria a memória das sessões a quem está fora do ambiente.
+        store = _service(env.REDIS)
+        self.assertEqual(store.network, env.NETWORK)
+        self.assertNotEqual(store.network, env.DMZ)
+        self.assertEqual(env.ports_of(store), ())
+
+    def test_the_session_store_mounts_its_configuration_and_nothing_else(self):
+        # **Uma montagem, e é a do ARQUIVO** — `host` vazio, que é a cópia que o
+        # `_materialize` faz da pasta de estado para o container ler, e é onde o
+        # `redis.conf` cai. **Nenhum volume existe para guardar o conteúdo da
+        # sessão**: uma montagem a mais aqui, com a cara de quem persiste dado,
+        # seria a decisão desta fatia desfeita por dentro.
+        store = _service(env.REDIS)
+        self.assertEqual([(mount.container, mount.host, mount.file)
+                          for mount in store.mounts],
+                         [(env.REDIS_CONFIG, "", False)])
 
     def test_the_dnsmasq_publishes_dns_on_both_protocols(self):
         # UDP e TCP, na mesma porta, e o endereço é um dos dois que §7e permite:
@@ -558,6 +584,21 @@ class TheUp(FolderCase):
         self.quiet(env.up, secret=self.phrase)
         self.assertIn("address=/", (env.state("dnsmasq") / "dnsmasq.conf").read_text(encoding="utf-8"))
         self.assertIn("reverse_proxy", (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8"))
+
+    def test_the_session_store_lands_with_the_disk_off(self):
+        # O que o Redis roda é o arquivo que o AT escreve, e o que o arquivo faz
+        # é DESLIGAR o disco: `save ""` desliga o RDB e `appendonly no` desliga o
+        # AOF, então o que ele carrega é memória e nada é escrito em pasta
+        # nenhuma. `protected-mode no` é a terceira, e ela existe porque quem o
+        # alcança é o provedor, que é OUTRO container: o modo protegido do Redis
+        # recusa quem chega de fora do laço quando não há senha, e um Redis que
+        # ninguém alcança é um provedor sem registro de sessão.
+        self.runtime()
+        self.quiet(env.up, secret=self.phrase)
+        text = (env.state(env.REDIS) / env.REDIS_CONF).read_text(encoding="utf-8")
+        self.assertIn('save ""', text)
+        self.assertIn("appendonly no", text)
+        self.assertIn("protected-mode no", text)
 
     def test_the_caddyfile_of_the_container_keeps_its_storage_in_the_container(self):
         # §7a: the same Caddy, the same generator — and the one line that is a
@@ -863,6 +904,20 @@ class TheIdentityProvider(FolderCase):
         self.assertIn(f'secret: "{drawn.strip()}"', self.conf())
         self.up()
         self.assertEqual(self.secret(), drawn)
+
+    def test_the_session_registry_is_the_redis_and_not_the_memory(self):
+        # **A linha que esta fatia existe para escrever.** Sem ela o provedor
+        # guarda quem está dentro na PRÓPRIA memória, e um restart do container
+        # — o caso relatado — zera o registro: o cookie segue assinado pelo mesmo
+        # `secret`, e o provedor já não conhece a sessão que ele nomeia. **O host
+        # é o NOME do container na rede**, como o do portão (`GATE_ENV`), porque
+        # é assim que um container alcança o outro; a porta é a do Redis, que não
+        # publica nenhuma.
+        self.up()
+        text = self.conf()
+        self.assertIn("  redis:", text)
+        self.assertIn(f'    host: "{env.container(env.REDIS)}"', text)
+        self.assertIn(f"    port: {env.REDIS_PORT}", text)
 
     def test_the_users_file_carries_the_people_and_the_derivation_the_row_holds(self):
         # §7b's split, written out: who is an actor is AT's, how it is proved
@@ -1358,7 +1413,7 @@ class TheStatus(FolderCase):
                 self.assertIn(service.image.shown(), text)
 
     def test_the_services_are_a_table_and_not_a_sentence_each(self):
-        # Cinco linhas com a mesma forma são cinco linhas que ninguém compara, e
+        # Seis linhas com a mesma forma são seis linhas que ninguém compara, e
         # o que se lê aqui é a COLUNA. O desenho é o mesmo da listagem da `cli`
         # (`ui/words.table`), para os dois artefatos imprimirem tabela igual.
         self.runtime(running="true")
@@ -1545,7 +1600,7 @@ class TheWebappContainer(FolderCase):
 
     def test_a_service_that_needs_nothing_is_told_nothing(self):
         fake = self.up()
-        for name in ("dnsmasq", env.IDENTITY, "caddy", env.NOTIFIER):
+        for name in ("dnsmasq", env.REDIS, env.IDENTITY, "caddy", env.NOTIFIER):
             with self.subTest(service=name):
                 self.assertNotIn("--env", _call(fake, env.container(name)))
 
@@ -2032,6 +2087,10 @@ def _catalogue() -> tuple[tuple[Path, int | None, frozenset[str]], ...]:
         # No secret at all: the names the DNS answers, the image the folder is
         # pinned at, and the notifier's own configuration (paths and the posture).
         (env.state("dnsmasq") / "dnsmasq.conf", None, frozenset()),
+        # O `redis.conf` do §7b: sem segredo nenhum, como os outros dois — o que
+        # ele carrega é a decisão do serviço (o disco desligado e o modo
+        # protegido aberto para o provedor, que é OUTRO container).
+        (env.state(env.REDIS) / env.REDIS_CONF, None, frozenset()),
         (env.pin_file(), None, frozenset()),
         (env.state(env.NOTIFIER) / env.NOTIFIER_YAML, None, frozenset()),
         # §7f's two ends of the ACL: AT's credential and the phone's, the one
