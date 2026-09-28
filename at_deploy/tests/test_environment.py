@@ -19,6 +19,7 @@ address check, and it binds a port on this machine and nothing else.
 
 from __future__ import annotations
 
+import base64
 import io
 import json
 import os
@@ -35,6 +36,7 @@ from at.core import actors, boot, files, tables
 from at.encryption import vault
 from at.services import caddy
 from at.ui.webapp import app as webapp
+from at.ui.webapp import keys as webapp_keys
 
 from at_deploy import environment as env
 from at_deploy import notifier, podman, tree, vpn
@@ -1535,6 +1537,29 @@ class TheWebappContainer(FolderCase):
         for name in ("dnsmasq", env.IDENTITY, "caddy", env.NOTIFIER):
             with self.subTest(service=name):
                 self.assertNotIn("--env", _call(fake, env.container(name)))
+
+    def test_the_webapp_is_handed_its_own_derived_key_and_the_notifiers(self):
+        # §4, item 50: a Vault Key não sai do instante do `bring_up` — só o que
+        # ela DERIVA viaja, uma variável por escopo, em base64.
+        fake = self.up()
+        argv = _call(fake, env.container(env.WEBAPP))
+        webapp_key = vault.derived_key(self.phrase_key(), env.WEBAPP)
+        notifier_key = vault.derived_key(self.phrase_key(), env.NOTIFIER)
+        self.assertIn(
+            f"{webapp_keys.WEBAPP_KEY_ENV}="
+            f"{base64.urlsafe_b64encode(webapp_key).decode()}",
+            argv,
+        )
+        self.assertIn(
+            f"{webapp_keys.NOTIFIER_KEY_ENV}="
+            f"{base64.urlsafe_b64encode(notifier_key).decode()}",
+            argv,
+        )
+        # É a MESMA chave que o notificador já deriva para selar a própria
+        # credencial: nenhum envelope é resselado, só uma segunda porta se abre
+        # para o que já existe (`notifier.VAULT_SCOPE`).
+        self.assertEqual(notifier_key,
+                          vault.derived_key(self.phrase_key(), notifier.VAULT_SCOPE))
 
 
 class TheWebappBehindIt(FolderCase):

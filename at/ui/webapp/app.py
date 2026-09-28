@@ -145,7 +145,7 @@ from at.data import schema, store
 from at.prose import listing as prose
 from at.services import caddy
 from at.ui import ask as door
-from at.ui.webapp import session
+from at.ui.webapp import keys, session
 
 HOST = "127.0.0.1"
 DEFAULT_PORT = 12345
@@ -1739,8 +1739,16 @@ def run(port: int = DEFAULT_PORT, host: str | None = None,
     NOT in `make_server`, and that is the same line the refusal above draws —
     the route tests build a bare server, and nothing of theirs may move with an
     hour the machine chose.
+
+    **And the derived keys are read here, once, before anything else** (§4,
+    item 50): whatever `at_deploy.environment._webapp_env` handed this process
+    is popped off `os.environ` and kept in `keys` for the life of the process —
+    `keys.boot` is idempotent, but a second boot in the same run would just find
+    nothing left to read, which is why this is the one call site.
     """
     from at.i18n import tr
+
+    keys.boot()
 
     # "Sem ator nenhum o AT não expõe" (§3, Acesso e exposição): a folder with
     # nobody to enter it does not open its page. The engine's row does not count

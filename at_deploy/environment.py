@@ -96,6 +96,7 @@ is the one that undoes itself.
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import os
@@ -117,6 +118,7 @@ from at.encryption import vault
 from at.i18n import tr
 from at.services import caddy as caddy_service
 from at.ui import words
+from at.ui.webapp import keys as webapp_keys
 
 from at_deploy import podman, vpn
 
@@ -741,8 +743,9 @@ def _webapp_command() -> tuple[str, ...]:
             "--port", str(WEBAPP_PORT), "--host", WEBAPP_HOST)
 
 
-def _webapp_env() -> tuple[tuple[str, str], ...]:
-    """What §7c's WebApp is TOLD: where its gate is, and where its folder is.
+def _webapp_env(key: bytes | None) -> tuple[tuple[str, str], ...]:
+    """What §7c's WebApp is TOLD: where its gate is, where its folder is, and —
+    when this subida has the Vault Key — the derived keys it holds in memory.
 
     The gate, because a container cannot see the host's loop and the name is the
     environment's to say (`GATE_ENV`), **and the gate's FILE, because the one
@@ -762,12 +765,33 @@ def _webapp_env() -> tuple[tuple[str, str], ...]:
     the first run from a checkout. `AT_ROOT` is the contract the image already
     declares in its own words (`Containerfile`), and naming it here costs one
     variable.
+
+    **§4, item 50: the two derived keys ride the same door, and only when there
+    is a Vault Key to derive them from.** `key` is `None` on a subida whose
+    folder had nothing to open, draw or migrate this round (`unlock`) — a folder
+    already entirely sealed does not get asked the Frase again, so it does not
+    get these variables either, and the WebApp inside it simply has no derived
+    key this boot (`at.ui.webapp.keys.get`'s own contract). When there IS a key,
+    it never travels itself — only `vault.derived_key`'s answer does, one scope
+    at a time: the WebApp's own (`WEBAPP`), and the notifier's, which is the
+    SAME key `at_deploy.notifier` already derives to seal and open its
+    credential (`notifier.VAULT_SCOPE`) — no envelope is resealed, this only
+    hands the WebApp a second door into the one that exists.
     """
-    return (
+    env = [
         (GATE_ENV, f"{container(IDENTITY)}:{IDENTITY_PORT}"),
         (paths.ROOT_ENV, str(paths.working_folder())),
         (caddy_service.GATE_PATH_ENV, GATE_MOUNT),
-    )
+    ]
+    if key is not None:
+        env.append((webapp_keys.WEBAPP_KEY_ENV, _derived_b64(key, WEBAPP)))
+        env.append((webapp_keys.NOTIFIER_KEY_ENV, _derived_b64(key, NOTIFIER)))
+    return tuple(env)
+
+
+def _derived_b64(key: bytes, scope: str) -> str:
+    """A derived key, encoded for the one trip it takes: inside an env var."""
+    return base64.urlsafe_b64encode(vault.derived_key(key, scope)).decode("ascii")
 
 
 def _notifier_command() -> tuple[str, ...]:
@@ -1668,8 +1692,13 @@ class Service:
     # container cannot see the host's loop, so a service that has to reach
     # another one is told the name to use instead of guessing (§7c's WebApp and
     # its gate). It is a callable for the same reason `ports` is, where a value
-    # is not a word but a path: what one of them names is the folder.
-    env: Callable[[], tuple[tuple[str, str], ...]] | tuple[tuple[str, str], ...] = ()
+    # is not a word but a path: what one of them names is the folder. The
+    # callable takes the Vault Key of THIS subida — `None` when there is none —
+    # because §7c's WebApp is handed derived keys through this same door
+    # (`_webapp_env`), and a service with nothing to derive ignores the
+    # argument, exactly as it ignores every other tuple entry it does not need.
+    env: (Callable[[bytes | None], tuple[tuple[str, str], ...]]
+          | tuple[tuple[str, str], ...]) = ()
     writes: tuple[tuple[str, Callable[[], str]], ...] = ()
     network: str = NETWORK
 
@@ -1955,10 +1984,12 @@ def ports_of(service: Service) -> tuple[Port, ...]:
     return service.ports() if callable(service.ports) else service.ports
 
 
-def env_of(service: Service) -> tuple[tuple[str, str], ...]:
+def env_of(service: Service, key: bytes | None) -> tuple[tuple[str, str], ...]:
     """The variables a service is handed, resolved NOW — the same shape, the same
-    reason (`ports_of`): what one of them names is the folder."""
-    return service.env() if callable(service.env) else service.env
+    reason (`ports_of`): what one of them names is the folder. `key` is the
+    Vault Key of this subida, or `None` — `_webapp_env`'s to read, and every
+    other service's to ignore."""
+    return service.env(key) if callable(service.env) else service.env
 
 
 def addresses(service: Service) -> tuple[str, ...]:
@@ -2004,7 +2035,7 @@ def wait_for(address: str, grace: float | None = None) -> bool:
     return False
 
 
-def run_argv(service: Service, image: Image) -> list[str]:
+def run_argv(service: Service, image: Image, key: bytes | None = None) -> list[str]:
     """The `podman run` that IS the service: every decision about it, in one list.
 
     Detached, named, labeled, on its network, publishing what it declares and
@@ -2012,6 +2043,9 @@ def run_argv(service: Service, image: Image) -> list[str]:
     when the service has one. There is no restart policy on purpose: §3 says AT
     has no watchdog and does not propose to have one, and a container that comes
     back on its own is one.
+
+    `key` is this subida's Vault Key, or `None` — passed straight through to
+    `env_of`, which is the one reader that knows what to do with it.
     """
     argv = [
         "run",
@@ -2025,8 +2059,8 @@ def run_argv(service: Service, image: Image) -> list[str]:
     for mount in service.mounts:
         argv += ["--volume",
                  mount.volume(state(service.name), materialized(service.name))]
-    for key, value in env_of(service):
-        argv += ["--env", f"{key}={value}"]
+    for name, value in env_of(service, key):
+        argv += ["--env", f"{name}={value}"]
     argv.append(image.reference())
     if service.command is not None:
         argv += list(service.command())
@@ -2343,7 +2377,7 @@ def _start(service: Service, pins: dict[str, dict], key: bytes | None) -> bool:
     # Whatever carries that name is AT's and is about to be replaced: the name
     # is the service, and two containers cannot share one.
     podman.run(["rm", "--force", container(service.name)])
-    if podman.run(run_argv(service, image)).returncode != 0:
+    if podman.run(run_argv(service, image, key)).returncode != 0:
         print(tr("services.up.failed", service=name, image=image.shown()))
         return False
 
@@ -2666,7 +2700,7 @@ def restart(name: str, secret: Ask | None = None) -> bool:
     # The name is the service, and two containers cannot share one — the same
     # line `_start` runs, for the same reason.
     podman.run(["rm", "--force", container(service.name)])
-    if podman.run(run_argv(service, image)).returncode != 0:
+    if podman.run(run_argv(service, image, key)).returncode != 0:
         print(tr("services.up.failed", service=tr(service.label),
                  image=image.shown()))
         return False
