@@ -131,16 +131,18 @@ class TheCoreIsOneSource(unittest.TestCase):
 class TheTwoTreesDoNotMix(unittest.TestCase):
     """§5's one-way rule holds inside each artifact, and the words do not leak."""
 
-    def test_the_services_word_is_the_deploys_alone(self):
+    def test_the_environment_words_are_the_deploys_alone(self):
         from at.ui.cli import tree as app_tree
 
         from at_deploy import tree as deploy_tree
 
-        self.assertIsNone(
-            next((node for node in app_tree.WORDS if node.name == "services"), None),
-            "`at-cli` offers the `services` word; the environment is `at-deploy`'s",
-        )
-        self.assertIsNotNone(deploy_tree.find("services"))
+        for word in deploy_tree.environment_words():
+            with self.subTest(word=word):
+                self.assertIsNone(
+                    next((node for node in app_tree.WORDS if node.name == word), None),
+                    f"`at-cli` offers `{word}`; the environment is `at-deploy`'s",
+                )
+                self.assertIsNotNone(deploy_tree.find(word))
 
     def test_the_deploys_help_is_drawn_in_both_languages(self):
         # The commands are machine words and stay machine words (§3); what is

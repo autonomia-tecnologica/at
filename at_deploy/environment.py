@@ -818,7 +818,7 @@ def _notifier_command() -> tuple[str, ...]:
 
     The image's entrypoint is `ntfy` and it carries **no `CMD` at all**: run with
     nothing after the image, it prints its own help and exits, which is a
-    notifier that never comes up and an `at-deploy services status` that says so
+    notifier that never comes up and an `at-deploy status` that says so
     forever. So the subcommand is a decision of AT's, written where every other
     decision about a container is. It is a callable like the WebApp's even though
     it resolves nothing, because `Service.command` has one shape.
@@ -2551,7 +2551,7 @@ def bring_up(ask: Ask | None = None, secret: Ask | None = None) -> str:
     creates lives in the database the notifier's server writes when it starts and
     nothing can be created before that. And an environment whose services stood
     IS up: what a credential that did not get made costs is the delivery, which
-    has its own door (`at-deploy services notify`) and its own line in `status` —
+    has its own door (`at-deploy notify`) and its own line in `status` —
     rolling the containers back over it would be undoing the environment the
     person asked for in the name of the cherry on the cake.
     """

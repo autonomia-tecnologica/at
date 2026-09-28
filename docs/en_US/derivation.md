@@ -123,8 +123,7 @@ Caddy's own storage, its local authority among the rest. It is written by
 so a copied folder comes back with the Caddy and the certificates it had.
 
 The other folder that arrives only when it is asked for is `App/services/`, the
-state of the container path's services (§7a). What writes in it is `at-deploy services
-up`: `images.json` records the pin this folder IS at, per service, and each
+state of the container path's services (§7a). What writes in it is `at-deploy up`: `images.json` records the pin this folder IS at, per service, and each
 service's own folder carries what it reads — `dnsmasq/dnsmasq.conf`, the names of
 access, and `caddy/Caddyfile`, the Caddyfile AT generates, with the storage
 inside the container. Nothing comes up without Podman: AT checks whether it
@@ -241,4 +240,4 @@ Each binary is one file because that is what the founding document promises (§3
 
 **It builds on Linux only.** PyInstaller is not a cross-compiler and cannot be: it freezes by executing code from the *target* interpreter at build time. So Windows and macOS binaries need their own builds on their own runners (§9), and the two specs are written to be the files all three platforms share — `at-deploy.spec` is not a second target of `at-cli.spec`, because a spec IS one artifact and the two differ in the entry point, the payloads and the exclusions.
 
-The Working Folder does not depend on that choice: `paths.working_folder()` resolves from `sys.executable`, which is the launched binary under `--onedir` too, so the folder the binary sits in is the folder it works in either way. Run it from anywhere and it still works on its own folder. Note that `at-cli` with no word prints the help — the Tkinter Wizard is down until item 9's third slice —, so a headless check wants `at-cli <word>`. The two artifacts share the folder's STATE and not an API, so `at-deploy services up` works on the same folder `at-cli` serves, and `at-cli` keeps serving it with the deploy absent.
+The Working Folder does not depend on that choice: `paths.working_folder()` resolves from `sys.executable`, which is the launched binary under `--onedir` too, so the folder the binary sits in is the folder it works in either way. Run it from anywhere and it still works on its own folder. Note that `at-cli` with no word prints the help — the Tkinter Wizard is down until item 9's third slice —, so a headless check wants `at-cli <word>`. The two artifacts share the folder's STATE and not an API, so `at-deploy up` works on the same folder `at-cli` serves, and `at-cli` keeps serving it with the deploy absent.

@@ -1,12 +1,13 @@
 """`at-deploy`'s command line: the surface that reaches §7 whole.
 
 It is the same shape as `at-cli`'s `cli` and a smaller list, because this artifact
-owns one subject: the environment. `services` is the whole of it — bring the
-environment up, take it down, say what is standing, move the folder between the
-two paths, and prove the delivery — and the Wizard of §7 (item 27's third slice)
-is the screen that walks a person through the same steps, every one of them
-reachable from here, because §5's one-way rule does not bend for a second
-artifact.
+owns one subject: the environment. Eight root words are the whole of it (2026-09-28:
+`services` is gone — the eight used to be its children, and the parent bought a
+word to type without changing what any of them DO) — bring the environment up,
+take it down, say what is standing, move the folder between the two paths, and
+prove the delivery — and the Wizard of §7 (item 27's third slice) is the screen
+that walks a person through the same steps, every one of them reachable from
+here, because §5's one-way rule does not bend for a second artifact.
 
 **The folder comes first, and it is the same folder.** Every invocation confirms
 the Working Folder exactly as `at-cli` does, through the same `boot`: the two
@@ -34,11 +35,10 @@ from at_deploy.environment import HOSTED, INSTALL, PROVISIONED, UP, UPDATED
 # `at-cli admin`).
 Ask = Callable[[str], str]
 
-# The words of `services`, read off the tree that OFFERS them — the declaration
-# is `tree.py`'s and this is the same list, so a word can never dispatch without
-# being offered nor the other way round (§5's one-way rule).
-_SERVICES = tree.find("services")
-WORDS = tuple(node.name for node in _SERVICES.children) if _SERVICES else ()
+# The environment's eight root words, read off the tree that OFFERS them — the
+# declaration is `tree.py`'s and this is the same list, so a word can never
+# dispatch without being offered nor the other way round (§5's one-way rule).
+WORDS = tree.environment_words()
 
 # The one word that takes an argument, and it is a NAME: the gate asserts a name
 # and the `users.yml` it derives is keyed by one (§7b). The tree carries what a
@@ -53,7 +53,7 @@ ARGUMENT = "credential"
 NOTIFY_CREDS = "creds"
 
 # The two acts of `ca`, read off the tree that offers them, for the reason the
-# `services` words are: a word can never dispatch without being offered (§5). The
+# environment's words are: a word can never dispatch without being offered (§5). The
 # ALVOS are the argument — a closed vocabulary of stores —, and the tree does not
 # carry them for the same reason it does not carry the name of `credential`.
 _CA = tree.find("ca")
@@ -110,8 +110,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     if word == "license":
         return _license(rest)
 
-    if word == "services":
-        return services(rest)
+    if word in WORDS:
+        return services([word, *rest])
 
     if word == "ca":
         return ca(rest)
@@ -154,16 +154,19 @@ def services(
     secret: Ask | None = None,
     answer: gate.Answer | None = None,
 ) -> int:
-    """`at-deploy services` — the container environment (§7a).
+    """The environment's eight root words (§7a) — one function behind all of them.
 
-    The Wizard is the screen that installs services, and it reads THIS door and
-    no other (`at_deploy/wizard.py` walks it one word at a time): §5's rule is
-    that everything of the Wizard is reachable from the `cli`, and the way to
-    make that a property instead of a promise is for the screen to have no other
-    road. So this is the door for the environment — `up` brings it up the FIRST
-    time, `update` is every time after (2026-09-28: the release that already
-    replaced the binary), `down` takes it down, and `status` says what is
-    standing, which is also what the wordless `services` answers.
+    `main` dispatches every name `WORDS` carries (`up`, `update`, `down`,
+    `status`, `switch`, `forms`, `notify`, `credential`) into `rest[0]` here
+    (2026-09-28: `services` is gone from in front of them — the eight used to
+    be its children, and the parent bought a word to type without changing what
+    any of them DO). The Wizard is the screen that installs the environment, and
+    it reads THIS door and no other (`at_deploy/wizard.py` walks it one word at
+    a time): §5's rule is that everything of the Wizard is reachable from the
+    `cli`, and the way to make that a property instead of a promise is for the
+    screen to have no other road. `up` brings the environment up the FIRST
+    time, `update` is every time after (the release that already replaced the
+    binary), `down` takes it down, and `status` says what is standing.
 
     Two of the words are not about the environment at all, and they live here
     because this is the surface §6 says reaches them: `switch` is the
@@ -206,26 +209,26 @@ def services(
     """
     from at_deploy import notifier, switch
 
-    word = rest[0] if rest else "status"
+    word = rest[0]
     args = rest[1:]
     if word not in WORDS:
-        return _reject("services")
+        return _reject(word)
     if word == ARGUMENT:
         if len(args) > 1:
-            return _reject("services")
+            return _reject(word)
         if not args:
             # The word needs to know WHOSE credential, and saying which words
             # exist would not say that: the usage is this word's own.
-            print(tr("deploy.services.credential.ask"))
+            print(tr("deploy.credential.ask"))
             return USAGE
     elif word == "notify":
         if args not in ([], [NOTIFY_CREDS]):
             # A closed vocabulary of one: the usage says the only word that
             # completes it, instead of the WORDS list, which would not.
-            print(tr("deploy.services.notify.ask"))
+            print(tr("deploy.notify.ask"))
             return USAGE
     elif args:
-        return _reject("services")
+        return _reject(word)
 
     if word == "status":
         environment.status()
@@ -322,7 +325,7 @@ def ca(rest: list[str]) -> int:
     OFERECE, e a árvore é a declaração única das duas: os ATOS — `install` e
     `uninstall` — são o que despacha, então são eles os filhos de `ca`; os ALVOS
     são um vocabulário fechado de ARGUMENTO, como o nome de
-    `services credential <nome>`, e a frase de uso os diz. É o desenho que o
+    `credential <nome>`, e a frase de uso os diz. É o desenho que o
     `at-cli` já segue — `<objeto> <ação> [<argumento>]` —, e sem ele o ato não
     apareceria na ajuda nem no completion.
 
@@ -352,7 +355,7 @@ def ca(rest: list[str]) -> int:
 
 
 def _credential(name: str, ask: Ask | None, secret: Ask | None) -> int:
-    """`at-deploy services credential <name>` — the operator's act (§7b).
+    """`at-deploy credential <name>` — the operator's act (§7b).
 
     The credential is read WITHOUT ECHO and twice, exactly as the first
     administrator's is (`at-cli admin`): it does not travel through the command
@@ -402,12 +405,26 @@ def _credential(name: str, ask: Ask | None, secret: Ask | None) -> int:
 
 
 def _readers() -> tuple[Ask | None, Ask | None]:
-    """A line reader and a no-echo reader, when there is a terminal to use."""
+    """A line reader and a no-echo reader, when there is a terminal to use.
+
+    **`getpass` writes its prompt straight to `/dev/tty`, bypassing `stdout`
+    entirely** — so a `print()` still sitting in `stdout`'s buffer (block-
+    buffered whenever this runs through anything that is not a live tty: a
+    wrapper, a pipe, a frozen PyInstaller launch) surfaces AFTER the prompt
+    instead of before it, gluing "Frase de Acesso: " to whatever the terminal
+    last showed with no line of its own in between. The flush before every
+    secret question closes that gap: whatever this surface already printed
+    lands on the screen before the prompt that follows it does.
+    """
     if not sys.stdin.isatty():
         return None, None
     import getpass
 
-    return (lambda question: input(question), getpass.getpass)
+    def secret(question: str) -> str:
+        sys.stdout.flush()
+        return getpass.getpass(question)
+
+    return (lambda question: input(question), secret)
 
 
 def _reader() -> Ask | None:

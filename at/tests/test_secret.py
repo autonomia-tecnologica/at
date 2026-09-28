@@ -454,7 +454,7 @@ class TheEntry(SecretCase):
         # §4's three grades — typing the phrase when AT starts, `~/.at/`, the
         # Working Folder — are a SURFACE's choice, with its price said out loud.
         # **A escolha foi feita, e ela é a nota `S`**: quem sobe o ambiente
-        # digita a Frase (`at-deploy services up`), e é ela que sela o que a
+        # digita a Frase (`at-deploy up`), e é ela que sela o que a
         # subida sorteia e abre o que a pasta guarda (item 50).
         #
         # O que esta linha tranca é a ESCOLHA e não a ausência dela: a

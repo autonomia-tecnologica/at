@@ -122,7 +122,7 @@ motivo que o §3 dá: o que foi extraído para rodar é da pasta, então uma pas
 copiada volta com o Caddy e os certificados que ela tinha.
 
 A outra pasta que só chega quando se pede é `App/services/`, o estado dos serviços
-do caminho container (§7a). Quem escreve nela é `at-deploy services up`: `images.json`
+do caminho container (§7a). Quem escreve nela é `at-deploy up`: `images.json`
 guarda o pino em que ESTA pasta está, por serviço, e a pasta de cada serviço
 carrega o que ele lê — `dnsmasq/dnsmasq.conf`, os nomes de acesso, e
 `caddy/Caddyfile`, o Caddyfile que o AT gera, com o armazenamento do lado de
@@ -240,4 +240,4 @@ Cada binário é um arquivo só porque é o que o documento fundador promete (§
 
 **Ele constrói só no Linux.** O PyInstaller não é um compilador cruzado e não pode ser: ele congela executando código do interpretador *alvo* em tempo de construção. Então binários de Windows e macOS precisam das suas próprias construções, nos seus próprios runners (§9), e os dois specs são escritos para serem os arquivos que os três compartilham — `at-deploy.spec` não é um segundo alvo do `at-cli.spec`, porque um spec É um artefato e os dois diferem no ponto de entrada, nos conteúdos e nas exclusões.
 
-A Pasta de Trabalho não depende dessa escolha: `paths.working_folder()` resolve a partir de `sys.executable`, que é o binário lançado também sob `--onedir`, então a pasta em que o binário está é a pasta em que ele trabalha dos dois jeitos. Rode de qualquer lugar e ele continua trabalhando na pasta dele. Repare que `at-cli` sem palavra imprime o `help` — o Wizard do Tkinter está fora do ar até a fatia 3 do item 9 —, então uma verificação sem tela quer `at-cli <palavra>`. Os dois artefatos dividem o ESTADO da pasta e não uma API, então `at-deploy services up` trabalha na mesma pasta que o `at-cli` serve, e o `at-cli` continua servindo com o deploy ausente.
+A Pasta de Trabalho não depende dessa escolha: `paths.working_folder()` resolve a partir de `sys.executable`, que é o binário lançado também sob `--onedir`, então a pasta em que o binário está é a pasta em que ele trabalha dos dois jeitos. Rode de qualquer lugar e ele continua trabalhando na pasta dele. Repare que `at-cli` sem palavra imprime o `help` — o Wizard do Tkinter está fora do ar até a fatia 3 do item 9 —, então uma verificação sem tela quer `at-cli <palavra>`. Os dois artefatos dividem o ESTADO da pasta e não uma API, então `at-deploy up` trabalha na mesma pasta que o `at-cli` serve, e o `at-cli` continua servindo com o deploy ausente.

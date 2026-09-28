@@ -2741,28 +2741,32 @@ class TheWords(unittest.TestCase):
 
 
 class TheDoor(FolderCase):
-    """`at-cli services` — the cli's word for the environment."""
+    """`at-deploy`'s eight root words for the environment (2026-09-28: no more
+    `services` in front of them)."""
 
-    def test_the_tree_offers_the_words_of_the_environment_and_the_doors_of_the_switch(self):
-        node = tree.find("services")
-        self.assertIsNotNone(node)
-        assert node is not None
+    def test_the_tree_offers_the_environments_eight_words_at_the_root(self):
         self.assertEqual(
-            [child.name for child in node.children],
-            ["up", "update", "down", "status", "switch", "forms", "notify",
-             "credential"],
+            tree.environment_words(),
+            ("up", "update", "down", "status", "switch", "forms", "notify",
+             "credential"),
             "a word the dispatch takes and the help does not offer (or the "
             "other way round) is the defect §5's one-way rule exists for",
         )
+        for word in tree.environment_words():
+            with self.subTest(word=word):
+                self.assertIsNotNone(tree.find(word))
 
-    def test_status_is_what_the_wordless_command_answers(self):
-        code, text = self.quiet(main, ["services"])
+    def test_status_is_what_the_status_word_answers(self):
+        # 2026-09-28: the wordless `services` that used to answer with the
+        # status is gone — the word for it is `at-deploy status`, same as
+        # every other root word.
+        code, text = self.quiet(main, ["status"])
         self.assertEqual(code, OK)
         self.assertIn(i18n.tr("services.no_podman.status"), text)
 
     def test_no_terminal_means_no_choice_and_a_refusal(self):
         # The suite runs with no tty, which is the state the offer refuses in.
-        code, text = self.quiet(main, ["services", "up"])
+        code, text = self.quiet(main, ["up"])
         self.assertEqual(code, REFUSED)
         self.assertIn(i18n.tr("services.no_podman.no_tty"), text)
 
@@ -2772,23 +2776,28 @@ class TheDoor(FolderCase):
         self.assertIn(i18n.tr("services.no_podman.hosted"), text)
 
     def test_a_word_it_does_not_take_is_a_usage_error(self):
-        for words in (["services", "install"], ["services", "up", "extra"], ["services", "run"]):
+        for words in (["up", "extra"], ["down", "extra"]):
             with self.subTest(words=words):
                 code, _ = self.quiet(main, words)
                 self.assertEqual(code, USAGE)
 
-    def test_the_help_offers_the_word_and_its_children(self):
+    def test_an_unknown_word_is_a_usage_error_and_not_a_dispatch(self):
+        code, text = self.quiet(main, ["run"])
+        self.assertEqual(code, USAGE)
+        self.assertIn(i18n.tr("deploy.error.unknown_word", word="run"), text)
+
+    def test_the_help_offers_every_root_word_of_the_environment(self):
         code, text = self.quiet(main, ["help"])
         self.assertEqual(code, OK)
-        self.assertIn("services", text)
-        self.assertIn(
-            "up, update, down, status, switch, forms, notify, credential", text)
+        for word in tree.environment_words():
+            with self.subTest(word=word):
+                self.assertIn(word, text)
 
     def test_the_delivery_is_proved_by_hand_and_says_where_it_would_come_from(self):
         # §7f's proof, walked from the `cli`: one alert, through the credential,
         # to the topic. A folder with no credential yet does not fail silently —
         # it names the file and the command that creates it.
-        code, text = self.quiet(main, ["services", "notify"])
+        code, text = self.quiet(main, ["notify"])
         self.assertEqual(code, REFUSED)
         self.assertIn(i18n.tr("services.notifier.no_token",
                               where=notifier.token_file(), topic=notifier.TOPIC), text)

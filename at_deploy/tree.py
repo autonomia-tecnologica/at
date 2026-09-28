@@ -13,38 +13,37 @@ from at.i18n import tr
 from at.ui.words import Node, completion_words, section, width
 
 
+# The environment's words, at the ROOT (2026-09-28: `services` is gone — the
+# eight used to be its children, and the parent bought a word to type without
+# changing what any of them DO). `up` is the FIRST time, `update` every time
+# after (the release that already replaced the binary), `down` and `status` are
+# the environment's own report and its way down.
+# `switch` is §6's TRANSACTIONAL change from the hosted path to the container
+# one and `forms` is the way back — both local, which is the whole point of the
+# return existing (`at_deploy/switch.py`).
+# `notify` is §7f's, and it is the one word that proves the delivery by hand:
+# one alert, through the credential `up` created, to the topic.
+#
+# `notify` and `credential` are the OPERATOR's acts (item 27), and they are
+# here for the same reason they were under the parent: the two things they
+# change are §7f's other end of the topic's ACL, and the credential §7b's gate
+# proves. `credential` takes an OPEN argument — a NAME; `notify` takes an
+# OPTIONAL closed one — with none it sends the test alert, and with `creds` it
+# shows the phone's credential instead (`at_deploy/cli.py`).
+_ENVIRONMENT: tuple[Node, ...] = (
+    Node("up", "deploy.up.about"),
+    Node("update", "deploy.update.about"),
+    Node("down", "deploy.down.about"),
+    Node("status", "deploy.status.about"),
+    Node("switch", "deploy.switch.about"),
+    Node("forms", "deploy.forms.about"),
+    Node("notify", "deploy.notify.about"),
+    Node("credential", "deploy.credential.about"),
+)
+
+
 WORDS: tuple[Node, ...] = (
-    # The environment of the container path, and everything a person does with
-    # one. `up` is the FIRST time, `update` every time after (2026-09-28: the
-    # release that already replaced the binary), `down` and `status` are the
-    # environment's own report and its way down, and the wordless `services`
-    # answers with the status.
-    # `switch` is §6's TRANSACTIONAL change from the hosted path to the
-    # container one and `forms` is the way back — both local, which is the whole
-    # point of the return existing (`at_deploy/switch.py`).
-    # `notify` is §7f's, and it is the one word that proves the delivery by hand:
-    # one alert, through the credential `up` created, to the topic.
-    #
-    # `notify` and `credential` are the OPERATOR's acts (item 27), and they are
-    # the environment's because the two things they change are: §7f's other end
-    # of the topic's ACL, and the credential §7b's gate proves. `credential`
-    # takes an OPEN argument — a NAME; `notify` takes an OPTIONAL closed one —
-    # with none it sends the test alert, and with `creds` it shows the phone's
-    # credential instead (`at_deploy/cli.py`).
-    Node(
-        "services",
-        "deploy.services.about",
-        (
-            Node("up", "deploy.services.up.about"),
-            Node("update", "deploy.services.update.about"),
-            Node("down", "deploy.services.down.about"),
-            Node("status", "deploy.services.status.about"),
-            Node("switch", "deploy.services.switch.about"),
-            Node("forms", "deploy.services.forms.about"),
-            Node("notify", "deploy.services.notify.about"),
-            Node("credential", "deploy.services.credential.about"),
-        ),
-    ),
+    *_ENVIRONMENT,
     # A CA do AT no cofre que o navegador DESTA máquina lê (item 49). É a outra
     # metade do que o §7a abriu com `cert.at.local`: lá a CA chega ao aparelho
     # que não lê o disco, aqui ela entra no NSS de quem navega daqui. Os dois
@@ -83,6 +82,16 @@ def roots() -> tuple[Node, ...]:
 
 def find(name: str) -> Node | None:
     return next((node for node in roots() if node.name == name), None)
+
+
+def environment_words() -> tuple[str, ...]:
+    """The names of the eight root words the environment offers.
+
+    Read off `_ENVIRONMENT` and not off `WORDS`, so `cli.py`'s dispatch group
+    can never drift from what this declaration actually offers at the root —
+    the same one-way rule `CA_WORDS` already leans on for `ca`'s children.
+    """
+    return tuple(node.name for node in _ENVIRONMENT)
 
 
 def completion() -> tuple[tuple[str, tuple[str, ...]], ...]:

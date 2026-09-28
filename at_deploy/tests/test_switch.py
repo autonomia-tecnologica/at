@@ -569,7 +569,7 @@ class TheMissingEnvironment(FolderCase):
 # ----------------------------------------------------------------- the door ---
 
 class TheCli(FolderCase):
-    """`at-deploy services switch` and `services forms` — the two local doors."""
+    """`at-deploy switch` and `at-deploy forms` — the two local doors."""
 
     def test_the_switch_reaches_the_environment_with_the_persons_answer(self):
         code, text = self.quiet(services, ["switch"], ask=lambda question: "n")
@@ -601,7 +601,7 @@ class TheCli(FolderCase):
         self.assertFalse(gate.on_gate())
 
     def test_a_word_it_does_not_take_is_a_usage_error(self):
-        for words in (["services", "virada"], ["services", "switch", "extra"], ["services", "path"]):
+        for words in (["switch", "extra"], ["forms", "extra"]):
             with self.subTest(words=words):
                 code, _ = self.quiet(main, words)
                 self.assertEqual(code, USAGE)
@@ -614,8 +614,8 @@ class TheCli(FolderCase):
                     "services.forms.already", "services.forms.done",
                     "services.gate.down",
                     "services.missing.ask", "services.missing.no_tty",
-                    "deploy.services.about", "deploy.services.switch.about",
-                    "deploy.services.forms.about", "deploy.error.read_only"):
+                    "deploy.switch.about",
+                    "deploy.forms.about", "deploy.error.read_only"):
             for code in i18n.SUPPORTED:
                 with self.subTest(key=key, language=code):
                     self.assertNotEqual(i18n.text(key, code), key)

@@ -61,7 +61,7 @@ PHRASE = "a frase de acesso da suite, e ela nao abre nada de ninguem"
 # Every sentence the Wizard says, in both languages: the keys of the window
 # itself. A key the catalog does not have answers with the KEY, which is why this
 # list exists — a text added to `wizard.py` without a line here is a text nobody
-# checks. The steps' own sentences are the words' (`deploy.services.<word>.about`)
+# checks. The steps' own sentences are the words' (`deploy.<word>.about`)
 # and the tree's suite already holds those.
 SAID = (
     "deploy.wizard.title", "deploy.wizard.folder",
@@ -322,9 +322,9 @@ class TheStepsAreTheClisWords(unittest.TestCase):
                     self.assertNotEqual(i18n.text(step.about, code), step.about)
 
     def test_the_step_runs_the_words_a_person_would_type(self):
-        # The step reaches the `cli`'s own dispatch with the words that follow
-        # `at-deploy services`, and everything the word printed comes back as
-        # text — the screen draws it and adds nothing.
+        # The step reaches the `cli`'s own dispatch with the words a person
+        # would type at `at-deploy`'s root, and everything the word printed
+        # comes back as text — the screen draws it and adds nothing.
         seen: list[list[str]] = []
 
         def door(argv, ask=None, secret=None, answer=None) -> int:
@@ -341,7 +341,7 @@ class TheStepsAreTheClisWords(unittest.TestCase):
 
     def test_the_one_word_that_takes_a_name_is_given_it(self):
         # The argv of the one word that has an argument, so that the `cli`'s own
-        # rule for it (`deploy.services.credential.ask`) is what answers a name
+        # rule for it (`deploy.credential.ask`) is what answers a name
         # nobody gave.
         seen: list[list[str]] = []
 
@@ -501,7 +501,7 @@ class TheWindow(FolderCase):
         fake, _ = self.window()
         code, said = self.credential_step(fake, [""])
         self.assertEqual(code, USAGE)
-        self.assertIn(i18n.tr("deploy.services.credential.ask"), said)
+        self.assertIn(i18n.tr("deploy.credential.ask"), said)
 
     def test_the_whole_sequence_is_walked_by_pressing_its_buttons(self):
         # The one test that walks §7 end to end through the WINDOW: the first
@@ -606,7 +606,7 @@ class TheDoor(FolderCase):
         self.assertEqual([widget for widget in fake.made if widget.kind != "root"],
                          [], "a janela abriu sobre um comando sem palavra")
         self.assertIn(i18n.tr("deploy.help.usage"), text)
-        self.assertIn("services", text)
+        self.assertIn("credential", text)
 
     def test_the_window_still_separates_a_machine_with_no_tkinter(self):
         # O módulo fica, e com ele a frase que o item 27 escreveu: uma máquina
@@ -638,7 +638,7 @@ class TheDoor(FolderCase):
         self.assertEqual(code, OK)
         self.assertEqual([widget for widget in fake.made if widget.kind != "root"],
                          [], "a janela abriu sobre uma palavra")
-        self.assertIn("services", text)
+        self.assertIn("credential", text)
 
 
 # ------------------------------------------------------------ the sentence ---

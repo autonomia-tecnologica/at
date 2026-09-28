@@ -46,7 +46,7 @@ reach a phone except through the person's eyes — but "reach a phone" happens
 more than once in a credential's life (a new phone, a re-installed app, a
 person who did not save the scrollback), so a value sealed behind the same
 Frase that opens every other secret this vault keeps does not need a
-print-once rule on TOP of the seal. **`at-deploy services notify creds`**
+print-once rule on TOP of the seal. **`at-deploy notify creds`**
 opens it exactly like `push` opens AT's own token: the Frase is asked, the
 envelope is unsealed, and what comes back is the value — every time, not the
 first time (2026-09-28, replacing the earlier once-only rule). Its scope is
@@ -676,7 +676,7 @@ def subscribe(answer: gate.Answer | None = None,
     environment up.
 
     **It is shown every time, on demand, and that is the point of the word**
-    (`at-deploy services notify creds`, 2026-09-28). The earlier shape of this
+    (`at-deploy notify creds`, 2026-09-28). The earlier shape of this
     door printed the value once and refused to again — the file was "where a
     person reads it a second time", which meant reading it back by hand, past
     the vault, past the point of the vault existing at all. That is not a

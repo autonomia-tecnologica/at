@@ -100,7 +100,7 @@ class Step:
     required step OWES is not always its exit code, which is what `settled` is
     for; the whole of it comes down to the two environment steps.
 
-    `about` is the WORD's own sentence (`deploy.services.<word>.about`), shared
+    `about` is the WORD's own sentence (`deploy.<word>.about`), shared
     with the help: a step described differently in the two surfaces would be two
     words wearing one name.
     """
@@ -132,10 +132,10 @@ class Step:
 # all: they are the way BACK, and a sequence that walks forward has no step for
 # them — the `cli` reaches both (§5).
 STEPS: tuple[Step, ...] = (
-    Step("up", "deploy.services.up.about", True, _up_settled),
-    Step("credential", "deploy.services.credential.about", False),
-    Step("switch", "deploy.services.switch.about", False, _switch_settled),
-    Step("notify", "deploy.services.notify.about", False),
+    Step("up", "deploy.up.about", True, _up_settled),
+    Step("credential", "deploy.credential.about", False),
+    Step("switch", "deploy.switch.about", False, _switch_settled),
+    Step("notify", "deploy.notify.about", False),
     Step("notify", "deploy.wizard.phone.about", False, argv=("creds",)),
 )
 
@@ -147,15 +147,15 @@ def run_step(word: str, ask: Ask | None = None, secret: Ask | None = None,
     """Run ONE step and hand back what it said.
 
     **The step IS the `cli`'s word**, reached through the door the command line
-    reaches it through: what is spelled here are the words that follow
-    `at-deploy services` on the command line, and the window's readers stand in
+    reaches it through: what is spelled here are the words a person would type
+    at `at-deploy`'s own root, and the window's readers stand in
     for the terminal's. Everything the word prints comes back as text — the
     screen draws it and adds nothing, which is §5's one-way rule visible in the
     code instead of promised in a comment.
 
     `name` is for the one word that takes an argument: when it is not given, the
     window asks for it first, and a name nobody gave is left for the word's OWN
-    sentence to answer (`services.credential.ask`) rather than a second one
+    sentence to answer (`deploy.credential.ask`) rather than a second one
     written here. `argv` is a step's fixed trailing words (`Step.argv`) — the
     part of the line that is not the argument door, and not a name either.
     """

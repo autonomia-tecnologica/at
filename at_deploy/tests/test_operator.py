@@ -63,8 +63,8 @@ PHRASE = "a frase de acesso da suite, e ela nao abre nada de ninguem"
 # added to `notifier.py`, `environment.py` or `cli.py` without a line here is a
 # message nobody checks.
 SAID = (
-    "deploy.services.notify.about", "deploy.services.notify.ask",
-    "deploy.services.credential.about", "deploy.services.credential.ask",
+    "deploy.notify.about", "deploy.notify.ask",
+    "deploy.credential.about", "deploy.credential.ask",
     "services.notifier.phone.drawn", "services.notifier.phone.held",
     "services.notifier.phone.at", "services.notifier.phone.absent",
     # §7f's read, proved at the end of the word: what closing looks like, and the
@@ -824,11 +824,10 @@ class TheDoor(FolderCase):
     def test_the_word_without_a_name_says_which_word_needs_one(self):
         code, text = self.quiet(services, ["credential"])
         self.assertEqual(code, USAGE)
-        self.assertIn(i18n.tr("deploy.services.credential.ask"), text)
+        self.assertIn(i18n.tr("deploy.credential.ask"), text)
 
     def test_a_word_that_takes_no_argument_still_takes_none(self):
-        for words in (["services", "down", "extra"], ["services", "credential",
-                                                       "a", "b"]):
+        for words in (["down", "extra"], ["credential", "a", "b"]):
             with self.subTest(words=words):
                 code, _ = self.quiet(main, words)
                 self.assertEqual(code, USAGE)
@@ -837,17 +836,16 @@ class TheDoor(FolderCase):
         # `notify` is the one word with a CLOSED optional vocabulary: nothing,
         # or `creds` — anything else is the same usage refusal as an argument a
         # word never asked for.
-        for words in (["services", "notify", "extra"],
-                      ["services", "notify", "creds", "extra"]):
+        for words in (["notify", "extra"], ["notify", "creds", "extra"]):
             with self.subTest(words=words):
                 code, text = self.quiet(main, words)
                 self.assertEqual(code, USAGE)
-                self.assertIn(i18n.tr("deploy.services.notify.ask"), text)
+                self.assertIn(i18n.tr("deploy.notify.ask"), text)
 
     def test_no_terminal_means_no_credential_to_change(self):
         # The suite runs with no tty, which is the state the door refuses in.
         self.person()
-        code, text = self.quiet(main, ["services", "credential", "Rafael"])
+        code, text = self.quiet(main, ["credential", "Rafael"])
         self.assertEqual(code, REFUSED)
         self.assertIn(i18n.tr("services.credential.no_tty"), text)
 
