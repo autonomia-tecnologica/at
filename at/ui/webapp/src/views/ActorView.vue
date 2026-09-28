@@ -227,6 +227,7 @@ watch(() => nav.current?.view, view => {
     <MachineMint :roles="roles" :fields="payload.fields" />
 
     <TableView :entity="ACTOR" :records="payload.records" :schema="payload.fields"
-               :defaults="payload.columns" :page="ACTOR" @count="setCount" @ref="openRef" />
+               :defaults="payload.columns" :page="ACTOR" :actions="payload.actions"
+               @count="setCount" @ref="openRef" />
   </div>
 </template>

@@ -53,5 +53,5 @@ watch(() => props.view, () => {
               @ref="openRef" />
   <TableView v-else-if="payload" :entity="view" :records="payload.records"
              :schema="payload.fields" :defaults="payload.columns" :page="view"
-             @count="setCount" @ref="openRef" />
+             :actions="payload.actions" @count="setCount" @ref="openRef" />
 </template>

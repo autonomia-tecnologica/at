@@ -59,7 +59,7 @@ watch(() => nav.tick, load);
       <MachineMint v-if="people" :roles="roles ? roles.records : []" :fields="people.fields" />
       <TableView v-if="people" entity="actor" :records="people.records"
                  :schema="people.fields" :defaults="people.columns" page="actor"
-                 @ref="openRef" />
+                 :actions="people.actions" @ref="openRef" />
     </Foldable>
   </div>
 
@@ -69,7 +69,7 @@ watch(() => nav.tick, load);
       <RoleCreate v-if="roles" :fields="roles.fields" />
       <TableView v-if="roles" entity="role" :records="roles.records"
                  :schema="roles.fields" :defaults="roles.columns" page="role"
-                 @ref="openRef" />
+                 :actions="roles.actions" @ref="openRef" />
     </Foldable>
   </div>
 </template>

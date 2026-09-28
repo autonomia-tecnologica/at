@@ -1505,6 +1505,92 @@ class TheCeiling(ServerCase):
         self.assertEqual(self.post("/api/ask", {"text": "banana"}, headers=cookie)[0], 200)
 
 
+class TheContextMenuActions(ServerCase):
+    """TASK-120, fatia 1: what a context menu may show, and never invents (§4, item 11).
+
+    `_table_actions` asks the SAME ceiling `_may` would refuse a write with —
+    `actors.may`, over the permission `permissions.needed` composes — but reads
+    it instead of gating a route: a menu that shows nothing is not a request
+    that failed. Row-independent, and it is the system's own shape and not a
+    shortcut: the role's ceiling is over the TABLE, so every record of one
+    table answers alike, and this asks it once per payload and not once per
+    row.
+    """
+
+    ADMIN = "Rafael"
+    ADMIN_CREDENTIAL = "uma-frase-bem-longa"
+    NAME = "Leitor"
+    CREDENTIAL = "outra-frase-bem-longa"
+
+    def setUp(self):
+        super().setUp()
+        actors.create_admin(self.ADMIN, self.ADMIN_CREDENTIAL)
+
+    def person(self, carried: str, name: str | None = None) -> dict:
+        role = tables.create(
+            "role",
+            {"name": f"papel-{len(store.load('role'))}", "permissions": carried},
+        )
+        return tables.create(
+            "actor",
+            {
+                "name": name or self.NAME, "type": "person",
+                "role": str(store.number_of(role)),
+                "credential": self.CREDENTIAL,
+            },
+        )
+
+    def cookie(self, name: str | None = None) -> dict:
+        status, headers, _ = self.post_full(
+            "/api/session", {"name": name or self.NAME, "credential": self.CREDENTIAL},
+        )
+        self.assertEqual(status, 200)
+        return {"Cookie": headers["Set-Cookie"].split(";")[0]}
+
+    def test_the_administrator_sees_edit_without_any_role_narrowing_it(self):
+        status, headers, _ = self.post_full(
+            "/api/session",
+            {"name": self.ADMIN, "credential": self.ADMIN_CREDENTIAL},
+        )
+        self.assertEqual(status, 200)
+        cookie = {"Cookie": headers["Set-Cookie"].split(";")[0]}
+        _, _, body = self.get("/api/table/task", headers=cookie)
+        self.assertEqual(json.loads(body)["actions"], ["edit"])
+
+    def test_a_role_that_carries_edit_sees_it(self):
+        self.person("task:list,task:edit")
+        _, _, body = self.get("/api/table/task", headers=self.cookie())
+        self.assertEqual(json.loads(body)["actions"], ["edit"])
+
+    def test_a_role_that_does_not_carry_edit_sees_nothing(self):
+        self.person("task:list")
+        _, _, body = self.get("/api/table/task", headers=self.cookie())
+        self.assertEqual(json.loads(body)["actions"], [])
+
+    def test_a_role_carrying_nothing_is_refused_by_the_route_before_the_menu(self):
+        # `task:list` is the ROUTE's own demand (`_may`), asked before this
+        # door's question ever runs — a role naming nothing does not reach
+        # `_table_actions` at all, it is refused earlier and by the same rule.
+        self.person("")
+        code = self.status("/api/table/task", headers=self.cookie())
+        self.assertEqual(code, 403)
+
+    def test_the_project_page_answers_the_same_way(self):
+        with redirect_stdout(io.StringIO()):
+            tables.create("project", {"name": "Autonomia", "status": "active"})
+        self.person("task:list,project:view")
+        _, _, body = self.get("/api/project/1", headers=self.cookie())
+        self.assertEqual(json.loads(body)["actions"], [])
+        self.person("task:list,task:edit,project:view", "Editor")
+        _, _, body = self.get("/api/project/1", headers=self.cookie("Editor"))
+        self.assertEqual(json.loads(body)["actions"], ["edit"])
+
+    def test_the_orphans_page_answers_the_same_way(self):
+        self.person("task:list,task:edit")
+        _, _, body = self.get("/api/orphans", headers=self.cookie())
+        self.assertEqual(json.loads(body)["actions"], ["edit"])
+
+
 class TheRbacScreens(ServerCase):
     """The two routes the screens item 11 lands are made of: the closed list the
     role screen draws, and the door that MINTS and revokes a machine credential.

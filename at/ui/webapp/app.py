@@ -415,6 +415,9 @@ PAGE_WORDS = (
     "motion", "themes", "no_project", "new_project", "delete_project",
     "move_to_project", "records", "hidden", "no_records", "error", "filter",
     "columns", "refers", "panel", "collapse_menu", "expand_menu",
+    # The context menu's own items (TASK-120, fatia 1): what the row's menu
+    # offers when the engine says `edit` is legal.
+    "edit",
     "back", "write", "leave_write", "saving",
     "saved", "save_failed", "language_name", "language_flag",
     "ft_text", "ft_markdown", "ft_python", "ft_json", "ft_yaml", "ft_shell",
@@ -1017,6 +1020,37 @@ class Handler(BaseHTTPRequestHandler):
         )
         return False
 
+    def _legal(self, permission: str) -> bool:
+        """Whether the actor this request proved carries `permission` — a QUESTION
+        and never a refusal (TASK-120, fatia 1).
+
+        `_may` is a GATE: it answers the same way and writes the 403 a route is
+        refused with. A context menu asking what it may show is not a route being
+        refused — there is nothing to write, and no owing either, because showing
+        nothing is not a demand that failed. Same two hops as `_may`'s ceiling
+        (`_asks`, `_actor`, `actors.may`), and none of its response.
+        """
+        if not self._asks():
+            return True
+        row = self._actor()
+        return row is not None and actors.may(row, permission)
+
+    def _table_actions(self, table: str) -> list[str]:
+        """Which of the engine's own actions this actor may reach on `table` —
+        the truth a context menu shows instead of inventing one (TASK-120).
+
+        **Row-independent, and that is the system's own shape and not a
+        shortcut**: the ceiling `actors.may` reads is the ROLE's, over the
+        TABLE — no table here narrows a permission by which row it is — so
+        "what this row allows" and "what this table allows this actor" are the
+        same question. `edit` is the only door named today: `view` is
+        implicit in the row already being listed, and `create`/`cancel`/
+        `delete` are later fatias of the same item (121, 122) — a menu is not
+        the place to offer a door the server does not have yet.
+        """
+        return [action for action in ("edit",)
+                if self._legal(permissions.needed(table, action))]
+
     def _actor(self) -> dict | None:
         """The row this request proved, or `None` — the session's own hop back to
         the store.
@@ -1277,7 +1311,9 @@ class Handler(BaseHTTPRequestHandler):
             # table the catalogue says is theirs.
             if not self._may(permissions.needed(table, "list")):
                 return
-            self._json(table_payload(table, show_all="all" in query))
+            payload = table_payload(table, show_all="all" in query)
+            payload["actions"] = self._table_actions(table)
+            self._json(payload)
             return
 
         self._not_found()
@@ -1290,6 +1326,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         payload["fields"] = _schema_payload("task")
         payload["records"] = [_record("task", row) for row in payload.pop("rows")]
+        payload["actions"] = self._table_actions("task")
         # The project's OWN fields, rendered like any other record's: it is what
         # carries the body of an item to the page — the `desc` the table
         # declares `markdown`, plus the status and the priority the tree orders
@@ -1309,6 +1346,7 @@ class Handler(BaseHTTPRequestHandler):
             "filter": None,
             "fields": _schema_payload("task"),
             "records": [_record("task", row) for row in rows],
+            "actions": self._table_actions("task"),
         }
 
     def _get_file(self, path: str) -> None:

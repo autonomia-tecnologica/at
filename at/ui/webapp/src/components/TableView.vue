@@ -20,6 +20,7 @@ import { ref, computed, watch, watchEffect, onMounted, nextTick } from "vue";
 import { store, label, word } from "../lib/store";
 import { COLUMNS_KEY, FILTERS_KEY, loadPrefs, savePrefs } from "../lib/prefs";
 import { openPop, closePop, isPopOpen } from "../lib/pop";
+import { openContextMenu, type MenuItem } from "../lib/menu";
 import { leave, markPage, setLiveCount } from "../lib/views";
 import { narrow } from "../lib/breakpoint";
 import { plainText, rendererReady, ensureRenderer } from "../lib/markdown";
@@ -46,8 +47,13 @@ const props = withDefaults(
     // silently overwrite stops being a rule.
     rule?: boolean;
     defaults?: string[] | null; // columns shown before the person hides any
+    // What the ENGINE says this actor may do to a row of this table
+    // (TASK-120, fatia 1) — the context menu's own content, and never this
+    // component's invention. Row-independent: one list for the whole table.
+    actions?: string[];
   }>(),
-  { schema: () => [], viewKey: null, page: null, rule: false, defaults: null },
+  { schema: () => [], viewKey: null, page: null, rule: false, defaults: null,
+    actions: () => [] },
 );
 
 const emit = defineEmits<{
@@ -317,6 +323,27 @@ function openColumns(anchor: HTMLElement | null): void {
           { anchor });
 }
 
+// THE HEADER'S RIGHT CLICK, THROUGH THE ONE DOOR (TASK-120, fatia 1): a menu
+// opens at the pointer, and its one item calls the SAME `openColumns` the
+// header always called — the anchor is captured HERE, at open time, and not
+// read off the menu item's own click later.
+function openHeaderMenu(ev: MouseEvent): void {
+  if (props.rule) return;
+  const anchor = ev.currentTarget as HTMLElement;
+  openContextMenu(ev, [{ label: word("columns"), action: () => openColumns(anchor) }]);
+}
+
+// A ROW'S RIGHT CLICK (and the context-menu key, and Shift+F10 — a native
+// `contextmenu` event either way): what it offers is exactly what the engine
+// said was legal (`props.actions`), and nothing this component invents.
+function openRowMenu(ev: MouseEvent, rec: RecordRow): void {
+  const items: MenuItem[] = [];
+  if (props.actions.includes("edit")) {
+    items.push({ label: word("edit"), action: () => openRecord(rec) });
+  }
+  openContextMenu(ev, items);
+}
+
 // --- each column's width: MEASURED, never guessed -----------------------------
 const probeEl = ref<HTMLSpanElement | null>(null);
 const widths = ref<number[]>([]);
@@ -466,7 +493,7 @@ function openRecord(rec: RecordRow): void {
               :class="{ 'drop-before': dropMark && dropMark.name === name && !dropMark.after,
                         'drop-after': dropMark && dropMark.name === name && dropMark.after }"
               @click="toggleSort(name)"
-              @contextmenu.prevent.stop="openColumns($event.currentTarget as HTMLElement)"
+              @contextmenu.prevent.stop="openHeaderMenu($event)"
               @dragstart="onDragStart($event, name)"
               @dragend="onDragEnd"
               @dragover="onDragOver($event, name)"
@@ -483,8 +510,9 @@ function openRecord(rec: RecordRow): void {
         </tr>
       </thead>
       <tbody>
-        <tr v-for="rec in ordered" :key="rec.id" :title="rec.title || ''"
-            @click="openRecord(rec)">
+        <tr v-for="rec in ordered" :key="rec.id" :title="rec.title || ''" tabindex="0"
+            @click="openRecord(rec)"
+            @contextmenu.prevent.stop="openRowMenu($event, rec)">
           <template v-for="name in shown" :key="name">
             <!-- `data-label` is the column's header, carried by the CELL: on a
                  narrow screen the header row is gone and each cell becomes a line

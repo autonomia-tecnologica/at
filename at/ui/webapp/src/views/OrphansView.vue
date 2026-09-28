@@ -55,5 +55,5 @@ watch(() => nav.tick, load);
        table declares `hide: ["project", "orphans"]` for both. -->
   <TableView v-else-if="payload" :entity="store.types.task" :records="payload.records"
              :schema="payload.fields" :view-key="ORPHANS_KEY" :page="ORPHANS_KEY" rule
-             @count="onCount" @ref="openRef" />
+             :actions="payload.actions" @count="onCount" @ref="openRef" />
 </template>

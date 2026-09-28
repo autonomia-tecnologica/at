@@ -45,6 +45,10 @@ export interface TablePayload {
   // not here steps aside into the pill — it is the table's rule, not the page's.
   columns: string[];
   records: RecordRow[];
+  // What the ENGINE says this actor may do to a row of this table — never
+  // invented by the page (TASK-120). Row-independent: the ceiling is the
+  // role's, over the table, so one list answers for every record.
+  actions: string[];
 }
 
 export type { FieldSpec, Labels };

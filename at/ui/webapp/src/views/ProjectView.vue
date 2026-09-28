@@ -34,6 +34,7 @@ interface ProjectPayload {
   children: Child[];
   fields: FieldSpec[];
   records: RecordRow[];
+  actions: string[];
   // The project's OWN fields and record — the pair `fields`/`records` above is
   // the TASKS the page draws, and this one is the project the page IS. It is
   // where the body of an item arrives: the `desc` the table declares
@@ -141,6 +142,6 @@ watch(() => props.id, () => {
          TYPE `task`, never the word "task" read as a table's name. -->
     <TableView v-if="store.types.task" :entity="store.types.task" :records="payload.records"
                :schema="payload.fields" view-key="project" :page="page" rule
-               @count="onCount" @ref="openRef" />
+               :actions="payload.actions" @count="onCount" @ref="openRef" />
   </div>
 </template>

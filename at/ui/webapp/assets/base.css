@@ -1275,6 +1275,10 @@
   .hidden-count button { cursor: pointer; }
   .hidden-count button:hover { color: var(--pill-hover); }
   tbody tr { cursor: pointer; }
+  /* A ROW IS FOCUSABLE (2026-09-28, TASK-120): the context-menu key and
+     Shift+F10 need a focused row to open ON, which a plain `tr` never was.
+     The ring is the same token every other focusable control already uses. */
+  tbody tr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
   /* The hover is a ROUNDED band, not a square strip (2026-09-19): the background
      lives on the CELLS — a `tr` background does not round under `separate`, and its
      square strip is the Windows-97 look. The first/last cell carry the rounded ends.

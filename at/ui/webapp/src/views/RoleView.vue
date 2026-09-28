@@ -238,6 +238,7 @@ watch(() => nav.current?.view, view => {
     <RoleCreate :fields="payload.fields" />
 
     <TableView :entity="ROLE" :records="payload.records" :schema="payload.fields"
-               :defaults="payload.columns" :page="ROLE" @count="setCount" @ref="openRef" />
+               :defaults="payload.columns" :page="ROLE" :actions="payload.actions"
+               @count="setCount" @ref="openRef" />
   </div>
 </template>
