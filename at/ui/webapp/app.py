@@ -1626,7 +1626,15 @@ def beat(times: int | None = None, pause: Callable[[float], None] = time.sleep) 
     **A pass that raises does not take the clock down.** A clock that stopped is
     a folder whose jobs stopped with it, and nobody to say so — so the failure is
     said (in AT's words, with the machine's message inside, because a bug's text
-    is the only thing that can be diagnosed from) and the rhythm goes on.
+    is the only thing that can be diagnosed from) and the rhythm goes on. The
+    reminder's round (§4, item 29's second slice) shares the pass and the same
+    guard: the two rounds do not know about each other, so one that raises does
+    not take the other down either.
+
+    **The reminder's round is handed the notifier's derived key, read at
+    `keys.boot` and kept nowhere but this process's memory** (§4, item 50): a
+    boot with no key still rounds — `notifier.publish` answers `no_token`
+    rather than sending an envelope nobody here could open.
 
     `times` and `pause` are the seams a test drives: the pass is proven with the
     instant handed to `at.ui.ask.tick`, and these are how the same pass is
@@ -1637,6 +1645,10 @@ def beat(times: int | None = None, pause: Callable[[float], None] = time.sleep) 
         try:
             door.tick()
         except Exception as error:  # noqa: BLE001 — the clock does not die of a pass
+            print(i18n.tr("webapp.clock_failed", error=error))
+        try:
+            door.remind(key=keys.notifier_key())
+        except Exception as error:  # noqa: BLE001 — same guard, the other round
             print(i18n.tr("webapp.clock_failed", error=error))
         done += 1
         if times is None or done < times:

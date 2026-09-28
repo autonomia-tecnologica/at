@@ -1521,6 +1521,17 @@ class TheWebappContainer(FolderCase):
         self.assertIn(f"{env.GATE_ENV}={env.container(env.IDENTITY)}:{env.IDENTITY_PORT}",
                       argv)
 
+    def test_the_webapp_is_told_where_the_notifier_is(self):
+        # The same argument as the gate's, one service over (§4, item 29's
+        # second slice): the WebApp posts straight to the notifier now, and a
+        # container's own loop is not where that container is.
+        fake = self.up()
+        argv = _call(fake, env.container(env.WEBAPP))
+        self.assertIn(
+            f"{env.NOTIFIER_NETWORK_ENV}={env.container(env.NOTIFIER)}:{env.NOTIFIER_PORT}",
+            argv,
+        )
+
     def test_the_webapp_is_told_which_folder_it_serves(self):
         # **O defeito que isto tranca, medido num ensaio**: rodando de um
         # checkout, o artefato que o container executa mora em

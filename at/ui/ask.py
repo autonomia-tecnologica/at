@@ -82,6 +82,15 @@ actor's, leaving the line §3 asks of every act and the version item 30 asks of
 every write. `at.core.clock` says who is due and when the next instant is; this
 is where the act happens. The process that keeps waking it is the WebApp's
 (`at.ui.webapp.app`), and the clock leaves it the day the engine does.
+
+**And `remind` is the sixth, and it owes no line either.** A reminder that
+comes round is not an act the engine performs — there is no row to write and
+nothing to refuse — it is a push that may or may not reach a phone, so what
+this door owns is the SENDING and the one field the round keeps to itself
+(`reminder.notified`), not a line in the `audit` (§3: that trail is for what
+the engine did, and a push is not that). It shares the WebApp's process with
+`tick` and the same reason for being there: the derived key it publishes with
+lives only in that process's memory (§4, item 50).
 """
 
 from __future__ import annotations
@@ -89,6 +98,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from datetime import date, datetime
+from typing import Callable
 
 from at import nlu
 from at.core import (
@@ -97,6 +107,7 @@ from at.core import (
     clock,
     files,
     jobs,
+    notifier,
     permissions,
     projects,
     reminder,
@@ -731,6 +742,66 @@ def _fired(row: dict) -> None:
     with), and the clock is the one that asks again — on the next pass.
     """
     _ran(row)
+
+
+# --------------------------------------------------------- the reminder's push ---
+
+
+def remind(
+    at: date | None = None,
+    key: bytes | None = None,
+    send: Callable[[str, str, bytes | None], tuple[bool, str]] | None = None,
+) -> list[dict]:
+    """One round of the clock's OTHER schedule: the reminders `at` is about
+    (§4, item 29's second slice — TASK-145).
+
+    **Two schedules share one clock, and they are not the same shape.** A job's
+    round faces the bar and moves an instant on at the MINUTE's grain
+    (`tick`); a reminder's round asks nothing of the bar — there is no write to
+    refuse, only a push that may or may not go out — and its grain is the DAY
+    (`reminder.due`). What keeps a day-grained occurrence from pushing once a
+    pass for as long as the day holds is `reminder.notified`, asked before
+    every send and written only after one that WENT OUT (`mark_notified`): a
+    push that failed is retried on the next pass, the same "not in a loop, but
+    not given up on either" the round's own bookkeeping already gives a job
+    that a wall or a network refused.
+
+    **`due` wins the one push a day owes, `warn` gets its own text.** The two
+    lists `reminder.due` answers never share a row for the same occurrence
+    (that module's own rule), so a row read here is asked for exactly one of
+    the two sentences below and never both on the same day.
+
+    `at` is the calendar this pass reads (`reminder.today` when `None`), `key`
+    is the derived key this boot holds for the notifier's scope — `None` is a
+    boot with nothing to open the credential with, and `notifier.publish`
+    answers `no_token` for it rather than sending an envelope nobody could
+    read on the other end — and `send` is the seam a test drives instead of
+    reaching the network (`notifier.publish` when `None`).
+
+    The rows this pass actually pushed for come back, the way `tick`'s rounded
+    rows do, so a caller can say what happened without reading the store back.
+    """
+    if files.readonly():
+        return []
+    today = at if at is not None else reminder.today()
+    push = send if send is not None else notifier.publish
+    found = reminder.due(today)
+    fired: list[dict] = []
+    for row in found["due"]:
+        if reminder.notified(row, today):
+            continue
+        ok, _ = push(notifier.TITLE, tr("reminder.push.due", text=row.get("text", "")), key)
+        if ok:
+            reminder.mark_notified(row, today)
+            fired.append(row)
+    for row in found["warn"]:
+        if reminder.notified(row, today):
+            continue
+        ok, _ = push(notifier.TITLE, tr("reminder.push.warn", text=row.get("text", "")), key)
+        if ok:
+            reminder.mark_notified(row, today)
+            fired.append(row)
+    return fired
 
 
 # -------------------------------------------------------------- the scan ---

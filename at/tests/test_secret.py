@@ -431,6 +431,11 @@ class TheEntry(SecretCase):
         # derivada e o par `seal_bytes`/`unseal_bytes` entram por ele, e não pela
         # porta que sela linhas.
         #
+        # **O sexto é `core/notifier.py`** (item 29's second slice, item 50): o
+        # WebApp abre o mesmo arquivo `at_deploy/notifier.py` já abre, com a
+        # Chave B que chega em memória (`at.ui.webapp.keys`) — nenhum envelope
+        # novo, só uma segunda porta para o que já existe.
+        #
         # Sorted, because the filesystem hands the files over in an order of its
         # own and the list below is the declaration, not a directory listing.
         callers = sorted(
@@ -440,8 +445,9 @@ class TheEntry(SecretCase):
             if "tests" not in path.parts and reaches_vault(path)
         )
         self.assertEqual(callers, [
-            "at/core/backup.py", "at/core/secrets.py", "at/core/tables.py",
-            "at_deploy/environment.py", "at_deploy/notifier.py",
+            "at/core/backup.py", "at/core/notifier.py", "at/core/secrets.py",
+            "at/core/tables.py", "at_deploy/environment.py",
+            "at_deploy/notifier.py",
         ])
 
     def test_the_surface_that_reaches_the_vault_is_the_deploy_and_no_screen(self):
@@ -452,9 +458,14 @@ class TheEntry(SecretCase):
         # subida sorteia e abre o que a pasta guarda (item 50).
         #
         # O que esta linha tranca é a ESCOLHA e não a ausência dela: a
-        # superfície é UMA — o `at-deploy` —, e a outra, a tela, continua de
-        # fora. O WebApp não digita Frase nenhuma: quem lê o que a subida abriu é
-        # o container, e o que ele lê é a cópia clara do diretório de execução.
+        # superfície que DIGITA a Frase é UMA — o `at-deploy` —, e a outra, a
+        # tela, continua de fora: nenhum arquivo de `at/ui` pergunta a Frase, e
+        # o WebApp não digita nenhuma. **O que mudou (item 50, corte g) é que a
+        # tela deixou de precisar da cópia clara para o notificador**: o que ela
+        # lê agora é o mesmo envelope, aberto com a Chave B derivada que chega
+        # em memória — e é por isso que o sexto arquivo do teste acima
+        # (`core/notifier.py`) está sob `at/core` e não sob `at/ui`: a tela
+        # continua sem tocar o Cofre, quem toca é o núcleo que ela chama.
         # **E são dois arquivos do mesmo artefato**: o `environment`, que sela o
         # que a subida sorteia e abre o que ela monta, e o `notifier`, que sela e
         # abre as duas pontas do §7f — as duas lidas pelo próprio `at-deploy`, de

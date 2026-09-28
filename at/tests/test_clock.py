@@ -62,6 +62,7 @@ from at.i18n import tr
 from at.ui import ask as door
 from at.ui.cli import main
 from at.ui.webapp import app as webapp
+from at.ui.webapp import keys as webapp_keys
 
 # The instant the suite's clock reads. It is handed in and never taken from the
 # machine: a test that reads the clock twice is a test that disagrees with itself.
@@ -547,14 +548,37 @@ class TheProcess(ClockCase):
 
     def test_one_pass_ticks_and_waits_the_cadence(self):
         paused: list[float] = []
-        with mock.patch.object(door, "tick") as ticked:
+        with mock.patch.object(door, "tick") as ticked, \
+             mock.patch.object(door, "remind") as reminded:
             webapp.beat(times=2, pause=paused.append)
         self.assertEqual(ticked.call_count, 2)
+        self.assertEqual(reminded.call_count, 2)
         self.assertEqual(paused, [clock.CADENCE.total_seconds()])
+
+    def test_the_reminders_round_shares_the_pass_and_the_notifiers_key(self):
+        held = webapp_keys._keys.get(webapp_keys.NOTIFIER_KEY_ENV)
+        webapp_keys._keys[webapp_keys.NOTIFIER_KEY_ENV] = b"n" * 32
+        self.addCleanup(webapp_keys._keys.pop, webapp_keys.NOTIFIER_KEY_ENV, None)
+        if held is not None:
+            self.addCleanup(webapp_keys._keys.__setitem__,
+                            webapp_keys.NOTIFIER_KEY_ENV, held)
+        with mock.patch.object(door, "tick"), \
+             mock.patch.object(door, "remind") as reminded:
+            webapp.beat(times=1, pause=lambda seconds: None)
+        reminded.assert_called_once_with(key=b"n" * 32)
+
+    def test_a_reminder_pass_that_raises_does_not_take_the_clock_down_either(self):
+        output = StringIO()
+        with mock.patch.object(door, "tick"), \
+             mock.patch.object(door, "remind", side_effect=RuntimeError("quebrou")):
+            with redirect_stdout(output):
+                webapp.beat(times=1)
+        self.assertIn("quebrou", output.getvalue())
 
     def test_a_pass_that_raises_does_not_take_the_clock_down(self):
         output = StringIO()
-        with mock.patch.object(door, "tick", side_effect=RuntimeError("quebrou")):
+        with mock.patch.object(door, "tick", side_effect=RuntimeError("quebrou")), \
+             mock.patch.object(door, "remind"):
             with redirect_stdout(output):
                 webapp.beat(times=1)
         self.assertIn("quebrou", output.getvalue())

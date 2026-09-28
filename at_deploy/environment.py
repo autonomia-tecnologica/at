@@ -357,6 +357,15 @@ GATE_ENV = "AT_GATE"
 NOTIFIER = "notifier"
 NOTIFIER_PORT = 2586
 
+# The variable the environment hands the WebApp so it can reach the notifier's
+# CONTAINER — the same reasoning as `GATE_ENV`, one line up: `127.0.0.1` inside
+# the WebApp's own container is itself and nobody else, so the notifier's
+# address on the network the two share is a fact only the environment knows,
+# and it hands it over rather than let `at.core.notifier` guess the host's
+# loop. Read by that module (`notifier.NETWORK_ENV`, spelled again there for
+# the same reason `GATE_ENV` is spelled on both sides of that same line).
+NOTIFIER_NETWORK_ENV = "AT_NOTIFIER"
+
 # O nome que o notificador responde embaixo do domínio do ambiente — e ele é a
 # MARCA, ao contrário do nome do SERVIÇO acima, que é o papel. A diferença é
 # quem lê cada um: `NOTIFIER` nomeia o serviço para o AT (e o dia em que outro
@@ -777,11 +786,21 @@ def _webapp_env(key: bytes | None) -> tuple[tuple[str, str], ...]:
     SAME key `at_deploy.notifier` already derives to seal and open its
     credential (`notifier.VAULT_SCOPE`) — no envelope is resealed, this only
     hands the WebApp a second door into the one that exists.
+
+    **And the notifier's ADDRESS, unconditionally** (§4, item 29's second
+    slice): the key above is what OPENS the credential the WebApp reads
+    straight off the mounted folder (`Mirror`, no new mount for it), and this
+    is what tells it WHERE to POST with it — the container name on the network
+    the two share, the same shape `GATE_ENV` already is. It rides every boot
+    and not only the ones with a key, because a folder whose credential this
+    boot cannot open still has an address to fail `no_token` against rather
+    than one it has to guess.
     """
     env = [
         (GATE_ENV, f"{container(IDENTITY)}:{IDENTITY_PORT}"),
         (paths.ROOT_ENV, str(paths.working_folder())),
         (caddy_service.GATE_PATH_ENV, GATE_MOUNT),
+        (NOTIFIER_NETWORK_ENV, f"{container(NOTIFIER)}:{NOTIFIER_PORT}"),
     ]
     if key is not None:
         env.append((webapp_keys.WEBAPP_KEY_ENV, _derived_b64(key, WEBAPP)))

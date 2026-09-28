@@ -41,7 +41,7 @@ from pathlib import Path
 from unittest import mock
 
 from at import i18n
-from at.core import actors, boot, files, permissions, reminder, tables
+from at.core import actors, boot, files, notifier, permissions, reminder, tables
 from at.data import schema, store
 from at.i18n import tr
 from at.ui import ask as door
@@ -279,6 +279,140 @@ class TheDoor(ReminderCase):
                     i18n.reset()
                     for key in SAID:
                         self.assertNotEqual(tr(key), key)
+
+
+class TheNotified(ReminderCase):
+    """The round's own guard against firing every pass (TASK-145)."""
+
+    def test_a_row_never_marked_answers_false(self):
+        made = tables.create("reminder", row(freq="daily", text="Regar", at=["09:00"]))
+        self.assertFalse(reminder.notified(made, date(2026, 9, 28)))
+
+    def test_marking_writes_the_day_and_notified_then_reads_it_true(self):
+        made = tables.create("reminder", row(freq="daily", text="Regar", at=["09:00"]))
+        reminder.mark_notified(made, date(2026, 9, 28))
+        held = store.find("reminder", store.number_of(made))
+        self.assertEqual(held.get("notified"), "2026-09-28")
+        self.assertTrue(reminder.notified(held, date(2026, 9, 28)))
+
+    def test_a_different_day_is_not_notified(self):
+        made = tables.create("reminder", row(freq="daily", text="Regar", at=["09:00"]))
+        reminder.mark_notified(made, date(2026, 9, 28))
+        held = store.find("reminder", store.number_of(made))
+        self.assertFalse(reminder.notified(held, date(2026, 9, 29)))
+
+    def test_marking_writes_no_line_and_no_actor_is_needed(self):
+        # The engine's own bookkeeping (§3): the same posture `jobs.reschedule`
+        # keeps for the one field the clock owns on a job's row.
+        made = tables.create("reminder", row(freq="daily", text="Regar", at=["09:00"]))
+        before = [line for line in store.load("audit")]
+        reminder.mark_notified(made, date(2026, 9, 28))
+        self.assertEqual(store.load("audit"), before)
+
+    def test_a_row_deleted_between_the_read_and_the_write_is_handed_back_untouched(self):
+        made = tables.create("reminder", row(freq="daily", text="Regar", at=["09:00"]))
+        tables.delete("reminder", store.number_of(made))
+        same = reminder.mark_notified(made, date(2026, 9, 28))
+        self.assertEqual(same, made)
+
+
+class TheRound(ReminderCase):
+    """`door.remind`: the clock's OTHER schedule, with the network taken away
+    (TASK-145)."""
+
+    def sent(self, ok: bool = True):
+        """A `send` seam that answers instead of reaching a real notifier."""
+        calls: list[tuple[str, str, object]] = []
+
+        def push(title: str, body: str, key):
+            calls.append((title, body, key))
+            return ok, "200" if ok else "failed"
+
+        return calls, push
+
+    def test_a_due_reminder_is_pushed_once_and_marked(self):
+        made = tables.create(
+            "reminder",
+            {"text": "Regar a planta", "freq": "once", "on_date": "2026-10-05",
+             "at": ["09:00"]},
+        )
+        calls, push = self.sent()
+        fired = door.remind(date(2026, 10, 5), key=b"k" * 32, send=push)
+        self.assertEqual(fired, [made])
+        self.assertEqual(len(calls), 1)
+        title, body, key = calls[0]
+        self.assertIn("Regar a planta", body)
+        self.assertEqual(key, b"k" * 32)
+        held = store.find("reminder", store.number_of(made))
+        self.assertEqual(held.get("notified"), "2026-10-05")
+
+    def test_a_warned_reminder_gets_its_own_text_and_is_marked(self):
+        tables.create(
+            "reminder",
+            {"text": "Pagar o boleto", "freq": "once", "on_date": "2026-10-05",
+             "warn_days": [2], "at": ["09:00"]},
+        )
+        calls, push = self.sent()
+        fired = door.remind(date(2026, 10, 3), send=push)
+        self.assertEqual(len(fired), 1)
+        self.assertEqual(len(calls), 1)
+        _, body, _ = calls[0]
+        self.assertIn("Pagar o boleto", body)
+        self.assertNotEqual(
+            tr("reminder.push.warn", text="x"), tr("reminder.push.due", text="x")
+        )
+
+    def test_a_reminder_already_notified_today_is_not_pushed_again(self):
+        made = tables.create(
+            "reminder",
+            {"text": "Regar a planta", "freq": "daily", "at": ["09:00"]},
+        )
+        reminder.mark_notified(made, date(2026, 9, 28))
+        calls, push = self.sent()
+        fired = door.remind(date(2026, 9, 28), send=push)
+        self.assertEqual(fired, [])
+        self.assertEqual(calls, [])
+
+    def test_a_push_that_fails_is_not_marked_and_is_retried_next_pass(self):
+        tables.create(
+            "reminder",
+            {"text": "Regar a planta", "freq": "daily", "at": ["09:00"]},
+        )
+        calls, push = self.sent(ok=False)
+        fired = door.remind(date(2026, 9, 28), send=push)
+        self.assertEqual(fired, [])
+        self.assertEqual(len(calls), 1)
+        held = store.find("reminder", 1)
+        self.assertNotIn("notified", held)
+
+    def test_nothing_due_or_warned_pushes_nothing(self):
+        calls, push = self.sent()
+        fired = door.remind(date(2026, 1, 1), send=push)
+        self.assertEqual(fired, [])
+        self.assertEqual(calls, [])
+
+    def test_a_readonly_folder_applies_nothing(self):
+        tables.create(
+            "reminder",
+            {"text": "Regar a planta", "freq": "daily", "at": ["09:00"]},
+        )
+        calls, push = self.sent()
+        with mock.patch.dict(os.environ, {files.ENV_READONLY: "1"}):
+            fired = door.remind(date(2026, 9, 28), send=push)
+        self.assertEqual(fired, [])
+        self.assertEqual(calls, [])
+
+    def test_with_no_send_it_reaches_the_real_publish_door(self):
+        # No network in the suite: with no address configured `notifier
+        # .publish` answers `no_address` on its own, without a seam.
+        tables.create(
+            "reminder",
+            {"text": "Regar a planta", "freq": "daily", "at": ["09:00"]},
+        )
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop(notifier.NETWORK_ENV, None)
+            fired = door.remind(date(2026, 9, 28))
+        self.assertEqual(fired, [])
 
 
 class TheWord(ReminderCase):

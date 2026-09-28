@@ -20,7 +20,8 @@
     "field.status": "Estado",
     "field.status.active": "Ativo",
     "field.status.paused": "Pausado",
-    "field.since": "Desde"
+    "field.since": "Desde",
+    "field.notified": "Notificado em"
   },
   "en_US": {
     "name.one": "Reminder",
@@ -43,6 +44,7 @@
     "field.status": "Status",
     "field.status.active": "Active",
     "field.status.paused": "Paused",
-    "field.since": "Since"
+    "field.since": "Since",
+    "field.notified": "Notified on"
   }
 }

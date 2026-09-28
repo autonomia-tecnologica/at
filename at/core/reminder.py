@@ -31,12 +31,22 @@ warn ahead of each week's occurrence and not just its first.
 **The date is INJECTED**, the way `clock.now` injects the instant: `today` is
 this module's one reading of the machine's calendar, and the seam a test
 freezes instead of sleeping to the next day.
+
+**`notified` is the round's own guard against firing every pass, and it lives
+on the row.** The clock's cadence is the minute (`at.core.clock.CADENCE`), and
+a reminder's occurrence is the DAY — so a round that pushed once and asked
+again ten minutes later would push again, all day, for as long as the day's
+occurrence holds. `mark_notified` writes the one field the round owns on this
+row, the way `jobs.reschedule` writes the one field the clock owns on a job's —
+directly, with no actor and no via to name, because it is the engine keeping
+its own bookkeeping and not an act a person or a via performed (§3).
 """
 
 from __future__ import annotations
 
 from datetime import date, timedelta
 
+from at.core import tables
 from at.data import store
 
 # The table this module reads. It ships with the product: `data/defaults/reminder.json`.
@@ -50,6 +60,15 @@ ON_DATE = "on_date"
 WARN_DAYS = "warn_days"
 STATUS = "status"
 SINCE = "since"
+# The round's own bookkeeping — an ISO day, read the way `_day` reads any
+# other. It is declared WITHOUT `"type": "day"` on purpose: that type is what
+# tells `nlu.matcher.open_day_field` which field a bare date fills, and its own
+# rule reads one field alone among the ones with no default — a second one
+# would leave a sentence like "hoje" with nowhere to land. `notified` is never
+# typed by a person, so it is exempted the same way `since` is (a default), but
+# by carrying no `day` type instead of a default that would misstate a fresh
+# row as already notified.
+NOTIFIED = "notified"
 
 ACTIVE = "active"
 PAUSED = "paused"
@@ -161,3 +180,29 @@ def due(at: date | None = None, rows: list[dict] | None = None) -> dict[str, lis
         if any(occurs(row, at + timedelta(days=days)) for days in _warn_days(row)):
             warned.append(row)
     return {"due": arrived, "warn": warned}
+
+
+def notified(row: dict, day: date) -> bool:
+    """Whether this row already pushed for `day` — the round's own guard.
+
+    A row `mark_notified` has not yet written to, or one whose `notified` was
+    hand-edited to something else, answers `False`: the safe side for a round
+    is asking again, never staying silent on a day it never actually pushed
+    for.
+    """
+    return _day(row, NOTIFIED) == day
+
+
+def mark_notified(row: dict, day: date) -> dict:
+    """Write `day` as the one this row was last pushed for.
+
+    The one field the round owns on this row, written directly like
+    `jobs.reschedule` writes the one field the clock owns on a job's — no
+    actor, no via, no line: it is the engine's own bookkeeping and not an act
+    (§3). A row the store no longer carries (deleted between the read and the
+    write) is handed back untouched.
+    """
+    number = store.number_of(row)
+    if number is None or store.find(REMINDER, number) is None:
+        return row
+    return tables.edit(REMINDER, number, {NOTIFIED: day.isoformat()})

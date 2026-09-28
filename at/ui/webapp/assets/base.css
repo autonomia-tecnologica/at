@@ -498,10 +498,21 @@
      comes BEFORE the `:hover` on purpose: same specificity, whoever comes later
      wins — with the `:hover` last, the selected item still responds to the
      pointer. In the themes that do not paint the selection the token is
-     `transparent`, and nothing changes from what already was. */
+     `transparent`, and nothing changes from what already was.
+     THE INK IS `--sidebar-selected`, WITH A FALLBACK TO `--color-selected`
+     (2026-09-28): every OTHER use of "selected" ink (`.pick.on`, `.pop .opt.on`,
+     `.radio-row.on`, `.check-row.on`) sits on the surface it already reads from
+     — a light panel, in every theme so far — and `--color-selected` was tuned for
+     exactly that. The panel row does not: it sits on the SIDEBAR's own ground,
+     which a theme may paint independently of the panel's (`--sidebar-bg` is
+     already its own token, not `--bg`), and a theme with a DARK chrome and a
+     LIGHT panel needs an ink for this one row that answers to the chrome, not to
+     the panel — a demand no other selected state makes. The fallback is what
+     keeps every theme that never asked this question exactly as it read before:
+     unset, `--sidebar-selected` IS `--color-selected`, byte for byte. */
   nav button.on { background: var(--sidebar-item-bg-on);
-                  border-left-color: var(--color-selected);
-                  color: var(--color-selected); }
+                  border-left-color: var(--sidebar-selected, var(--color-selected));
+                  color: var(--sidebar-selected, var(--color-selected)); }
   nav button:hover { background: var(--sidebar-item-bg-hover); }
   /* The count goes to the RIGHT EDGE, whatever else the line carries: with
      `space-between` alone a line that gained a third child would SPREAD its

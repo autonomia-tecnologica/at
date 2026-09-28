@@ -86,6 +86,10 @@
       "type": "day",
       "filterable": true,
       "default": "today"
+    },
+    "notified": {
+      "label": "table.reminder.field.notified",
+      "filterable": true
     }
   }
 }
