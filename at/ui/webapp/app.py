@@ -134,6 +134,7 @@ from at.core import (
     cofre,
     files,
     gate,
+    offline,
     paths,
     permissions,
     projects,
@@ -219,6 +220,7 @@ _CONTENT_TYPES = {
     ".svg": "image/svg+xml",
     ".woff2": "font/woff2",
     ".json": "application/json; charset=utf-8",
+    ".webmanifest": "application/manifest+json; charset=utf-8",
 }
 
 
@@ -429,8 +431,11 @@ PAGE_WORDS = (
     "brand", "brand_name",
     "tasks", "files", "cofre", "tables", "settings", "general", "appearance", "language",
     "dark_mode", "dark_system", "dark_theme", "dark_light", "dark_dark",
-    "motion", "themes", "no_project", "board", "new_project", "delete_project",
+    "motion", "themes", "no_project", "board", "new_task", "new_project", "delete_project",
     "move_to_project", "records", "hidden", "no_records", "error", "filter",
+    # THE FILA'S BADGE (TASK-162, fatia 2/2): whether this browser is online,
+    # and how many edits are still waiting to leave it.
+    "offline", "queued",
     "columns", "refers", "panel", "collapse_menu", "expand_menu",
     # The context menu's own items (TASK-120, fatia 1): what the row's menu
     # offers when the engine says `edit` is legal.
@@ -1175,6 +1180,17 @@ class Handler(BaseHTTPRequestHandler):
             self._static(ASSETS / "js", rest[0])
             return
 
+        # ROOT SCOPE, ON PURPOSE (TASK-162, fatia 2/2): a Service Worker's
+        # reach is its own folder unless the response comes from the root, and
+        # `/js/sw.js` would leave the document and the API outside it.
+        if head == "sw.js" and not rest:
+            self._static(ASSETS / "js", "sw.js")
+            return
+
+        if head == "manifest.webmanifest" and not rest:
+            self._static(ASSETS, "manifest.webmanifest")
+            return
+
         if head == "icons" and len(rest) == 1 and rest[0].endswith(".svg"):
             self._static(ICONS, rest[0])
             return
@@ -1232,6 +1248,9 @@ class Handler(BaseHTTPRequestHandler):
             return
         if len(segments) == 3 and segments[0] == "api" and segments[1] == "table":
             self._post_table(segments[2])
+            return
+        if segments == ["api", "offline", "sync"]:
+            self._post_offline_sync()
             return
         self._not_found()
 
@@ -1567,6 +1586,74 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"held": True, "answer": answer})
             return
         self._json({"record": _record(table, row)})
+
+    def _post_offline_sync(self) -> None:
+        """The fila the Service Worker built offline, reconciled in ONE round
+        trip (TASK-162, fatia 2/2) — the motor of fatia 1 (`at.core.offline`),
+        walked from here instead of the `cli`'s single-row door.
+
+        A conflict is resolved by `offline.reconcile` itself (last-write-wins,
+        by `edited_at`); this route's own job is the permission ceiling every
+        other write already answers to (`_may`, TABLE_WRITES) — a queue built
+        offline carries no session of its own to have already proved it.
+        """
+        payload = self._body()
+        if payload is None:
+            return
+        raw_entries = payload.get("entries")
+        if not isinstance(raw_entries, list):
+            self._json({"error": "bad entries"}, 400)
+            return
+        entries: list[offline.QueueEntry] = []
+        actions: set[str] = set()
+        for raw in raw_entries:
+            action = raw.get("action") if isinstance(raw, dict) else None
+            if action not in TABLE_WRITES:
+                self._json({"error": f"unknown action: {action}"}, 400)
+                return
+            actions.add(action)
+            values = raw.get("values")
+            values = {str(k): str(v) for k, v in values.items()} if isinstance(values, dict) else {}
+            entries.append(offline.QueueEntry(
+                action=action,
+                values=values,
+                edited_at=str(raw.get("edited_at")),
+                id=raw.get("id"),
+                local_id=raw.get("local_id"),
+            ))
+        actor = self._actor()
+        for action in actions:
+            needed = permissions.needed(offline.TABLE, action)
+            if not self._may(
+                needed,
+                owing=lambda action=action: door.denied(
+                    offline.TABLE,
+                    action,
+                    actor=actor,
+                    via=audit.WEBAPP,
+                    reason=audit.DENIED,
+                    saying=i18n.tr(
+                        "permission.denied", permission=permissions.label(needed)
+                    ),
+                ),
+            ):
+                return
+        try:
+            resolutions = offline.reconcile(entries)
+        except tables.TableError as error:
+            self._json({"error": str(error)}, 400)
+            return
+        self._json({
+            "resolutions": [
+                {
+                    "local_id": res.entry.local_id,
+                    "id": res.entry.id,
+                    "applied": res.applied,
+                    "record": _record(offline.TABLE, res.row) if res.row is not None else None,
+                }
+                for res in resolutions
+            ]
+        })
 
     def _body(self) -> dict | None:
         """The request body, or None when the request was already answered.

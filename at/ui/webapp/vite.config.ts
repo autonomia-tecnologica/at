@@ -48,7 +48,10 @@ const AT = `http://127.0.0.1:${process.env.AT_WEBAPP_PORT || "12345"}`;
 // The doors that belong to the AT server and not to Vite. `/src`, `@vite` and
 // `/node_modules` are Vite's own and must NOT be proxied — they are the app
 // itself, and the server has never heard of them.
-const SERVER_DOORS = ["/api", "/theme.css", "/base.css", "/icons", "/vendor", "/js"];
+const SERVER_DOORS = [
+  "/api", "/theme.css", "/base.css", "/icons", "/vendor", "/js",
+  "/sw.js", "/manifest.webmanifest",
+];
 
 export default defineConfig({
   base: "/",

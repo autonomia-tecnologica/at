@@ -9,6 +9,11 @@
 import { createApp } from "vue";
 import App from "./App.vue";
 import "./styles/app.css";
+// THE FILA, wired in from the module that owns it (TASK-162, fatia 2/2) — its
+// own `online` listener and its first `sync()` attempt fire the moment this
+// file runs, which is the earliest a queued edit from a past session can
+// leave.
+import "./lib/offline";
 import { registerView, registerType, TASKS_KEY, FILES_KEY, COFRE_KEY, TABLES_KEY, BOARD_KEY } from "./lib/views";
 import TasksView from "./views/TasksView.vue";
 import FilesView from "./views/FilesView.vue";
@@ -69,3 +74,14 @@ registerView("file:", FileView, "path");
 registerType("project", "project:");
 
 createApp(App).mount("#app");
+
+// THE SHELL'S OFFLINE MOUTH (TASK-162, fatia 2/2). Registered from the root
+// (`/sw.js`, not `/js/sw.js`) so its scope is the whole origin — the document
+// included — and not just the one folder its file happens to sit in
+// (`assets/js/sw.js`'s own comment says why). A browser with no Service
+// Worker at all (an old one, a locked-down one) is simply a browser this file
+// changes nothing for: every read and write still reaches the network the way
+// it always did.
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js");
+}

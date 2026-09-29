@@ -568,6 +568,83 @@ class TheWrites(ServerCase):
             self.assertEqual(self.status("/api/table/task", method=method), 405, method)
 
 
+class TheOfflineSync(ServerCase):
+    """The fila the Service Worker built without a network, reconciled in ONE
+    round trip (TASK-162, fatia 2/2) — `at.core.offline.reconcile` (fatia 1),
+    walked from a route instead of the `cli`'s one-row-at-a-time door.
+    """
+
+    def test_a_queued_create_reaches_the_store(self):
+        status, answer = self.post("/api/offline/sync", {"entries": [
+            {"action": "create", "values": {"text": "no avião"},
+             "edited_at": "2026-01-01T10:00:00.000Z", "local_id": "tmp-1"},
+        ]})
+        self.assertEqual(status, 200)
+        [res] = answer["resolutions"]
+        self.assertTrue(res["applied"])
+        self.assertEqual(res["local_id"], "tmp-1")
+        self.assertEqual(res["record"]["shown_id"], "TASK-2")
+        self.assertEqual(tables.find("task", 2)["text"], "no avião")
+
+    def test_a_queued_edit_newer_than_the_server_wins(self):
+        status, answer = self.post("/api/offline/sync", {"entries": [
+            {"action": "edit", "id": 1, "values": {"status": "done"},
+             "edited_at": "2030-01-01T00:00:00.000Z"},
+        ]})
+        self.assertEqual(status, 200)
+        [res] = answer["resolutions"]
+        self.assertTrue(res["applied"])
+        by_name = {f["name"]: f for f in res["record"]["fields"]}
+        self.assertEqual(by_name["status"]["raw"], "done")
+        self.assertEqual(tables.find("task", 1)["status"], "done")
+
+    def test_a_queued_edit_older_than_the_server_loses_silently(self):
+        status, answer = self.post("/api/offline/sync", {"entries": [
+            {"action": "edit", "id": 1, "values": {"status": "done"},
+             "edited_at": "2000-01-01T00:00:00.000Z"},
+        ]})
+        self.assertEqual(status, 200)
+        [res] = answer["resolutions"]
+        self.assertFalse(res["applied"])
+        by_name = {f["name"]: f for f in res["record"]["fields"]}
+        self.assertEqual(by_name["status"]["raw"], "todo")
+        self.assertEqual(tables.find("task", 1)["status"], "todo")
+
+    def test_an_edit_pointing_at_a_local_id_of_the_same_batch_lands_on_it(self):
+        status, answer = self.post("/api/offline/sync", {"entries": [
+            {"action": "create", "values": {"text": "nova"},
+             "edited_at": "2026-01-01T10:00:00.000Z", "local_id": "tmp-1"},
+            {"action": "edit", "id": "tmp-1", "values": {"status": "done"},
+             "edited_at": "2026-01-01T10:00:01.000Z"},
+        ]})
+        self.assertEqual(status, 200)
+        second = answer["resolutions"][1]
+        self.assertTrue(second["applied"])
+        by_name = {f["name"]: f for f in second["record"]["fields"]}
+        self.assertEqual(by_name["status"]["raw"], "done")
+
+    def test_an_unknown_action_is_refused_and_writes_nothing(self):
+        status, answer = self.post("/api/offline/sync", {"entries": [
+            {"action": "delete", "id": 1, "values": {}, "edited_at": "x"},
+        ]})
+        self.assertEqual(status, 400)
+        self.assertIn("error", answer)
+        self.assertEqual(len(tables.rows("task")), 1)
+
+    def test_entries_that_are_not_a_list_are_refused(self):
+        status, answer = self.post("/api/offline/sync", {"entries": "not-a-list"})
+        self.assertEqual(status, 400)
+        self.assertIn("error", answer)
+
+    def test_a_bad_instant_is_answered_not_crashed(self):
+        status, answer = self.post("/api/offline/sync", {"entries": [
+            {"action": "edit", "id": 1, "values": {"status": "done"},
+             "edited_at": "not-a-date"},
+        ]})
+        self.assertEqual(status, 400)
+        self.assertIn("error", answer)
+
+
 class TheStateContract(ServerCase):
     """Every key the page reads from `/api/state` is a key the server sends.
 
@@ -1405,6 +1482,10 @@ class TheCeiling(ServerCase):
         ("/api/ask", {"text": "cria uma tarefa pra hoje"}),
         ("/api/table/task", {"action": "create", "set": {"text": "x"}}),
         ("/api/table/task", {"action": "edit", "id": 1, "set": {"text": "x"}}),
+        ("/api/offline/sync", {"entries": [
+            {"action": "edit", "id": 1, "values": {"text": "x"},
+             "edited_at": "2030-01-01T00:00:00.000Z"},
+        ]}),
     )
 
     def setUp(self):

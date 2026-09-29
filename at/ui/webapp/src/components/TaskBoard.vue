@@ -15,6 +15,7 @@ import { computed, ref } from "vue";
 import { label, word } from "../lib/store";
 import { post } from "../lib/api";
 import { leave, markPage, showError, poke } from "../lib/views";
+import { OFFLINE_TABLE, offlineState, writeTask } from "../lib/offline";
 import FieldValue from "./FieldValue.vue";
 import type { FieldSpec, RecordField, RecordRef, RecordRow } from "../lib/record";
 
@@ -114,6 +115,21 @@ async function onDrop(status: string, ev: DragEvent): Promise<void> {
   const rec = props.records.find(r => r.id === id);
   if (!rec || rawOf(rec, "status") === status) return;
   try {
+    // TASKS TAKE THE FILA'S DOOR offline (TASK-162) — the same door
+    // `PickPop.vue` takes for the very same field, and for the same reason:
+    // a request that never got an ANSWER is queued instead of refused, and
+    // the card is moved on screen in place of a redraw that would fail the
+    // same way the request did.
+    if (props.entity === OFFLINE_TABLE) {
+      const { queued } = await writeTask("edit", { status }, id);
+      if (queued) {
+        const field = fieldOf(rec, "status");
+        if (field) field.raw = status;
+        return;
+      }
+      poke();
+      return;
+    }
     await post("/api/table/" + encodeURIComponent(props.entity), {
       action: "edit",
       id,
@@ -124,9 +140,50 @@ async function onDrop(status: string, ev: DragEvent): Promise<void> {
     showError(err as Error);
   }
 }
+
+// --- adding a card, straight from the board --------------------------------
+// THE BOARD IS WHERE A CARD IS MOVED, and until now nowhere was a card BORN —
+// no view of the product wrote `action: "create"` for a task (TASK-121 and
+// TASK-137, still `a-refinar`, are where that gesture will live for every
+// table). TASK-162's own pronto-quando needs one path that works offline, and
+// this is the narrowest: a title, Enter, and the first column the table's own
+// order names — the fila's `create` (fatia 1) already knows what to do with
+// it, offline or not.
+const draft = ref("");
+
+function draftField(name: string, raw: string): RecordField {
+  const spec = specOf(name);
+  return { name, type: spec?.type ?? null, value: label(spec?.enum?.[raw]) || raw, raw, refs: [] };
+}
+
+async function addCard(): Promise<void> {
+  const text = draft.value.trim();
+  if (!text || props.entity !== OFFLINE_TABLE) return;
+  const status = statuses.value[0]?.key;
+  draft.value = "";
+  try {
+    const { queued } = await writeTask("create", status ? { text, status } : { text });
+    if (queued) {
+      // NEGATIVE AND UNIQUE: the one mark this file uses for "not yet a row
+      // the server knows" — real ids are allocated from 1 up, so a card born
+      // here can never collide with one born there. Not draggable (below)
+      // until the fila (`lib/offline.ts`) turns it into a real id.
+      const fields = [draftField("text", text)];
+      if (status) fields.push(draftField("status", status));
+      props.records.push({ id: -Date.now(), shown_id: "…", title: text, fields });
+      return;
+    }
+    poke();
+  } catch (err) {
+    showError(err as Error);
+  }
+}
 </script>
 
 <template>
+  <form v-if="entity === OFFLINE_TABLE" class="board-add" @submit.prevent="addCard">
+    <input v-model="draft" type="text" :placeholder="word('new_task')" :aria-label="word('new_task')">
+  </form>
   <div class="board">
     <div v-for="status in statuses" :key="status.key" class="board-col"
          :data-state="status.key" :class="{ over: overColumn === status.key }"
@@ -138,8 +195,8 @@ async function onDrop(status: string, ev: DragEvent): Promise<void> {
       </div>
       <div class="board-col-body">
         <button v-for="rec in grouped[status.key] || []" :key="rec.id" type="button"
-                class="task-card" draggable="true" :class="{ dragging: draggingId === rec.id }"
-                @dragstart="onDragStart(rec, $event)" @dragend="onDragEnd"
+                class="task-card" :draggable="rec.id > 0" :class="{ dragging: draggingId === rec.id }"
+                @dragstart="rec.id > 0 && onDragStart(rec, $event)" @dragend="onDragEnd"
                 @click="openCard(rec)">
           <span class="task-card-text">{{ rec.title }}</span>
           <span v-if="priorityValue(rec) || projectField(rec)" class="task-card-meta">

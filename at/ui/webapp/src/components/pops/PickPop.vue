@@ -15,6 +15,7 @@ import { label } from "../../lib/store";
 import { post } from "../../lib/api";
 import { closePop } from "../../lib/pop";
 import { showError, poke } from "../../lib/views";
+import { OFFLINE_TABLE, writeTask } from "../../lib/offline";
 import type { FieldSpec, RecordField, RecordRow } from "../../lib/record";
 
 const props = defineProps<{
@@ -32,9 +33,25 @@ const setMarked = (el: unknown): void => {
 // The write. On success the page re-reads its page — the record comes back
 // carrying the value it now holds — and on failure the page says it where it
 // says every error.
+//
+// TASKS TAKE THE FILA'S DOOR (TASK-162): a request that never got an ANSWER
+// falls to the offline queue instead of failing, and the row is patched IN
+// PLACE — `field` is the very object `props.record.fields` holds, so the
+// mutation is what a redraw would have shown anyway, without one. Every other
+// table keeps walking straight through `post`, exactly as before.
 async function choose(value: string): Promise<void> {
   closePop(); // before the await: the panel is gone either way
   try {
+    if (props.entity === OFFLINE_TABLE) {
+      const { queued } = await writeTask("edit", { [props.field.name]: value }, props.record.id);
+      if (queued) {
+        props.field.raw = value;
+        props.field.value = label(props.spec.enum[value]) || value;
+        return;
+      }
+      poke();
+      return;
+    }
     await post("/api/table/" + encodeURIComponent(props.entity), {
       action: "edit",
       id: props.record.id,

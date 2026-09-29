@@ -19,6 +19,7 @@ import { nav, ui, isKind, viewFor, open, markPage, poke, resumePath, setTrail, C
 import { applyTheme, watchSystem } from "./lib/theme";
 import { applyMotion } from "./lib/motion";
 import { writingState } from "./lib/writing";
+import { offlineState } from "./lib/offline";
 import { applyNav, syncNav, toggleNav, watchNav } from "./lib/nav";
 import { watchNarrow } from "./lib/breakpoint";
 import { loadPrefs, SELECT_KEY } from "./lib/prefs";
@@ -284,6 +285,15 @@ defineExpose({ refresh });
           </template>
         </span>
         <span id="head-right">
+          <!-- THE FILA, WHEN THERE IS ONE (TASK-162, fatia 2/2): the same two
+               facts `lib/offline.ts` keeps — is this browser online, and how
+               many edits it made without being — shown where a person is
+               already looking, the header every page shares. No fila, no
+               badge: silence is what "nothing to sync" looks like. -->
+          <span v-if="!offlineState.online || offlineState.pending" id="offline-badge">
+            <span v-if="!offlineState.online">{{ word("offline") }}</span>
+            <span v-if="offlineState.pending"><b>{{ offlineState.pending }}</b> {{ word("queued") }}</span>
+          </span>
           <span class="loc">
             <span class="raw">{{ store.lang }}</span>
             <span class="name">{{ word("language_name") }}</span>

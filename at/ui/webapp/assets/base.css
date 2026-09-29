@@ -161,6 +161,17 @@ header b { color: var(--ink-1); font-weight: var(--weight-semibold); }
   font-size: var(--text-xs);
 }
 #head-right { margin-left: auto; display: flex; align-items: center; gap: var(--space-3); }
+/* THE FILA'S OWN BADGE (TASK-162, fatia 2/2): two facts, one strip, the
+   accent's warning ramp — the same one a refused save already wears
+   (`writingState.failed`), because "an edit is not where it should be yet" is
+   the same fact in both. */
+#offline-badge {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  background: var(--warning-soft); color: var(--warning);
+  border-radius: var(--r-full);
+  font-size: var(--text-xs);
+}
 #head-right .loc { color: var(--ink-3); }
 #head-right .raw { display: var(--locale-raw); }
 #head-right .name { display: var(--locale-name); }
@@ -968,6 +979,18 @@ a.ref:hover, a.url:hover { border-bottom-color: currentColor; background: var(--
    carries none (`padding: 0`) — every page that lands straight in it, a board
    included, has to bring its own, or it sits flush against the edges every
    OTHER page keeps clear. */
+/* THE ONE PLACE A CARD IS BORN (TASK-162, fatia 2/2): a title and Enter, the
+   narrowest door onto `action: "create"` until TASK-121/137 give every table
+   its own. Same margin as `.board` below it, and no bottom one of its own —
+   the grid's `gap` would double it. */
+.board-add {
+  margin: var(--space-6) var(--space-6) 0;
+}
+.board-add input {
+  width: 100%; padding: var(--space-3) var(--space-4);
+  background: var(--surface-1); color: var(--ink-1); font: inherit;
+  border: 1px solid var(--border-soft); border-radius: var(--r-md);
+}
 .board {
   display: grid; gap: var(--space-4);
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
