@@ -785,6 +785,29 @@ class TheVerb(ActorCase):
             )
         return code, output.getvalue()
 
+    def read_verb(
+        self, name: str, secrets: tuple[str, ...]
+    ) -> tuple[int, str, list[str]]:
+        """The same conversation, plus what was on the screen AT EACH READ.
+
+        `seen` is sampled inside the reader, and that is the only way to hold
+        "before" still: the whole output would say the sentence was printed
+        somewhere in the act, not that the person had read it before typing.
+        """
+        from at.ui.cli import _admin
+
+        given = iter(secrets)
+        output = io.StringIO()
+        seen: list[str] = []
+
+        def secret(question: str) -> str:
+            seen.append(output.getvalue())
+            return next(given)
+
+        with redirect_stdout(output):
+            code = _admin([], ask=lambda question: name, secret=secret)
+        return code, output.getvalue(), seen
+
     def test_it_creates_the_person_it_asked_for(self):
         code, text = self.run_verb("Rafael", (GOOD, GOOD))
         self.assertEqual(code, OK)
@@ -798,9 +821,45 @@ class TheVerb(ActorCase):
         self.assertEqual(actors.admins(), [])
 
     def test_a_short_credential_creates_nothing(self):
-        code, _ = self.run_verb("Rafael", ("curta", "curta"))
+        code, text = self.run_verb("Rafael", ("curta", "curta"))
         self.assertEqual(code, REFUSED)
+        self.assertIn(i18n.tr("admin.error.short", min=actors.MIN_CREDENTIAL), text)
         self.assertEqual(actors.admins(), [])
+
+    def test_the_price_is_said_before_the_key_is_read(self):
+        """The person is told what the Main Key costs BEFORE typing it — at
+        least 16 characters, and it is a phrase —, and the sentence that says
+        it is the one the refusal would say: one rule, one string, and the
+        number is the vault's (`actors.MIN_CREDENTIAL`), never one written into
+        this door (§4, item 176).
+        """
+        code, _, seen = self.read_verb("Rafael", (GOOD, GOOD))
+        self.assertEqual(code, OK)
+        price = i18n.tr("admin.error.short", min=actors.MIN_CREDENTIAL)
+        self.assertIn(price, seen[0])
+        self.assertIn(str(vault.MINIMUM), price)
+        self.assertEqual(actors.MIN_CREDENTIAL, vault.MINIMUM)
+
+    def test_the_second_read_is_explained_before_it_happens(self):
+        """The credential is not recovered, so it is read twice — and the
+        person reads WHY before typing it again, not after it was refused.
+        """
+        code, text, seen = self.read_verb("Rafael", (GOOD, GOOD))
+        self.assertEqual(code, OK)
+        why = i18n.tr("admin.credential.twice")
+        self.assertIn(why, seen[1])
+        self.assertNotIn(why, seen[0])
+        self.assertIn(why, text)
+
+    def test_the_key_typed_here_is_the_one_that_proves_and_unlocks(self):
+        """One string, two doors: what the conversation read is what proves the
+        person at the entrance and what derives the vault's key — the `cli`
+        hands the string over as typed, and never a derivation of its own.
+        """
+        self.run_verb("Rafael", (GOOD, GOOD))
+        self.assertIsNotNone(actors.authenticate("Rafael", GOOD))
+        self.assertIsNone(actors.authenticate("Rafael", "outra-frase-bem-longa"))
+        self.assertEqual(len(vault.vault_key(GOOD)), vault.KEY_SIZE)
 
     def test_a_second_administrator_is_refused_by_name(self):
         self.run_verb("Rafael", (GOOD, GOOD))

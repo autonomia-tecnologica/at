@@ -315,7 +315,18 @@ def _admin(
     The credential is read WITHOUT ECHO (`getpass`): it does not travel through
     the command line, so it stays out of the shell's history and out of anybody's
     `ps`. It is read twice because a credential is not recovered — there is no
-    "forgot the password" in a folder on your own disk.
+    "forgot the password" in a folder on your own disk — and the person is told
+    that where they read it, before typing it the second time: a rule the person
+    meets only in the refusal is a rule they learn by paying for it.
+
+    **The price comes BEFORE the reader, and it is the sentence the refusal
+    would say.** `admin.error.short` is the one string that says what the Main
+    Key costs — 16 characters, and it is a phrase —, and this door prints it
+    once, before the first read, instead of holding a second sentence that could
+    drift from the rule the engine enforces (`actors.check_credential`). The
+    number is NOT written here either: it is `actors.MIN_CREDENTIAL`, which is
+    the vault's own floor (§4, item 176) — whoever asks does not decide the
+    rule, and does not spell it again.
 
     The two readers are injectable, the way `boot.ensure_working_folder` takes
     its `ask`: a test covers both the refusal without a terminal and the whole
@@ -338,7 +349,13 @@ def _admin(
                 "exists", name=tables.title("actor", existing[0])
             )
         name = ask(tr("admin.name")).strip()
+        # The price, before the person types: the same sentence the refusal
+        # uses, and the floor out of the engine — never a 16 spelled here.
+        print(tr("admin.error.short", min=actors.MIN_CREDENTIAL))
         credential = secret(tr("admin.credential"))
+        # Why twice, said before the second read: the string is not recovered,
+        # and a typo would cost exactly what it sealed.
+        print(tr("admin.credential.twice"))
         if credential != secret(tr("admin.credential.again")):
             raise actors.AdminError("error.mismatch")
         row = actors.create_admin(name, credential)

@@ -74,6 +74,22 @@ class FirstRun(unittest.TestCase):
         self.assertEqual(actors.people(), [])
         self.assertFalse(actors.can_expose())
 
+    def test_the_first_run_says_where_the_admin_is_born(self):
+        """The bridge the `cli` fatia keeps: the first start does NOT ask for
+        the Main Key — it says where the admin is born, and names the word that
+        asks for it (`at-cli admin`). Inventing a second door here would be a
+        word the tree does not carry (§4, item 176).
+        """
+        output = io.StringIO()
+        with redirect_stdout(output):
+            boot.ensure_working_folder(ask=lambda question: "s")
+        said = output.getvalue()
+        self.assertIn(i18n.tr("boot.first_run.admin_needed"), said)
+        self.assertIn("at-cli admin", said)
+        # And the sentence is the bridge, not a promise already kept: the
+        # folder it just made has nobody in it.
+        self.assertEqual(actors.admins(), [])
+
     def test_the_folders_that_are_only_named_are_born_empty(self):
         self.confirm()
         self.assertTrue((self.root / "Projetos").is_dir())
