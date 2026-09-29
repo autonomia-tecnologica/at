@@ -7,7 +7,7 @@
 import { computed } from "vue";
 import Foldable from "./Foldable.vue";
 import { isCurrent, open, showError } from "../lib/views";
-import { openContextMenu, type MenuItem } from "../lib/menu";
+import { openContextMenu, vContextMenu, type MenuItem } from "../lib/menu";
 import { post } from "../lib/api";
 import { toast } from "../lib/toast";
 import { word } from "../lib/store";
@@ -64,6 +64,12 @@ function onMenu(event: MouseEvent, full: string): void {
     : [];
   openContextMenu(event, items);
 }
+
+// A closure PER FILE, made in script and not in the template: the directive's
+// handler type takes only an event, and the path is what tells files apart.
+function menuHandler(full: string): (ev: MouseEvent) => void {
+  return ev => onMenu(ev, full);
+}
 </script>
 
 <template>
@@ -85,7 +91,7 @@ function onMenu(event: MouseEvent, full: string): void {
           :data-bucket="f.bucket" :data-view="FILE_VIEW + join(f.name)"
           :class="{ on: isCurrent(FILE_VIEW + join(f.name)) }"
           @click="openFile(join(f.name))"
-          @contextmenu.prevent.stop="onMenu($event, join(f.name))">
+          v-context-menu="menuHandler(join(f.name))">
     <span class="icon" aria-hidden="true"></span>
     <span>{{ f.name }}</span>
   </button>

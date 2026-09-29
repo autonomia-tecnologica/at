@@ -20,7 +20,7 @@ import { ref, computed, watch, watchEffect, onMounted, nextTick } from "vue";
 import { store, label, word } from "../lib/store";
 import { COLUMNS_KEY, FILTERS_KEY, loadPrefs, savePrefs } from "../lib/prefs";
 import { openPop, closePop, isPopOpen } from "../lib/pop";
-import { openContextMenu, type MenuItem } from "../lib/menu";
+import { openContextMenu, vContextMenu, type MenuItem } from "../lib/menu";
 import { leave, markPage, setLiveCount } from "../lib/views";
 import { narrow } from "../lib/breakpoint";
 import { plainText, rendererReady, ensureRenderer } from "../lib/markdown";
@@ -345,15 +345,22 @@ function openHeaderMenu(ev: MouseEvent): void {
   openContextMenu(ev, [{ label: word("columns"), action: () => openColumns(anchor) }]);
 }
 
-// A ROW'S RIGHT CLICK (and the context-menu key, and Shift+F10 — a native
-// `contextmenu` event either way): what it offers is exactly what the engine
-// said was legal (`props.actions`), and nothing this component invents.
+// A ROW'S RIGHT CLICK (and the context-menu key, Shift+F10, and a touch
+// long-press — `v-context-menu` either way): what it offers is exactly what
+// the engine said was legal (`props.actions`), and nothing this component
+// invents.
 function openRowMenu(ev: MouseEvent, rec: RecordRow): void {
   const items: MenuItem[] = [];
   if (props.actions.includes("edit")) {
     items.push({ label: word("edit"), action: () => openRecord(rec) });
   }
   openContextMenu(ev, items);
+}
+
+// A closure PER ROW, made in script and not in the template: the directive's
+// handler type takes only an event, and `rec` is what tells rows apart.
+function rowMenuHandler(rec: RecordRow): (ev: MouseEvent) => void {
+  return ev => openRowMenu(ev, rec);
 }
 
 // --- each column's width: MEASURED, never guessed -----------------------------
@@ -505,7 +512,7 @@ function openRecord(rec: RecordRow): void {
               :class="{ 'drop-before': dropMark && dropMark.name === name && !dropMark.after,
                         'drop-after': dropMark && dropMark.name === name && dropMark.after }"
               @click="toggleSort(name)"
-              @contextmenu.prevent.stop="openHeaderMenu($event)"
+              v-context-menu="openHeaderMenu"
               @dragstart="onDragStart($event, name)"
               @dragend="onDragEnd"
               @dragover="onDragOver($event, name)"
@@ -524,7 +531,7 @@ function openRecord(rec: RecordRow): void {
       <tbody>
         <tr v-for="rec in ordered" :key="rec.id" :title="rec.title || ''" tabindex="0"
             @click="openRecord(rec)"
-            @contextmenu.prevent.stop="openRowMenu($event, rec)">
+            v-context-menu="rowMenuHandler(rec)">
           <template v-for="name in shown" :key="name">
             <!-- `data-label` is the column's header, carried by the CELL: on a
                  narrow screen the header row is gone and each cell becomes a line
