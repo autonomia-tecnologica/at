@@ -9,6 +9,7 @@
 
 import { computed } from "vue";
 import { isCurrent, open, countOf, ORPHANS_KEY } from "../lib/views";
+import { store, word } from "../lib/store";
 import { byName } from "../lib/order";
 import type { ProjectLine } from "./ProjectsTree.vue";
 
@@ -37,6 +38,14 @@ const viewOf = (row: ProjectLine): string => (row.orphans ? ORPHANS_KEY : "proje
 function go(row: ProjectLine): void {
   open(viewOf(row), null);
 }
+
+// "TODAS AS TAREFAS" (TASK-126): the task table itself, with no project filter
+// — the same view the ESC T shortcut falls back to with nothing visited yet.
+// It sits at the very END of the tree and not among `rows`, because it names
+// no project and no "no project" either: it is every task at once.
+function openAllTasks(): void {
+  open(store.types.task, null);
+}
 </script>
 
 <template>
@@ -52,4 +61,10 @@ function go(row: ProjectLine): void {
       <ProjectTreeNode :kids="kids" :parent="String(row.id)" />
     </div>
   </template>
+  <!-- THE LAST ROW OF THE WHOLE TREE, and only the root level draws it: a
+       recursive call for EVERY project would repeat it once per level. -->
+  <button v-if="!parent" type="button" class="file" :data-view="store.types.task"
+          :class="{ on: isCurrent(store.types.task) }" @click="openAllTasks">
+    <span>{{ word("all_tasks") }}</span>
+  </button>
 </template>

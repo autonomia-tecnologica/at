@@ -16,6 +16,10 @@ const DEPTH = 20; // a path deeper than this is no longer a path
 // there too. It names no PROJECT — it is the node that is not one.
 export const ORPHANS_KEY = "orphans";
 
+// THE SETTINGS SCREEN'S OWN KEY, shared by the panel (`Sidebar.vue`) and the
+// shortcut table (`shortcuts.ts`) — one string, not two that could drift.
+export const SETTINGS_KEY = "settings";
+
 // THE BOARD: every task across every project that is not yet closed, as a row
 // of columns — one per status — a card moved between them by dragging it. It
 // sits right after ORPHANS in the panel (`Sidebar.vue`), the same tree it is
@@ -52,6 +56,11 @@ export const COFRE_KEY = "cofre";
 // because turning it off takes the chat away and an address that still opened one
 // would be the page offering what the switch took.
 export const CHAT_KEY = "chat";
+
+// THE TWO PREFIXES `note()` sorts a view by (TASK-126), and `App.vue`'s own
+// section band reads the same two — one pair, not two that could drift apart.
+export const FILE_PREFIX = "file:";
+export const PROJECT_PREFIX = "project:";
 
 // THE WEBAPP'S OWN SURFACE FOR THE INTERPRETER IS OFF (2026-09-27). The CORE's
 // switch (`store.interpreter`) is a different thing and stays exactly what it
@@ -199,6 +208,22 @@ export function resumePath(frames: unknown): void {
   note();
 }
 
+// THE LAST VIEW OF EACH CATEGORY, for the ESC-armed shortcuts (`shortcuts.ts`)
+// to reopen. Kept here and not in a listener of its own: `note()` is already
+// the ONE place every navigation passes through — `markPage`, `back` and
+// `resumePath` all call it — so a second hook elsewhere would have to
+// rediscover which calls count as a visit.
+let lastFileView: string | null = null;
+let lastTaskView: string | null = null;
+
+export function lastFile(): string | null {
+  return lastFileView;
+}
+
+export function lastTasks(): string | null {
+  return lastTaskView;
+}
+
 // THE ADDRESS FOLLOWS THE PAGE. Every view the person can reach has one, and it
 // is the view's own key with `/` where the key has `:` — `/task`, and `/task/3`
 // when a record is open in it, `/project/2`, `/file/kb/note.md`. A link copied
@@ -208,6 +233,8 @@ export function resumePath(frames: unknown): void {
 function note(): void {
   if (!nav.current) return;
   const { view, id } = nav.current;
+  if (view.startsWith(FILE_PREFIX)) lastFileView = view;
+  else if (view.startsWith(PROJECT_PREFIX) || view === ORPHANS_KEY || view === store.types.task) lastTaskView = view;
   remember(view, id, nav.path);
   const path = addressOf(view, id);
   if (location.pathname !== path) history.replaceState(null, "", path);

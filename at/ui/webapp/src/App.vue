@@ -15,7 +15,7 @@ import { computed, onMounted, watch } from "vue";
 import { api, whenRefused } from "./lib/api";
 import { enter, lost, session, signedIn } from "./lib/session";
 import { store, applyState, label, word, tableOf } from "./lib/store";
-import { nav, ui, isKind, viewFor, open, markPage, poke, resumePath, setTrail, CHAT_KEY, NLU_UI_ENABLED, ORPHANS_KEY, BOARD_KEY } from "./lib/views";
+import { nav, ui, isKind, viewFor, open, markPage, poke, resumePath, setTrail, CHAT_KEY, NLU_UI_ENABLED, ORPHANS_KEY, BOARD_KEY, FILE_PREFIX, PROJECT_PREFIX } from "./lib/views";
 import { applyTheme, watchSystem } from "./lib/theme";
 import { applyMotion } from "./lib/motion";
 import { writingState } from "./lib/writing";
@@ -23,12 +23,14 @@ import { offlineState } from "./lib/offline";
 import { applyNav, syncNav, toggleNav, watchNav } from "./lib/nav";
 import { watchNarrow } from "./lib/breakpoint";
 import { loadPrefs, SELECT_KEY } from "./lib/prefs";
-import { closePop } from "./lib/pop";
+import { popState, closePop } from "./lib/pop";
 import { balloonOn } from "./lib/balloon";
+import { shortcutsState, arm, disarm, act, isTyping } from "./lib/shortcuts";
 import Sidebar from "./components/Sidebar.vue";
 import Popover from "./components/Popover.vue";
 import Balloon from "./components/Balloon.vue";
 import Toast from "./components/Toast.vue";
+import Hint from "./components/Hint.vue";
 import KindView from "./views/KindView.vue";
 import LoginView from "./views/LoginView.vue";
 import SetupView from "./views/SetupView.vue";
@@ -47,8 +49,8 @@ const balloon = computed(
 
 // The view PREFIXES that name a record and not a table — the same ones
 // `main.ts` registers (`registerView`), read here to know where a page sits.
-const FILE_PREFIX = "file:";
-const PROJECT_PREFIX = "project:";
+// `FILE_PREFIX`/`PROJECT_PREFIX` come from `views.ts`, the same two `note()`
+// sorts a visit by (TASK-126) — one pair, not two that could drift apart.
 const ACTOR_PREFIX = "actor:";
 const ROLE_PREFIX = "role:";
 
@@ -204,10 +206,33 @@ onMounted(async () => {
   // The browser's menu stays OFF on the whole page: a row that is not a target
   // opens nothing — not the native menu either.
   document.addEventListener("contextmenu", ev => ev.preventDefault());
-  // One door only to close the panel: the click outside and Escape.
-  document.addEventListener("click", () => closePop());
+  // One door only to close the panel: the click outside and Escape. A click
+  // outside also disarms the shortcuts pair (TASK-126) — the same "outside" a
+  // popover already closes on.
+  document.addEventListener("click", () => {
+    closePop();
+    disarm();
+  });
+  // ESCAPE, AND WHAT IT MEANS DEPENDS ON WHAT IS ON SCREEN (TASK-126). A pop
+  // open beats everything else, exactly as it did before this shortcut
+  // existed — the pair only arms with NO pop open. Past that: Escape arms (the
+  // hint shows), Escape again disarms, and any key that follows either runs
+  // its shortcut or disarms — a key that names nothing is not a key left
+  // half-pressed.
   document.addEventListener("keydown", ev => {
-    if (ev.key === "Escape") closePop();
+    if (ev.key === "Escape") {
+      if (popState.key) { closePop(); return; }
+      if (isTyping(ev.target)) return;
+      if (shortcutsState.armed) disarm(); else arm();
+      return;
+    }
+    if (!shortcutsState.armed) return;
+    if (isTyping(ev.target)) { disarm(); return; }
+    // A modifier or a named key (Tab, ArrowLeft…) has `key.length > 1`, and
+    // none of them is a letter this table knows — left alone, not disarmed,
+    // because reaching for the capital letter with Shift held is not giving up.
+    if (ev.ctrlKey || ev.metaKey || ev.altKey || ev.key.length !== 1) return;
+    if (!act(ev.key)) disarm();
   });
 
   // The SIDE of the theme is the only choice the SYSTEM changes underneath.
@@ -324,6 +349,9 @@ defineExpose({ refresh });
          once here so every screen reaches it through `lib/toast.ts` and none
          has to mount its own. -->
     <Toast />
+    <!-- THE ESC-ARMED SHORTCUTS' HINT (TASK-126): a layer of its own too,
+         mounted once so it stays reachable from `lib/shortcuts.ts` alone. -->
+    <Hint />
   </template>
   <!-- A PRIMEIRA SUBIDA vem ANTES da entrada, e as duas são o mesmo `else`:
        uma pasta sem administrador não tem credencial nenhuma para conferir, e

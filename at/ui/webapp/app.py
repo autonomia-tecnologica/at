@@ -460,7 +460,7 @@ PAGE_WORDS = (
     "brand", "brand_name",
     "tasks", "files", "cofre", "tables", "settings", "general", "appearance", "language",
     "dark_mode", "dark_system", "dark_theme", "dark_light", "dark_dark",
-    "motion", "themes", "no_project", "board", "new_task", "new_project", "delete_project",
+    "motion", "themes", "no_project", "all_tasks", "board", "new_task", "new_project", "delete_project",
     "move_to_project", "records", "hidden", "no_records", "error", "filter",
     # THE FILA'S BADGE (TASK-162, fatia 2/2): whether this browser is online,
     # and how many edits are still waiting to leave it.
