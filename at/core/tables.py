@@ -412,18 +412,19 @@ def find(table: str, pid: object) -> dict:
 
 # --------------------------------------------------------------- writing ---
 
-def create(table: str, values: dict[str, str]) -> dict:
+def create(table: str, values: dict[str, str], *, at: str | None = None) -> dict:
     """A new row from what was typed, with the declaration filling the rest."""
     row = _coerce(table, values, born=True)
     _require(table, row)
     row["id"] = store.allocate(table)
     row = _in_declared_order(table, row)
     _log_status(table, row, previous=None)
+    _touch(table, row, at=at)
     store.save(table, store.load(table) + [row])
     return row
 
 
-def edit(table: str, pid: object, values: dict[str, str]) -> dict:
+def edit(table: str, pid: object, values: dict[str, str], *, at: str | None = None) -> dict:
     if not values:
         raise TableError("error.nothing_to_set")
     row = find(table, pid)
@@ -432,6 +433,7 @@ def edit(table: str, pid: object, values: dict[str, str]) -> dict:
     _require(table, row)
     row = _in_declared_order(table, row)
     _log_status(table, row, previous=previous)
+    _touch(table, row, at=at)
     loaded = store.load(table)
     number = store.number_of(row)
     store.save(table, [row if store.number_of(old) == number else old for old in loaded])
@@ -794,6 +796,31 @@ def _stamp(kind: object) -> str:
     return _WHEN["now"]() if kind == "instant" else date.today().isoformat()
 
 
+def _touch(table: str, row: dict, at: str | None = None) -> None:
+    """Every field the table declares `touch: true` on gets RESTAMPED, on every
+    write and whatever was typed — the row's own "last written" instant.
+
+    It is what the offline motor's reconciliation compares a queued edit's own
+    instant against (TASK-162): `modifications[].at` only moves when the
+    TRACKED field changes (§`_log_status`, the status log), so a row whose
+    `text` or `desc` changed without its `status` carries no timestamp at all
+    under that field — which is exactly the case last-write-wins has to settle.
+
+    `at` lets a caller assert the instant instead of taking the write's own
+    now(): the motor stamps the row with the EDIT's own moment (when the
+    person actually wrote it, offline or not), not the moment it happened to
+    reach this store — two edits reconciled out of order must still compare by
+    when they were MADE.
+    """
+    declared = schema.of(table) or {}
+    fields = declared.get("fields")
+    if not isinstance(fields, dict):
+        return
+    for name, field in fields.items():
+        if isinstance(field, dict) and field.get("touch"):
+            row[name] = at if at is not None else _stamp(field.get("type"))
+
+
 def _log_status(table: str, row: dict, previous: dict | None) -> None:
     """A field that declares `tracks` gets the change appended, on every path.
 
@@ -894,6 +921,7 @@ def cancel(table: str, pid: object, reason: str = "", values: dict | None = None
     # The log first, so the closing line is the last thing the row's story says.
     _log_status(table, row, previous=previous)
     _write_reason(table, row, reason_field, spec.get("reason"), reason)
+    _touch(table, row)
 
     row = _in_declared_order(table, row)
     store.save(

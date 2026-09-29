@@ -115,6 +115,15 @@
         "type": "instant"
       },
       "default": []
+    },
+    "edited_at": {
+      "label": "table.task.field.edited_at",
+      "type": "instant",
+      "hide": [
+        "project",
+        "orphans"
+      ],
+      "touch": true
     }
   },
   "lifecycle": {

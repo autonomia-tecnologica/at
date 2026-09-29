@@ -717,6 +717,57 @@ class TheTagsArrive(FolderCase):
         self.assertEqual(rows[0]["text"], "café")
 
 
+class TheEditedAtArrives(FolderCase):
+    """Migration vinte e um: a tarefa carrega o instante que o motor offline
+    compara (TASK-162, fatia 1)."""
+
+    def old_task(self) -> dict:
+        """`task.json` como a versão anterior a esta escrevia."""
+        declared = json.loads(self.declaration("task").read_text(encoding="utf-8"))
+        declared["fields"].pop("edited_at", None)
+        return declared
+
+    def old_folder(self) -> None:
+        self.born()
+        self.rewrite(self.declaration("task"), self.old_task())
+        self.forgotten()
+
+    def test_an_old_folder_gains_the_field_the_offline_motor_compares(self):
+        self.old_folder()
+        self.caught_up()
+        declared = json.loads(self.declaration("task").read_text(encoding="utf-8"))
+        edited_at = declared["fields"]["edited_at"]
+        self.assertEqual(edited_at["type"], "instant")
+        self.assertTrue(edited_at["touch"])
+
+    def test_a_row_that_predates_the_field_is_not_rewritten(self):
+        self.born()
+        self.rewrite(self.declaration("task"), self.old_task())
+        where = self.root / "Tabelas" / "tasks.jsonl"
+        where.write_text(
+            json.dumps({"id": 1, "text": "café", "status": "todo"}) + "\n",
+            encoding="utf-8",
+        )
+        self.forgotten()
+        self.caught_up()
+        rows = [json.loads(line) for line in where.read_text(encoding="utf-8").splitlines()]
+        self.assertNotIn("edited_at", rows[0])
+        self.assertEqual(rows[0]["text"], "café")
+
+    def test_the_next_write_of_that_row_touches_it(self):
+        self.born()
+        self.rewrite(self.declaration("task"), self.old_task())
+        where = self.root / "Tabelas" / "tasks.jsonl"
+        where.write_text(
+            json.dumps({"id": 1, "text": "café", "status": "todo"}) + "\n",
+            encoding="utf-8",
+        )
+        self.forgotten()
+        self.caught_up()
+        row = tables.edit("task", 1, {"text": "café, agora com leite"})
+        self.assertIn("edited_at", row)
+
+
 # ------------------------------------------------------------- the stamp ---
 
 

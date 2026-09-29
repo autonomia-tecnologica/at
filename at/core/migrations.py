@@ -954,6 +954,36 @@ def _cofre_folder(ask: Ask | None) -> list[Report]:
     return [("boot.migration.folders.born", {"names": target.name})]
 
 
+# O que o motor offline compara (TASK-162, fatia 1): o `edited_at` que a
+# engine restampa em toda escrita da tarefa (`tables._touch`), esteja ou não o
+# `status` entre o que mudou — o que `modifications[].at` já não cobre (§
+# `at/core/offline.py`).
+EDITED_AT: dict[str, dict] = {
+    "task": {
+        "fields": {
+            "edited_at": {
+                "label": "table.task.field.edited_at",
+                "type": "instant",
+                "hide": ["project", "orphans"],
+                "touch": True,
+            }
+        },
+    },
+}
+
+
+def _edited_at(ask: Ask | None) -> list[Report]:
+    """Migration vinte e um: a tarefa carrega o instante que o motor offline
+    compara para decidir quem venceu (TASK-162).
+
+    Mesma forma de `_tags` e `_clock` — e não enche nenhuma linha existente: a
+    engine só restampa `edited_at` na PRÓXIMA escrita de cada linha, e uma
+    linha nunca escrita de novo não tem conflito nenhum para reconciliar
+    ainda.
+    """
+    return _extend(EDITED_AT)
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, _legacy_instance),
     Migration(2, _capitalized_instance),
@@ -975,6 +1005,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(18, _clock),
     Migration(19, _cofre_folder),
     Migration(20, _cofre_permission),
+    Migration(21, _edited_at),
 )
 
 

@@ -19,7 +19,8 @@
     "field.deadline": "Prazo",
     "field.text": "Texto",
     "field.desc": "Descrição",
-    "field.modifications": "Modificações"
+    "field.modifications": "Modificações",
+    "field.edited_at": "Editado em"
   },
   "en_US": {
     "name.one": "Task",
@@ -41,6 +42,7 @@
     "field.deadline": "Deadline",
     "field.text": "Text",
     "field.desc": "Description",
-    "field.modifications": "Modifications"
+    "field.modifications": "Modifications",
+    "field.edited_at": "Edited at"
   }
 }
