@@ -169,6 +169,14 @@ EXTRA: dict[str, tuple[str, ...]] = {
     # que entra em `Cofre/` sela sozinho (o vigia, TASK-154), e não por um
     # gesto da página.
     "cofre": ("read",),
+    # TASK-176, fatia 3/3: o WebApp lê o TÓPICO do notificador por dentro e é
+    # disso que esta entrada é o teto — `notifier:read` é a rota que consome o
+    # tópico, e nada mais. **O `read` é o ato inteiro dela**, e o objeto é o
+    # serviço e não a marca: o dia em que outro servir o papel, a permissão não
+    # se muda. O que publica no tópico não está aqui porque não é uma rota —
+    # quem publica é o relógio (`at.core.notifier.publish`), e ele não pede
+    # licença a esta lista para falar com o serviço que o próprio ambiente subiu.
+    "notifier": ("read",),
 }
 
 # ------------------------------------------------------------------- risk ---

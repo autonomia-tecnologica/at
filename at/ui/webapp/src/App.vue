@@ -31,6 +31,7 @@ import Balloon from "./components/Balloon.vue";
 import Toast from "./components/Toast.vue";
 import KindView from "./views/KindView.vue";
 import LoginView from "./views/LoginView.vue";
+import SetupView from "./views/SetupView.vue";
 
 // WHEN THE BALLOON FLIES. The first two are not the page's to decide: the CORE's
 // switch is on (`store.interpreter` — off, there is no function at all), and this
@@ -324,5 +325,11 @@ defineExpose({ refresh });
          has to mount its own. -->
     <Toast />
   </template>
+  <!-- A PRIMEIRA SUBIDA vem ANTES da entrada, e as duas são o mesmo `else`:
+       uma pasta sem administrador não tem credencial nenhuma para conferir, e
+       a entrada desenhada ali seria um formulário que ninguém poderia ganhar.
+       O que a página pede, nesse estado, é o que CRIA o primeiro (TASK-176,
+       fatia 3/3). -->
+  <SetupView v-else-if="session.ready && session.first" />
   <LoginView v-else-if="session.ready" />
 </template>

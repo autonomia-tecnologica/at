@@ -31,6 +31,7 @@ from at.core import (
     audit,
     boot,
     cofre,
+    notifier,
     paths,
     permissions,
     projects,
@@ -40,6 +41,7 @@ from at.core import (
     tables,
 )
 from at.data import schema, store
+from at.encryption import vault
 from at.services import caddy
 from at.tests import POLL, drawn_gate
 from at.ui.webapp import app as webapp
@@ -1081,7 +1083,8 @@ class TheEntrance(ServerCase):
         _, _, body = self.get("/api/session")
         answer = json.loads(body)
         self.assertEqual(
-            sorted(set(answer) - {"auth", "actor", "lang", "labels", "version"}), [])
+            sorted(set(answer)
+                   - {"auth", "first", "actor", "lang", "labels", "version"}), [])
 
     def test_the_words_of_the_entrance_arrive_in_both_languages(self):
         # The first screen AT ever shows speaks the active language, and it
@@ -2205,11 +2208,15 @@ class TheArtifact(unittest.TestCase):
 class TheExposure(unittest.TestCase):
     """`at-cli webapp` in a folder with nobody to enter it.
 
-    "Sem ator nenhum o AT não expõe" (§3): the command refuses BEFORE it takes
-    the port, and the engine's row does not count — it does not enter, the person
-    does (`actors.can_expose`). The refusal is about an ENTRANCE, so it is asked
-    of a run that has one: the bundle, which is what `bundle()` makes this
-    process for the length of a test.
+    "Sem ator nenhum o AT não expõe" (§3): the engine's row does not count — it
+    does not enter, the person does (`actors.can_expose`) — and the refusal is
+    about an ENTRANCE, so it is asked of a run that has one: the bundle, which is
+    what `bundle()` makes this process for the length of a test.
+
+    **E a regra é sobre o ENDEREÇO, e não sobre subir** (TASK-176, fatia 3/3):
+    a primeira subida é uma página, então o processo sobe — mas só no laço. Um
+    `--host` que não o laço é a recusa, e o Caddy é a mesma exposição por outra
+    porta (`include_caddy` publica na rede, ainda que o WebApp escute no laço).
     """
 
     def setUp(self):
@@ -2229,12 +2236,47 @@ class TheExposure(unittest.TestCase):
         i18n.reset()
         self.scratch.cleanup()
 
-    def test_a_folder_with_no_person_does_not_expose(self):
+    def test_a_folder_with_no_person_does_not_expose_off_the_loop(self):
         output = io.StringIO()
         with bundle(), redirect_stdout(output):
-            code = webapp.run(0)
+            code = webapp.run(0, host="0.0.0.0")
         self.assertEqual(code, 1)
         self.assertIn(i18n.tr("webapp.no_admin"), output.getvalue())
+
+    def test_the_caddy_is_the_same_exposure_and_is_refused_too(self):
+        # `include_caddy` põe a borda na frente de um WebApp que escuta no
+        # laço: o que a pessoa alcança é a REDE, e é a mesma exposição que o
+        # `--host` compraria. Sem ator nenhum, ela não acontece.
+        output = io.StringIO()
+        with bundle(), redirect_stdout(output):
+            code = webapp.run(0, include_caddy=True)
+        self.assertEqual(code, 1)
+        self.assertIn(i18n.tr("webapp.no_admin"), output.getvalue())
+
+    def test_on_the_loop_it_comes_up_to_serve_the_first_run(self):
+        # A primeira subida é uma PÁGINA (TASK-176, fatia 3/3): o formulário que
+        # cria o primeiro administrador é uma tela desta casa, e para ele
+        # existir o processo tem de estar de pé. `serve_forever` é o que uma
+        # subida nunca deixa, e o Ctrl-C é o fim dela — o mesmo fim sem uma
+        # porta presa para o teste.
+        output = io.StringIO()
+        with bundle(), mock.patch.object(
+            webapp.Server, "serve_forever", side_effect=KeyboardInterrupt
+        ), redirect_stdout(output):
+            code = webapp.run(0)
+        self.assertEqual(code, 0)
+        self.assertIn("http://127.0.0.1:0", output.getvalue())
+
+    def test_the_loop_is_read_as_an_address_and_not_as_a_string(self):
+        # `localhost` é o laço por declaração; `127.0.0.7` e `::1` são o laço
+        # pela régua dos endereços. E um NOME que não é nenhum dos dois não é o
+        # laço: esta é a porta que não tem como saber quem mora atrás dele.
+        for name in ("localhost", "127.0.0.1", "127.0.0.7", "::1"):
+            with self.subTest(name=name):
+                self.assertTrue(webapp.loopback(name))
+        for name in ("0.0.0.0", "192.168.1.10", "at.local", "", "example.com"):
+            with self.subTest(name=name):
+                self.assertFalse(webapp.loopback(name))
 
     def test_a_run_from_the_source_does_not_refuse_and_says_why(self):
         # Running from the checkout there is no entrance to close, so the coin
@@ -2560,6 +2602,250 @@ class TheReadOnlySwitch(ServerCase):
         self.assertEqual(status, 403)
         self.assertIn("error", answer)
         self.assertEqual(len(tables.rows("task", show_all=True)), 1)
+
+
+class TheNotificationRoute(ServerCase):
+    """A rota que consome o tópico do notificador por dentro (TASK-176, 3/3).
+
+    **A credencial com que ela lê é a do CELULAR** — a ponta `read-only` da ACL
+    (§7f) —, aberta pela chave derivada do escopo do notificador que o processo
+    segurou no `boot`. O token do AT é `write-only` e não lê o próprio tópico,
+    que é medido; o que os testes medem é que o cabeçalho leva o valor do
+    arquivo do celular e que a PÁGINA não recebe nenhum dos dois.
+
+    **O seam é o próprio `notifier.read`** e não o `urlopen`: `notifier.urllib
+    .request` É o `urllib.request` do processo inteiro, e trocar o `urlopen` ali
+    trocaria também o que o cliente DESTE teste usa para falar com o servidor —
+    o que o teste mede é a ROTA, e o que ela pergunta ao motor é o que ele
+    responde aqui. O que o `urlopen` leva (a URL do `poll` e o `Bearer` do
+    celular) é do `test_notifier`.
+    """
+
+    CREDENTIAL = "uma-frase-bem-longa"
+    NAME = "Rafael"
+    KEY = b"n" * 32
+
+    def setUp(self):
+        super().setUp()
+        actors.create_admin(self.NAME, self.CREDENTIAL)
+        self.sent: list = []
+        self.messages: list = []
+        self.refusal = ""
+        self.answer()
+
+    def answer(self, messages: list | None = None, refusal: str = "") -> None:
+        """O que o motor responde à rota — e a chave com que ele foi chamado."""
+        self.messages = messages if messages is not None else []
+        self.refusal = refusal
+
+        def read(key):
+            self.sent.append(key)
+            return self.messages, self.refusal
+
+        patch = mock.patch.object(notifier, "read", read)
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    def session(self) -> dict:
+        status, headers, _ = self.post_full(
+            "/api/session", {"name": self.NAME, "credential": self.CREDENTIAL}
+        )
+        self.assertEqual(status, 200)
+        return {"Cookie": headers["Set-Cookie"].split(";")[0]}
+
+    def test_the_read_is_handed_the_key_the_boot_held(self):
+        # A chave é a do ESCOPO DO NOTIFICADOR, a que o `up` derivou e que este
+        # processo guardou em memória — não a Chave Principal, que nunca entra
+        # aqui, e não uma segunda chave que a página tivesse trazido.
+        self._held = dict(webapp_keys._keys)
+        webapp_keys._keys.clear()
+        self.addCleanup(webapp_keys._keys.clear)
+        self.addCleanup(webapp_keys._keys.update, self._held)
+        webapp_keys._keys[webapp_keys.NOTIFIER_KEY_ENV] = self.KEY
+        status, _, raw = self.get("/api/notifications", headers=self.session())
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(raw), {"messages": []})
+        self.assertEqual(self.sent, [self.KEY])
+
+    def test_a_boot_with_no_key_still_asks_and_answers_what_came_back(self):
+        # Uma subida que não abriu a credencial não estoura: a rota pergunta e
+        # responde o que o motor disser, que é `no_token` — o mesmo melhor
+        # esforço da entrega (§7f).
+        self.answer(refusal="no_token")
+        status, _, raw = self.get("/api/notifications", headers=self.session())
+        self.assertEqual(status, 502)
+        self.assertEqual(self.sent, [None])
+        self.assertIn("no_token", json.loads(raw)["error"])
+
+    def test_the_messages_are_what_the_route_answers(self):
+        self.answer(messages=[{"id": "a", "time": 7, "title": "AT",
+                               "message": "oi"}])
+        status, _, raw = self.get("/api/notifications", headers=self.session())
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(raw), {"messages": [
+            {"id": "a", "time": 7, "title": "AT", "message": "oi"},
+        ]})
+
+    def test_the_credential_never_reaches_the_page(self):
+        # O que a rota devolve são as MENSAGENS. O valor que abriu o envelope
+        # não sai daqui — nem como senha, nem como token (§4).
+        self.answer(messages=[])
+        status, _, raw = self.get("/api/notifications", headers=self.session())
+        self.assertEqual(status, 200)
+        self.assertNotIn(b"tk_", raw)
+        self.assertNotIn(b"Bearer", raw)
+
+    def test_a_notifier_that_does_not_answer_is_a_502_with_the_reason(self):
+        # A entrega é de melhor esforço (§7f), e a leitura é a mesma coisa do
+        # outro lado: um notificador que não responde é um fato, dito na palavra
+        # do AT, e nunca um estouro no meio de um pedido da página.
+        self.answer(refusal="403")
+        status, _, raw = self.get("/api/notifications", headers=self.session())
+        self.assertEqual(status, 502)
+        self.assertIn("403", json.loads(raw)["error"])
+
+    def test_without_a_session_it_is_refused_like_every_other_read(self):
+        self.assertEqual(self.status("/api/notifications"), 401)
+
+    def test_the_role_that_does_not_carry_it_is_refused(self):
+        # A demanda é a da ROTA (`notifier:read`), como em toda rota daqui: um
+        # papel sem ela não lê o tópico, e a recusa é a da casa (403).
+        role = tables.create("role", {"name": "leitor", "permissions": ["task:list"]})
+        tables.create("actor", {"name": "outro", "type": "person",
+                                "role": str(store.number_of(role)),
+                                "credential": "outra frase bem longa"})
+        status, headers, _ = self.post_full(
+            "/api/session", {"name": "outro", "credential": "outra frase bem longa"}
+        )
+        self.assertEqual(status, 200)
+        cookie = {"Cookie": headers["Set-Cookie"].split(";")[0]}
+        self.assertEqual(self.status("/api/notifications", headers=cookie), 403)
+
+    def test_the_catalogue_names_the_object_and_the_read(self):
+        self.assertTrue(permissions.is_known("notifier:read"))
+        self.assertNotIn("notifier:write", permissions.all_permissions())
+
+
+class TheFirstRun(ServerCase):
+    """A primeira subida: a pasta sem administrador serve a PÁGINA que o cria.
+
+    TASK-176, fatia 3/3. O estado é o da pasta que nasceu agora — o `ServerCase`
+    não cria admin nenhum de propósito —, e o que a página lê para desenhar o
+    formulário é `first`, que é a mesma pergunta (`actors.admins()`) que
+    `at-cli admin` recusa por (`admin.exists`). As palavras são as do bloco
+    `admin` do catálogo: a tela e o terminal dizem as MESMAS strings.
+    """
+
+    NAME = "rafael"
+    CREDENTIAL = "uma frase bem longa"
+
+    def test_the_entry_says_the_folder_has_no_administrator(self):
+        _, _, body = self.get("/api/session")
+        answer = json.loads(body)
+        self.assertIs(answer["first"], True)
+        # Sem ator nenhum `auth` é falso — é o que `_asks` já dizia —, e `first`
+        # é o que a página lê para saber que a tela é a que CRIA o primeiro.
+        self.assertIs(answer["auth"], False)
+        self.assertIsNone(answer["actor"])
+
+    def test_the_entry_carries_the_words_the_word_of_the_cli_uses(self):
+        _, _, body = self.get("/api/session")
+        labels = json.loads(body)["labels"]
+        self.assertEqual(
+            labels["admin.name"]["pt_BR"], "Nome do administrador"
+        )
+        self.assertEqual(labels["admin.credential"]["pt_BR"], "Chave Principal")
+        # O piso viaja JÁ ESCRITO, e o número é o do motor — a página não decide
+        # a regra nem a repete; a frase é a mesma que a recusa do `at-cli admin`.
+        self.assertIn(
+            str(actors.MIN_CREDENTIAL), labels["admin.error.short"]["pt_BR"]
+        )
+
+    def test_it_creates_the_first_administrator_and_opens_the_session(self):
+        status, headers, answer = self.post_full(
+            "/api/first",
+            {"name": self.NAME, "credential": self.CREDENTIAL,
+             "again": self.CREDENTIAL},
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(answer["actor"]["name"], self.NAME)
+        self.assertEqual(len(actors.admins()), 1)
+        # A sessão vem na MESMA resposta: quem acabou de digitar a Chave
+        # Principal já provou quem é, e pedi-la de novo seria cobrar duas vezes.
+        cookie = {"Cookie": headers["Set-Cookie"].split(";")[0]}
+        self.assertEqual(self.status("/api/state", headers=cookie), 200)
+
+    def test_the_same_string_proves_the_admin_and_unlocks_the_vault(self):
+        # A promessa inteira do item, medida de ponta a ponta por esta porta: a
+        # linha guarda o HASH da string, e é ela que abre o Cofre.
+        self.post("/api/first",
+                  {"name": self.NAME, "credential": self.CREDENTIAL,
+                   "again": self.CREDENTIAL})
+        row = actors.admins()[0]
+        self.assertNotEqual(row.get("credential"), self.CREDENTIAL)
+        self.assertTrue(actors.authenticate(self.NAME, self.CREDENTIAL))
+        self.assertIsNotNone(vault.vault_key(self.CREDENTIAL))
+
+    def test_the_key_below_the_floor_is_refused_in_the_engines_words(self):
+        status, answer = self.post(
+            "/api/first",
+            {"name": self.NAME, "credential": "curta", "again": "curta"},
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(answer["error"],
+                         i18n.tr("admin.error.short", min=actors.MIN_CREDENTIAL))
+        self.assertEqual(actors.admins(), [])
+
+    def test_the_two_reads_that_are_not_the_same_are_refused(self):
+        status, answer = self.post(
+            "/api/first",
+            {"name": self.NAME, "credential": self.CREDENTIAL,
+             "again": self.CREDENTIAL + "x"},
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(answer["error"], i18n.tr("admin.error.mismatch"))
+        self.assertEqual(actors.admins(), [])
+
+    def test_the_folder_that_already_has_one_is_refused_by_name(self):
+        actors.create_admin("Rafael", "uma-frase-bem-longa")
+        status, answer = self.post(
+            "/api/first",
+            {"name": self.NAME, "credential": self.CREDENTIAL,
+             "again": self.CREDENTIAL},
+        )
+        self.assertEqual(status, 403)
+        self.assertEqual(answer["error"],
+                         i18n.tr("admin.exists", name="Rafael"))
+        self.assertEqual(len(actors.admins()), 1)
+
+    def test_once_it_exists_the_entry_stops_offering_the_first_run(self):
+        actors.create_admin("Rafael", "uma-frase-bem-longa")
+        _, _, body = self.get("/api/session")
+        self.assertIs(json.loads(body)["first"], False)
+
+    def test_a_request_that_did_not_come_over_the_loop_is_refused(self):
+        # §3: sem ator nenhum o AT não expõe. Esta é a única rota que escreve
+        # sem sessão e sem portão, então é a que mais precisa responder a quem
+        # está do outro lado do fio — e a resposta é a MESMA frase que o comando
+        # diz quando se recusa a sair do laço.
+        with mock.patch.object(webapp, "loopback", return_value=False):
+            status, answer = self.post(
+                "/api/first",
+                {"name": self.NAME, "credential": self.CREDENTIAL,
+                 "again": self.CREDENTIAL},
+            )
+        self.assertEqual(status, 403)
+        self.assertEqual(answer["error"], i18n.tr("webapp.no_admin"))
+        self.assertEqual(actors.admins(), [])
+
+    def test_the_run_from_the_source_tree_offers_no_first_run(self):
+        # Uma subida que não pergunta NADA não tem primeira subida a desenhar
+        # pela mesma razão que não tem entrada: não há porta, então não há o que
+        # abrir. Nessa pasta a palavra continua sendo a da `cli`, que não depende
+        # de porta nenhuma — e é o que `TheDevServer` é, com `asks=False`.
+        dev = webapp.entry_payload(None, asks=False)
+        self.assertIs(dev["first"], False)
+        self.assertIs(dev["auth"], False)
 
 
 class TheDerivedKeys(unittest.TestCase):

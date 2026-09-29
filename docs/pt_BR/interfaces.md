@@ -10,7 +10,7 @@
 
 - O Wizard é uma tela que permite realizar configurações mais críticas do AT que eu não queria deixar disponível na rede. Ele tem papéis que não se mudam de lugar: a **primeira subida**, em que a Pasta de Trabalho é confirmada e o primeiro admin é criado; a **instalação de serviços**, e só ele instala; a **volta ao modo Forms**, quando o portão de autenticação cai; e a gestão da Chave Principal no modo avançado.
 
-- Enquanto o Painel de Controle não estiver construído, a primeira subida acontece na `cli`: `at-cli admin` pergunta o nome e lê a credencial sem eco, e `at-cli` sem palavra imprime o `help`. O Wizard não perde o papel — a tela do primeiro admin é dele —, e a porta é a mesma: a regra desta seção é que tudo do `Wizard` seja alcançável pela `cli`.
+- **A primeira subida acontece na PÁGINA**, e não mais só no terminal: numa pasta sem administrador nenhum, o WebApp serve o formulário que cria o primeiro — nome e Chave Principal (16+, uma frase) —, e só no laço (§3, [Acesso e exposição](rules.md#acesso-e-exposição)). A `cli` mantém a mesma porta, e é a regra desta seção que tudo do `Wizard` seja alcançável por ela: `at-cli admin` pergunta o nome e lê a Chave sem eco, e as duas dizem as MESMAS strings — a do formulário é a do bloco `admin` do catálogo, e não uma segunda frase que possa divergir. O Wizard não perde o papel — a tela do primeiro admin é dele.
 
 - O `cli` executa apenas localmente, em exceção quando está comunicando com APIs externas para devida configuração. E é ele, ou o Wizard, que devolve o AT ao modo Forms: as duas são superfícies locais, e é por isso que a volta existe.
 

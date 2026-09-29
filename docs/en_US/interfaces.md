@@ -10,7 +10,7 @@
 
 - The Wizard is a screen that allows more critical configurations of AT that I did not want to leave available on the network. It has roles that do not move: the **first start**, where the Working Folder is confirmed and the first admin is created; the **installation of services**, and only it installs; the **return to Forms mode**, when the authentication gate falls; and the management of the Main Key in advanced mode.
 
-- While the Control Panel is not built, the first start happens in the `cli`: `at-cli admin` asks for the name and reads the credential with no echo, and `at-cli` with no word prints the `help`. The Wizard does not lose the role — the first admin's screen is its own — and the door is the same one: the rule of this section is that everything of the `Wizard` is reachable from the `cli`.
+- **The first start happens in the PAGE**, and no longer only at the terminal: in a folder with no administrator at all, the WebApp serves the form that creates the first one — name and Main Key (16+, one phrase) —, and only on the loop (§3, [Access and exposure](rules.md#access-and-exposure)). The `cli` keeps the same door, and it is this section's rule that everything of the `Wizard` is reachable from it: `at-cli admin` asks for the name and reads the Key with no echo, and the two say the SAME strings — the form's are the catalog's `admin` block, and not a second sentence that could drift. The Wizard does not lose the role — the first admin's screen is its own.
 
 - The `cli` runs only locally, except when it is communicating with external APIs for the due configuration. And it is it, or the Wizard, that returns AT to Forms mode: both are local surfaces, and that is why the return exists.
 

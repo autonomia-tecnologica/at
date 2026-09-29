@@ -50,10 +50,20 @@ here: `at/core/gate.py` holds the record, and this file reads it.
 **With nobody to enter, nothing is asked.** A folder whose `actors.can_expose()`
 is false has no row carrying a credential, so there is nothing to prove — and
 there the API answers as it always did. It is §3's own sentence: "sem nenhuma
-forma de autenticação configurada, o AT escuta apenas 127.0.0.1". `at
-webapp` does not even arrive here (it refuses before taking the port), and this
-is the state a raw `make_server` serves in — which is what the route tests
-build.
+forma de autenticação configurada, o AT escuta apenas 127.0.0.1". This is the
+state a raw `make_server` serves in — which is what the route tests build.
+
+**And the folder with no administrator is a PAGE now** (TASK-176, fatia 3/3).
+It is the same state and one step further: `at-cli webapp` used to refuse to
+take the port there, and the way to the first administrator was a terminal —
+`at-cli admin`. What the browser gets instead is the form that creates it,
+drawn in the entrance's own place (`/api/session` answers `first`, the page
+draws it, `POST /api/first` runs the same `actors.create_admin` the word does),
+with the same two keys and the same strings. **§3's sentence is not weakened
+by it**: without an actor the AT does not answer OFF THE LOOP — not through
+`--host`, not behind the Caddy — and the route that writes without a session
+refuses the request that did not come over the loop. The population is the one
+the terminal already served: whoever is at the machine.
 
 **The session says who is in; the role says how far they reach.** Every route of
 the API demands ONE permission of the catalogue, and the actor a request proved
@@ -114,6 +124,7 @@ from __future__ import annotations
 import base64
 import errno
 import hashlib
+import ipaddress
 import json
 import os
 import secrets
@@ -134,6 +145,7 @@ from at.core import (
     cofre,
     files,
     gate,
+    notifier,
     offline,
     paths,
     permissions,
@@ -415,6 +427,12 @@ def basic_pair(value: str) -> tuple[str, str] | None:
 SESSION_WORDS = (
     "session_hint", "session_name", "session_credential", "session_enter",
     "session_refused", "session_needed",
+    # A PRIMEIRA SUBIDA é a outra tela que a entrada desenha (TASK-176, fatia
+    # 3/3), e ela é irmã da entrada e não da casca: quem chega numa pasta sem
+    # administrador vê o formulário que o cria, e o vê ANTES de ter sessão —
+    # então as palavras que ele desenha têm de viajar com a entrada, e o
+    # `create` do botão é uma delas (o mesmo que a tela de criar papel usa).
+    "first_hint", "create",
 )
 
 # And what the entrance is handed: its words, plus the two the shell already
@@ -473,6 +491,43 @@ PAGE_WORDS = (
 )
 
 
+# As palavras do `at-cli admin` que a PRIMEIRA SUBIDA em página desenha
+# (TASK-176, fatia 3/3). Elas vêm do MESMO bloco do catálogo (`admin.json`) e
+# nunca de uma segunda cópia: o que a pessoa lê no formulário e o que ela leria
+# no terminal são uma string só, e uma das duas não pode envelhecer sozinha —
+# "as mesmas strings que a fatia 2/3 já pôs no `at-cli admin`". Elas viajam com
+# o próprio nome (`admin.name`) porque o bloco é outro: o formulário pede
+# `admin.name`, e não um `webapp.*` que repetisse a frase.
+FIRST_WORDS = ("name", "credential", "credential.again", "credential.twice",
+               "error.short")
+
+
+def _first_words() -> dict:
+    """As palavras da primeira subida, na forma que uma ETIQUETA tem.
+
+    **A pontuação é do PROMPT e não da palavra.** `admin.name` é "Nome do
+    administrador: " — dois-pontos e espaço, que é como um prompt de terminal
+    termina e como um formulário não escreve: a etiqueta já pede a resposta por
+    estar onde está, e o sinal solto vira ruído. O que sai aqui é só isso, e a
+    frase é a MESMA de `at-cli admin`; trocar a pontuação é o preço de a mesma
+    string servir aos dois suportes, e é menor do que o de manter duas frases
+    que possam divergir.
+    """
+    found = {}
+    for key in FIRST_WORDS:
+        name = f"admin.{key}"
+        rendered = {}
+        for lang, text in i18n.labels(name).items():
+            # O PISO É DO MOTOR, e viaja já escrito: `admin.error.short` diz o
+            # número, e quem o decide é `actors.MIN_CREDENTIAL` — que é o do
+            # Cofre. Uma página que o soubesse teria a segunda cópia da regra.
+            if key == "error.short":
+                text = text.format(min=actors.MIN_CREDENTIAL)
+            rendered[lang] = text.rstrip(": ")
+        found[name] = rendered
+    return found
+
+
 def entry_payload(open_session: session.Session | None, asks: bool = True) -> dict:
     """Who is in, and the words the entrance needs before anybody is.
 
@@ -497,15 +552,33 @@ def entry_payload(open_session: session.Session | None, asks: bool = True) -> di
     landing on a port another AT already holds, asks THIS route to find out
     which one — it stays the ONE public answer instead of a second route, and
     the page itself has no use for the field and reads past it.
+
+    **`first` is the OTHER screen this answer draws** (TASK-176, fatia 3/3): a
+    folder with no administrator at all has no entrance either — nobody could
+    prove anything against it — and what the page draws in the entrance's place
+    is the form that CREATES the first one (`/api/first`). The question is
+    `admins()` and not `can_expose()`: a folder whose only actor is a machine's
+    `agent` still has no administrator, and that is exactly the condition
+    `at-cli admin` refuses by (`admin.exists`) — one rule, one answer, whether
+    the word is typed at a terminal or in this form.
+
+    A run that asks NOBODY has no first run to draw (`asks`), for the same
+    reason it has no entrance: there is no door, so there is nothing to open.
     """
     return {
         "auth": asks and actors.can_expose(),
+        "first": asks and not actors.admins(),
         "actor": {"name": open_session.name} if open_session else None,
         "lang": i18n.active_code(),
         "version": __version__,
         # The WHOLE language each word, like `/api/state` hands them: the page
         # picks by the language on screen and the server keeps owning the words.
-        "labels": {key: i18n.labels(f"webapp.{key}") for key in ENTRY_WORDS},
+        # The `admin.*` block rides beside them, and it is the same store the
+        # entrance reads (`_first_words`).
+        "labels": {
+            **{key: i18n.labels(f"webapp.{key}") for key in ENTRY_WORDS},
+            **_first_words(),
+        },
     }
 
 
@@ -1125,6 +1198,88 @@ class Handler(BaseHTTPRequestHandler):
             return None
         return store.find("actor", held.actor)
 
+    def _local(self) -> bool:
+        """Whether this request came over the LOOP — §3's line, read per request.
+
+        A folder with no administrator has exactly one door open without a
+        session (`_post_first`), and it is the PERSON's: the one sitting at the
+        machine. Any other address is somebody else, and the answer is the same
+        sentence `run` gives when it refuses to leave the loop (`no_admin`) —
+        one rule about where a folder without an actor is served, said at the
+        command and at the door.
+        """
+        return loopback(self.client_address[0])
+
+    def _post_first(self) -> None:
+        """A primeira subida: o formulário da página cria o primeiro admin.
+
+        **É a MESMA porta de `at-cli admin`** — `actors.create_admin`, com o
+        papel criado antes da linha —, e é por isso que ela está ACIMA do
+        portão, como `_post_session`: não há sessão a exigir de quem ainda não
+        tem com quem entrar, e uma rota que exigisse uma seria uma porta que só
+        abre para quem já passou por ela. Pela mesma razão ela é a ÚNICA rota
+        de escrita que responde a um pedido sem sessão, e é por isso que ela
+        responde ANTES a quem está do outro lado do fio (`_local`): §3 —
+        sem ator nenhum o AT não expõe.
+
+        **As regras são as do terminal, e não uma segunda cópia delas.** As
+        duas chaves são lidas duas vezes porque não se recuperam, e o
+        `admin.error.mismatch` é a recusa quando não são a mesma; o piso é
+        `actors.MIN_CREDENTIAL`, que é o do Cofre, e quem recusa por ele é o
+        próprio motor (`admin.error.short`, dentro de `create_admin`); e a
+        pasta que já tem administrador é recusada pelo nome dele
+        (`admin.exists`), que é a mesma pergunta que `at-cli admin` faz. As
+        palavras são as do bloco `admin` do catálogo, as mesmas que o
+        formulário desenhou (`_first_words`).
+
+        **A sessão abre no fim, e ela é a única coisa que sobra para o
+        formulário fazer.** Quem acabou de digitar a Chave Principal já provou
+        quem é — a mesma string é o que a linha vai guardar hasheada —, e
+        pedir a mesma coisa duas vezes seria a página cobrando de novo o que o
+        servidor acabou de aceitar.
+        """
+        if gate.on_gate():
+            self._json({"error": i18n.tr("webapp.forms_off")}, 403)
+            return
+        if self._forged():
+            self._json({"error": i18n.tr("webapp.gate_refused")}, 403)
+            return
+        if not self._local():
+            self._json({"error": i18n.tr("webapp.no_admin")}, 403)
+            return
+        existing = actors.admins()
+        if existing:
+            self._json(
+                {"error": str(actors.AdminError(
+                    "exists", name=tables.title("actor", existing[0])
+                ))},
+                403,
+            )
+            return
+        payload = self._body()
+        if payload is None:
+            return
+        name = payload.get("name")
+        credential, again = payload.get("credential"), payload.get("again")
+        if not all(isinstance(value, str) for value in (name, credential, again)):
+            self._json({"error": "bad request"}, 400)
+            return
+        if credential != again:
+            self._json({"error": str(actors.AdminError("error.mismatch"))}, 400)
+            return
+        try:
+            row = actors.create_admin(name.strip(), credential)
+        except (actors.AdminError, tables.TableError) as refused:
+            self._json({"error": str(refused)}, 400)
+            return
+        opened = self.server.sessions.open(row)
+        self._json(
+            {"actor": {"name": opened.name},
+             "created": i18n.tr("admin.created",
+                                name=tables.title("actor", row))},
+            extra={"Set-Cookie": session.cookie_header(opened)},
+        )
+
     def _post_session(self) -> None:
         """The entrance: the credential is proved, and a session opens.
 
@@ -1248,6 +1403,13 @@ class Handler(BaseHTTPRequestHandler):
         # session, so it is the one write that cannot already have one.
         if segments == ["api", "session"]:
             self._post_session()
+            return
+        # A PRIMEIRA SUBIDA, ao lado da entrada e pelo mesmo motivo: as duas
+        # são escritas que não podem já ter sessão — uma porque a abre, a outra
+        # porque cria com quem ela se abre. O que as separa é o que já existe
+        # na pasta, e quem responde por isso é a própria rota (`_post_first`).
+        if segments == ["api", "first"]:
+            self._post_first()
             return
         if not self._gate():
             return
@@ -1386,6 +1548,16 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"files": [{"path": path} for path in cofre.listed()]})
             return
 
+        if rest == ["notifications"]:
+            # TASK-176, fatia 3/3: o WebApp consome o tópico do notificador por
+            # dentro e entrega à página o que ele está segurando. A demanda
+            # está AQUI, na rota, como em todas as outras — e é o `read` do
+            # objeto `notifier`, que é o teto de quem consome o tópico.
+            if not self._may("notifier:read"):
+                return
+            self._get_notifications()
+            return
+
         if len(rest) == 2 and rest[0] == "table":
             table = rest[1]
             if schema.of(table) is None:
@@ -1441,6 +1613,35 @@ class Handler(BaseHTTPRequestHandler):
             "records": [_record("task", row) for row in rows],
             "actions": self._table_actions("task"),
         }
+
+    def _get_notifications(self) -> None:
+        """O tópico do notificador, lido por dentro (TASK-176, fatia 3/3).
+
+        **A credencial vem do ambiente e nunca da página.** O que este processo
+        segura desde o `boot` é a chave derivada do escopo do notificador
+        (`keys.notifier_key`), e é ela que abre o envelope do arquivo — o MESMO
+        arquivo que `at_deploy.notifier` grava, no mesmo escopo (§4, item 50).
+        A leitura usa a ponta `read-only` da ACL, que é a do celular
+        (`notifier.phone_token`): AT publica e a pessoa lê, e é a mesma chave
+        que abre as duas — a decisão está no docstring daquele módulo.
+
+        **E a página não encosta em nada disso.** O que sai daqui são as
+        mensagens, reduzidas aos campos que a página desenha, e nunca o valor
+        que abriu o envelope: a credencial do ntfy não viaja para o navegador,
+        nem como senha, nem como token, nem em lugar nenhum (§4).
+
+        **Um notificador que não responde é uma resposta e não um estouro** —
+        é a mesma regra de melhor esforço que a entrega já segue (§7f) —, e o
+        502 diz que o que falhou foi a porta atrás desta, com o motivo que o
+        AT tem para dizer (`no_token`, `no_address`) ou o que o próprio
+        notificador/transporte respondeu.
+        """
+        messages, refusal = notifier.read(keys.notifier_key())
+        if refusal:
+            self._json({"error": i18n.tr("webapp.notify_down", detail=refusal)},
+                       502)
+            return
+        self._json({"messages": messages})
 
     def _get_file(self, path: str) -> None:
         answer = prose.read(path)
@@ -1809,6 +2010,27 @@ class Server(ThreadingHTTPServer):
         self.asks = asks
 
 
+def loopback(name: str) -> bool:
+    """Whether an address is the LOOP — the one a folder without an
+    administrator is served on (§3, TASK-176 fatia 3/3).
+
+    A name is read as a NAME first, and `localhost` is the loop by declaration
+    (it is the word the command itself uses); anything else is read as an
+    ADDRESS, by `ipaddress`'s rule and never by a string comparison — `127.0.0.7`
+    and `::1` are the loop too, and a folder served on one of them is exactly as
+    local as one on `127.0.0.1`. A name that is neither — a hostname, which this
+    machine may or may not resolve to itself — is NOT the loop, and that is the
+    safe side: it is a name somebody else may hold, and a door with no way to
+    tell has to answer no.
+    """
+    if name == LOOPBACK_NAME:
+        return True
+    try:
+        return ipaddress.ip_address(name).is_loopback
+    except ValueError:
+        return False
+
+
 def chosen_host() -> str:
     """The address the folder answers on — `HOST` when it chose none.
 
@@ -2006,16 +2228,25 @@ def run(port: int = DEFAULT_PORT, host: str | None = None,
     # answering, and there is no flag beside it (`paths.source` says why).
     asks = not paths.source()
 
+    where = host or (LOOPBACK_NAME if include_caddy else chosen_host())
+
     # "Sem ator nenhum o AT não expõe" (§3, Acesso e exposição): a folder with
     # nobody to enter it does not open its page. The engine's row does not count
     # — it does not enter, the person does (`actors.can_expose`). It is asked
     # only of a run that ASKS: the refusal is about an entrance, and a run with
     # none is not a run with a door to close.
-    if asks and not actors.can_expose():
+    #
+    # **E ela não RECUSA mais: ela fica no LAÇO** (TASK-176, fatia 3/3). A
+    # primeira subida é uma PÁGINA agora, e o formulário que cria o primeiro
+    # administrador é uma tela desta casa — para ele existir, este processo tem
+    # de estar de pé. O que a regra de §3 compra é o ENDEREÇO, e ele continua
+    # comprado: sem ator nenhum o AT não responde fora do laço, nem por
+    # `--host`, nem atrás do Caddy (`include_caddy` publica na rede, e é a
+    # mesma exposição). O que fica de fora é a população que o terminal já
+    # servia: quem está na máquina.
+    if asks and not actors.can_expose() and (include_caddy or not loopback(where)):
         print(tr("webapp.no_admin"))
         return 1
-
-    where = host or (LOOPBACK_NAME if include_caddy else chosen_host())
 
     if include_caddy and caddy.wildcard(where):
         print(tr("caddy.address_needs_name", host=where))

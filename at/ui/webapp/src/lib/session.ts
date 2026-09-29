@@ -26,6 +26,7 @@ export interface Actor {
 // `undefined` and the entrance comes out without a word in it.
 export interface Entry {
   auth: boolean;
+  first: boolean;
   actor: Actor | null;
   lang: string;
   labels: Record<string, Labels>;
@@ -34,6 +35,11 @@ export interface Entry {
 export const session = reactive({
   ready: false, // has the server answered yet?
   auth: false, // does this folder ask anybody to enter?
+  // A PRIMEIRA SUBIDA (TASK-176, fatia 3/3): a pasta sem administrador nenhum.
+  // Não é "não estou dentro" — é "não há com quem entrar ainda", e a tela que
+  // responde a isso é a que CRIA o primeiro, e não a que pede a credencial de
+  // alguém que não existe.
+  first: false,
   actor: null as Actor | null,
 });
 
@@ -41,14 +47,23 @@ export const session = reactive({
 // §3: with no authentication configured, AT listens on loopback and asks
 // nothing, and an entrance there would be a door nobody could open. A folder
 // that asks draws it once somebody is past the door.
+//
+// **E a primeira subida NÃO desenha a casca, mesmo quando não pergunta nada.**
+// Ela é o caso em que `auth` é falso e ainda assim não há sessão a abrir: sem
+// administrador nenhum não há tabela a mostrar, e a casca desenhada ali seria
+// uma tela de trabalho vazia no lugar do formulário que a preenche.
 export const signedIn = computed(
-  () => session.ready && (!session.auth || session.actor !== null),
+  () =>
+    session.ready &&
+    !session.first &&
+    (!session.auth || session.actor !== null),
 );
 
 // The answer of the door, wherever it came from: the first load, or the moment
 // after a credential was proved.
 export function applyEntry(entry: Entry): void {
   session.auth = entry.auth === true;
+  session.first = entry.first === true;
   session.actor = entry.actor || null;
   if (entry.lang) store.lang = entry.lang;
   // The words enter the SAME store every other screen reads, and in the same
@@ -68,6 +83,24 @@ export async function enter(): Promise<void> {
 // `post` throws what the answer carried — and the page prints it as it stands.
 export async function signIn(name: string, credential: string): Promise<void> {
   await post("/api/session", { name, credential });
+  await enter();
+}
+
+// A PRIMEIRA SUBIDA: o nome e a Chave Principal, e a porta que os transforma no
+// primeiro administrador (TASK-176, fatia 3/3; `/api/first`, acima do portão
+// como a entrada). As duas leituras vão juntas porque a Chave não se recupera —
+// é a mesma regra do terminal, e quem a recusa é o servidor, com a string do
+// `at-cli admin`.
+//
+// `enter()` no fim, e não um `applyEntry` daqui: quem acabou de criar o
+// administrador entra com ele, e o servidor já abriu a sessão na resposta — o
+// `Set-Cookie` veio nela. A pergunta seguinte é o mesmo caminho de sempre.
+export async function firstRun(
+  name: string,
+  credential: string,
+  again: string,
+): Promise<void> {
+  await post("/api/first", { name, credential, again });
   await enter();
 }
 
