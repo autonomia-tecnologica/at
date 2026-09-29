@@ -9,9 +9,9 @@
 // count.
 //
 // THE BUCKETS ARE THE PANEL'S OWN, and this page does not choose them: they are
-// the four the file rows wear a mark for (`prose.bucket`, in `at/prose/listing.py`),
-// in the order the panel draws them. The words come from the catalog, like every
-// other word on screen.
+// the five the file rows wear a mark for (`prose.bucket`, in `at/prose/listing.py`
+// — a fifth, `image`, TASK-167), in the order the panel draws them. The words
+// come from the catalog, like every other word on screen.
 
 import { ref, computed, watch, onMounted } from "vue";
 import { api } from "../lib/api";
@@ -25,8 +25,8 @@ interface Listing {
 
 const listing = ref<Listing | null>(null);
 
-// The four the engine knows, in the panel's order — never a list written here.
-const BUCKETS = ["text", "code", "data", "other"] as const;
+// The five the engine knows, in the panel's order — never a list written here.
+const BUCKETS = ["text", "code", "data", "image", "other"] as const;
 
 const total = computed(() => listing.value?.files.length || 0);
 

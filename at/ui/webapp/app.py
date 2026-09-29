@@ -221,6 +221,17 @@ _CONTENT_TYPES = {
     ".woff2": "font/woff2",
     ".json": "application/json; charset=utf-8",
     ".webmanifest": "application/manifest+json; charset=utf-8",
+    # The nine `prose.IMAGE_EXT` names (TASK-167) — the bytes route
+    # (`_get_file_bytes`) reads this the same way `_file` already does for
+    # every static asset.
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+    ".bmp": "image/bmp",
+    ".ico": "image/vnd.microsoft.icon",
+    ".avif": "image/avif",
 }
 
 
@@ -447,7 +458,7 @@ PAGE_WORDS = (
     "saved", "save_failed", "language_name", "language_flag",
     "ft_text", "ft_markdown", "ft_python", "ft_json", "ft_yaml", "ft_shell",
     "ft_dockerfile", "ft_binary", "ft_other",
-    "bucket_code", "bucket_text", "bucket_data", "bucket_other",
+    "bucket_code", "bucket_text", "bucket_data", "bucket_image", "bucket_other",
     # The interpreter's box, the switch that hides the balloon, and the ruler of
     # the demand filter (§4).
     "chat", "ask", "ask_hint", "proposal", "interpreter", "balloon",
@@ -832,10 +843,17 @@ class Handler(BaseHTTPRequestHandler):
         self._send(status, body, "text/html; charset=utf-8",
                    {"Content-Security-Policy": CSP})
 
-    def _file(self, path: Path, hosted_version: str | None = None) -> None:
-        extra = {"X-Hosted": hosted_version} if hosted_version else None
+    def _file(self, path: Path, hosted_version: str | None = None,
+              extra: dict | None = None) -> None:
+        headers = dict(extra or {})
+        if hosted_version:
+            headers["X-Hosted"] = hosted_version
+        # The suffix is folded first: `prose.kind`/`prose.bucket` already fold
+        # it (`Path(name).suffix.lower()`), and a `FOTO.PNG` the list calls an
+        # image must not be served as `application/octet-stream` here.
         self._send(200, path.read_bytes(),
-                   _CONTENT_TYPES.get(path.suffix, "application/octet-stream"), extra)
+                   _CONTENT_TYPES.get(path.suffix.lower(), "application/octet-stream"),
+                   headers or None)
 
     def _not_found(self) -> None:
         self._text("not found\n", status=404)
@@ -1354,6 +1372,12 @@ class Handler(BaseHTTPRequestHandler):
             self._get_file(query.get("path", [""])[0])
             return
 
+        if rest == ["file", "bytes"]:
+            if not self._may("prose:read"):
+                return
+            self._get_file_bytes(query.get("path", [""])[0])
+            return
+
         if rest == ["cofre"]:
             # TASK-156: a lista, e só — o que sela é o vigia (TASK-154), não
             # um gesto desta rota.
@@ -1426,6 +1450,32 @@ class Handler(BaseHTTPRequestHandler):
         if answer.get("reason"):
             answer["reason"] = i18n.tr(str(answer["reason"]))
         self._json(answer)
+
+    def _get_file_bytes(self, path: str) -> None:
+        """The raw bytes of one file of `Arquivos/`, for whatever `<img>` in
+        the page names it as `src` (TASK-167). The SAME door every other read
+        of the folder walks (`prose.inside`, never a raw join) and the SAME
+        gate (`servable`: `inside` plus `is_file`, so a name outside the tree
+        or a name nothing answers to is a 404 and not a peek at the
+        filesystem).
+
+        **The SVG is served sandboxed, and the other eight carry no header.**
+        In the page it is only ever an `<img src>` (`FileView.vue`), and a
+        browser runs no `<script>` an SVG loaded that way carries — but this
+        is a URL like any other, and whoever opens it straight in a tab gets
+        the SVG as a DOCUMENT, where that script WOULD run in AT's own origin.
+        `sandbox` takes that away (no script, no origin) and changes nothing
+        about the `<img>`: the header of a subresource is not read when the
+        browser draws it as an image. PNG, JPEG, GIF, WebP, BMP, ICO and AVIF
+        are inert bytes with no script to run, so the header would be noise.
+        """
+        where = prose.inside(path)
+        if where is None or not where.is_file():
+            self._not_found()
+            return
+        sandbox = ({"Content-Security-Policy": "sandbox"}
+                   if where.suffix.lower() == ".svg" else None)
+        self._file(where, extra=sandbox)
 
     def _post_file(self) -> None:
         payload = self._body()

@@ -25,13 +25,15 @@ import os
 import tempfile
 import unittest
 from contextlib import redirect_stdout
+from datetime import date
 from io import StringIO
 from pathlib import Path
 from unittest import mock
 
 from at import i18n
-from at.core import boot, migrations, paths, settings, tables
+from at.core import boot, migrations, paths, reminder, settings, tables
 from at.data import schema, store
+from at.ui import ask as door
 
 
 class FolderCase(unittest.TestCase):
@@ -780,6 +782,114 @@ class TheEditedAtArrives(FolderCase):
         self.caught_up()
         row = tables.edit("task", 1, {"text": "café, agora com leite"})
         self.assertIn("edited_at", row)
+
+
+class TheNotificationGuardArrives(FolderCase):
+    """Migration vinte e três: a declaração da pasta aprende o que duas trocas
+    anteriores acrescentaram ao produto em silêncio.
+
+    O caso que a fez existir é o LEMBRETE. `at.ui.ask.remind` empurra e só então
+    marca a linha (`reminder.mark_notified`), e é a marca que impede o mesmo
+    lembrete de ser empurrado a cada passagem do relógio. Numa pasta cuja
+    declaração não tem `notified`, `tables.edit` recusa o nome: o push SAI e a
+    marca não fica — e o lembrete volta a cada cadência, dez minutos, para
+    sempre.
+    """
+
+    def old_reminder(self) -> dict:
+        """`reminder.json` como a versão anterior a esta escrevia."""
+        declared = json.loads(self.declaration("reminder").read_text(encoding="utf-8"))
+        declared["fields"].pop("notified", None)
+        return declared
+
+    def old_folder(self) -> None:
+        """A pasta de antes: a declaração do lembrete sem a marca, e as duas
+        que carregam o preço de editar um papel sem o número."""
+        self.born()
+        self.rewrite(self.declaration("reminder"), self.old_reminder())
+        for table, field in (("actor", "role"), ("role", "permissions")):
+            declared = json.loads(self.declaration(table).read_text(encoding="utf-8"))
+            declared["fields"][field].pop("risk", None)
+            self.rewrite(self.declaration(table), declared)
+        self.forgotten()
+
+    def a_reminder(self) -> dict:
+        return tables.create(
+            "reminder",
+            {"text": "Beber água", "freq": "daily", "at": ["09:00"],
+             "status": "active", "since": "2026-09-01"},
+        )
+
+    def sent(self):
+        """O `send` do round: o que saiu, e sem rede nenhuma."""
+        calls: list[str] = []
+
+        def push(title: str, body: str, key) -> tuple[bool, str]:
+            calls.append(body)
+            return True, "200"
+
+        return calls, push
+
+    def test_an_old_folder_gains_the_field_the_round_marks_with(self):
+        self.old_folder()
+        self.caught_up()
+        declared = json.loads(self.declaration("reminder").read_text(encoding="utf-8"))
+        notified = declared["fields"]["notified"]
+        self.assertEqual(notified["label"], "table.reminder.field.notified")
+        self.assertTrue(notified["filterable"])
+        # Sem `type`: o campo é do round e nunca é digitado por uma pessoa — a
+        # mesma razão que `at/core/reminder.py` escreve.
+        self.assertNotIn("type", notified)
+
+    def test_without_the_field_the_mark_is_refused_which_is_the_bug(self):
+        # A razão de a migração existir, provada pelo lado que dói: nesta pasta a
+        # marca não pode ser escrita, e o push que já saiu voltaria a sair.
+        self.born()
+        self.rewrite(self.declaration("reminder"), self.old_reminder())
+        made = self.a_reminder()
+        with self.assertRaises(tables.TableError):
+            reminder.mark_notified(made, date(2026, 9, 29))
+
+    def test_once_the_field_arrives_the_round_marks_and_the_push_stops(self):
+        self.old_folder()
+        self.caught_up()
+        made = self.a_reminder()
+        calls, push = self.sent()
+        day = date(2026, 9, 29)
+        self.assertEqual(door.remind(at=day, send=push), [made])
+        self.assertEqual(len(calls), 1)
+        held = store.find("reminder", store.number_of(made))
+        self.assertEqual(held.get("notified"), "2026-09-29")
+        # O segundo passe não repete: é isto que a migração entrega.
+        self.assertEqual(door.remind(at=day, send=push), [])
+        self.assertEqual(len(calls), 1)
+
+    def test_an_old_folder_gains_the_price_of_editing_a_role(self):
+        self.old_folder()
+        self.caught_up()
+        for table, field in (("actor", "role"), ("role", "permissions")):
+            with self.subTest(table=table):
+                declared = json.loads(
+                    self.declaration(table).read_text(encoding="utf-8")
+                )
+                self.assertEqual(declared["fields"][field]["risk"], 0.95)
+
+    def test_a_price_the_person_already_wrote_is_kept_and_named(self):
+        self.born()
+        declared = json.loads(self.declaration("role").read_text(encoding="utf-8"))
+        declared["fields"]["permissions"]["risk"] = 0.5
+        self.rewrite(self.declaration("role"), declared)
+        self.forgotten()
+        output = self.caught_up()
+        declared = json.loads(self.declaration("role").read_text(encoding="utf-8"))
+        self.assertEqual(declared["fields"]["permissions"]["risk"], 0.5)
+        self.assertIn(
+            i18n.tr(
+                "boot.migration.declarations.collision",
+                names="role.fields.permissions.risk",
+            ),
+            output,
+        )
 
 
 # ------------------------------------------------------------- the stamp ---

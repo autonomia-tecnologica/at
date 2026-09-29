@@ -822,6 +822,61 @@ class TheProseDoors(ServerCase):
         self.assertEqual(self.status("/api/file?path=../pyproject.toml"), 404)
         self.assertEqual(self.status("/api/file?path=app/settings.json"), 404)
 
+    def test_an_image_answers_with_its_kind_and_no_refusal_reason(self):
+        # PNG bytes are binary (a NUL early on) — the extension is what tells
+        # `prose.read` it opens anyway (TASK-167).
+        (paths.prose_dir() / "foto.png").write_bytes(b"\x89PNG\r\n\x1a\n" + b"\0" * 20)
+        _, _, body = self.get("/api/file?path=foto.png")
+        payload = json.loads(body)
+        self.assertEqual(payload["kind"], "image")
+        self.assertEqual(payload["bucket"], "image")
+        self.assertFalse(payload["writable"])
+        self.assertIsNone(payload["reason"])
+
+    def test_a_binary_neither_text_nor_image_carries_the_renamed_reason(self):
+        (paths.prose_dir() / "bin.dat").write_bytes(b"a\0b")
+        _, _, body = self.get("/api/file?path=bin.dat")
+        payload = json.loads(body)
+        self.assertEqual(payload["reason"], i18n.tr("prose.not_supported"))
+
+    def test_the_bytes_route_serves_the_raw_file_with_its_content_type(self):
+        data = b"\x89PNG\r\n\x1a\n" + b"\0" * 20
+        (paths.prose_dir() / "foto.png").write_bytes(data)
+        status, headers, body = self.get("/api/file/bytes?path=foto.png")
+        self.assertEqual(status, 200)
+        self.assertEqual(body, data)
+        self.assertEqual(headers["Content-Type"], "image/png")
+
+    def test_the_bytes_route_refuses_a_path_that_escapes(self):
+        self.assertEqual(self.status("/api/file/bytes?path=../pyproject.toml"), 404)
+
+    def test_the_bytes_route_refuses_a_file_that_does_not_exist(self):
+        self.assertEqual(self.status("/api/file/bytes?path=nao-existe.png"), 404)
+
+    def test_an_svg_is_served_sandboxed_and_the_other_images_are_not(self):
+        # An SVG can carry a `<script>`. Drawn as an `<img>` it never runs,
+        # but opened straight from this URL the SVG is a DOCUMENT and it
+        # would run in AT's own origin — the header takes that away and
+        # leaves the `<img>` alone (TASK-167).
+        (paths.prose_dir() / "marca.svg").write_bytes(
+            b'<svg xmlns="http://www.w3.org/2000/svg"><script>1</script></svg>'
+        )
+        status, headers, _ = self.get("/api/file/bytes?path=marca.svg")
+        self.assertEqual(status, 200)
+        self.assertEqual(headers["Content-Type"], "image/svg+xml")
+        self.assertEqual(headers["Content-Security-Policy"], "sandbox")
+        (paths.prose_dir() / "foto.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+        _, headers, _ = self.get("/api/file/bytes?path=foto.png")
+        self.assertNotIn("Content-Security-Policy", headers)
+
+    def test_the_content_type_folds_the_suffix_the_way_the_list_does(self):
+        # `prose.bucket` reads `FOTO.PNG` as an image (`suffix.lower()`); a
+        # route that served it as `application/octet-stream` would disagree
+        # with the list the page drew the row from (TASK-167).
+        (paths.prose_dir() / "FOTO.PNG").write_bytes(b"\x89PNG\r\n\x1a\n")
+        _, headers, _ = self.get("/api/file/bytes?path=FOTO.PNG")
+        self.assertEqual(headers["Content-Type"], "image/png")
+
     def test_a_write_with_a_stale_revision_is_refused_with_the_new_one(self):
         _, _, body = self.get("/api/file?path=nota.md")
         rev = json.loads(body)["rev"]
@@ -1507,8 +1562,8 @@ class TheCeiling(ServerCase):
     # `_get_api` and the writes of `do_POST`, minus the entrance, which is the
     # one that has to answer before anybody is in.
     READS = ("/api/state", "/api/projects", "/api/orphans", "/api/project/1",
-             "/api/tree", "/api/file?path=nota.md", "/api/table/task",
-             "/api/cofre")
+             "/api/tree", "/api/file?path=nota.md", "/api/file/bytes?path=nota.md",
+             "/api/table/task", "/api/cofre")
     WRITES = (
         ("/api/file", {"path": "nota.md", "text": "x", "base": ""}),
         ("/api/ask", {"text": "cria uma tarefa pra hoje"}),

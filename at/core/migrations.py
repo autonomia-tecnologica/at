@@ -999,6 +999,55 @@ def _convert_folder(ask: Ask | None) -> list[Report]:
     return [("boot.migration.folders.born", {"names": target.name})]
 
 
+# O que esta troca acrescenta a declarações que JÁ estão no disco — migração
+# vinte e três. Mesma forma de `EXTENDED` (nove) e `EDITED_AT` (vinte e um), e
+# pelo mesmo motivo: são campos que trocas ANTERIORES acrescentaram ao produto
+# sem carregar migração nenhuma, e o `seed` escreve só a declaração AUSENTE —
+# a destas tabelas já estava na pasta.
+#
+# Cada um custa de um jeito, e é isso que decide que os três entram juntos:
+#
+# - **`reminder.notified` é o guarda do round do relógio.** É o campo que
+#   `at.ui.ask.remind` escreve depois de um push que SAIU, e é ele que impede o
+#   mesmo lembrete de ser empurrado a cada passagem do relógio (§`at/core/
+#   reminder.py`). Sem o campo na declaração da pasta, `tables.edit` recusa o
+#   nome (`error.unknown_field`), a marca nunca é escrita — e o push que já
+#   saiu se repete a cada cadência, dez minutos, para sempre. O push entrega
+#   antes da marca: é a marca que falha, e é o silêncio dela que dói.
+# - **`role.permissions` e `actor.role` carregam `risk: 0.95`** (item 15): o
+#   preço que editar quem-pode-o-quê levanta. Sem ele a demanda cai no piso
+#   (`risk.raised` lê a ausência como o piso) e a edição de um papel não espera
+#   por uma pessoa — a declaração velha baixa a barra de quem já existe sem
+#   ninguém ter mexido nela.
+#
+# As adições são DATEADAS — o que 286b206 (24/09, o risco por argumento) e
+# ce99afe (28/09, o lembrete que dispara sozinho) mudaram em silêncio —, e uma
+# migração publicada nunca é editada: a próxima troca que crescer uma
+# declaração traz o próprio passo e a própria lista.
+SILENT_ADDITIONS: dict[str, dict] = {
+    "reminder": {
+        "fields": {"notified": {"label": "table.reminder.field.notified", "filterable": True}},
+    },
+    "actor": {
+        "fields": {"role": {"risk": 0.95}},
+    },
+    "role": {
+        "fields": {"permissions": {"risk": 0.95}},
+    },
+}
+
+
+def _silent_additions(ask: Ask | None) -> list[Report]:
+    """Migração vinte e três: o que trocas anteriores acrescentaram a uma
+    declaração que já estava no disco, sem migração para carregar.
+
+    Não pergunta, pela mesma razão da nove: é declaração do próprio produto,
+    nada fora da pasta aponta para ela, e o corpo só ACRESCENTA — o que a
+    pessoa escreveu por cima ganha o nome no relato e fica onde está.
+    """
+    return _extend(SILENT_ADDITIONS)
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, _legacy_instance),
     Migration(2, _capitalized_instance),
@@ -1022,6 +1071,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(20, _cofre_permission),
     Migration(21, _edited_at),
     Migration(22, _convert_folder),
+    Migration(23, _silent_additions),
 )
 
 

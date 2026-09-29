@@ -802,8 +802,12 @@ dd { margin: 4px 0 0; word-break: break-word; }
 .page-actions.corner ~ .prose, .page-actions.corner ~ .write-wrap,
 .page-actions.corner ~ pre.text { padding-top: calc(var(--space-5) + var(--space-7)); }
 .file-page > .prose, .file-page > .write-wrap, .file-page > pre.text,
-.record-page > .record-body { flex: 1 0 auto; }
+.file-page > .file-image, .record-page > .record-body { flex: 1 0 auto; }
 pre.text { overflow-wrap: break-word; white-space: pre-wrap; word-break: break-word; font-size: var(--text-sm); }
+/* THE IMAGE (TASK-167): the same margin `pre.text`'s content area gets, and
+   never bigger than the page it sits in — a photo dropped in `Arquivos/`
+   does not get to set the width of the whole screen. */
+.file-image { display: block; max-width: 100%; max-height: 80vh; margin: var(--space-6); }
 .prose { overflow-wrap: break-word; }
 .prose:not(.field-prose) > :first-child { margin-block-start: 0; }
 .prose:not(.field-prose) > :last-child { margin-block-end: 0; }
@@ -983,6 +987,8 @@ a.ref:hover, a.url:hover { border-bottom-color: currentColor; background: var(--
 .bar-part[data-bucket="data"] { background: var(--warning); }
 .stat[data-bucket="other"] b { color: var(--ink-2); }
 .bar-part[data-bucket="other"] { background: var(--border-strong); }
+.stat[data-bucket="image"] b { color: var(--success); }
+.bar-part[data-bucket="image"] { background: var(--success); }
 
 .card .progress-part {
   display: block; height: 100%; background: var(--accent);

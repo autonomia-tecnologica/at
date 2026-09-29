@@ -25,8 +25,17 @@ from at.core import files, paths, versioning
 # reader and the writer alike: a file over it is not text anybody edits here.
 MAX_FILE_BYTES = 256 * 1024
 
-BUCKETS = ("code", "text", "data", "other")
-BUCKET_EXT = {".py": "code", ".md": "text", ".json": "data", ".jsonl": "data"}
+BUCKETS = ("code", "text", "data", "image", "other")
+# The nine an image VIEWER already knows how to draw (TASK-167) — audio, video
+# and PDF stay out, because seeking one needs HTTP Range (206) and this fatia
+# does not carry it (§"Decidido").
+IMAGE_EXT = (
+    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp", ".ico", ".avif",
+)
+BUCKET_EXT = {
+    ".py": "code", ".md": "text", ".json": "data", ".jsonl": "data",
+    **{ext: "image" for ext in IMAGE_EXT},
+}
 
 # The first hit wins, and the NAME is asked before the extension: a `Dockerfile`
 # has no suffix at all, and `.env` is a name rather than a kind of file.
@@ -43,6 +52,7 @@ KIND_EXT = {
     ".yaml": "yaml", ".yml": "yaml", ".toml": "yaml", ".ini": "yaml",
     ".sh": "shell", ".bash": "shell", ".zsh": "shell", ".fish": "shell",
     ".css": "text", ".html": "text", ".sql": "text",
+    **{ext: "image" for ext in IMAGE_EXT},
 }
 SHEBANG = (
     ("python", "python"), ("node", "text"), ("deno", "text"),
@@ -152,15 +162,20 @@ def read(rel: str) -> dict | None:
         return None
     data = where.read_bytes()
     payable = is_text(data)
+    file_kind = kind(rel, data)
+    # TEXT (edited) or IMAGE (viewed, never edited — `writable` stays the
+    # `payable` it always was) are the two this page opens; anything else is
+    # a binary it has no way to show (TASK-167).
+    opens = payable or file_kind == "image"
     return {
         "path": rel,
         "bucket": bucket(rel),
-        "kind": kind(rel, data),
+        "kind": file_kind,
         # The page owns no rule of the write: whether it may is the SERVER's.
         "writable": payable,
         "rev": digest(data),
         "text": data.decode("utf-8", "replace") if payable else None,
-        "reason": None if payable else "prose.not_text",
+        "reason": None if opens else "prose.not_supported",
     }
 
 

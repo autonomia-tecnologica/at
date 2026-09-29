@@ -105,6 +105,16 @@ watch(() => nav.tick, () => {
       <span class="file-state" :class="{ bad: writingState.failed }">{{ writingState.status }}</span>
     </div>
     <pre v-if="!payload" class="text">{{ error }}</pre>
+    <!-- AN IMAGE IS VIEWED, NEVER EDITED (TASK-167) — the branch sits before
+         the "not text" refusal because an image IS one of those (`text` is
+         `null`, same as any other binary) and has to be told apart from a
+         file this page truly cannot open at all. `src` never repeats the
+         bytes already in `payload` (there are none): it names the SAME safe
+         door every other read of the folder walks (`_get_file_bytes`,
+         `prose.inside`), and the browser fetches it on its own. -->
+    <img v-else-if="payload.kind === 'image'" class="file-image"
+         :src="'/api/file/bytes?path=' + encodeURIComponent(payload.path)"
+         :alt="payload.path">
     <pre v-else-if="payload.text === null" class="text">{{ payload.reason }}</pre>
     <WriteField v-else-if="mode === 'write'" :path="payload.path" :text="payload.text"
                 :rev="payload.rev" />

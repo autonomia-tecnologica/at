@@ -54,19 +54,37 @@ class TheReading(unittest.TestCase):
         self.assertEqual(prose.bucket("a.py"), "code")
         self.assertEqual(prose.bucket("a.md"), "text")
         self.assertEqual(prose.bucket("a.jsonl"), "data")
-        self.assertEqual(prose.bucket("a.png"), "other")
+        self.assertEqual(prose.bucket("a.png"), "image")
+        self.assertEqual(prose.bucket("a.zip"), "other")
 
     def test_the_kind_asks_the_name_before_the_suffix(self):
         self.assertEqual(prose.kind("Dockerfile", b"FROM x"), "dockerfile")
         self.assertEqual(prose.kind("a.md", b"# x"), "markdown")
         self.assertEqual(prose.kind("script", b"#!/usr/bin/env python3\n"), "python")
 
-    def test_a_binary_is_not_text_and_says_so(self):
+    def test_an_image_is_its_own_kind_and_bucket_regardless_of_bytes(self):
+        # PNG bytes carry a NUL early — `is_text` would call it binary, and the
+        # extension is what says otherwise (TASK-167).
+        for ext in (".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp", ".ico", ".avif"):
+            with self.subTest(ext=ext):
+                self.assertEqual(prose.kind("a" + ext, b"\x89PNG\0\0\0"), "image")
+                self.assertEqual(prose.bucket("a" + ext), "image")
+
+    def test_a_binary_that_is_neither_text_nor_image_is_not_supported(self):
         (prose.root() / "bin").write_bytes(b"a\0b")
         answer = prose.read("bin")
         self.assertFalse(answer["writable"])
         self.assertIsNone(answer["text"])
-        self.assertEqual(answer["reason"], "prose.not_text")
+        self.assertEqual(answer["reason"], "prose.not_supported")
+
+    def test_an_image_is_not_writable_but_carries_no_refusal_reason(self):
+        (prose.root() / "foto.png").write_bytes(b"\x89PNG\0\0\0resto de bytes")
+        answer = prose.read("foto.png")
+        self.assertEqual(answer["kind"], "image")
+        self.assertEqual(answer["bucket"], "image")
+        self.assertFalse(answer["writable"])
+        self.assertIsNone(answer["text"])
+        self.assertIsNone(answer["reason"])
 
 
 class TheWriting(unittest.TestCase):

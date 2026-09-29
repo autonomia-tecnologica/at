@@ -318,7 +318,13 @@ class TheNotified(ReminderCase):
 
 class TheRound(ReminderCase):
     """`door.remind`: the clock's OTHER schedule, with the network taken away
-    (TASK-145)."""
+    (TASK-145).
+
+    Every row here is dated by `row()` (`since` in 2020) rather than by a
+    bare dict: the engine dates `since` to the REAL day when the row does not
+    carry one, so a hardcoded day this class names would be green the day it
+    was written and red every day after it receded behind that default.
+    """
 
     def sent(self, ok: bool = True):
         """A `send` seam that answers instead of reaching a real notifier."""
@@ -333,8 +339,8 @@ class TheRound(ReminderCase):
     def test_a_due_reminder_is_pushed_once_and_marked(self):
         made = tables.create(
             "reminder",
-            {"text": "Regar a planta", "freq": "once", "on_date": "2026-10-05",
-             "at": ["09:00"]},
+            row(text="Regar a planta", freq="once", on_date="2026-10-05",
+                at=["09:00"]),
         )
         calls, push = self.sent()
         fired = door.remind(date(2026, 10, 5), key=b"k" * 32, send=push)
@@ -349,8 +355,8 @@ class TheRound(ReminderCase):
     def test_a_warned_reminder_gets_its_own_text_and_is_marked(self):
         tables.create(
             "reminder",
-            {"text": "Pagar o boleto", "freq": "once", "on_date": "2026-10-05",
-             "warn_days": [2], "at": ["09:00"]},
+            row(text="Pagar o boleto", freq="once", on_date="2026-10-05",
+                warn_days=[2], at=["09:00"]),
         )
         calls, push = self.sent()
         fired = door.remind(date(2026, 10, 3), send=push)
@@ -365,7 +371,7 @@ class TheRound(ReminderCase):
     def test_a_reminder_already_notified_today_is_not_pushed_again(self):
         made = tables.create(
             "reminder",
-            {"text": "Regar a planta", "freq": "daily", "at": ["09:00"]},
+            row(text="Regar a planta", freq="daily", at=["09:00"]),
         )
         reminder.mark_notified(made, date(2026, 9, 28))
         calls, push = self.sent()
@@ -376,7 +382,7 @@ class TheRound(ReminderCase):
     def test_a_push_that_fails_is_not_marked_and_is_retried_next_pass(self):
         tables.create(
             "reminder",
-            {"text": "Regar a planta", "freq": "daily", "at": ["09:00"]},
+            row(text="Regar a planta", freq="daily", at=["09:00"]),
         )
         calls, push = self.sent(ok=False)
         fired = door.remind(date(2026, 9, 28), send=push)
@@ -394,7 +400,7 @@ class TheRound(ReminderCase):
     def test_a_readonly_folder_applies_nothing(self):
         tables.create(
             "reminder",
-            {"text": "Regar a planta", "freq": "daily", "at": ["09:00"]},
+            row(text="Regar a planta", freq="daily", at=["09:00"]),
         )
         calls, push = self.sent()
         with mock.patch.dict(os.environ, {files.ENV_READONLY: "1"}):
@@ -407,7 +413,7 @@ class TheRound(ReminderCase):
         # .publish` answers `no_address` on its own, without a seam.
         tables.create(
             "reminder",
-            {"text": "Regar a planta", "freq": "daily", "at": ["09:00"]},
+            row(text="Regar a planta", freq="daily", at=["09:00"]),
         )
         with mock.patch.dict(os.environ, {}, clear=False):
             os.environ.pop(notifier.NETWORK_ENV, None)
