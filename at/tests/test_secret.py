@@ -5,7 +5,7 @@ the two kinds of value a row holds — what only PROVES is hashed in its own row
 what AT USES is sealed in the `secret` table — and this is the second kind
 arriving: `secret.json` beside the other system tables, `data/secrets.jsonl` as
 its store, the envelope IN the row, and the derived key scoped to one service or
-purpose and recovered from the Vault Key alone.
+purpose and recovered from the Main Key alone.
 
 Five things are measured, and each is a sentence held to the code:
 
@@ -16,7 +16,7 @@ Five things are measured, and each is a sentence held to the code:
 - **what is sealed does not come back.** Not in the store file, not in a
   listing, not through the engine's door: a cleartext cannot even be written
   into the column, because the type refuses what is not an envelope.
-- **the key is scoped, and the Vault Key recovers it.** One key per service or
+- **the key is scoped, and the Main Key recovers it.** One key per service or
   purpose, the same on every call, opening what it sealed and nothing of
   another's — and a scope that is not a name is refused rather than becoming a
   second key in silence.
@@ -25,12 +25,14 @@ Five things are measured, and each is a sentence held to the code:
   has, and the name a route demands is the catalogue's (`permissions.needed`).
   The seventh act under the word — `scan` (item 51) — is the object's OWN and is
   measured in `test_scanner.py`, where the word it belongs to lives.
-- **the entry stays out of it.** A credential is proved with the phrase untyped,
-  which is §4's sentence about why what is compared is hashed and not sealed.
+- **the entry stays out of it.** A credential is proved with the vault LOCKED —
+  what is compared is a hash and no key is drawn —, which is §4's sentence about
+  why what is proved is hashed and not sealed (item 176 put the same STRING on
+  both doors; it did not put the key on the entrance).
 
 Every test aims AT at a throwaway folder with `AT_ROOT`, so the checkout's own
-Working Folder is never touched; none of them writes a key or a phrase to disk,
-and none needs a network or a model.
+Working Folder is never touched; none of them writes a key or a Main Key to
+disk, and none needs a network or a model.
 """
 
 from __future__ import annotations
@@ -145,7 +147,7 @@ class TheSealedValue(SecretCase):
         self.assertNotIn(PHRASE.encode("utf-8"), raw)
 
     def test_the_phrase_never_reaches_the_folder(self):
-        # The Access Phrase is what the person knows and types (§4), and nothing
+        # The Main Key is what the person knows and types (§4), and nothing
         # AT writes holds it: not the row, not the settings, not the counters.
         self.sealed()
         for path in self.root.rglob("*"):
@@ -155,7 +157,7 @@ class TheSealedValue(SecretCase):
 
     def test_the_key_is_drawn_again_and_opens_it(self):
         # Nothing stores a derived key either: it comes back from the phrase
-        # alone, which is what §4 means by the Vault Key recovering it.
+        # alone, which is what §4 means by the Main Key recovering it.
         row = self.sealed()
         again = secrets.key_of(SERVICE, PHRASE)
         self.assertEqual(vault.unseal(row[secrets.SEALED], again), VALUE)
@@ -281,9 +283,9 @@ class TheScope(SecretCase):
         self.assertNotEqual(secrets.key_of(SERVICE, PHRASE), secrets.key_of(OTHER, PHRASE))
 
     def test_the_vault_key_recovers_a_lost_key(self):
-        # §4: "the Vault Key recovers any lost derived key". The derived key is
+        # §4: "the Main Key recovers any lost derived key". The derived key is
         # derived from it and from nothing stored — so a fresh phrase-derived
-        # Vault Key answers exactly the key that was lost.
+        # Main Key answers exactly the key that was lost.
         lost = vault.derived_key(vault.vault_key(PHRASE), SERVICE)
         self.assertEqual(secrets.key_of(SERVICE, PHRASE), lost)
 
@@ -408,9 +410,9 @@ class ThePermissions(SecretCase):
 
 
 class TheEntry(SecretCase):
-    """A credential is proved with the Access Phrase untyped (§4, item 8)."""
+    """A credential is proved with the vault locked (§4, item 8; item 176)."""
 
-    def test_the_vault_is_reached_by_seven_files_and_by_them_alone(self):
+    def test_the_vault_is_reached_by_eight_files_and_by_them_alone(self):
         # Item 14a landed the vault with no caller anywhere and said so in a
         # test; the slice that landed the table gave it the first two. They are
         # the door that SEALS (`core/secrets`) and the engine that knows the
@@ -442,6 +444,13 @@ class TheEntry(SecretCase):
         # `seal_bytes`/`unseal_bytes` entra por ele também, com a chave do
         # escopo `cofre` chegando pela mesma porta do sexto (`at.ui.webapp.keys`).
         #
+        # **O oitavo é `core/actors.py`** (item 176): a credencial do primeiro
+        # administrador É a Chave Principal, então o piso dela é o piso do cofre
+        # e a entrada o lê DAQUI em vez de nomear um segundo número. É o único
+        # motivo pelo qual a entrada alcança o cofre — e ele não é uma chave:
+        # quem PROVA alguém continua comparando um hash, com o cofre fechado
+        # (`test_vault.py::TheEntry`, e o teste abaixo).
+        #
         # Sorted, because the filesystem hands the files over in an order of its
         # own and the list below is the declaration, not a directory listing.
         callers = sorted(
@@ -451,8 +460,8 @@ class TheEntry(SecretCase):
             if "tests" not in path.parts and reaches_vault(path)
         )
         self.assertEqual(callers, [
-            "at/core/backup.py", "at/core/cofre.py", "at/core/notifier.py",
-            "at/core/secrets.py", "at/core/tables.py",
+            "at/core/actors.py", "at/core/backup.py", "at/core/cofre.py",
+            "at/core/notifier.py", "at/core/secrets.py", "at/core/tables.py",
             "at_deploy/environment.py", "at_deploy/notifier.py",
         ])
 
@@ -460,12 +469,12 @@ class TheEntry(SecretCase):
         # §4's three grades — typing the phrase when AT starts, `~/.at/`, the
         # Working Folder — are a SURFACE's choice, with its price said out loud.
         # **A escolha foi feita, e ela é a nota `S`**: quem sobe o ambiente
-        # digita a Frase (`at-deploy up`), e é ela que sela o que a
+        # digita a Chave Principal (`at-deploy up`), e é ela que sela o que a
         # subida sorteia e abre o que a pasta guarda (item 50).
         #
         # O que esta linha tranca é a ESCOLHA e não a ausência dela: a
-        # superfície que DIGITA a Frase é UMA — o `at-deploy` —, e a outra, a
-        # tela, continua de fora: nenhum arquivo de `at/ui` pergunta a Frase, e
+        # superfície que DIGITA a Chave Principal é UMA — o `at-deploy` —, e a outra, a
+        # tela, continua de fora: nenhum arquivo de `at/ui` pergunta a Chave Principal, e
         # o WebApp não digita nenhuma. **O que mudou (item 50, corte g) é que a
         # tela deixou de precisar da cópia clara para o notificador**: o que ela
         # lê agora é o mesmo envelope, aberto com a Chave B derivada que chega
@@ -489,9 +498,11 @@ class TheEntry(SecretCase):
             with self.subTest(file=path.relative_to(ROOT)):
                 self.assertFalse(reaches_vault(path))
 
-    def test_a_credential_is_proved_with_no_phrase_typed(self):
-        # No phrase was typed to open anything, and the door works: what is
-        # compared is hashed, and the vault is not on the way in.
+    def test_a_credential_is_proved_with_the_vault_locked(self):
+        # Nothing was opened in this folder and no key was drawn, and the door
+        # works: what is compared is a hash. It is the SAME string the vault
+        # opens with (item 176) — the point of the item — and the entrance still
+        # does not need the vault to prove anybody.
         actors.create_admin("Rafael", "uma-frase-bem-longa")
         self.assertIsNotNone(actors.authenticate("Rafael", "uma-frase-bem-longa"))
         self.assertIsNone(actors.authenticate("Rafael", "outra-frase-bem-longa"))

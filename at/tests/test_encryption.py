@@ -10,7 +10,7 @@ the door into the library is a list somebody extends on purpose.
 
 Nothing here touches a folder: the comparison reads its two arguments and
 nothing else, which is exactly what makes a credential verifiable while the
-Access Phrase is untyped.
+Main Key is untyped.
 """
 
 from __future__ import annotations
@@ -138,7 +138,7 @@ class TheComparison(unittest.TestCase):
                 self.assertIs(password.verify(candidate, self.stored), False)
 
     def test_the_comparison_needs_nothing_but_its_two_arguments(self):
-        # No Access Phrase, no setting, no Working Folder: the module that
+        # No Main Key, no setting, no Working Folder: the module that
         # answers reaches for no other module to answer with.
         tree = ast.parse(
             (ROOT / "at/encryption/password.py").read_text(encoding="utf-8")

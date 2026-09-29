@@ -29,10 +29,20 @@ role carrying the whole catalogue, and the person that wears it. The writer is
 the table engine (`tables.create`) — the derivation of the credential is the
 engine's, never the caller's.
 
+**The credential of the first administrator IS the Main Key (§4, item 176).**
+One string, two doors, and a person types one thing: what proves the person here
+is the HASH of the same string `vault.vault_key` opens the vault with, and the
+row this module writes carries the hash and never the key. That is why the floor
+below is imported from the vault instead of spelled again — a rule for the
+credential that the Main Key did not carry would be a rule about a string that
+does not exist — and why the vault is REACHED here for a number and for nothing
+else: `authenticate` still proves a person with the vault locked, because what
+it compares is a derivation (`password`) and no key is drawn on the way in.
+
 **No default, by choice.** The first administrator is ASKED for, never seeded: a
 default credential is a published password, and the item says it with all the
-letters. The minimum length is the same kind of decision, and it lives here for
-the same reason — whoever asks does not get to decide the rule.
+letters. The minimum length is the same kind of decision, and it belongs to the
+Main Key for the same reason — whoever asks does not get to decide the rule.
 """
 
 from __future__ import annotations
@@ -41,7 +51,7 @@ import secrets
 
 from at.core import permissions, tables
 from at.data import store
-from at.encryption import password
+from at.encryption import password, vault
 from at.i18n import tr
 
 # The machine's row, and the role the first person wears. Both are DATA and do
@@ -51,10 +61,13 @@ from at.i18n import tr
 ENGINE_NAME = "engine"
 ADMIN_ROLE = "admin"
 
-# The shortest credential the first administrator may wear. §4's Access Phrase
-# is a different thing with a different price (16), and this is not it: this is
-# the credential that proves a person at the door.
-MIN_CREDENTIAL = 8
+# The shortest credential the first administrator may wear. It is not a second
+# rule: the credential IS the Main Key (§4, item 176) — the same string proves
+# the person at the door and opens the vault —, so the floor is the one the
+# vault already names (`vault.MINIMUM`), imported instead of spelled again. Two
+# numbers for one string would be two rules for one thing, and the one that
+# drifted would be the one nobody read.
+MIN_CREDENTIAL = vault.MINIMUM
 
 
 class AdminError(Exception):
@@ -186,9 +199,9 @@ def entries() -> list[dict]:
 # How much entropy the minted token carries. It is a credential nobody types and
 # nobody remembers — a machine pastes it — so what it costs is measured in bytes
 # and not in characters a person can carry, and 32 bytes is what `token_urlsafe`
-# already draws for a session (`session.Sessions.open`). It is a TOKEN and not an
-# Access Phrase: the phrase is what a person knows (§4), and this is what only the
-# machine's row holds, hashed.
+# already draws for a session (`session.Sessions.open`). It is a TOKEN and not a
+# Main Key: the Main Key is what a person knows and types (§4), and this is what
+# only the machine's row holds, hashed.
 TOKEN_BYTES = 32
 
 
@@ -454,7 +467,13 @@ def can_expose() -> bool:
 
 
 def check_credential(credential: str) -> None:
-    """The price of a credential, refused in the active language."""
+    """The price of a credential, refused in the active language.
+
+    It is the Main Key's floor (`MIN_CREDENTIAL`), and it applies to the first
+    administrator and to every credential that replaces it: there is one rule
+    for the field, and a surface that asked for less would be asking for
+    something the Main Key is not (§4, item 176).
+    """
     if len(credential) < MIN_CREDENTIAL:
         raise AdminError("error.short", min=MIN_CREDENTIAL)
 
@@ -490,6 +509,12 @@ def create_admin(name: str, credential: str) -> dict:
     a number that is not there yet would leave a listing resolving a reference
     to nothing. The credential never lands here as typed — the engine derives it
     on the way in (`tables._hashed`), and this module never sees the derivation.
+
+    **The credential is the Main Key (§4, item 176), and it is the same string
+    the vault opens with.** What the row keeps is the HASH of it and nothing
+    else: from here on the person proves themselves with the string, and the key
+    of the vault is drawn again from it (`vault.vault_key`) every time something
+    is sealed or opened — which is why nothing in this module ever holds a key.
     """
     check_credential(credential)
     role = role_for_admin()

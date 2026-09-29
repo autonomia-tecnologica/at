@@ -49,17 +49,17 @@
 
 - **O Cofre é onde vive tudo o que o AT fecha.** Para executar certas ações, como acessar APIs de serviços externos, o AT precisa ter acesso a segredos. Todo segredo que o AT **guarda** é escrito na tabela `secret` (`data/secrets.jsonl`) — segredo que só se confere, como a credencial de um ator, mora hasheado na própria linha e não no Cofre (§4, Tabelas: **o que se prova se guarda hasheado, o que o AT usa se guarda no Cofre, criptografado**). Lá estão metadados e o segredo em si, salvo de forma criptografada.
 
-- A criptografia do AT parte de uma **Frase de Acesso**, que é o que a pessoa sabe e digita: no mínimo 16 caracteres, e é uma frase. "Mariazinha comeu todo o pudim", em minúsculas e sem espaços, é mais seguro que `Mariazinha@123`. Dela se deriva a **Chave do Cofre**, e dela as **chaves derivadas**, uma por serviço ou finalidade. A Chave do Cofre recupera qualquer chave derivada perdida.
+- A criptografia do AT parte de uma **Chave Principal**, que é o que a pessoa sabe e digita: no mínimo 16 caracteres, e é uma frase. "Mariazinha comeu todo o pudim", em minúsculas e sem espaços, é mais seguro que `Mariazinha@123`. Dela derivam as **chaves derivadas**, uma por serviço ou finalidade. A Chave Principal recupera qualquer chave derivada perdida.
 
 - O escopo de uma chave derivada é um **nome** — o nome canônico de um serviço, ou uma finalidade escrita como um —, e o Cofre não guarda catálogo de nomes: os serviços são do §7 e dos plugins, e uma lista aqui seria o Cofre nomeando um mundo que não é dele. O que ele recusa é escopo que não é nome, e o que ele sustenta é que dois nomes que diferem numa letra são duas chaves.
 
-- É recomendado guardar a Frase de Acesso fora da máquina, em um local seguro. Imprimir e armazenar em documentos pessoais de difícil acesso, por exemplo.
+- É recomendado guardar a Chave Principal fora da máquina, em um local seguro. Imprimir e armazenar em documentos pessoais de difícil acesso, por exemplo.
 
-- Em criptografia, não existe mágica. Ou você digita a Frase de Acesso toda vez que o AT precisa de um segredo, ou digita uma vez e ela vale enquanto o AT estiver de pé, ou o AT guarda o que precisa para destravar sozinho. **A escolha é graduada, e a nota de segurança diz o preço de cada uma:** digitar quando o AT sobe é `S`; guardar destravado na pasta do usuário do sistema (`~/.at/` no Unix, `%APPDATA%` no Windows) é `A`; guardar dentro da Pasta de Trabalho é `B` — e a última é permitida, porque aí o backup da pasta leva tudo.
+- Em criptografia, não existe mágica. Ou você digita a Chave Principal toda vez que o AT precisa de um segredo, ou digita uma vez e ela vale enquanto o AT estiver de pé, ou o AT guarda o que precisa para destravar sozinho. **A escolha é graduada, e a nota de segurança diz o preço de cada uma:** digitar quando o AT sobe é `S`; guardar destravado na pasta do usuário do sistema (`~/.at/` no Unix, `%APPDATA%` no Windows) é `A`; guardar dentro da Pasta de Trabalho é `B` — e a última é permitida, porque aí o backup da pasta leva tudo.
 
 - O AT roda sozinho quando precisa: job agendado não pede senha a cada execução, e a definição e o estado dele moram na tabela `job` (§4, Tabelas). O que ele não faz é escolher por você onde a chave mora.
 
-- A verificação de uma credencial de entrada **não** depende da Frase de Acesso, e isso é de propósito: senão o AT só sobe quando alguém digita a frase. Por isso o que se confere é hasheado, e é por isso que a credencial não mora na `secret`.
+- A Chave Principal é a credencial do primeiro admin: a mesma string prova quem entra e destrava o Cofre. O que se confere é a derivação — o hash dela, guardado na linha do ator —, e não a chave: por isso entrar não exige destravar o Cofre, e é por isso que o que se prova mora hasheado na linha e não na `secret`.
 
 ### Configurações gerais
 

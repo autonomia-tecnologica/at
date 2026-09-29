@@ -8,7 +8,7 @@
 
 - A linha de comando funciona para tudo do AT. Qualquer funcionalidade que ele exponha, seja na API REST (utilizada pelo frontend do WebApp), seja no WebApp em si, é acessível pela linha de comando.
 
-- O Wizard é uma tela que permite realizar configurações mais críticas do AT que eu não queria deixar disponível na rede. Ele tem papéis que não se mudam de lugar: a **primeira subida**, em que a Pasta de Trabalho é confirmada e o primeiro admin é criado; a **instalação de serviços**, e só ele instala; a **volta ao modo Forms**, quando o portão de autenticação cai; e a gestão das chaves principais no modo avançado.
+- O Wizard é uma tela que permite realizar configurações mais críticas do AT que eu não queria deixar disponível na rede. Ele tem papéis que não se mudam de lugar: a **primeira subida**, em que a Pasta de Trabalho é confirmada e o primeiro admin é criado; a **instalação de serviços**, e só ele instala; a **volta ao modo Forms**, quando o portão de autenticação cai; e a gestão da Chave Principal no modo avançado.
 
 - Enquanto o Painel de Controle não estiver construído, a primeira subida acontece na `cli`: `at-cli admin` pergunta o nome e lê a credencial sem eco, e `at-cli` sem palavra imprime o `help`. O Wizard não perde o papel — a tela do primeiro admin é dele —, e a porta é a mesma: a regra desta seção é que tudo do `Wizard` seja alcançável pela `cli`.
 

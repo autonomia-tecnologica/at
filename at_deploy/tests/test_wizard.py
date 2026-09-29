@@ -52,7 +52,7 @@ def edge(url: str, headers: dict[str, str]) -> int:
 CREDENTIAL = "uma-frase-bem-longa"
 NEW_CREDENTIAL = "outra-frase-bem-longa"
 
-# A Frase de Acesso que a suíte digita (item 50, §4). A subida e o reinício do
+# A Chave Principal que a suíte digita (item 50, §4). A subida e o reinício do
 # provedor a pedem pelo leitor sem eco, e a janela entrega o dela: é o diálogo
 # com o que se digita escondido (`simpledialog`, com o `show`) que a suíte
 # substitui, e ele é o mesmo caminho do terminal.
@@ -222,7 +222,7 @@ class FolderCase(unittest.TestCase):
             {"AT_ROOT": str(self.root), "AT_LANG": "pt_BR",
              env.RUN_ENV: self.execution.name},
         )
-        # **E a pessoa digita a Frase**: a subida a lê de um leitor sem eco, e a
+        # **E a pessoa digita a Chave Principal**: a subida a lê de um leitor sem eco, e a
         # suíte entrega o dela — o `getpass` do terminal, ou o diálogo da janela.
         self.phrase = lambda question: PHRASE
         self.env.start()
@@ -479,10 +479,10 @@ class TheWindow(FolderCase):
 
     def test_the_credential_is_read_with_what_is_typed_hidden(self):
         # The screen's way of saying what `getpass` says in a terminal: a
-        # credential is not for whoever is looking at the screen — **e a Frase
+        # credential is not for whoever is looking at the screen — **e a Chave Principal
         # de Acesso também não** (item 50): o reinício do provedor a pede, e ela
         # entra pelo MESMO diálogo escondido, duas vezes na primeira vez, porque
-        # uma Frase que sela não tem como ser conferida depois.
+        # uma Chave Principal que sela não tem como ser conferida depois.
         fake, _ = self.window()
         self.person()
         self.machine()
@@ -494,7 +494,7 @@ class TheWindow(FolderCase):
         self.assertEqual(code, OK)
         hidden = [kw.get("show") for _, kw in fake.simpledialog.asked]
         self.assertEqual(hidden, [None, "*", "*", "*", "*"],
-                         "a credencial ou a Frase foram lidas em claro")
+                         "a credencial ou a Chave Principal foram lidas em claro")
         self.assertIsNotNone(actors.authenticate("Rafael", NEW_CREDENTIAL))
 
     def test_a_name_nobody_gave_is_answered_by_the_words_own_sentence(self):
@@ -541,7 +541,7 @@ class TheWindow(FolderCase):
 
     def test_the_phone_credential_is_shown_every_time_the_step_runs(self):
         # 2026-09-28: the print-once rule is gone — a value sealed behind the
-        # Frase de Acesso does not need a SECOND gate on top, so the step shows
+        # Chave Principal does not need a SECOND gate on top, so the step shows
         # it again on every run, not just the first.
         self.machine()
         with mock.patch.object(env, "GRACE", 0.0):

@@ -4,7 +4,7 @@
 Nothing here touches the network: the one call that would (`urlopen`) is
 patched, and what a test reads is the REQUEST. The key handed to `token` and
 `publish` is a fake 32-byte value, the same shape `test_webapp.py`'s
-`TheDerivedKeys` uses — never the real Vault Key, and never a real Frase.
+`TheDerivedKeys` uses — never the real Main Key, and never a real Chave Principal.
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ from at.data import schema, store
 from at.encryption import vault
 
 # A fake derived key — the shape `webapp.keys.notifier_key()` hands over: 32
-# bytes, never the real Vault Key and never a real Frase (§4, item 50).
+# bytes, never the real Main Key and never a real Chave Principal (§4, item 50).
 KEY = b"n" * 32
 OTHER_KEY = b"x" * 32
 

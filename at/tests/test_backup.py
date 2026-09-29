@@ -7,7 +7,7 @@ ANSWER and nothing else — `scanner.scan` is replaced here the way
 `test_scanner.py` replaces `gitleaks` itself, so these tests run with no
 network, no model and no real `gitleaks` process.
 
-**The Access Phrase is a callable, and it is read lazily.** `make` and
+**The Main Key is a callable, and it is read lazily.** `make` and
 `restore` take a zero-argument reader instead of a plain string, so a test can
 prove the phrase is never asked for when a cheaper check already refused —
 a destination with no tool to reach it, or a folder `restore` will not touch.

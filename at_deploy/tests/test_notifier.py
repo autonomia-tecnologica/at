@@ -36,9 +36,9 @@ from at_deploy import notifier, podman, vpn
 # rule. The value is nobody's — what the tests read is where it was KEPT.
 DRAWN_TOKEN = "tk_abcdefghijklmnopqrstuvwxyz012"
 
-# A Frase de Acesso da suíte (item 50, §4). Ela é quem sela as duas pontas na
+# A Chave Principal da suíte (item 50, §4). Ela é quem sela as duas pontas na
 # pasta e quem as abre de volta, e é por isso que ela é uma só: um teste que
-# lesse o valor selado com OUTRA Frase não leria nada.
+# lesse o valor selado com OUTRA Chave Principal não leria nada.
 PHRASE = "a frase de acesso da suite, e ela nao abre nada de ninguem"
 
 # What `ntfy token add` prints on its own line, measured against the image at the
@@ -149,10 +149,10 @@ class FolderCase(unittest.TestCase):
         return result, output.getvalue()
 
     def key(self) -> bytes:
-        """A Chave do Cofre da Frase da suíte — o que abre o que ela selou (§4).
+        """A chave derivada da Chave Principal da suíte — o que abre o que ela selou (§4).
 
         Derivada uma vez por teste: `vault.vault_key` custa o que a derivação de
-        uma frase custa, e a mesma Frase dentro do mesmo teste é a mesma Chave.
+        uma frase custa, e a mesma Chave Principal dentro do mesmo teste é a mesma Chave.
         """
         if not hasattr(self, "_key"):
             self._key = vault.vault_key(PHRASE)
@@ -161,7 +161,7 @@ class FolderCase(unittest.TestCase):
     def opened(self, where: Path) -> str | None:
         """O valor CLARO que um arquivo da pasta guarda selado.
 
-        Ele é lido ABRINDO o envelope com a Frase da suíte, e nunca de um
+        Ele é lido ABRINDO o envelope com a Chave Principal da suíte, e nunca de um
         segundo sorteio: um valor sorteado de novo não provaria nada sobre o
         arquivo, e é o arquivo que estes testes leem.
         """
@@ -194,7 +194,7 @@ class TheCredential(FolderCase):
     def test_the_value_is_kept_SEALED_at_0600_and_read_back_without_its_newline(self):
         # **O que a pasta guarda é o envelope** (item 50): um arquivo que ninguém
         # mais lê, e que nem a pessoa lê numa cópia da pasta — quem o abre é a
-        # Chave do Cofre, e é ela que faz uma pasta copiada publicar de novo.
+        # chave derivada, e é ela que faz uma pasta copiada publicar de novo.
         notifier.write_token(f"  {DRAWN_TOKEN}  ", self.key())
         where = notifier.token_file()
         kept = where.read_text(encoding="utf-8")
@@ -288,7 +288,7 @@ class TheProvision(FolderCase):
                               where=notifier.token_file(), topic=notifier.TOPIC,
                               scope=notifier.SCOPE), text)
         # **E o que fica na pasta é o ENVELOPE** (item 50): o valor não se lê
-        # numa cópia da pasta, e quem o abre é a Frase — a mesma que o `up` pede
+        # numa cópia da pasta, e quem o abre é a Chave Principal — a mesma que o `up` pede
         # porque esta credencial é um dos arquivos que faltam.
         kept = notifier.token_file().read_text(encoding="utf-8")
         self.assertNotIn(DRAWN_TOKEN, kept)
@@ -297,7 +297,7 @@ class TheProvision(FolderCase):
     def test_a_draw_without_the_phrase_is_refused_and_leaves_nothing(self):
         # Um sorteio SELA, e sem Chave não há selo: gravar o valor em claro seria
         # o que este item existe para não haver. É a recusa que o `up` torna
-        # inalcançável — ele pede a Frase quando a credencial falta (`_drawn_files`).
+        # inalcançável — ele pede a Chave Principal quando a credencial falta (`_drawn_files`).
         fake = self.runtime()
         outcome, text = self.quiet(notifier.provision, None)
         self.assertEqual(outcome, notifier.FAILED)
@@ -468,7 +468,7 @@ class ThePush(FolderCase):
 
     def test_without_the_phrase_the_alert_does_not_go_out(self):
         # **O preço, dito** (§7f, item 50): a credencial está SELADA na pasta, e
-        # quem a abre é a Frase. Sem terminal não se pergunta, e o alerta não sai
+        # quem a abre é a Chave Principal. Sem terminal não se pergunta, e o alerta não sai
         # — a entrega é a parte de melhor esforço, e um alerta que não sai é um
         # alerta que não sai. O que ele NÃO faz é mandar o envelope no cabeçalho
         # para o notificador recusar.

@@ -22,7 +22,7 @@ at/                          the product: the engine, the declarations and the U
 │                              generates and the process that terminates the TLS (§3, §6)
 ├── vendor/caddy/              the Caddy release tarball, byte for byte as the vendor
 │                              ships it, which is what travels inside the binary (§3, §6)
-├── encryption/                secrets: the Access Phrase, the Vault Key, the derived keys
+├── encryption/                secrets: the Main Key, the derived keys
 │                              and the values it protects (`vault`), and `password`, the
 │                              derivation the hashed field stores
 ├── nlu/                       interpretation: the vocabulary, the matcher and the action proposal

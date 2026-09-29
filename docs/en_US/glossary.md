@@ -29,7 +29,6 @@ Each name has one meaning, and names that would touch each other do not coexist.
 | **functionality** | a capability the person recognizes, with levels and dependencies |
 | **plugin** / **extension** | what teaches AT something; today pure data only, with a manifest and a hash |
 | **review** | the acceptance of a plugin, tied to the hash, in one of three modes |
-| **Access Phrase** | what the person knows and types; from it the **Vault Key** is derived |
-| **Vault Key** | the key derived from the Access Phrase; from it the **derived keys** derive, per service |
+| **Main Key** | what the person knows and types — at least 16 characters, and it is a phrase; it is the same string that proves the first admin and unlocks the Vault, and from it the **derived keys** derive, per service |
 | **manifesto** | the seed of this repository, visible in the git history; and `manifest.json` is just the file that has that name |
 | **pin**, **migration**, **migration framework** | stay in English, like the rest of the code: version and hashing fixation; the structure change that runs on the first start; and the set of them — what carries the stamp, the order and the rule that a published one is not edited |

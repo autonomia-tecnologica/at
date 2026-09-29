@@ -142,7 +142,7 @@ HOSTED = "hosted"         # the folder stays on the hosted path, and nothing mov
 NO_ANSWER = "no_answer"   # no terminal to ask in: neither way was taken
 FAILED = "failed"         # a service did not come up (or `update` on a folder
                           # with no environment yet — the word for that is `up`)
-UNREADABLE = "unreadable"  # the Access Phrase does not open what the folder keeps
+UNREADABLE = "unreadable"  # the Main Key does not open what the folder keeps
 # A pasta de estado tem um caminho com a forma errada — um ARQUIVO onde o
 # serviço monta uma pasta, ou o contrário. Não é um serviço que não subiu: é um
 # estado que o AT sabe diagnosticar antes de tentar, e a subida recusa com a
@@ -155,10 +155,10 @@ class SealedRefused(Exception):
 
     Ele guarda contra a única coisa que não pode acontecer em silêncio: o
     envelope indo parar no diretório de execução, onde o container o leria como
-    se fosse o valor. A Frase é conferida contra TUDO o que a pasta guarda antes
+    se fosse o valor. A Chave Principal é conferida contra TUDO o que a pasta guarda antes
     de qualquer container (`_not_opened`), então chegar aqui é uma
     inconsistência — a cópia mudou entre a conferência e a montagem, ou alguém
-    montou sem Frase nenhuma. A resposta é a mesma nos dois casos, e é a do §4:
+    montou sem Chave Principal nenhuma. A resposta é a mesma nos dois casos, e é a do §4:
     o que não se abriu não se usa.
     """
 
@@ -232,8 +232,8 @@ LABEL = "at.service"
 # subida** — o `up` o escreve para cada serviço e o `down` o apaga —, e ele mora
 # onde morre: o `XDG_RUNTIME_DIR` da máquina quando ele existe (permissão `0700`,
 # `tmpfs`, apagado no logout), e o temporário do sistema quando não existe. **É
-# por aqui que um arquivo selado volta a ser lido sem a Frase de Acesso no
-# processo**: quem abre o envelope é o `up`, uma vez, com a Frase que a subida
+# por aqui que um arquivo selado volta a ser lido sem a Chave Principal no
+# processo**: quem abre o envelope é o `up`, uma vez, com a Chave Principal que a subida
 # digitou, e o que o container monta é a cópia clara (`_materialize`).
 #
 # **O nome carrega o id da pasta e nunca o nome dela**: dois ambientes nesta
@@ -315,7 +315,7 @@ IDENTITY_JWT = "jwt"
 
 # Os TRÊS, numa lista, porque dois lugares os nomeiam: quem os SORTEIA — o `up`,
 # antes de qualquer escritor, e um a um — e quem os SELA na conferência da
-# Frase (`_sealed_files`). O `_identity_conf` continua nomeando cada um no lugar
+# Chave Principal (`_sealed_files`). O `_identity_conf` continua nomeando cada um no lugar
 # do YAML onde ele entra, porque lá a POSIÇÃO é o que importa; aqui é o
 # CONJUNTO, e ele é um só.
 IDENTITY_SECRETS = (IDENTITY_SESSION, IDENTITY_ENCRYPTION, IDENTITY_JWT)
@@ -777,7 +777,7 @@ def _webapp_command() -> tuple[str, ...]:
 
 def _webapp_env(key: bytes | None) -> tuple[tuple[str, str], ...]:
     """What §7c's WebApp is TOLD: where its gate is, where its folder is, and —
-    when this subida has the Vault Key — the derived keys it holds in memory.
+    when this subida has the key — the derived keys it holds in memory.
 
     The gate, because a container cannot see the host's loop and the name is the
     environment's to say (`GATE_ENV`), **and the gate's FILE, because the one
@@ -799,9 +799,9 @@ def _webapp_env(key: bytes | None) -> tuple[tuple[str, str], ...]:
     variable.
 
     **§4, item 50: the THREE derived keys ride the same door, and only when
-    there is a Vault Key to derive them from.** `key` is `None` on a subida
+    there is a Main Key to derive them from.** `key` is `None` on a subida
     whose folder had nothing to open, draw or migrate this round (`unlock`) —
-    a folder already entirely sealed does not get asked the Frase again, so
+    a folder already entirely sealed does not get asked the Main Key again, so
     it does not get these variables either, and the WebApp inside it simply
     has no derived key this boot (`at.ui.webapp.keys.get`'s own contract).
     When there IS a key, it never travels itself — only `vault.derived_key`'s
@@ -830,7 +830,7 @@ def _webapp_env(key: bytes | None) -> tuple[tuple[str, str], ...]:
     if key is not None:
         env.append((webapp_keys.WEBAPP_KEY_ENV, _derived_b64(key, WEBAPP)))
         env.append((webapp_keys.NOTIFIER_KEY_ENV, _derived_b64(key, NOTIFIER)))
-        # TASK-154: a terceira porta para o que já existe — a mesma Vault Key,
+        # TASK-154: a terceira porta para o que já existe — a mesma chave,
         # o escopo `cofre` (`at.core.cofre.SCOPE`), nenhum envelope resselado.
         env.append((webapp_keys.COFRE_KEY_ENV, _derived_b64(key, cofre.SCOPE)))
     return tuple(env)
@@ -1158,7 +1158,7 @@ def _sealed_files() -> tuple[tuple[Path, str], ...]:
 
     Os arquivos ESCRITOS entram aqui também, e não só os sorteados: o
     `configuration.yml` e o `Caddyfile` carregam os envelopes inline, e são eles
-    que a conferência da Frase tem de abrir.
+    que a conferência da Chave Principal tem de abrir.
 
     **E as duas pontas do notificador entram nomeadas** (§7f): elas não são
     `writes` de serviço nenhum — o container não as lê, e por isso não há texto
@@ -1181,7 +1181,7 @@ def _sealed_files() -> tuple[tuple[Path, str], ...]:
 def _text(where: Path) -> str:
     """O texto de um arquivo da pasta, ou vazio quando não há o que ler.
 
-    Ele é tolerante de propósito: quem pergunta é a conferência da Frase, e o
+    Ele é tolerante de propósito: quem pergunta é a conferência da Chave Principal, e o
     que ela precisa saber é quais envelopes existem — um arquivo que ainda não
     nasceu não tem nenhum, e não é erro.
     """
@@ -1219,8 +1219,8 @@ def _clear_drawn() -> tuple[Path, ...]:
 def _sealed_somewhere() -> bool:
     """Se a pasta já guarda algum envelope do cofre.
 
-    **É a pergunta que decide se a Frase tem como ser CONFERIDA**: uma pasta que
-    já selou abre o que guarda e sabe se a Frase é a mesma; uma que nunca selou
+    **É a pergunta que decide se a Chave Principal tem como ser CONFERIDA**: uma pasta que
+    já selou abre o que guarda e sabe se a Chave Principal é a mesma; uma que nunca selou
     não tem contra o que conferir, e é por isso que ela é lida duas vezes na
     primeira vez (`_ask_phrase`).
     """
@@ -1228,7 +1228,7 @@ def _sealed_somewhere() -> bool:
 
 
 def _needs_phrase() -> bool:
-    """Se a Frase faz falta nesta subida: há o que abrir, ou há o que selar.
+    """Se a Chave Principal faz falta nesta subida: há o que abrir, ou há o que selar.
 
     As três coisas são a mesma pergunta para quem sobe: **abrir** o que a pasta
     guarda selado, **selar** o que este `up` vai sortear, e **migrar** o valor
@@ -1255,8 +1255,8 @@ def _needs_phrase() -> bool:
 def _not_opened(key: bytes) -> Path | None:
     """O primeiro arquivo que esta Chave NÃO abre, ou `None` quando abre todos.
 
-    **A conferência da Frase é esta, e ela é a própria abertura**: dois valores
-    selados com a mesma Frase são a prova de que é a mesma, e não há nada a
+    **A conferência da Chave Principal é esta, e ela é a própria abertura**: dois valores
+    selados com a mesma Chave Principal são a prova de que é a mesma, e não há nada a
     perguntar de novo — §4: o que só se confere responde, não levanta.
     """
     for where, scope in _sealed_files():
@@ -1268,31 +1268,31 @@ def _not_opened(key: bytes) -> Path | None:
 
 
 def _ask_phrase(secret: Ask) -> bytes | None:
-    """A Frase de Acesso lida e conferida: a Chave do Cofre, ou `None` (§4).
+    """A Chave Principal lida e conferida: a chave derivada, ou `None` (§4).
 
-    **Lida UMA vez por subida** — §4: digitar a Frase quando o AT sobe é a nota
+    **Lida UMA vez por subida** — §4: digitar a Chave Principal quando o AT sobe é a nota
     `S`, e a Chave vive o tempo desta chamada e mais nada; nada a guarda, e
     nada a escreve. **E conferida contra o que a pasta guarda**: cada envelope
     que a subida vai ter de abrir é aberto aqui, antes de qualquer container, e
-    uma Frase que não abre um deles não sobe o ambiente.
+    uma Chave Principal que não abre um deles não sobe o ambiente.
 
     **A primeira vez é a exceção, e ela é declarada**: sem envelope nenhum não
-    há contra o que conferir, então a Frase é lida DUAS vezes — como a
-    credencial do primeiro administrador (`at-cli admin`) —, porque uma Frase
+    há contra o que conferir, então a Chave Principal é lida DUAS vezes — como a
+    credencial do primeiro administrador (`at-cli admin`) —, porque uma Chave Principal
     que sela não tem como ser conferida depois, e um erro de digitação custaria
     exatamente o que ela acabou de selar.
 
-    A Frase curta é recusada pela regra do COFRE e não por esta porta (§3: quem
+    A Chave Principal curta é recusada pela regra do COFRE e não por esta porta (§3: quem
     pergunta não decide o tamanho), e a sentença é a mesma em qualquer lugar que
     a peça (`core.secrets` e aqui leem a mesma).
     """
-    phrase = secret(tr("services.phrase"))
+    main_key = secret(tr("services.phrase"))
     try:
-        key = vault.vault_key(phrase)
-    except vault.PhraseRefused:
+        key = vault.vault_key(main_key)
+    except vault.MainKeyRefused:
         print(tr("secrets.error.phrase", min=vault.MINIMUM))
         return None
-    if not _sealed_somewhere() and secret(tr("services.phrase.again")) != phrase:
+    if not _sealed_somewhere() and secret(tr("services.phrase.again")) != main_key:
         print(tr("services.phrase.mismatch"))
         return None
     where = _not_opened(key)
@@ -1303,9 +1303,9 @@ def _ask_phrase(secret: Ask) -> bytes | None:
 
 
 def unlock(secret: Ask | None) -> tuple[bytes | None, str | None]:
-    """A Chave do Cofre para um ato que ABRE, e a recusa — uma das duas (§4).
+    """A chave derivada para um ato que ABRE, e a recusa — uma das duas (§4).
 
-    Ela é a porta por onde o `up`, o `restart` e a entrega do §7f pedem a Frase,
+    Ela é a porta por onde o `up`, o `restart` e a entrega do §7f pedem a Chave Principal,
     e a única: os três leem o que a pasta guarda — o `up` e o `restart` para
     montar o diretório de execução, e a entrega para autenticar no notificador
     —, e nenhum deles pode fazer isso com um envelope que não abriu. **`None` na
@@ -1322,9 +1322,9 @@ def unlock(secret: Ask | None) -> tuple[bytes | None, str | None]:
 
 
 def sealing_key(secret: Ask | None) -> tuple[bytes | None, str | None]:
-    """A Chave do Cofre de um ato que SELA, pedida SEMPRE — e a recusa (§4).
+    """A chave derivada de um ato que SELA, pedida SEMPRE — e a recusa (§4).
 
-    `unlock` responde "esta pasta precisa da Frase?"; esta porta responde "dê-me
+    `unlock` responde "esta pasta precisa da Chave Principal?"; esta porta responde "dê-me
     a Chave", e é a diferença que um ato que SELA não pode ignorar: uma pasta que
     nasceu antes do selo não tem o que ABRIR e, no entanto, o valor que o ato vai
     sortear tem de sair selado — sem Chave ele iria para a pasta em claro, que é
@@ -1333,7 +1333,7 @@ def sealing_key(secret: Ask | None) -> tuple[bytes | None, str | None]:
     e sela o que fica.
 
     A recusa é a mesma das outras portas: sem terminal não se pergunta (§3, a
-    postura fechada), e uma Frase que não abre o que a pasta guarda não sela nada
+    postura fechada), e uma Chave Principal que não abre o que a pasta guarda não sela nada
     novo.
     """
     if secret is None:
@@ -1351,7 +1351,7 @@ def _opened(text: str, scope: str, key: bytes | None) -> str:
     """O texto com cada envelope ABERTO — o que o container lê (§4, item 50).
 
     **Ele é o coração da fatia**: a pasta guarda o envelope, e o diretório de
-    execução monta o valor. A Frase já foi conferida contra tudo o que a pasta
+    execução monta o valor. A Chave Principal já foi conferida contra tudo o que a pasta
     guarda antes de qualquer container subir (`_not_opened`), então um envelope
     que não abre aqui é uma inconsistência — e a resposta para ela é fechada:
     não se monta o que não se abriu (`SealedRefused`).
@@ -1366,7 +1366,7 @@ def _opened(text: str, scope: str, key: bytes | None) -> str:
     derived = vault.derived_key(key, scope)
     for envelope in found:
         value = vault.unseal(envelope, derived)
-        if value is None:  # pragma: no cover — a Frase já foi conferida
+        if value is None:  # pragma: no cover — a Chave Principal já foi conferida
             raise SealedRefused()
         text = text.replace(envelope, value)
     return text
@@ -1384,12 +1384,12 @@ def draw_gate(key: bytes) -> str:
 
     **O que ele escreve é o ENVELOPE do cofre, e não o valor** (item 50): a
     pasta é copiada sem criptografia, então o que ela guarda de um valor que o
-    AT sorteou é o que só a Frase de Acesso abre. O escopo da chave é o Caddy —
+    AT sorteou é o que só a Chave Principal abre. O escopo da chave é o Caddy —
     o valor é dele, o arquivo é dele, e é o `Caddyfile` dele que o carrega —, e
     quem o abre para o container é o `up`, no diretório de execução.
 
     **A key é obrigatória, e o chamador só a tem quando há o que sortear**: o
-    `up` pergunta a Frase exatamente quando um destes arquivos falta
+    `up` pergunta a Chave Principal exatamente quando um destes arquivos falta
     (`_needs_phrase`), então um sorteio sem Chave seria um valor em claro na
     pasta — o que esta fatia existe para não haver. O que já está lá não é
     sorteado de novo.
@@ -1462,7 +1462,7 @@ def _kept(service: str, name: str) -> str:
     """O que a pasta guarda para aquele valor: o envelope, ou o que já estava lá.
 
     **Quem SORTEIA é o `up`, antes de qualquer escritor** (`_drawn`), e o
-    escritor só LÊ: o selo precisa da Chave do Cofre, e o escritor não a tem —
+    escritor só LÊ: o selo precisa da chave derivada, e o escritor não a tem —
     `Service.writes` é uma função de nenhum argumento, e o que ela compõe é o
     arquivo com o que a pasta guarda, que é o envelope. Quem o abre para o
     container é o `_materialize`.
@@ -1805,7 +1805,7 @@ class Service:
     # another one is told the name to use instead of guessing (§7c's WebApp and
     # its gate). It is a callable for the same reason `ports` is, where a value
     # is not a word but a path: what one of them names is the folder. The
-    # callable takes the Vault Key of THIS subida — `None` when there is none —
+    # callable takes the key THIS subida derived — `None` when there is none —
     # because §7c's WebApp is handed derived keys through this same door
     # (`_webapp_env`), and a service with nothing to derive ignores the
     # argument, exactly as it ignores every other tuple entry it does not need.
@@ -2120,7 +2120,7 @@ def ports_of(service: Service) -> tuple[Port, ...]:
 def env_of(service: Service, key: bytes | None) -> tuple[tuple[str, str], ...]:
     """The variables a service is handed, resolved NOW — the same shape, the same
     reason (`ports_of`): what one of them names is the folder. `key` is the
-    Vault Key of this subida, or `None` — `_webapp_env`'s to read, and every
+    key of this subida, or `None` — `_webapp_env`'s to read, and every
     other service's to ignore."""
     return service.env(key) if callable(service.env) else service.env
 
@@ -2177,7 +2177,7 @@ def run_argv(service: Service, image: Image, key: bytes | None = None) -> list[s
     has no watchdog and does not propose to have one, and a container that comes
     back on its own is one.
 
-    `key` is this subida's Vault Key, or `None` — passed straight through to
+    `key` is the key this subida derived, or `None` — passed straight through to
     `env_of`, which is the one reader that knows what to do with it.
     """
     argv = [
@@ -2211,7 +2211,7 @@ def _prepare(service: Service, key: bytes | None) -> Path:
     **And what it wrote is materialized for the container** (`_materialize`), in
     the same act: the folder is the source and the run directory is the copy
     that serves the boot, and a call site that wrote one and forgot the other
-    would be a container reading yesterday's file. `key` é a Chave do Cofre
+    would be a container reading yesterday's file. `key` é a chave derivada
     desta subida, e ela desce até lá porque o que a pasta guarda de um valor
     sorteado é o envelope: montá-lo é abri-lo.
     """
@@ -2270,7 +2270,7 @@ def _materialize(service: Service, key: bytes | None) -> Path:
     **seladas**, e quem as lê é o AT, do lado de fora — o container do
     notificador monta só o `server.yml`. Elas não têm cópia clara aqui porque
     não há container que as monte: quem as abre é o ato de fora que as pede, com
-    a Frase dele (`notifier.token`, `notifier.phone_token`).
+    a Chave Principal dele (`notifier.token`, `notifier.phone_token`).
     """
     where = materialized(service.name)
     if not service.writes:
@@ -2482,7 +2482,7 @@ def _as_curl_config(headers: dict[str, str],
 def _start(service: Service, pins: dict[str, dict], key: bytes | None) -> bool:
     """Put one service on its feet. `False` when it did not get there.
 
-    `key` é a Chave do Cofre desta subida, e ela só desce porque o que a pasta
+    `key` é a chave derivada desta subida, e ela só desce porque o que a pasta
     guarda dos valores sorteados é o envelope: quem monta o diretório de
     execução tem de abri-lo (`_materialize`).
     """
@@ -2657,7 +2657,7 @@ def bring_up(ask: Ask | None = None, secret: Ask | None = None) -> str:
     low-port rule is asked about before a secret is drawn or a container named, so
     that a refusal is a folder nobody touched (`elevate`, §3's Privilege).
 
-    **E depois a Frase de Acesso** (§4, item 50): ela é pedida depois da
+    **E depois a Chave Principal** (§4, item 50): ela é pedida depois da
     permissão e antes de qualquer sorteio, porque é ela que sela o que este `up`
     vai sortear e que abre o que a pasta já guarda — e uma subida que não a tem,
     ou que recebe uma que não abre, não sobe e diz por quê (`unlock`). Ela é
@@ -2666,7 +2666,7 @@ def bring_up(ask: Ask | None = None, secret: Ask | None = None) -> str:
     sortear — não a pede. **E a pasta que nasceu antes do selo a pede**, porque
     ela tem o que MIGRAR (item 50, corte `f`): cada valor em claro é re-sorteado
     e selado nesta subida, e é por isso que a migração não é um efeito de trocar
-    o binário — é um ato, e ele custa a Frase.
+    o binário — é um ato, e ele custa a Chave Principal.
 
     The environment is not the SWITCH, and it does not pretend to be one: a
     service that does not come up is said, and what did come up stays up for
@@ -2693,7 +2693,7 @@ def bring_up(ask: Ask | None = None, secret: Ask | None = None) -> str:
     # um caminho que o serviço não consegue usar derruba a subida NO MEIO dela
     # como uma exceção do `pathlib`, e o traceback que sai no lugar da frase não
     # diz nem o caminho nem o que ele devia ser (`_state_trouble`). Antes da
-    # elevação e da Frase, porque não se pede senha nem Chave para uma subida
+    # elevação e da Chave Principal, porque não se pede senha nem Chave para uma subida
     # que já se sabe que não sobe.
     trouble = _state_trouble()
     if trouble is not None:
@@ -2707,7 +2707,7 @@ def bring_up(ask: Ask | None = None, secret: Ask | None = None) -> str:
     if refusal is not None:
         return refusal
 
-    # §4: a Frase de Acesso entra aqui, antes de qualquer sorteio e de qualquer
+    # §4: a Chave Principal entra aqui, antes de qualquer sorteio e de qualquer
     # container. A Chave que sai dela é desta subida e de mais nada.
     key, refusal = unlock(secret)
     if refusal is not None:
@@ -2721,7 +2721,7 @@ def bring_up(ask: Ask | None = None, secret: Ask | None = None) -> str:
     #
     # **E só se sorteia com a Chave na mão**: os valores que faltam — o portão, os
     # três do provedor e a credencial do AT no notificador — são exatamente o que
-    # faz o `unlock` pedir a Frase, então quando não há Chave é porque eles todos
+    # faz o `unlock` pedir a Chave Principal, então quando não há Chave é porque eles todos
     # já estão na pasta — e o que já está lá, SELADO, não é sorteado de novo.
     # Sortear sem Chave seria escrever um valor em claro na pasta, que é o que
     # este item existe para não haver.
@@ -2818,10 +2818,10 @@ def restart(name: str, secret: Ask | None = None) -> bool:
     crash ou um `podman restart` avulso dele, leva o registro com ele — e §3
     declara esse preço onde o ato do operador é registrado.
 
-    **E ele PEDE a Frase de Acesso, porque ele monta de novo** (`unlock`): o
+    **E ele PEDE a Chave Principal, porque ele monta de novo** (`unlock`): o
     `_prepare` reescreve o `configuration.yml` — os três do provedor entram
     nele, e o que a pasta guarda deles é o envelope — e o diretório de execução
-    só recebe o arquivo ABERTO. Sem Frase, o reinício não acontece e é dito por
+    só recebe o arquivo ABERTO. Sem Chave Principal, o reinício não acontece e é dito por
     quê: a cópia que está lá é a da subida, e montar por cima dela o envelope
     seria entregar ao provedor o que ele não sabe ler.
     """
@@ -2890,9 +2890,9 @@ def set_credential(name: str, credential: str, secret: Ask | None = None) -> str
     function says it on the screen (`services.credential.changed`), because
     whoever is changing a credential is the one who has to know.
 
-    **E o reinício pede a Frase de Acesso** (`restart`, §4): ele monta o
+    **E o reinício pede a Chave Principal** (`restart`, §4): ele monta o
     `configuration.yml` de novo, e o que a pasta guarda dos três do provedor é o
-    envelope. Uma Frase que não vem deixa a pasta com a credencial nova e o
+    envelope. Uma Chave Principal que não vem deixa a pasta com a credencial nova e o
     portão provando a antiga — que é o `PENDING` que já existia, e a palavra diz
     as duas coisas: o que mudou e o que ainda não foi provado.
 
@@ -3052,8 +3052,8 @@ def status() -> None:
     # are facts about a service that is up, and listing where a credential would
     # live for a notifier nobody brought is a report about a thing that is not
     # there. **E o relatório pergunta se elas EXISTEM, e não as abre**: quem abre
-    # um envelope é quem tem a Frase (§4), e um relatório de estado não tem — nem
-    # deve pedir — a Frase de ninguém.
+    # um envelope é quem tem a Chave Principal (§4), e um relatório de estado não tem — nem
+    # deve pedir — a Chave Principal de ninguém.
     served = _service(NOTIFIER)
     if served is None or _state_of(served) != RUNNING:
         return

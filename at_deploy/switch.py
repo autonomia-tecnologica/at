@@ -298,7 +298,7 @@ def to_gate(ask: environment.Ask | None = None,
     nothing to undo.
 
     `secret` é o leitor sem eco, e ele desce para o `bring_up` sem ser lido
-    aqui: a Frase de Acesso é pedida por quem SELA (§4), e a virada é uma das
+    aqui: a Chave Principal é pedida por quem SELA (§4), e a virada é uma das
     portas por onde alguém sobe o ambiente.
 
     **E é `bring_up`, não `up`** (2026-09-28): a virada não é nem uma primeira

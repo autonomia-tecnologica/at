@@ -278,7 +278,7 @@ class TheComparison(HashedCase):
 
     The engine hands the row over whole — `find` answers it, derivation included —
     and the comparison is built on that: whoever compares passes the stored value
-    in, and the door reaches for nothing else. No Access Phrase, no setting, no
+    in, and the door reaches for nothing else. No Main Key, no setting, no
     folder: that is what makes a credential verifiable while AT is locked, and
     it is the clause item 14 depends on.
     """
@@ -335,13 +335,13 @@ class TheComparison(HashedCase):
 
     def test_it_hands_the_two_arguments_to_the_comparison_and_nothing_else(self):
         # What reaches the primitive is the candidate and the stored derivation, in
-        # that order — no Access Phrase and no setting read on the way.
+        # that order — no Main Key and no setting read on the way.
         with mock.patch.object(password, "verify", return_value=True) as asked:
             self.assertIs(self.compare(SECRET), True)
         asked.assert_called_once_with(SECRET, self.row["credential"])
 
     def test_the_door_reads_nothing_but_its_two_arguments(self):
-        # No Access Phrase, no setting, no folder: the door opens no file to
+        # No Main Key, no setting, no folder: the door opens no file to
         # answer, which is what makes a credential verifiable with AT locked —
         # the clause item 14 depends on. The row is already in hand, as the engine
         # hands it over, and the value comes in with it.

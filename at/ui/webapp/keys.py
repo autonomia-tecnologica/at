@@ -1,7 +1,7 @@
 """The WebApp's derived keys — read once from the environment, kept in memory.
 
-§4, item 50: the Vault Key never leaves the one instant `at_deploy.environment
-.bring_up` derives it in — that function is the only place a process ever holds
+§4, item 50: the Main Key never leaves the one instant `at_deploy.environment
+.bring_up` reads it in — that function is the only place a process ever holds
 it, and only what is DERIVED from it travels. Its `_webapp_env` hands this
 container one scope's key at a time, base64'd, each in its own environment
 variable — the same shape `at.core.gate.GATE_ENV` and `at.core.paths.ROOT_ENV`

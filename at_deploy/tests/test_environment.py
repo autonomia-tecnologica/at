@@ -71,7 +71,7 @@ SAID = (
     # A forma da pasta de estado: um caminho que é ARQUIVO onde o serviço monta
     # uma pasta (ou o contrário) vira recusa dita, e não um traceback.
     "services.state.shape", "services.state.folder", "services.state.file",
-    # §4's Access Phrase, pedida pela subida (item 50): a pergunta, a segunda
+    # §4's Main Key, pedida pela subida (item 50): a pergunta, a segunda
     # leitura da primeira vez, e as três recusas. **A da frase curta é do
     # COFRE** — `secrets.error.phrase`, a mesma sentença que o `core.secrets`
     # diz —, e ela entra aqui porque quem a imprime é esta superfície.
@@ -106,10 +106,10 @@ SAID = (
 # nobody's: what the tests read is that it was KEPT, at 0600, and never printed.
 DRAWN_TOKEN = "tk_abcdefghijklmnopqrstuvwxyz012"
 
-# A Frase de Acesso que a suíte digita (item 50, §4). **Ela é quem sela o que a
+# A Chave Principal que a suíte digita (item 50, §4). **Ela é quem sela o que a
 # pasta guarda e quem o abre**, e é por isso que ela é uma só em toda esta
-# suíte: um teste que lesse o valor selado com OUTRA Frase não leria nada — que
-# é exatamente o que a conferência da Frase prova, no teste que a prova.
+# suíte: um teste que lesse o valor selado com OUTRA Chave Principal não leria nada — que
+# é exatamente o que a conferência da Chave Principal prova, no teste que a prova.
 PHRASE = "a frase de acesso da suite, e ela nao abre nada de ninguem"
 
 
@@ -183,7 +183,7 @@ class FolderCase(unittest.TestCase):
         self.floor = mock.patch.object(env, "floor", lambda: 0)
         self.floor.start()
         self.addCleanup(self.floor.stop)
-        # **E a pessoa digita a Frase**, pelo mesmo desenho: o `up` a lê de um
+        # **E a pessoa digita a Chave Principal**, pelo mesmo desenho: o `up` a lê de um
         # leitor sem eco, e a suíte entrega o dela — é o `getpass` do terminal
         # que ela substitui. Uma subida sem leitor nenhum é o caso que os testes
         # da recusa exercitam, e eles passam `secret=None` de propósito.
@@ -226,10 +226,10 @@ class FolderCase(unittest.TestCase):
         return result, output.getvalue()
 
     def phrase_key(self) -> bytes:
-        """A Chave do Cofre da Frase da suíte — derivada uma vez por teste.
+        """A chave derivada da Chave Principal da suíte — derivada uma vez por teste.
 
         `vault.vault_key` é a derivação de uma frase e custa o que ela custa
-        (§4); a mesma Frase dentro do mesmo teste é a mesma Chave.
+        (§4); a mesma Chave Principal dentro do mesmo teste é a mesma Chave.
         """
         if self._vault_key is None:
             self._vault_key = vault.vault_key(PHRASE)
@@ -238,7 +238,7 @@ class FolderCase(unittest.TestCase):
     def value(self, where: Path, scope: str) -> str | None:
         """O valor CLARO que um arquivo da pasta guarda SELADO (item 50).
 
-        Ele é lido ABRINDO o envelope com a Frase da suíte, e nunca de um
+        Ele é lido ABRINDO o envelope com a Chave Principal da suíte, e nunca de um
         segundo sorteio: um valor sorteado de novo não provaria nada sobre o
         arquivo, e é o arquivo que estes testes leem. Um arquivo que não existe
         responde `None`: nem todo valor já nasceu em toda pasta.
@@ -1639,7 +1639,7 @@ class TheWebappContainer(FolderCase):
                 self.assertNotIn("--env", _call(fake, env.container(name)))
 
     def test_the_webapp_is_handed_its_own_derived_key_and_the_notifiers(self):
-        # §4, item 50: a Vault Key não sai do instante do `bring_up` — só o que
+        # §4, item 50: a Main Key não sai do instante do `bring_up` — só o que
         # ela DERIVA viaja, uma variável por escopo, em base64.
         fake = self.up()
         argv = _call(fake, env.container(env.WEBAPP))
@@ -1978,7 +1978,7 @@ class TheNotifier(FolderCase):
         kept = notifier.token_file().read_text(encoding="utf-8")
         self.assertNotIn(DRAWN_TOKEN, kept)
         self.assertTrue(vault.envelopes(kept))
-        # E quem o abre é a Frase: o que a pasta guarda volta a ser o valor.
+        # E quem o abre é a Chave Principal: o que a pasta guarda volta a ser o valor.
         self.assertEqual(self.value(notifier.token_file(), env.NOTIFIER),
                          DRAWN_TOKEN)
 
@@ -2166,7 +2166,7 @@ class TheClearState(FolderCase):
 
         One stand-in: §7f draws the phone's credential in `subscribe`, which
         needs the notifier standing for real. Its writer is called directly — com
-        a Chave da Frase, porque o que ele grava é o envelope —, so what is
+        a Chave da Chave Principal, porque o que ele grava é o envelope —, so what is
         proved is the mode and the place and not the door.
         """
         self.runtime()
@@ -2265,7 +2265,7 @@ class TheStorageOutOfReach(FolderCase):
     **O item 50 selou tudo o que o AT SORTEIA — e este objeto ele não sorteia.**
     O `storage` do Caddy é PREENCHIDO pelo container enquanto ele está de pé, na
     cadência da renovação de certificado dele, e nenhuma subida passa por ali
-    para selá-lo; e a Frase não chega lá dentro, porque §7a diz que nenhum
+    para selá-lo; e a Chave Principal não chega lá dentro, porque §7a diz que nenhum
     processo de dentro do container abre o cofre. Sem um selo que o alcance, o
     que resta é DECLARAR o objeto fora do alcance do cofre, com o preço dito (a
     cópia da pasta leva a chave privada da CA), e é esta a declaração que a
@@ -2457,7 +2457,7 @@ class TheStateShape(FolderCase):
 
     def test_the_shape_is_checked_before_the_phrase_is_asked(self):
         # Sem terminal a subida responde `NO_ANSWER` — e não é o que acontece
-        # aqui: a forma do estado é conferida ANTES, porque não se pede a Frase
+        # aqui: a forma do estado é conferida ANTES, porque não se pede a Chave Principal
         # (nem a elevação) para uma subida que já se sabe que não sobe.
         (env.state(env.IDENTITY) / env.IDENTITY_NOTIFICATIONS).mkdir(parents=True)
         self.runtime()
@@ -2476,19 +2476,19 @@ class TheStateShape(FolderCase):
 
 
 class TheAccessPhrase(FolderCase):
-    """A Frase de Acesso na subida: quem sela, quem abre, e o que não sobe (§4).
+    """A Chave Principal na subida: quem sela, quem abre, e o que não sobe (§4).
 
     A fatia que fecha a promessa do item 50 do lado de FORA: o que o AT sorteia
     não se lê na pasta — o que se lê lá é o envelope —, e o valor claro só existe
     no diretório de execução, que morre com o ambiente. Quem o escreve lá é o
-    `up`, e ele só o faz com a Frase que ABRIU cada envelope: sem Frase, ou com
+    `up`, e ele só o faz com a Chave Principal que ABRIU cada envelope: sem Chave Principal, ou com
     uma que não abre, o ambiente não sobe e a pasta fica exatamente onde estava.
     """
 
     def counting(self, phrase: str = PHRASE):
         """Um leitor sem eco que conta o que lhe foi perguntado.
 
-        Ele é o que responde por quantas vezes a Frase foi LIDA — a pergunta que
+        Ele é o que responde por quantas vezes a Chave Principal foi LIDA — a pergunta que
         separa a primeira subida (duas leituras, porque não há contra o que
         conferir) das seguintes (uma, porque a conferência é a abertura).
         """
@@ -2508,7 +2508,7 @@ class TheAccessPhrase(FolderCase):
         apenas selado, porque a pasta pode ter sido copiada e o valor que já
         viajou não volta. **A credencial do AT entra aqui em claro também**, e
         não é detalhe: é assim que a instância a tem, e é ela que faz o `up`
-        pedir a Frase — sem ela, um sorteio viria aí e um sorteio SELA.
+        pedir a Chave Principal — sem ela, um sorteio viria aí e um sorteio SELA.
         """
         files.atomic_write_text(caddy.gate_file(), BORN_GATE)
         for name in env.IDENTITY_SECRETS:
@@ -2517,7 +2517,7 @@ class TheAccessPhrase(FolderCase):
         files.atomic_write_text(notifier.token_file(), BORN_TOKEN)
 
     def test_the_first_boot_reads_the_phrase_twice(self):
-        # **Uma Frase que SELA não tem como ser conferida depois**: a segunda
+        # **Uma Chave Principal que SELA não tem como ser conferida depois**: a segunda
         # leitura é a única conferência possível na primeira vez, e é a mesma
         # proteção que a credencial do primeiro administrador tem (`at-cli
         # admin`) — e aqui ela vale o que ela acabou de selar.
@@ -2530,20 +2530,20 @@ class TheAccessPhrase(FolderCase):
     def test_a_folder_that_already_sealed_is_read_once(self):
         # Depois da primeira vez a conferência é a ABERTURA do que a pasta
         # guarda, e ela é melhor que uma segunda leitura: dois valores selados
-        # com a mesma Frase são a prova de que é a mesma.
+        # com a mesma Chave Principal são a prova de que é a mesma.
         self.runtime()
         self.quiet(env.up, secret=self.phrase)
         asked, reader = self.counting()
         # `bring_up`, the second time: `up` itself would refuse a folder that
         # already has an environment (`PROVISIONED`, 2026-09-28) before ever
-        # reading a Frase again — the engine underneath is what this test reads.
+        # reading a Chave Principal again — the engine underneath is what this test reads.
         outcome, _ = self.quiet(env.bring_up, secret=reader)
         self.assertEqual(outcome, env.UP)
         self.assertEqual(len(asked), 1)
 
     def test_two_readings_that_disagree_draw_nothing(self):
         # A recusa ANTES de qualquer sorteio: uma pasta com valores selados sob
-        # uma Frase que ninguém sabe qual é seria pior que uma pasta vazia.
+        # uma Chave Principal que ninguém sabe qual é seria pior que uma pasta vazia.
         said = iter([PHRASE, "outra frase de acesso, e ela tambem e longa"])
         fake = self.runtime()
         outcome, text = self.quiet(env.up, secret=lambda question: next(said))
@@ -2569,7 +2569,7 @@ class TheAccessPhrase(FolderCase):
         self.quiet(env.up, secret=self.phrase)
         fake = self.runtime()
         # `bring_up`: `up` itself would already refuse this second call with
-        # `PROVISIONED`, before the wrong Frase is ever read (2026-09-28).
+        # `PROVISIONED`, before the wrong Chave Principal is ever read (2026-09-28).
         outcome, text = self.quiet(
             env.bring_up,
             secret=lambda question: "uma frase que nao e a que selou")
@@ -2609,7 +2609,7 @@ class TheAccessPhrase(FolderCase):
             + [caddy.gate_file()]
 
     def test_a_folder_that_never_sealed_is_migrated_and_reads_the_phrase_twice(self):
-        # **A migração é um ATO, e ele pede a Frase** (item 50, corte `f`): a
+        # **A migração é um ATO, e ele pede a Chave Principal** (item 50, corte `f`): a
         # pasta que nasceu antes do selo tem valores em claro, e cada um deles é
         # re-sorteado nesta subida. A segunda leitura é a única conferência
         # possível na primeira vez — não há envelope contra o que conferir antes
@@ -2652,7 +2652,7 @@ class TheAccessPhrase(FolderCase):
                     self.assertNotIn(old, text)
 
     def test_no_terminal_does_not_migrate_and_leaves_the_folder_as_it_was(self):
-        # §3's fail-closed posture: migrar SELA, e sem Frase não há selo — e o
+        # §3's fail-closed posture: migrar SELA, e sem Chave Principal não há selo — e o
         # que não se abriu não se usa. A pasta fica exatamente onde estava, e
         # nada foi re-sorteado.
         self.seeded()
@@ -2679,7 +2679,7 @@ class TheAccessPhrase(FolderCase):
                          "o-portao-de-verdade")
 
     def test_the_sealing_is_the_same_phrase_every_time(self):
-        # A Chave do Cofre vem da Frase e de mais nada (§4): a mesma Frase sobre
+        # A chave derivada vem da Chave Principal e de mais nada (§4): a mesma Chave Principal sobre
         # os mesmos valores os abre de novo, e é isso que faz de uma cópia da
         # pasta uma pasta que volta a subir.
         self.runtime()
@@ -2702,7 +2702,7 @@ class TheRunDirectory(FolderCase):
 
     A pergunta (2) da auditoria é respondida aqui, do lado de dentro: nenhum
     processo do container abre o cofre. Quem o abre é o `up`, uma vez, com a
-    Frase, e o que os três leitores recebem é a cópia clara.
+    Chave Principal, e o que os três leitores recebem é a cópia clara.
     """
 
     def up(self) -> FakeRuntime:

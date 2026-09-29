@@ -49,17 +49,17 @@
 
 - **The Vault is where everything AT seals lives.** To perform certain actions, such as accessing external service APIs, AT needs access to secrets. Every secret AT **stores** is written into the `secret` table (`data/secrets.jsonl`) — a secret that is only compared, such as an actor's credential, lives hashed in its own row and not in the Vault (§4, Tables: **what is proved stays hashed, what AT uses stays in the Vault, encrypted**). There are the metadata and the secret itself, saved in encrypted form.
 
-- AT's encryption starts from an **Access Phrase**, which is what the person knows and types: at least 16 characters, and it is a phrase. "Mariazinha comeu todo o pudim", in lowercase and without spaces, is safer than `Mariazinha@123`. From it the **Vault Key** is derived, and from it the **derived keys**, one per service or purpose. The Vault Key recovers any lost derived key.
+- AT's encryption starts from a **Main Key**, which is what the person knows and types: at least 16 characters, and it is a phrase. "Mariazinha comeu todo o pudim", in lowercase and without spaces, is safer than `Mariazinha@123`. From it the **derived keys** derive, one per service or purpose. The Main Key recovers any lost derived key.
 
 - A derived key is scoped by a **name** — the canonical name of a service, or a purpose written as one — and the Vault keeps no catalogue of names: the services are §7's and the plugins', and a list here would be the Vault naming a world it does not own. What it refuses is a scope that is not a name, and what it holds is that two names a character apart are two keys.
 
-- It is recommended to keep the Access Phrase outside the machine, in a safe place. Printing it and storing it among personal documents that are hard to reach, for example.
+- It is recommended to keep the Main Key outside the machine, in a safe place. Printing it and storing it among personal documents that are hard to reach, for example.
 
-- In cryptography there is no magic. Either you type the Access Phrase every time AT needs a secret, or you type it once and it holds while AT is up, or AT stores what it needs to unlock itself. **The choice is graded, and the security grade says the price of each:** typing when AT starts is `S`; keeping it unlocked in the system user's folder (`~/.at/` on Unix, `%APPDATA%` on Windows) is `A`; keeping it inside the Working Folder is `B` — and the last one is allowed, because then the folder backup carries everything.
+- In cryptography there is no magic. Either you type the Main Key every time AT needs a secret, or you type it once and it holds while AT is up, or AT stores what it needs to unlock itself. **The choice is graded, and the security grade says the price of each:** typing when AT starts is `S`; keeping it unlocked in the system user's folder (`~/.at/` on Unix, `%APPDATA%` on Windows) is `A`; keeping it inside the Working Folder is `B` — and the last one is allowed, because then the folder backup carries everything.
 
 - AT runs on its own when it needs to: a scheduled job does not ask for a password on every execution, and its definition and its state live in the `job` table (§4, Tables). What it does not do is choose for you where the key lives.
 
-- The verification of an incoming credential does **not** depend on the Access Phrase, and that is on purpose: otherwise AT only starts when somebody types the phrase. That is why what is compared is hashed, and that is why the credential does not live in `secret`.
+- The Main Key is the first admin's credential: the same string proves whoever comes in and unlocks the Vault. What is compared is the derivation — its hash, kept in the actor's row — and not the key: that is why entering does not require unlocking the Vault, and why what is proved lives hashed in the row and not in `secret`.
 
 ### General settings
 

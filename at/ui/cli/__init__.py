@@ -186,7 +186,7 @@ def _webapp(rest: list[str]) -> int:
 def _backup(rest: list[str], secret: Ask | None = None) -> int:
     """`at-cli backup make|restore` — the copy that survives the machine (item 51).
 
-    The Access Phrase is read WITHOUT ECHO, the same way `admin`'s credential
+    The Main Key is read WITHOUT ECHO, the same way `admin`'s credential
     is — it does not travel through the command line, so it never lands in
     the shell's history nor anybody's `ps`. It is read LAZILY: `core.backup`
     calls the reader itself, once its own cheap checks already passed, so a

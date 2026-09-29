@@ -189,8 +189,8 @@ def services(
     takes an open ARGUMENT (a NAME); `notify creds` takes a closed one — `creds`
     is the only word there is to say after it.
 
-    **Os dois atos do §7f — `notify` sozinho e `notify creds` — pedem a Frase de
-    Acesso** (item 50): o que a pasta guarda das duas credenciais é o envelope
+    **Os dois atos do §7f — `notify` sozinho e `notify creds` — pedem a Chave
+    Principal** (item 50): o que a pasta guarda das duas credenciais é o envelope
     do cofre, e quem o abre é a Chave daquele ato. É por isso que o `secret`
     deste surface chega a eles: a mesma porta sem eco por onde o `up` e o
     `credential` já a leem.
@@ -244,7 +244,7 @@ def services(
         # ele: um token que existe num arquivo não é um celular que lê, e a
         # palavra promete a leitura (`PHONE_UNPROVED`).
         #
-        # **A Frase entra aqui porque o ato SELA e porque ele ABRE** (§4, item
+        # **A Chave Principal entra aqui porque o ato SELA e porque ele ABRE** (§4, item
         # 50): o valor sorteado — ou já sorteado antes — vai/vem da pasta como
         # envelope, e é a mesma Chave que sela e que reabre. As duas coisas pedem
         # a Chave, e é o mesmo leitor sem eco da subida.
@@ -257,10 +257,10 @@ def services(
         # topic — and a delivery that did not happen is a refusal (§7f's own
         # "the alert is the best-effort part"; the thing itself is not lost).
         #
-        # **E ele pede a Frase de Acesso** (item 50): o que a pasta guarda é o
+        # **E ele pede a Chave Principal** (item 50): o que a pasta guarda é o
         # envelope, e quem o abre é a Chave desta entrega — a mesma porta da
         # subida (`environment.unlock`). Sem terminal não se pergunta, e sem a
-        # Frase o alerta não sai; é o preço declarado, e ele é o de §7f.
+        # Chave Principal o alerta não sai; é o preço declarado, e ele é o de §7f.
         outcome = notifier.push(tr("services.notifier.test.title"),
                                 tr("services.notifier.test.body"),
                                 secret if secret is not None else _secret())
@@ -411,7 +411,7 @@ def _readers() -> tuple[Ask | None, Ask | None]:
     entirely** — so a `print()` still sitting in `stdout`'s buffer (block-
     buffered whenever this runs through anything that is not a live tty: a
     wrapper, a pipe, a frozen PyInstaller launch) surfaces AFTER the prompt
-    instead of before it, gluing "Frase de Acesso: " to whatever the terminal
+    instead of before it, gluing "Chave Principal: " to whatever the terminal
     last showed with no line of its own in between. The flush before every
     secret question closes that gap: whatever this surface already printed
     lands on the screen before the prompt that follows it does.
@@ -435,7 +435,7 @@ def _reader() -> Ask | None:
 def _secret() -> Ask | None:
     """A no-echo reader, when there is a terminal to type a secret in.
 
-    Ele é o leitor da Frase de Acesso (§4): o mesmo `getpass` que a credencial
+    Ele é o leitor da Chave Principal (§4): o mesmo `getpass` que a credencial
     do primeiro administrador usa, pela mesma razão — o que se digita sem eco
     não fica no histórico do shell nem no `ps` de ninguém.
     """

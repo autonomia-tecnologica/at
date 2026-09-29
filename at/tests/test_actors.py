@@ -10,6 +10,11 @@ to enter it not exposing at all.
 The credential is the field item 8 gave the schema, so what is checked here is
 the DOOR and not the derivation: the engine derives on the way in, `raw_of`
 refuses to hand it over, and `verify` is the only comparison.
+
+**And the credential is the Main Key** (§4, item 176): one string, two doors —
+the same thing a person types is what proves them here and what the vault
+derives its key from —, so the floor is the vault's (`MIN_CREDENTIAL`) and the
+row keeps the hash and never the string.
 """
 
 from __future__ import annotations
@@ -26,6 +31,7 @@ from unittest import mock
 from at import i18n
 from at.core import actors, boot, migrations, permissions, tables
 from at.data import schema, store
+from at.encryption import vault
 from at.ui import ask as door
 from at.ui.cli import OK, REFUSED, main
 
@@ -154,6 +160,30 @@ class TheFirstAdmin(ActorCase):
         with self.assertRaises(actors.AdminError):
             actors.create_admin("Rafael", "curta")
         self.assertEqual(store.load("actor"), [actors.engine_row()])
+
+    def test_the_floor_is_the_main_keys_floor(self):
+        # §4, item 176: the credential IS the Main Key, so the number is the
+        # vault's and this door reads it THERE (`MIN_CREDENTIAL`) — one rule for
+        # one string, and not a second one that would drift from it.
+        self.assertEqual(actors.MIN_CREDENTIAL, vault.MINIMUM)
+        self.assertEqual(actors.MIN_CREDENTIAL, 16)
+
+    def test_one_character_under_the_floor_is_refused(self):
+        # The floor as a CASE and not as a guess: 16 characters pass, 15 do not.
+        actors.create_admin("Rafael", "x" * 16)
+        with self.assertRaises(actors.AdminError):
+            actors.create_admin("Outra pessoa", "x" * 15)
+        self.assertEqual([row["name"] for row in actors.admins()], ["Rafael"])
+
+    def test_the_row_keeps_the_hash_of_the_string_that_opens_the_vault(self):
+        # The other half of item 176, from the side that ASKS: what the row
+        # keeps is the hash, the door proves the string, and the SAME string is
+        # the one the vault derives its key from — what that key seals, it opens.
+        actors.create_admin("Rafael", GOOD)
+        self.assertIsNotNone(actors.authenticate("Rafael", GOOD))
+        self.assertIsNone(actors.authenticate("Rafael", GOOD + "!"))
+        key = vault.vault_key(GOOD)
+        self.assertEqual(vault.unseal(vault.seal("um valor", key), key), "um valor")
 
     def test_it_makes_the_folder_expose(self):
         self.assertFalse(actors.can_expose())

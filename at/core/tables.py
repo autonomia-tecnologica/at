@@ -573,7 +573,7 @@ def verify(table: str, field: str, candidate: str, stored: str) -> bool:
     derivation opens on a field that holds one.
 
     It reads its two arguments — the candidate and the stored derivation — and
-    nothing else: no Access Phrase, no `settings.json`, no Working Folder. That is
+    nothing else: no Main Key, no `settings.json`, no Working Folder. That is
     what makes a credential verifiable while AT is locked, and it is why the
     value comes IN: the engine hands the whole row over (`find` answers it
     derivation included) and whoever compares passes the stored value here.
@@ -684,7 +684,7 @@ def _hashed(table: str, name: str, field: dict, raw: Any) -> str:
 def _sealed(table: str, name: str, raw: Any) -> str:
     """The envelope that was handed in, and never anything else (§4).
 
-    The engine does NOT seal: sealing needs the Vault Key, and no module holds a
+    The engine does NOT seal: sealing needs the Main Key, and no module holds a
     key while AT is up (§4, the three grades are a surface's choice). What the
     type does is the other half, and it is the half a table can do alone — it
     refuses what is not an envelope, so a cleartext typed into a sealed field is

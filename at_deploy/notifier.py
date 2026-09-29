@@ -12,20 +12,21 @@ reading its own — the three answers the scope is, in that order.
 
 **The credential is AT's, drawn by AT, and it lives in a `0600` file — SEALED.**
 A token is a SECRET, and the vault (§4) took the file over: what it keeps is the
-ENVELOPE the Access Phrase seals, at `0600`, **never in the argv and never
+ENVELOPE the Main Key seals, at `0600`, **never in the argv and never
 printed**. ntfy keeps only the HASH — its `user.db`, inside the state folder the
 container mounts — so the plaintext exists in exactly one place, and that one
 place is unreadable in a copy of the folder. **E a cópia continua servindo**: a
-credencial volta a ser lida com a Frase, e é isso que faz uma pasta copiada
-publicar de novo (§3, a promessa do backup).
+credencial volta a ser lida com a Chave Principal, e é isso que faz uma pasta
+copiada publicar de novo (§3, a promessa do backup).
 
-**Quem lê o valor claro é o `at-deploy`, de FORA, e é ele que pede a Frase.**
-Nenhum container lê as duas pontas — o notificador monta só o `server.yml`, e a
-fatia 2 do item 50 mediu isso —, então o diretório de execução não é o lugar
-delas: quem as lê é o processo que roda o `up`, o `notify` e o `notify creds`, e
-nenhum dos três compartilha a Chave de outro. Cada leitura abre o envelope com a Frase
-do PRÓPRIO ato — a mesma porta da subida (`environment.unlock`, e `sealing_key`
-para quem SELA) —, e **um alerta sem Frase não sai**. A alternativa era pior das
+**Quem lê o valor claro é o `at-deploy`, de FORA, e é ele que pede a Chave
+Principal.** Nenhum container lê as duas pontas — o notificador monta só o
+`server.yml`, e a fatia 2 do item 50 mediu isso —, então o diretório de execução
+não é o lugar delas: quem as lê é o processo que roda o `up`, o `notify` e o
+`notify creds`, e nenhum dos três compartilha a chave derivada do outro. Cada
+leitura abre o envelope com a Chave Principal do PRÓPRIO ato — a mesma porta da
+subida (`environment.unlock`, e `sealing_key` para quem SELA) —, e **um alerta
+sem Chave Principal não sai**. A alternativa era pior das
 duas formas: deixar em claro um valor numa pasta que é copiada sem criptografia,
 ou mandar o envelope no cabeçalho e deixar o notificador recusar o
 `Authorization`. E o preço é o de §7f, dito: a entrega é a parte de melhor
@@ -39,15 +40,15 @@ the one place AT ever reads it; the argv never carries it. And AT's own
 credential is never printed: the messages name the FILE, `status` says whether
 it exists, and the delivery says what the notifier answered.
 
-**The phone's credential is printed on demand, with the Frase de Acesso as the
+**The phone's credential is printed on demand, with the Chave Principal as the
 door.** The ACL has two ends, and §7f names the other one: AT publishes, the
 phone reads. That credential is the PERSON'S, and there is no way for it to
 reach a phone except through the person's eyes — but "reach a phone" happens
 more than once in a credential's life (a new phone, a re-installed app, a
 person who did not save the scrollback), so a value sealed behind the same
-Frase that opens every other secret this vault keeps does not need a
+Main Key that opens every other secret this vault keeps does not need a
 print-once rule on TOP of the seal. **`at-deploy notify creds`**
-opens it exactly like `push` opens AT's own token: the Frase is asked, the
+opens it exactly like `push` opens AT's own token: the Main Key is asked, the
 envelope is unsealed, and what comes back is the value — every time, not the
 first time (2026-09-28, replacing the earlier once-only rule). Its scope is
 the mirror of AT's — `read-only` on the topic, and nothing else — so the two
@@ -65,8 +66,9 @@ mandar um cabeçalho (`reached`, a prova deste arquivo).
 
 **E o selo não fica no meio da impressão.** O envelope é escrito no arquivo, e o
 que vai para a tela é o valor DESTA abertura — sorteado agora, ou lido de volta
-com a Frase, tanto faz: quem tem a Frase já provou quem é, e reler não é um
-segredo maior do que sortear. A única coisa que não sai em claro é o arquivo:
+com a Chave Principal, tanto faz: quem tem a Chave Principal já provou quem é, e
+reler não é um segredo maior do que sortear. A única coisa que não sai em claro
+é o arquivo:
 o que fica na pasta é sempre o envelope, e é a Chave desta chamada que o abre
 (`subscribe`).
 
@@ -158,7 +160,7 @@ PHONE_PASSWORD_FILE = "phone-password"
 # O escopo da chave do cofre que sela as duas pontas (§4: uma chave por serviço
 # ou finalidade). É o nome do SERVIÇO dono do valor — o mesmo com que o
 # `environment` sela todo valor de um serviço —, e não um nome novo: as duas
-# credenciais são do notificador, e é sob ele que a Frase as abre.
+# credenciais são do notificador, e é sob ele que a Chave Principal as abre.
 VAULT_SCOPE = environment.NOTIFIER
 
 # A leitura do celular, no vocabulário do PRÓPRIO ntfy: um `poll` do tópico
@@ -200,7 +202,7 @@ TOKEN_WORD = re.compile(r"tk_[a-z0-9]{10,}")
 DRAWN = "drawn"       # AT had none, and made one
 HELD = "held"         # AT already had one, and it was left alone
 PHONE_DRAWN = "phone_drawn"  # the phone had none, and got one — shown
-PHONE_HELD = "phone_held"    # the phone already had one — shown again, with the Frase
+PHONE_HELD = "phone_held"    # the phone already had one — shown again, with the Main Key
 PHONE_UNPROVED = "phone_unproved"  # the token is drawn, and the read is not proved
 SENT = "sent"         # the notifier took the alert
 NO_TOKEN = "no_token"  # nothing to authenticate with
@@ -245,14 +247,14 @@ def _held(path: Path) -> str | None:
 
 
 def _value(text: str | None, key: bytes | None) -> str | None:
-    """O VALOR claro que um arquivo guarda, aberto com a Chave do Cofre (§4).
+    """O VALOR claro que um arquivo guarda, aberto com a chave derivada (§4).
 
     **Uma pasta que nasceu antes do selo guarda o valor em claro** — é o corte
     `f` do item 50 que a migra —, e é por isso que um texto sem envelope É o
     valor: a leitura não pode depender de o selo já ter acontecido.
 
     Sem Chave um envelope não abre, e `unseal` responde `None` — a mesma
-    resposta de uma Frase errada, e a certa para quem lê: o chamador fica sem o
+    resposta de uma Chave Principal errada, e a certa para quem lê: o chamador fica sem o
     que autenticar, em vez de mandar o envelope no cabeçalho e deixar o
     notificador recusar o `Authorization`.
     """
@@ -273,7 +275,7 @@ def _sealed(path: Path, value: str, key: bytes) -> Path:
     The mode is the writer's (`files.atomic_write_text`), because the value is
     only unreadable if the permission is set on the file that is about to carry
     it, and not after. O que ele grava é o ENVELOPE, no escopo do serviço dono do
-    valor; quem o abre é quem tem a Frase.
+    valor; quem o abre é quem tem a Chave Principal.
     """
     ring = vault.derived_key(key, VAULT_SCOPE)
     files.atomic_write_text(path, f"{vault.seal(value.strip(), ring)}\n",
@@ -386,7 +388,7 @@ def reached(answer: gate.Answer | None = None, key: bytes | None = None) -> bool
     "nada respondeu" (`None`) não é nem um nem outro: é "não deu para saber", e
     é por isso que a comparação é com `READ` e não com "diferente de erro".
 
-    **`key` é a Chave do Cofre desta leitura** (§4): o que a pasta guarda é o
+    **`key` é a chave derivada desta leitura** (§4): o que a pasta guarda é o
     envelope, e a prova precisa do valor que o celular guardou. Sem ela um token
     selado não abre, e a metade não fecha — que é a resposta honesta de quem não
     abriu o que a pasta guarda.
@@ -485,16 +487,16 @@ def push(title: str, body: str, secret: environment.Ask | None = None) -> str:
     to report and never an exception — an alert that failed is not a crash, it
     is an alert that failed, and whoever called this decides what to do about it.
 
-    **E ele PEDE a Frase de Acesso** (§4, item 50): o que a pasta guarda é o
+    **E ele PEDE a Chave Principal** (§4, item 50): o que a pasta guarda é o
     envelope, e quem o abre é a Chave desta leitura — a mesma porta da subida
     (`environment.unlock`), porque nenhum dos dois atos compartilha a Chave do
-    outro. Sem terminal não se pergunta, e sem a Frase o alerta NÃO sai: é o
+    outro. Sem terminal não se pergunta, e sem a Chave Principal o alerta NÃO sai: é o
     preço, dito, e é o de §7f — a entrega é a parte de melhor esforço, e um
     alerta que não sai é um alerta que não sai. Pior seria o contrário: uma
     credencial em claro numa pasta que é copiada sem criptografia, ou o envelope
     indo no cabeçalho para o notificador recusar.
 
-    **A credencial que não existe é dita ANTES da Frase**: quem ainda não tem a
+    **A credencial que não existe é dita ANTES da Chave Principal**: quem ainda não tem a
     do notificador precisa ouvir qual arquivo falta e qual comando o cria, e não
     uma pergunta sobre um valor que não há.
     """
@@ -602,9 +604,9 @@ def provision(key: bytes | None) -> str:
     made when the notifier comes up, by the four calls `_draw` names, and kept
     in a `0600` file beside the notifier's own state — **selado**, porque um
     valor que o AT sorteia vai para a pasta como o envelope do cofre (§4, item
-    50). `key` é a Chave do Cofre desta subida, e ela vem do `up`, que a pediu
+    50). `key` é a chave derivada desta subida, e ela vem do `up`, que a pediu
     antes de qualquer container: o que falta aqui é exatamente o que faz o `up`
-    pedir a Frase (`environment`).
+    pedir a Chave Principal (`environment`).
 
     An environment that already has a credential is left exactly as it is: the
     file is the truth, and whoever wants a new one deletes it and brings the
@@ -680,8 +682,8 @@ def subscribe(answer: gate.Answer | None = None,
     door printed the value once and refused to again — the file was "where a
     person reads it a second time", which meant reading it back by hand, past
     the vault, past the point of the vault existing at all. That is not a
-    security property, only friction, and a person who still has the Frase de
-    Acesso has already proven who they are — so asking again is the same
+    security property, only friction, and a person who still has the Main Key
+    has already proven who they are — so asking again is the same
     question `unlock` and `sealing_key` already answer, not a second gate.
 
     **Two values now, and not one.** ntfy's own apps do not have a field for a
@@ -712,7 +714,7 @@ def subscribe(answer: gate.Answer | None = None,
     o token fica, porque ele foi sorteado, e o que não fechou é a leitura. É a
     mesma regra da entrega: `notify` também recusa quando o alerta não sai.
 
-    **E ele PEDE a Frase de Acesso, porque ele SELA e porque ele ABRE.** O que a
+    **E ele PEDE a Chave Principal, porque ele SELA e porque ele ABRE.** O que a
     pasta guarda é o envelope (§4, item 50): o sorteio que sai daqui vai selado,
     e a leitura desta chamada, ou de qualquer outra depois dela, abre o que está
     lá — as duas coisas precisam da Chave, e é por isso que esta porta pergunta
@@ -723,8 +725,8 @@ def subscribe(answer: gate.Answer | None = None,
         # A machine with no runtime has no notifier to ask, and there is nothing
         # to wait for: `up` is what names the two ways out, and this word is the
         # operator's and can be reached before the environment ever stood. **E
-        # ele vem ANTES da Frase de propósito**: sem runtime a prova não tem por
-        # onde ser feita, e perguntar a Frase antes seria pedir o que ainda não
+        # ele vem ANTES da Chave Principal de propósito**: sem runtime a prova não tem por
+        # onde ser feita, e perguntar a Chave Principal antes seria pedir o que ainda não
         # faz falta.
         print(tr("services.no_podman.status"))
         return FAILED
@@ -735,7 +737,7 @@ def subscribe(answer: gate.Answer | None = None,
         # `key` já provou que abre tudo o que a pasta guarda selado
         # (`environment._ask_phrase`, chamado por `sealing_key` acima, confere
         # as DUAS pontas do notificador — `environment._sealed_files`): o que
-        # seria uma Frase errada já se recusou lá, antes de chegar aqui.
+        # seria uma Chave Principal errada já se recusou lá, antes de chegar aqui.
         token, password = phone_token(key), phone_password(key)
         print(tr("services.notifier.phone.held", token=token, password=password,
                  where=phone_file(), url=environment.notifier_public_url(),

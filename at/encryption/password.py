@@ -10,9 +10,10 @@ below are its price.
 `MEMLIMIT` are module constants: no declaration names them (the closed list
 refuses the keys), no `settings.json` holds them (§4: no secret lives there),
 and no environment variable reaches them. The vault imports them instead of
-naming a second price — a credential and a Vault Key are both derived from
-something a person types, and they cost the same. A knob that changed how a
-credential is derived would be "no choice per field" with a hole in it.
+naming a second price — a credential and the Main Key are both derived from
+something a person types, and it is the SAME thing they type (item 176), so they
+cost the same twice over. A knob that changed how a credential is derived would
+be "no choice per field" with a hole in it.
 
 **A derivation draws its own salt and carries it in its own answer**, so two
 equal credentials already produce two unequal rows — which is what the item
@@ -21,8 +22,10 @@ coercion, so a credential that is refused spends none.
 
 **The comparison answers, it does not raise.** A stored value a hand edited is
 exactly a row this door has to say no to; an exception would take down the read
-that found it. It reads its two arguments and nothing else — no Access Phrase,
-no setting — which is what makes a credential verifiable while AT is locked.
+that found it. It reads its two arguments and nothing else — no Main Key, no
+setting — which is what makes a credential verifiable while the vault is
+locked: it is the hash of the Main Key that is compared, and the key itself is
+never derived on the way in.
 """
 
 from __future__ import annotations

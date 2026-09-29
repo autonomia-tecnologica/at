@@ -16,7 +16,7 @@ everything around them: the calls the acts make through the runtime's seam
 Nothing touches the network, and nothing here starts a container.
 
 The two rules this file exists for: **the value travels to the phone and to
-nowhere else** — never in an argv, and open only behind the Frase de Acesso
+nowhere else** — never in an argv, and open only behind the Chave Principal
 that seals it —, and **the restart does not evict the sessions already open**,
 because the session secret is drawn once and kept. The second one is a
 security decision and it is recorded in §3; here it is measured off the folder.
@@ -52,7 +52,7 @@ TOKEN_LINE = f"token {DRAWN_TOKEN} created for user phone, never expires"
 CREDENTIAL = "uma-frase-bem-longa"
 NEW_CREDENTIAL = "outra-frase-bem-longa"
 
-# A Frase de Acesso que a suíte digita (item 50, §4). O reinício do provedor a
+# A Chave Principal que a suíte digita (item 50, §4). O reinício do provedor a
 # pede — ele monta o `configuration.yml` de novo —, e é ela que sela os três
 # valores que o provedor assina, cifra e prova.
 PHRASE = "a frase de acesso da suite, e ela nao abre nada de ninguem"
@@ -194,7 +194,7 @@ class FolderCase(unittest.TestCase):
         self.no_vpn = mock.patch.object(vpn, "run", side_effect=FileNotFoundError)
         self.no_vpn.start()
         self.addCleanup(self.no_vpn.stop)
-        # **E a pessoa digita a Frase**: o `up` e o reinício do provedor a leem
+        # **E a pessoa digita a Chave Principal**: o `up` e o reinício do provedor a leem
         # de um leitor sem eco, e a suíte entrega o dela.
         self.phrase = lambda question: PHRASE
         with redirect_stdout(io.StringIO()):
@@ -241,10 +241,10 @@ class FolderCase(unittest.TestCase):
         return result, output.getvalue()
 
     def key(self) -> bytes:
-        """A Chave do Cofre da Frase da suíte — o que abre o que ela selou (§4).
+        """A chave derivada da Chave Principal da suíte — o que abre o que ela selou (§4).
 
         As duas pontas do notificador são seladas na pasta (item 50), e é com
-        esta Chave que os testes leem o valor de volta: derivada da Frase, e
+        esta Chave que os testes leem o valor de volta: derivada da Chave Principal, e
         nunca de um segundo sorteio.
         """
         if not hasattr(self, "_key"):
@@ -346,7 +346,7 @@ class TheReadToken(FolderCase):
         self.assertEqual(notifier.phone_password(self.key()), self.secret)
 
     def test_a_second_run_shows_the_same_value_again(self):
-        # 2026-09-28: a Frase de Acesso é o único portão — quem já a digitou uma
+        # 2026-09-28: a Chave Principal é o único portão — quem já a digitou uma
         # vez não precisa de uma segunda regra para ver o que ela abre de novo.
         self.subscribe()
         fake, outcome, text = self.subscribe()
@@ -451,11 +451,11 @@ class TheReadToken(FolderCase):
         self.assertIn(DRAWN_TOKEN, text)
 
     def test_a_key_that_does_not_open_what_is_kept_is_said_and_not_guessed(self):
-        # Uma Frase diferente da que selou não é "não há credencial": é "não
+        # Uma Chave Principal diferente da que selou não é "não há credencial": é "não
         # abre o que há" — a mesma conferência de qualquer subida
         # (`environment._ask_phrase`, que a Chave desta chamada também pede),
         # porque as duas pontas do notificador entram em `_sealed_files` e uma
-        # Frase errada se recusa ALI, antes de `subscribe` ler coisa nenhuma.
+        # Chave Principal errada se recusa ALI, antes de `subscribe` ler coisa nenhuma.
         self.subscribe()
         other = "outra frase de acesso, e ela e bem longa"
         self.machine()
@@ -645,9 +645,9 @@ class TheGateCredential(FolderCase):
                       text)
 
     def test_without_the_phrase_the_row_changes_and_the_gate_stays_behind(self):
-        # **A Frase é o preço do reinício, e ele é declarado** (item 50): ele
+        # **A Chave Principal é o preço do reinício, e ele é declarado** (item 50): ele
         # monta o `configuration.yml` de novo, e o que a pasta guarda dos três
-        # do provedor é o envelope. Sem Frase o reinício não acontece — e o que
+        # do provedor é o envelope. Sem Chave Principal o reinício não acontece — e o que
         # o ato deixa é o que o `PENDING` já dizia: a pasta tem a credencial
         # nova, o portão ainda prova a antiga.
         fake = self.machine()
@@ -782,7 +782,7 @@ class TheDoor(FolderCase):
 
         def secret(question: str) -> str:
             """A mesma pessoa digitando sem eco: a credencial nas perguntas dela,
-            e a Frase onde a Frase é pedida — o reinício do provedor a pede, e
+            e a Chave Principal onde a Chave Principal é pedida — o reinício do provedor a pede, e
             ela entra pelo mesmo leitor (item 50, §4)."""
             if question == i18n.tr("services.phrase"):
                 return PHRASE

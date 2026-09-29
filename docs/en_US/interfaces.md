@@ -8,7 +8,7 @@
 
 - The command line works for everything in AT. Any functionality it exposes, whether in the REST API (used by the WebApp frontend) or in the WebApp itself, is reachable from the command line.
 
-- The Wizard is a screen that allows more critical configurations of AT that I did not want to leave available on the network. It has roles that do not move: the **first start**, where the Working Folder is confirmed and the first admin is created; the **installation of services**, and only it installs; the **return to Forms mode**, when the authentication gate falls; and the management of the main keys in advanced mode.
+- The Wizard is a screen that allows more critical configurations of AT that I did not want to leave available on the network. It has roles that do not move: the **first start**, where the Working Folder is confirmed and the first admin is created; the **installation of services**, and only it installs; the **return to Forms mode**, when the authentication gate falls; and the management of the Main Key in advanced mode.
 
 - While the Control Panel is not built, the first start happens in the `cli`: `at-cli admin` asks for the name and reads the credential with no echo, and `at-cli` with no word prints the `help`. The Wizard does not lose the role — the first admin's screen is its own — and the door is the same one: the rule of this section is that everything of the `Wizard` is reachable from the `cli`.
 

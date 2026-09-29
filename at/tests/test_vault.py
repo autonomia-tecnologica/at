@@ -1,34 +1,36 @@
-"""The vault: the Access Phrase, the Vault Key and the sealed value (§4, item 14a).
+"""The vault: the Main Key, the key it derives and the sealed value (§4, item 14a).
 
 Item 14 is bigger than a session and was cut in two. This is the half that has no
-screen: the primitive — the Vault Key the Access Phrase derives, `libsodium`
-sealing and opening a value, the derived key of one service or purpose, and the
-round-trip through `data/secrets.jsonl`, which is the store the sealed value
-actually lives in. The other half — the `secret` table, and the door that puts
-the sealed value in the row — landed after this one, and `test_secret.py` is
-where it is measured; what this file said about the cut is said the other way
-round in `TheCaller`.
+screen: the primitive — the key the Main Key derives, `libsodium` sealing and
+opening a value, the derived key of one service or purpose, and the round-trip
+through `data/secrets.jsonl`, which is the store the sealed value actually lives
+in. The other half — the `secret` table, and the door that puts the sealed value
+in the row — landed after this one, and `test_secret.py` is where it is measured;
+what this file said about the cut is said the other way round in `TheCaller`.
 
 Three things are measured here, and each is a sentence of §4 held to the code:
 
-- **the floor, before anything else.** The Access Phrase has at least 16
-  characters and "it is a phrase"; a phrase under the floor is refused BEFORE any
+- **the floor, before anything else.** The Main Key has at least 16 characters
+  and "it is a phrase"; a string under the floor is refused BEFORE any
   derivation, so a short one spends no work and leaves no key behind.
-- **the derivation comes back.** Nothing stores the Vault Key, so it has to be the
-  same key on every machine — which is what tells the vault from `password`, whose
-  salt is drawn fresh and travels inside its own answer.
+- **the derivation comes back.** Nothing stores the key of the vault, so it has
+  to be the same key on every machine — which is what tells the vault from
+  `password`, whose salt is drawn fresh and travels inside its own answer.
 - **what is sealed does not come back in clear.** The envelope carries the
   algorithm and the nonce and nothing else, `unseal` is the only reader, and it
   answers `None` — never an exception, never a value — for anything its key does
   not open.
 
-The entry is measured here too, and it is the reason the vault exists apart from
-it: a credential is PROVED with the Access Phrase untyped, because hashed is what
-is compared and `authenticate` reaches no vault (§4, item 8).
+**The Main Key is ONE string, and this file is where its two doors meet** (item
+176). `TheEntry` measures it: the door PROVES a person with the vault locked —
+what is compared is a hash, and no key is drawn to open the door — and the same
+string, in `core.actors`'s hands and in `vault_key`'s, is the one a person
+typed. The floor is the same number on both sides for the same reason, and it is
+a single home (`core.actors.MIN_CREDENTIAL`).
 
 Every test aims AT at a throwaway folder with `AT_ROOT`, so a vault is opened in
 a folder of its own and never in the checkout's; none of them touches a network
-or a model, and none of them writes a key or a phrase to disk.
+or a model, and none of them writes a key or a string to disk.
 """
 
 from __future__ import annotations
@@ -56,60 +58,60 @@ from at.encryption import vault
 
 ROOT = Path(__file__).resolve().parents[2]
 
-# The phrase §4 writes as its own example of what a phrase is, and the value a
-# service credential would be — the thing the vault exists to carry.
+# The string §4 writes as its own example of what the Main Key is, and the value
+# a service credential would be — the thing the vault exists to carry.
 PHRASE = "mariazinha comeu todo o pudim"
 VALUE = "credencial-do-serviço-de-exemplo"
 
-# The floor as a case and not as a guess: one phrase exactly at it, one under.
+# The floor as a case and not as a guess: one Main Key exactly at it, one under.
 AT_THE_FLOOR = "x" * 16
 UNDER = "x" * 15
 
-# A key of the right size that is not the Vault Key: an envelope has to refuse it
+# A key of the right size that is not the vault's: an envelope has to refuse it
 # without any derivation running.
 FOREIGN = b"\x00" * 32
 
 
-class ThePhrase(unittest.TestCase):
+class TheMainKey(unittest.TestCase):
     """The floor, and the derivation that has to come back the same."""
 
     def test_the_floor_is_the_one_4_writes(self):
         self.assertEqual(vault.MINIMUM, 16)
 
-    def test_a_phrase_at_the_floor_derives_a_vault_key(self):
+    def test_a_main_key_at_the_floor_derives_the_vaults_key(self):
         key = vault.vault_key(AT_THE_FLOOR)
         self.assertIsInstance(key, bytes)
         self.assertEqual(len(key), vault.KEY_SIZE)
 
     def test_under_the_floor_is_refused(self):
-        for phrase in (UNDER, "", " ", None, 3, b"x" * 40):
-            with self.subTest(phrase=phrase):
-                with self.assertRaises(vault.PhraseRefused):
-                    vault.vault_key(phrase)
+        for main_key in (UNDER, "", " ", None, 3, b"x" * 40):
+            with self.subTest(main_key=main_key):
+                with self.assertRaises(vault.MainKeyRefused):
+                    vault.vault_key(main_key)
 
     def test_the_refusal_happens_before_any_derivation(self):
         # "The refusal is AT's and it happens BEFORE any derivation": neither
-        # the salt is drawn nor the cost is paid, so a phrase under the floor
+        # the salt is drawn nor the cost is paid, so a string under the floor
         # leaves no key behind.
         with mock.patch.object(nacl.hash, "blake2b") as salt, mock.patch.object(
             nacl.pwhash.argon2id, "kdf"
         ) as cost:
-            with self.assertRaises(vault.PhraseRefused):
+            with self.assertRaises(vault.MainKeyRefused):
                 vault.vault_key(UNDER)
         self.assertFalse(salt.called)
         self.assertFalse(cost.called)
 
-    def test_the_same_phrase_derives_the_same_key(self):
-        # Nothing stores the Vault Key, so it has to come back from the phrase
-        # alone — the whole difference from `password.derive`, whose two
+    def test_the_same_string_derives_the_same_key(self):
+        # Nothing stores the key of the vault, so it has to come back from the
+        # Main Key alone — the whole difference from `password.derive`, whose two
         # derivations of one text are unequal on purpose.
         self.assertEqual(vault.vault_key(PHRASE), vault.vault_key(PHRASE))
 
-    def test_two_phrases_derive_two_keys(self):
+    def test_two_strings_derive_two_keys(self):
         self.assertNotEqual(vault.vault_key(PHRASE), vault.vault_key(AT_THE_FLOOR))
 
-    def test_the_key_is_not_a_bare_digest_of_the_phrase(self):
-        # The key costs what `password` fixes. A plain digest of the same phrase
+    def test_the_key_is_not_a_bare_digest_of_the_string(self):
+        # The key costs what `password` fixes. A plain digest of the same string
         # would be a key drawn in microseconds, and brute-forced the same way.
         bare = nacl.hash.blake2b(
             PHRASE.encode("utf-8"),
@@ -121,7 +123,9 @@ class ThePhrase(unittest.TestCase):
     def test_no_caller_names_the_price(self):
         # A knob that changed the cost would be "no choice per field" with a hole
         # in it: the price has one home, and none of these three doors names one.
-        self.assertEqual(list(inspect.signature(vault.vault_key).parameters), ["phrase"])
+        self.assertEqual(
+            list(inspect.signature(vault.vault_key).parameters), ["main_key"]
+        )
         self.assertEqual(list(inspect.signature(vault.seal).parameters), ["value", "key"])
         self.assertEqual(
             list(inspect.signature(vault.unseal).parameters), ["envelope", "key"]
@@ -169,8 +173,8 @@ class TheEnvelope(unittest.TestCase):
 
     def test_a_key_of_its_own_opens_what_it_sealed(self):
         # §4's derived key, reduced to what it is here: a key recovered from the
-        # Vault Key alone, and nothing else. What it seals, it opens; the Vault Key
-        # itself does not, which is the scope working.
+        # vault's key alone, and nothing else. What it seals, it opens; the key
+        # of the vault itself does not, which is the scope working.
         derived = nacl.hash.blake2b(
             self.key, digest_size=vault.KEY_SIZE, encoder=nacl.encoding.RawEncoder
         )
@@ -179,8 +183,8 @@ class TheEnvelope(unittest.TestCase):
         self.assertIsNone(vault.unseal(sealed, self.key))
 
     def test_no_key_at_all_does_not_open_it(self):
-        # The answer when the Access Phrase was not typed: the value does not
-        # come back, and nothing raises over a read.
+        # The answer when the Main Key was not typed: the value does not come
+        # back, and nothing raises over a read.
         sealed = vault.seal(VALUE, self.key)
         for key in (None, b"", b"curta"):
             with self.subTest(key=key):
@@ -270,7 +274,7 @@ class TheByteEnvelope(unittest.TestCase):
 
 
 class TheDerivedKey(unittest.TestCase):
-    """The key of one service or purpose, out of the Vault Key alone (§4)."""
+    """The key of one service or purpose, out of the vault's key alone (§4)."""
 
     @classmethod
     def setUpClass(cls):
@@ -301,7 +305,7 @@ class TheDerivedKey(unittest.TestCase):
                 with self.assertRaises(vault.ScopeRefused):
                     vault.derived_key(self.master, wrong)
 
-    def test_a_derived_key_is_not_the_vault_key(self):
+    def test_a_derived_key_is_not_the_vaults_key(self):
         self.assertNotEqual(vault.derived_key(self.master, "notifier"), self.master)
 
     def test_a_key_that_is_not_one_is_refused(self):
@@ -322,7 +326,7 @@ class TheDerivedKey(unittest.TestCase):
     def test_no_caller_names_the_price(self):
         self.assertEqual(
             list(inspect.signature(vault.derived_key).parameters),
-            ["vault_key", "scope"],
+            ["key", "scope"],
         )
 
 
@@ -381,16 +385,16 @@ class TheRoundTrip(VaultCase):
         self.assertEqual([row], back)
         self.assertEqual(vault.unseal(back[0]["value"], self.key), VALUE)
 
-    def test_the_phrase_opens_the_row_again_on_a_fresh_derivation(self):
+    def test_the_main_key_opens_the_row_again_on_a_fresh_derivation(self):
         # The key is not in the file and not in memory: it is drawn again from
-        # the phrase, and it is the one that opens what the earlier one sealed.
+        # the Main Key, and it is the one that opens what the earlier one sealed.
         self.store_row()
         again = vault.vault_key(PHRASE)
         self.assertEqual(vault.unseal(store.load("secret")[0]["value"], again), VALUE)
 
-    def test_the_row_file_carries_neither_the_value_nor_the_phrase(self):
+    def test_the_row_file_carries_neither_the_value_nor_the_main_key(self):
         # `data/secrets.jsonl` is a file a person opens, copies and commits: what
-        # AT USES is sealed in it, and the phrase that opens it is nowhere.
+        # AT USES is sealed in it, and the string that opens it is nowhere.
         self.store_row()
         raw = self.row_file().read_bytes()
         self.assertNotIn(VALUE.encode("utf-8"), raw)
@@ -442,28 +446,46 @@ def reaches_vault(path: Path) -> bool:
 
 
 class TheEntry(VaultCase):
-    """The credential is proved with the Access Phrase untyped (§4, item 8)."""
+    """The two doors of ONE string (§4, item 176), measured where they meet.
 
-    def test_the_module_that_authenticates_reaches_no_vault(self):
-        # §4: "a verificação de uma credencial que chega não depende da Frase de
-        # Acesso" — otherwise AT only starts when somebody types it. The door
-        # reads its two arguments and nothing else, and this is that sentence
-        # read off the source.
-        tree = ast.parse((ROOT / "at/core/actors.py").read_text(encoding="utf-8"))
-        reached: set[str] = set()
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                reached.update(alias.name for alias in node.names)
-            elif isinstance(node, ast.ImportFrom) and node.module:
-                reached.add(node.module)
-        self.assertNotIn("at.encryption.vault", reached)
+    §4 used to say that a credential was proved with the string untyped and that
+    the module that authenticates therefore reached no vault — the paragraph at
+    `architecture.md`'s Vault section, and the test that read it off the source.
+    Item 176 REVERSED the sentence: the credential of the first administrator IS
+    the Main Key, so the floor is the vault's floor, and `core.actors` reaches
+    `vault` for it and for nothing else. What did NOT change is what §4 was
+    protecting — a person enters with the vault LOCKED, because what is compared
+    is a derivation and no key is drawn to open the door —, and that half is
+    measured in `test_secret.py`.
+    """
 
-    def test_a_credential_is_proved_with_no_phrase_typed(self):
-        # No phrase was typed anywhere in this folder, and the door works: what
-        # is compared is hashed, and the vault is not on the way in.
-        actors.create_admin("Rafael", "uma-frase-bem-longa")
-        self.assertIsNotNone(actors.authenticate("Rafael", "uma-frase-bem-longa"))
-        self.assertIsNone(actors.authenticate("Rafael", "outra-frase-bem-longa"))
+    def test_the_entrance_and_the_vault_share_the_one_floor(self):
+        # One string, one rule: the number is the vault's, and the entrance
+        # reads it there instead of naming a second one (`MIN_CREDENTIAL`).
+        self.assertEqual(actors.MIN_CREDENTIAL, vault.MINIMUM)
+        self.assertEqual(actors.MIN_CREDENTIAL, 16)
+
+    def test_the_same_string_proves_the_admin_and_derives_the_key(self):
+        # The whole of item 176: one string, typed once. What proves the person
+        # at the door is its HASH; what opens the vault is the key derived from
+        # it here — and a string a character away does neither.
+        actors.create_admin("Rafael", PHRASE)
+        self.assertIsNotNone(actors.authenticate("Rafael", PHRASE))
+        self.assertIsNone(actors.authenticate("Rafael", AT_THE_FLOOR))
+        key = vault.vault_key(PHRASE)
+        self.assertEqual(vault.unseal(vault.seal(VALUE, key), key), VALUE)
+
+    def test_the_row_keeps_the_hash_and_never_the_main_key(self):
+        # The two doors are one string, and only ONE of them is written down: no
+        # file of the folder carries the Main Key.
+        actors.create_admin("Rafael", PHRASE)
+        row = actors.authenticate("Rafael", PHRASE)
+        self.assertIsNotNone(row)
+        self.assertNotIn(PHRASE, row["credential"])
+        for path in self.root.rglob("*"):
+            if path.is_file():
+                with self.subTest(file=path.relative_to(self.root)):
+                    self.assertNotIn(PHRASE.encode("utf-8"), path.read_bytes())
 
 
 class TheLayer(unittest.TestCase):

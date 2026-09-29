@@ -43,7 +43,7 @@ from pathlib import Path
 from at.core import paths
 from at.encryption import vault
 
-# The scope the Vault Key derives this key under, and the file it opens — the
+# The scope the Main Key derives this key under, and the file it opens — the
 # same two words `at_deploy/notifier.py` spells (`VAULT_SCOPE`, `TOKEN_FILE`),
 # kept apart rather than imported across the line `at` does not cross.
 NOTIFIER = "notifier"

@@ -1,7 +1,7 @@
 """O Cofre: o que entra em `Cofre/` sela sozinho (TASK-154, fatia 1/3).
 
 Toda a suíte aqui é sem rede e sem tocar a instância — cada teste vigia uma
-pasta descartável, e a chave é derivada da mesma Frase de teste que o resto da
+pasta descartável, e a chave é derivada da mesma Chave Principal de teste que o resto da
 suíte usa (`vault.vault_key`), nunca uma chave de verdade de ninguém.
 """
 

@@ -9,10 +9,10 @@ selar — e só então troca o arquivo em claro pelo `.enc`.
 **A cifra não mora aqui.** Quem cifra é `at/encryption/vault`, como um HSM:
 este módulo pede `seal_bytes`/`unseal_bytes` e nunca implementa a primitiva.
 
-**A chave é entregue na subida e mantida em memória — nunca a Frase no
+**A chave é entregue na subida e mantida em memória — nunca a Chave Principal no
 processo.** O mesmo desenho do WebApp e do notificador (§4, item 50,
 `at/ui/webapp/keys.py`): o caminho container deriva a chave do escopo
-`cofre` a partir da Vault Key de quem sobe o ambiente
+`cofre` a partir da Chave Principal de quem sobe o ambiente
 (`at_deploy/environment.py:_webapp_env`) e a entrega por variável de
 ambiente; o processo a lê uma vez e a guarda — e um `tick` sem chave ainda
 varre (o retrato do vigia segue vivo), só não sela nada, porque um arquivo
@@ -181,7 +181,7 @@ class Watcher:
                 continue
             if key is None:
                 # Parado, mas sem chave nesta subida: fica na fila para a
-                # próxima rodada tentar de novo — nada se perde por a Frase
+                # próxima rodada tentar de novo — nada se perde por a Chave Principal
                 # não ter sido lida ainda neste boot.
                 continue
             del self._pending[path]

@@ -2,7 +2,7 @@
 
 Item 29 promises "the configured reminders can be notified", and the half that
 does the notifying (a phone, a push) is another slice's work, gated behind the
-Access Phrase bridge (TASK-133) and the round that fires on its own (TASK-145).
+Main Key bridge (TASK-133) and the round that fires on its own (TASK-145).
 What THIS module measures is the decision beneath it — pure, and checkable
 without either:
 

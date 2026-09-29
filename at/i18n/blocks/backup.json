@@ -1,7 +1,7 @@
 {
   "pt_BR": {
-    "phrase": "Frase de Acesso: ",
-    "no_tty": "Sem terminal onde perguntar não há Frase a digitar. Rode `at-cli backup make|restore` num terminal.",
+    "phrase": "Chave Principal: ",
+    "no_tty": "Sem terminal onde perguntar não há Chave Principal a digitar. Rode `at-cli backup make|restore` num terminal.",
     "error.io": "A pasta ou o destino recusaram a escrita: {reason}.",
     "make.done": "A pasta foi cifrada e mandada para `{destination}`.",
     "make.blocked": "A varredura achou o que não devia estar na pasta, e a cópia não sai daqui. Rode `at-cli secret scan` para ver onde, e resolva antes de tentar de novo.",
@@ -11,11 +11,11 @@
     "restore.done": "A pasta vigente agora é a que o backup guardava, e o arquivo local saiu.",
     "restore.not_found": "Não há arquivo em `{where}`.",
     "restore.not_fresh": "Esta pasta já tem o que uma pessoa fez — tarefas, projetos, lembretes, segredos, um histórico próprio —, e restaurar por cima perderia isso. Restaure numa Pasta de Trabalho recém-criada, sem nada além do que o `boot` já escreveu.",
-    "restore.wrong_key": "Esta Frase não abre o arquivo — ou ele não é um backup do AT, ou a Frase não é a que o selou."
+    "restore.wrong_key": "Esta Chave Principal não abre o arquivo — ou ele não é um backup do AT, ou a Chave Principal não é a que o selou."
   },
   "en_US": {
-    "phrase": "Access Phrase: ",
-    "no_tty": "With no terminal to ask in there is no Phrase to type. Run `at-cli backup make|restore` in a terminal.",
+    "phrase": "Main Key: ",
+    "no_tty": "With no terminal to ask in there is no Main Key to type. Run `at-cli backup make|restore` in a terminal.",
     "error.io": "The folder or the destination refused the write: {reason}.",
     "make.done": "The folder was ciphered and sent to `{destination}`.",
     "make.blocked": "The scan found what should not be in the folder, and the copy does not leave. Run `at-cli secret scan` to see where, and fix it before trying again.",
@@ -25,6 +25,6 @@
     "restore.done": "The current folder is now the one the backup carried, and the local file is gone.",
     "restore.not_found": "There is no file at `{where}`.",
     "restore.not_fresh": "This folder already has what a person did — tasks, projects, reminders, secrets, a history of its own —, and restoring over it would lose that. Restore into a freshly created Working Folder, with nothing beyond what `boot` already wrote.",
-    "restore.wrong_key": "This Phrase does not open the file — either it is not an AT backup, or the Phrase is not the one that sealed it."
+    "restore.wrong_key": "This Main Key does not open the file — either it is not an AT backup, or the Main Key is not the one that sealed it."
   }
 }

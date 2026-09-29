@@ -37,7 +37,7 @@ from at_deploy import environment as env
 from at_deploy import podman, switch, vpn
 from at_deploy.cli import OK, REFUSED, USAGE, services, main
 
-# A Frase de Acesso que a suíte digita (item 50, §4). A virada é uma das portas
+# A Chave Principal que a suíte digita (item 50, §4). A virada é uma das portas
 # por onde alguém sobe o ambiente, e é ela que sela o que a subida sorteia.
 PHRASE = "a frase de acesso da suite, e ela nao abre nada de ninguem"
 
@@ -121,7 +121,7 @@ class FolderCase(unittest.TestCase):
         self.no_vpn = mock.patch.object(vpn, "run", side_effect=FileNotFoundError)
         self.no_vpn.start()
         self.addCleanup(self.no_vpn.stop)
-        # **E a pessoa digita a Frase**: o `up` a lê de um leitor sem eco, e a
+        # **E a pessoa digita a Chave Principal**: o `up` a lê de um leitor sem eco, e a
         # suíte entrega o dela — é o `getpass` do terminal que ela substitui.
         self.phrase = lambda question: PHRASE
         with redirect_stdout(io.StringIO()):

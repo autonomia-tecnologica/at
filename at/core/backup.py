@@ -4,7 +4,7 @@
 half of: "it is versioning, never backup" (`versioning.py:7`). Git keeps the
 folder's history on the SAME disk; this module is what leaves it. The Working
 Folder whole, ciphered with a key derived the way `core.secrets` already derives
-one — the Access Phrase, scoped `backup` (§4) — and sent to a destination the
+one — the Main Key, scoped `backup` (§4) — and sent to a destination the
 person declares. AT never invents one: a path, an `rclone` remote, or an `ssh`
 host are the three shapes a destination takes, told apart by their own syntax
 and nothing this module adds.
@@ -119,7 +119,7 @@ def make(phrase: Callable[[], str], destination: str) -> Report:
     The scan runs FIRST, because it is the gate and not a detail — nothing is
     ciphered while the folder carries a secret in clear, or while the scanner
     cannot say whether it does. The destination's tool is checked next, before
-    the Access Phrase is ever asked for: a missing `rclone` or `scp` is cheap to
+    the Main Key is ever asked for: a missing `rclone` or `scp` is cheap to
     find out, and asking a person to type a phrase for a copy that cannot leave
     anyway would be asking for nothing. `phrase` is called only once both hold,
     which is what lets the CLI defer reading it until there is something to
