@@ -313,6 +313,20 @@ class TheFoldersFollowTheLanguage(FolderCase):
         self.assertEqual(list((self.root / "Cofre").iterdir()), [])
         self.assertIn(i18n.tr("boot.migration.folders.born", names="Cofre"), output)
 
+    def test_the_convert_folder_arrives_by_its_own_migration(self):
+        # TASK-165: uma pasta nascida antes deste release não tem
+        # `Convertidos/`, e é a migração 22 que a traz — a mesma forma da 19
+        # (`Cofre/`), publicada e nunca editada.
+        self.born()
+        (self.root / "Convertidos").rmdir()
+        migrations.stamp_file().write_text(
+            json.dumps(list(range(1, 22))) + "\n", encoding="utf-8"
+        )
+        output = self.caught_up()
+        self.assertTrue((self.root / "Convertidos").is_dir())
+        self.assertEqual(list((self.root / "Convertidos").iterdir()), [])
+        self.assertIn(i18n.tr("boot.migration.folders.born", names="Convertidos"), output)
+
 
 # ------------------------------------------------------- the declaration ---
 

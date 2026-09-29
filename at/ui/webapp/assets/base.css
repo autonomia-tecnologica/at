@@ -555,6 +555,26 @@ button.opt { background: none; border: 0; font: inherit; width: 100%; text-align
   animation: balloon-in var(--dur-base) var(--ease-out);
 }
 
+/* THE TOASTER (TASK-165, fatia 3/4): a generic, reusable slot — `Toast.vue`
+   names no caller, and the LEFT corner is deliberate, the balloon's own
+   bottom-right already busy with the interpreter. */
+.toast {
+  position: fixed; z-index: 25; left: var(--space-5); bottom: var(--space-5);
+  width: min(var(--measure), calc(100vw - 2 * var(--space-5)));
+  display: flex; flex-direction: column; gap: var(--space-2);
+  padding: var(--space-3) var(--space-4); background: var(--surface-1);
+  border-radius: var(--r-lg); box-shadow: var(--shadow-lg);
+  animation: balloon-in var(--dur-base) var(--ease-out);
+}
+.toast-text { color: var(--ink-1); font-size: var(--text-sm); }
+.toast-bar {
+  display: block; height: 3px; border-radius: var(--r-full);
+  background: var(--accent); transform-origin: left;
+  animation-name: toast-empty; animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+@keyframes toast-empty { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
 /* ===== controls: buttons, switch, radio, check, forms =================== */
 
 /* A BUTTON IS FILLED, AND THAT IS THE DEFAULT (item 8). It was neutral here —

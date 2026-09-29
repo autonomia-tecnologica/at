@@ -111,6 +111,7 @@ def create_working_folder(ask: Ask | None = None) -> None:
         paths.shared_dir(),
         paths.harness_dir(),
         paths.cofre_dir(),
+        paths.convert_dir(),
     ):
         directory.mkdir(parents=True, exist_ok=True)
 

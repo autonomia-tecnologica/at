@@ -6,7 +6,11 @@
 
 import { computed } from "vue";
 import Foldable from "./Foldable.vue";
-import { isCurrent, open } from "../lib/views";
+import { isCurrent, open, showError } from "../lib/views";
+import { openContextMenu, type MenuItem } from "../lib/menu";
+import { post } from "../lib/api";
+import { toast } from "../lib/toast";
+import { word } from "../lib/store";
 import type { FileNode } from "./FileTree.vue";
 
 const FILE_VIEW = "file:";
@@ -30,6 +34,36 @@ const join = (name: string): string => (props.prefix ? props.prefix + "/" + name
 function openFile(full: string): void {
   open(FILE_VIEW + full, null);
 }
+
+// THE ONE OCCASION THIS TREE OFFERS (TASK-165, fatia 4/4) — the FIRST one it
+// offers at all, since TASK-136 (create/rename/delete here) has not landed.
+// Restricted to `.md`: converting is the only thing a Markdown source can
+// become, and the menu names nothing a file cannot do.
+async function toPdf(full: string): Promise<void> {
+  await runConvert(full, "pdf");
+}
+async function toDocx(full: string): Promise<void> {
+  await runConvert(full, "docx");
+}
+
+async function runConvert(full: string, to: "pdf" | "docx"): Promise<void> {
+  try {
+    const answer = await post<{ path: string }>("/api/convert", { path: full, to });
+    toast(word("convert_toast").replace("{path}", answer.path));
+  } catch (err) {
+    showError(err as Error);
+  }
+}
+
+function onMenu(event: MouseEvent, full: string): void {
+  const items: MenuItem[] = full.toLowerCase().endsWith(".md")
+    ? [
+        { label: word("convert_pdf"), action: () => void toPdf(full) },
+        { label: word("convert_docx"), action: () => void toDocx(full) },
+      ]
+    : [];
+  openContextMenu(event, items);
+}
 </script>
 
 <template>
@@ -50,7 +84,8 @@ function openFile(full: string): void {
   <button v-for="f in files" :key="f.name" type="button" class="file entry"
           :data-bucket="f.bucket" :data-view="FILE_VIEW + join(f.name)"
           :class="{ on: isCurrent(FILE_VIEW + join(f.name)) }"
-          @click="openFile(join(f.name))">
+          @click="openFile(join(f.name))"
+          @contextmenu.prevent.stop="onMenu($event, join(f.name))">
     <span class="icon" aria-hidden="true"></span>
     <span>{{ f.name }}</span>
   </button>

@@ -126,7 +126,7 @@ from pathlib import Path
 from typing import Callable
 from urllib.parse import parse_qs, urlparse
 
-from at import __version__, i18n, nlu
+from at import __version__, convert, i18n, nlu
 from at.core import (
     actors,
     audit,
@@ -436,6 +436,9 @@ PAGE_WORDS = (
     # THE FILA'S BADGE (TASK-162, fatia 2/2): whether this browser is online,
     # and how many edits are still waiting to leave it.
     "offline", "queued",
+    # THE FILE TREE'S FIRST CONTEXT MENU (TASK-165, fatia 4/4): the two
+    # actions and the toast that follows one.
+    "convert_pdf", "convert_docx", "convert_toast",
     "columns", "refers", "panel", "collapse_menu", "expand_menu",
     # The context menu's own items (TASK-120, fatia 1): what the row's menu
     # offers when the engine says `edit` is legal.
@@ -1238,6 +1241,11 @@ class Handler(BaseHTTPRequestHandler):
                 return
             self._post_file()
             return
+        if segments == ["api", "convert"]:
+            if not self._may("prose:read"):
+                return
+            self._post_convert()
+            return
         if segments == ["api", "ask"]:
             if not self._may("nlu:ask"):
                 return
@@ -1429,6 +1437,34 @@ class Handler(BaseHTTPRequestHandler):
             return
         status, answer = prose.write(rel, text, base)
         self._json(_worded(answer), status)
+
+    def _post_convert(self) -> None:
+        """`{path, to}` → a DOCX or PDF landed in `Convertidos/` (TASK-165,
+        fatia 4/4). The same door and the same refusals `_get_file` already
+        answers with — a path outside `Arquivos/` or a file that is not text
+        is refused by `prose` itself, never a second rule invented here.
+        """
+        payload = self._body()
+        if payload is None:
+            return
+        rel, to = payload.get("path"), payload.get("to")
+        if not isinstance(rel, str) or to not in convert.FORMATS:
+            self._json({"error": "bad request"}, 400)
+            return
+        info = prose.read(rel)
+        if info is None:
+            self._json({"error": i18n.tr("prose.not_served")}, 404)
+            return
+        if info.get("reason"):
+            self._json({"error": i18n.tr(str(info["reason"]))}, 400)
+            return
+        where = prose.inside(rel)
+        try:
+            target = convert.convert(where, to)
+        except files.ReadOnly as error:
+            self._json({"error": f"read-only: {error.where}"}, 403)
+            return
+        self._json({"path": target.name})
 
     def _post_ask(self) -> None:
         """One sentence through the interpreter's door: the proposal, and then.

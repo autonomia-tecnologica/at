@@ -13,7 +13,7 @@ from __future__ import annotations
 import sys
 from collections.abc import Callable, Sequence
 
-from at import __version__, i18n
+from at import __version__, convert, i18n
 from at.core import (
     actors,
     audit,
@@ -31,6 +31,7 @@ from at.core import (
 )
 from at.data import schema
 from at.i18n import tr
+from at.prose import listing as prose
 from at.ui import ask as door
 from at.ui.ask import OK, REFUSED, USAGE
 from at.ui.cli import tree
@@ -95,6 +96,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if word == "backup":
         return _backup(rest)
+
+    if word == "convert":
+        return _convert(rest)
 
     if word == "admin":
         return _admin(rest)
@@ -238,6 +242,39 @@ def _backup_message(action: str, outcome: backup.Report, target: str) -> str:
     if outcome.state == backup.NOT_FRESH:
         return tr("backup.restore.not_fresh")
     return tr("backup.restore.wrong_key")
+
+
+# --------------------------------------------------------------- the convert ---
+
+def _convert(rest: list[str]) -> int:
+    """`at-cli convert <arquivo> --to pdf|docx` (TASK-165, fatia 2/4).
+
+    `<arquivo>` is read the way `Arquivos/` is always addressed — a path
+    relative to it, resolved and validated by `prose.inside`/`prose.read`, the
+    same door the WebApp's own file route reads through: a path outside the
+    tree or a file that is not text is refused with the SAME sentence the page
+    already shows for it, and not a second one invented here.
+    """
+    if len(rest) != 3 or rest[1] != "--to":
+        return _reject("convert")
+    rel, _, fmt = rest
+    if fmt not in convert.FORMATS:
+        return _reject("convert")
+    info = prose.read(rel)
+    if info is None:
+        print(tr("prose.not_served"))
+        return REFUSED
+    if info["reason"]:
+        print(tr(info["reason"]))
+        return REFUSED
+    where = prose.inside(rel)
+    try:
+        target = convert.convert(where, fmt)
+    except files.ReadOnly as error:
+        print(tr("cli.error.read_only", where=error.where))
+        return REFUSED
+    print(tr("convert.done", path=target.name))
+    return OK
 
 
 # ---------------------------------------------------------------- the licence ---

@@ -984,6 +984,21 @@ def _edited_at(ask: Ask | None) -> list[Report]:
     return _extend(EDITED_AT)
 
 
+def _convert_folder(ask: Ask | None) -> list[Report]:
+    """`Convertidos/` — onde o `at/convert/` pousa o que gerou, chega numa
+    pasta que já existia (TASK-165).
+
+    Mesma forma de `_cofre_folder` e `_harness_folder`: nasce nomeada e vazia,
+    e o impacto de fora é nulo — nada aponta para ela ainda —, então não
+    pergunta.
+    """
+    target = paths.convert_dir()
+    if target.exists():
+        return []
+    target.mkdir(parents=True, exist_ok=True)
+    return [("boot.migration.folders.born", {"names": target.name})]
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, _legacy_instance),
     Migration(2, _capitalized_instance),
@@ -1006,6 +1021,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(19, _cofre_folder),
     Migration(20, _cofre_permission),
     Migration(21, _edited_at),
+    Migration(22, _convert_folder),
 )
 
 

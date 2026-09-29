@@ -28,6 +28,7 @@ import { balloonOn } from "./lib/balloon";
 import Sidebar from "./components/Sidebar.vue";
 import Popover from "./components/Popover.vue";
 import Balloon from "./components/Balloon.vue";
+import Toast from "./components/Toast.vue";
 import KindView from "./views/KindView.vue";
 import LoginView from "./views/LoginView.vue";
 
@@ -318,6 +319,10 @@ defineExpose({ refresh });
          open panel, and a balloon that lived in that slot would close every time
          a column's filter opened (`pop.ts`). -->
     <Balloon v-if="balloon" />
+    <!-- The toaster (TASK-165, fatia 3/4): a layer of its own too, mounted
+         once here so every screen reaches it through `lib/toast.ts` and none
+         has to mount its own. -->
+    <Toast />
   </template>
   <LoginView v-else-if="session.ready" />
 </template>

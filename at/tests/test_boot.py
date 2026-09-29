@@ -80,10 +80,12 @@ class FirstRun(unittest.TestCase):
         self.assertTrue((self.root / "Compartilhada").is_dir())
         self.assertTrue((self.root / "Harness").is_dir())
         self.assertTrue((self.root / "Cofre").is_dir())
+        self.assertTrue((self.root / "Convertidos").is_dir())
         self.assertEqual(list((self.root / "Projetos").iterdir()), [])
         self.assertEqual(list((self.root / "Compartilhada").iterdir()), [])
         self.assertEqual(list((self.root / "Harness").iterdir()), [])
         self.assertEqual(list((self.root / "Cofre").iterdir()), [])
+        self.assertEqual(list((self.root / "Convertidos").iterdir()), [])
 
     def test_a_folder_born_now_has_nothing_to_catch_up_on(self):
         # The stamp exists so the first start of an OLD folder differs from the

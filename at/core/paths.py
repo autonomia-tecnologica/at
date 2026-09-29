@@ -42,6 +42,10 @@ NAMES: dict[str, dict[str, str]] = {
     # A pasta que sela sozinha (TASK-154) — irmã de `prose`, e não dentro dela:
     # o que entra aqui não é material solto, é o que a pessoa quer cifrado.
     "cofre": {"pt_BR": "Cofre", "en_US": "Vault"},
+    # Onde o `at/convert/` pousa o que gerou (TASK-165) — irmã de `prose` pela
+    # mesma razão do Cofre: o que está aqui não é o material de origem, é o
+    # produto de uma conversão, e não se mistura com `Arquivos/`.
+    "convert": {"pt_BR": "Convertidos", "en_US": "Converted"},
     # The one whose name is the same word in both languages, like `App/`: a
     # person looking for what an agent loads looks for `harness` in either, and
     # pt_BR took the word whole. It is declared here rather than spelled in the
@@ -263,6 +267,17 @@ def cofre_dir() -> Path:
     it and the Cofre's own consumer is the one that answers.
     """
     return folder("cofre")
+
+
+def convert_dir() -> Path:
+    """`Convertidos/` — what `at/convert/` produced (TASK-165).
+
+    A sibling of `Arquivos/`, for the same reason `Cofre/` is one: a converted
+    DOCX or PDF is not source material, it is the OUTPUT of a conversion, and
+    mixing it into `Arquivos/` would make the tree it walks list its own
+    output back at it.
+    """
+    return folder("convert")
 
 
 def harness_dir() -> Path:

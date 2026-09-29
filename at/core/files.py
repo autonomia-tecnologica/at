@@ -99,6 +99,24 @@ def atomic_write_text(path: Path, text: str, mode: int | None = None) -> None:
     _writes += 1
 
 
+def atomic_write_bytes(path: Path, data: bytes) -> None:
+    """`atomic_write_text`'s twin, for content that is not text — a generated
+    DOCX or PDF (`at/convert/`), never a JSONL row or a prose file, which stay
+    on the text door so the `newline="\n"` promise keeps covering them.
+
+    Same shape, same guarantee: the temporary file sits BESIDE the target and
+    `os.replace` is what makes it appear, whole or not at all.
+    """
+    global _writes
+
+    guard(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(path.name + ".tmp")
+    temporary.write_bytes(data)
+    os.replace(temporary, path)
+    _writes += 1
+
+
 def mark_write() -> None:
     """Count a write that did not go through `atomic_write_text` — for content
     that is not a single file written whole. A restore's tar extraction is many

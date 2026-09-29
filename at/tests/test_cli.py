@@ -16,7 +16,7 @@ from pathlib import Path
 from unittest import mock
 
 from at import __version__, i18n
-from at.core import boot
+from at.core import boot, paths
 from at.ui.cli import OK, USAGE, _lang, _webapp, main, tree
 from at.ui.webapp import app as webapp
 
@@ -73,6 +73,47 @@ class Dispatch(unittest.TestCase):
         code, text = self.run_words("lang")
         self.assertEqual(code, OK)
         self.assertIn("pt_BR", text)
+
+
+class TheConvertWord(Dispatch):
+    """`at-cli convert <arquivo> --to pdf|docx` (TASK-165, fatia 2/4)."""
+
+    def _source(self, name: str = "nota.md") -> None:
+        (paths.prose_dir() / name).write_text("# Título\n\nUm parágrafo.", encoding="utf-8")
+
+    def test_it_writes_into_convertidos_and_says_so(self):
+        self._source()
+        code, text = self.run_words("convert", "nota.md", "--to", "pdf")
+        self.assertEqual(code, OK)
+        self.assertTrue((paths.convert_dir() / "nota.pdf").is_file())
+        self.assertIn("nota.pdf", text)
+
+    def test_docx_too(self):
+        self._source()
+        code, _ = self.run_words("convert", "nota.md", "--to", "docx")
+        self.assertEqual(code, OK)
+        self.assertTrue((paths.convert_dir() / "nota.docx").is_file())
+
+    def test_an_unknown_format_is_a_usage_error(self):
+        self._source()
+        code, _ = self.run_words("convert", "nota.md", "--to", "epub")
+        self.assertEqual(code, USAGE)
+
+    def test_a_file_outside_arquivos_is_refused_not_crashed(self):
+        code, _ = self.run_words("convert", "../fora.md", "--to", "pdf")
+        self.assertNotEqual(code, OK)
+
+    def test_a_file_that_does_not_exist_is_refused(self):
+        code, text = self.run_words("convert", "nao-existe.md", "--to", "pdf")
+        self.assertNotEqual(code, OK)
+        self.assertIn(i18n.tr("prose.not_served"), text)
+
+    def test_the_wrong_shape_is_a_usage_error(self):
+        self._source()
+        code, _ = self.run_words("convert", "nota.md")
+        self.assertEqual(code, USAGE)
+        code, _ = self.run_words("convert", "nota.md", "para", "pdf")
+        self.assertEqual(code, USAGE)
 
 
 class TheLanguage(unittest.TestCase):

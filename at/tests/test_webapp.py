@@ -848,6 +848,38 @@ class TheProseDoors(ServerCase):
         self.assertFalse(answer["error"].startswith(("prose.", "webapp.")))
 
 
+class TheConvertRoute(ServerCase):
+    """`POST /api/convert` — o botão direito do arquivo (TASK-165, fatia 4/4)."""
+
+    def setUp(self):
+        super().setUp()
+        (paths.prose_dir()).mkdir(exist_ok=True)
+        (paths.prose_dir() / "nota.md").write_text("# Título\n\nUm parágrafo.", encoding="utf-8")
+
+    def test_it_writes_into_convertidos_and_answers_the_name(self):
+        status, answer = self.post("/api/convert", {"path": "nota.md", "to": "pdf"})
+        self.assertEqual(status, 200)
+        self.assertEqual(answer["path"], "nota.pdf")
+        self.assertTrue((paths.convert_dir() / "nota.pdf").is_file())
+
+    def test_docx_too(self):
+        status, answer = self.post("/api/convert", {"path": "nota.md", "to": "docx"})
+        self.assertEqual(status, 200)
+        self.assertEqual(answer["path"], "nota.docx")
+
+    def test_an_unknown_format_is_a_bad_request(self):
+        status, _ = self.post("/api/convert", {"path": "nota.md", "to": "epub"})
+        self.assertEqual(status, 400)
+
+    def test_a_path_that_escapes_is_refused_like_any_other_prose_route(self):
+        status, _ = self.post("/api/convert", {"path": "../pyproject.toml", "to": "pdf"})
+        self.assertEqual(status, 404)
+
+    def test_a_missing_file_is_refused(self):
+        status, _ = self.post("/api/convert", {"path": "nao-existe.md", "to": "pdf"})
+        self.assertEqual(status, 404)
+
+
 class TheCofreDoor(ServerCase):
     """`GET /api/cofre` — a lista dos `.enc`, e só (TASK-156, fatia 3/3).
 
@@ -1486,6 +1518,7 @@ class TheCeiling(ServerCase):
             {"action": "edit", "id": 1, "values": {"text": "x"},
              "edited_at": "2030-01-01T00:00:00.000Z"},
         ]}),
+        ("/api/convert", {"path": "nota.md", "to": "pdf"}),
     )
 
     def setUp(self):

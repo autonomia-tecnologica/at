@@ -1,0 +1,10 @@
+{
+  "pt_BR": {
+    "done": "Convertido: {path}",
+    "toast": "arquivo {path} salvo em Convertidos"
+  },
+  "en_US": {
+    "done": "Converted: {path}",
+    "toast": "file {path} saved to Converted"
+  }
+}

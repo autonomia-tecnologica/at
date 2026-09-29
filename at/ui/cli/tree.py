@@ -51,6 +51,9 @@ WORDS: tuple[Node, ...] = (
         Node("make", "cli.backup.make.about"),
         Node("restore", "cli.backup.restore.about"),
     )),
+    # Markdown to DOCX/PDF, into `Convertidos/` (TASK-165). No sub-word: the
+    # format travels as `--to`, the same shape `webapp --port` already takes.
+    Node("convert", "cli.convert.about"),
     # The `services` word is NOT here, and its absence is the artifact boundary:
     # the environment of §7 left this binary whole and became `at-deploy`
     # (item 27), whose own tree carries it. `at-cli` keeps the folder and the app.
