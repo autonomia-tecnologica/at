@@ -98,11 +98,6 @@ class NotifierCase(unittest.TestCase):
     def plain(self, value: str) -> None:
         files.atomic_write_text(notifier.token_file(), f"{value}\n", mode=0o600)
 
-    def seal_phone(self, value: str, key: bytes = KEY) -> None:
-        files.atomic_write_text(
-            notifier.phone_file(), f"{vault.seal(value, key)}\n", mode=0o600
-        )
-
 
 class TheTokenFile(NotifierCase):
     def test_it_is_the_same_path_at_deploy_names(self):
@@ -210,15 +205,12 @@ class ThePush(NotifierCase):
 
 
 class TheRead(NotifierCase):
-    """`read`: o tópico lido por dentro, com a ponta `read-only` da ACL
-    (TASK-176, fatia 3/3).
+    """`read`: the topic read from inside, with the one credential the whole
+    product talks to the notifier with.
 
-    **A decisão que a fatia tomou é esta**: a credencial com que o WebApp LÊ é a
-    do celular, e não uma terceira conta. Uma conta nova seria sorteada pelo
-    ambiente — e sortear pede a Chave Principal, que nenhum WebApp tem —, então
-    a ponta que já existe é a única estrada que não precisa de uma. O que os
-    testes abaixo medem é que a leitura usa MESMO essa ponta, e que o token do
-    AT — que é `write-only` e não lê o próprio tópico — não serve para ela.
+    The account is `read-write`, so the same token this module publishes with
+    is the one it reads with — no second account, no second file, and no
+    Chave Principal a WebApp would have to ask for one.
     """
 
     def get(self, status: int = 200, body: bytes = b"[]",
@@ -241,30 +233,10 @@ class TheRead(NotifierCase):
     def address(self):
         return mock.patch.dict(os.environ, {notifier.NETWORK_ENV: "at-notifier:2586"})
 
-    def test_the_read_end_is_the_phones_file(self):
-        self.assertEqual(
-            notifier.phone_file(),
-            paths.services_dir() / "notifier" / "phone-token",
-        )
-
-    def test_the_read_end_is_sealed_under_the_same_scope_as_the_write_one(self):
-        # Um escopo, dois arquivos: a chave que o `up` deriva para o notificador
-        # abre as duas pontas, e é isso que faz a leitura não precisar de uma
-        # segunda chave nem de um envelope novo.
-        self.seal_phone("tk_celular")
-        self.assertEqual(notifier.phone_token(KEY), "tk_celular")
-        self.assertIsNone(notifier.phone_token(OTHER_KEY))
-
-    def test_the_at_token_is_not_the_read_credential(self):
-        # `write-only` é medido: o token do AT não lê o próprio tópico. Uma
-        # leitura que o mandasse no cabeçalho levaria um `403` do notificador.
-        self.seal("tk_do_at")
-        self.assertIsNone(notifier.phone_token(KEY))
-
     def test_with_no_address_it_does_not_reach_for_the_network(self):
         with mock.patch.dict(os.environ, {}, clear=False):
             os.environ.pop(notifier.NETWORK_ENV, None)
-            self.seal_phone("tk_celular")
+            self.seal("tk_do_at")
             messages, refusal = notifier.read(KEY)
         self.assertEqual(messages, [])
         self.assertEqual(refusal, "no_address")
@@ -275,23 +247,19 @@ class TheRead(NotifierCase):
         self.assertEqual(messages, [])
         self.assertEqual(refusal, "no_token")
 
-    def test_it_polls_the_topic_with_the_phones_bearer(self):
+    def test_it_polls_the_topic_with_the_accounts_bearer(self):
         sent = self.get()
         self.seal("tk_do_at")
-        self.seal_phone("tk_celular")
         with self.address():
             messages, refusal = notifier.read(KEY)
         self.assertEqual(refusal, "")
         request = sent[0]
         self.assertEqual(request.get_method(), "GET")
-        # O `poll` é o vocabulário do PRÓPRIO ntfy — o mesmo que o app do
-        # celular pergunta ao abrir a inscrição, e o mesmo com que a prova da
-        # leitura do §7f mede a estrada.
         self.assertEqual(
             request.full_url, "http://at-notifier:2586/at/json?poll=1"
         )
         self.assertEqual(
-            request.get_header("Authorization"), "Bearer tk_celular"
+            request.get_header("Authorization"), "Bearer tk_do_at"
         )
 
     def test_the_messages_come_back_as_what_the_page_draws(self):
@@ -301,7 +269,7 @@ class TheRead(NotifierCase):
              "click": "https://x", "actions": [{"action": "view"}]},
         ]).encode("utf-8")
         self.get(body=body)
-        self.seal_phone("tk_celular")
+        self.seal("tk_do_at")
         with self.address():
             messages, refusal = notifier.read(KEY)
         self.assertEqual(refusal, "")
@@ -315,14 +283,14 @@ class TheRead(NotifierCase):
 
     def test_an_entry_that_is_not_an_object_is_dropped(self):
         self.get(body=b'["nada", {"message": "oi"}]')
-        self.seal_phone("tk_celular")
+        self.seal("tk_do_at")
         with self.address():
             messages, _ = notifier.read(KEY)
         self.assertEqual(messages, [{"message": "oi"}])
 
     def test_a_refusal_is_the_status_and_never_a_crash(self):
         self.get(status=403)
-        self.seal_phone("tk_celular")
+        self.seal("tk_do_at")
         with self.address():
             messages, refusal = notifier.read(KEY)
         self.assertEqual(messages, [])
@@ -330,7 +298,7 @@ class TheRead(NotifierCase):
 
     def test_a_network_that_does_not_answer_is_the_same_kind_of_answer(self):
         self.get(boom=urllib.error.URLError("recusado"))
-        self.seal_phone("tk_celular")
+        self.seal("tk_do_at")
         with self.address():
             messages, refusal = notifier.read(KEY)
         self.assertEqual(messages, [])
@@ -338,7 +306,7 @@ class TheRead(NotifierCase):
 
     def test_an_answer_that_is_not_a_list_is_an_empty_topic(self):
         self.get(body=b'{"unexpected": true}')
-        self.seal_phone("tk_celular")
+        self.seal("tk_do_at")
         with self.address():
             messages, refusal = notifier.read(KEY)
         self.assertEqual(messages, [])
@@ -349,7 +317,7 @@ class TheRead(NotifierCase):
         # página, mas não são a mesma resposta — e é por isso que o segundo
         # campo existe.
         self.get(body=b"<html>nao e json</html>")
-        self.seal_phone("tk_celular")
+        self.seal("tk_do_at")
         with self.address():
             messages, refusal = notifier.read(KEY)
         self.assertEqual(messages, [])

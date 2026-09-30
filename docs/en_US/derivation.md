@@ -170,7 +170,6 @@ python3 -m at_deploy services up           # the container path: the services at
 python3 -m at_deploy services status       # what is standing, and on which image
 python3 -m at_deploy services down         # down; the folder stays
 python3 -m at_deploy services notify       # one alert through the notifier, proving the delivery
-python3 -m at_deploy services phone        # the phone's read token: drawn, and printed once
 python3 -m at_deploy services credential <name>   # the credential the gate proves, and the provider restarted
 .venv/bin/python -m unittest discover -t .   # both suites (the venv carries the checker)
 ```
@@ -182,7 +181,7 @@ Surfaces, and the state of each one today:
 | surface | how to reach it | state |
 |---|---|---|
 | `cli` | `at-cli <word>` | `help`, `version`, `webapp`, `admin`, `lang`, `ask` and the tables |
-| the deploy's `cli` | `at-deploy <word>` | `help`, `version` and the six `services` words plus the operator's two — `phone` and `credential`; it carries no WebApp, and its Wizard is item 27's third slice |
+| the deploy's `cli` | `at-deploy <word>` | `help`, `version` and the six `services` words plus the operator's own — `credential`; it carries no WebApp, and its Wizard is item 27's third slice |
 | Wizard | — | down until item 9 reaches slice 3: `at-cli` with no word prints the `help` |
 | WebApp | `at-cli webapp run` | reads and edits the tables, reaches the interpreter through the chat and the balloon, refuses to come up in a folder with no administrator and — when there is one — asks for the credential and gives no answer of the API before it is proved; and it is where the ceiling is MOVED: the People entry, with the actor and the role screens, the closed list a role is written against, and the machine credential AT mints |
 

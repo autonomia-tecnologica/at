@@ -25,11 +25,9 @@ from at.ui.words import Node, completion_words, section, width
 # one alert, through the credential `up` created, to the topic.
 #
 # `notify` and `credential` are the OPERATOR's acts (item 27), and they are
-# here for the same reason they were under the parent: the two things they
-# change are §7f's other end of the topic's ACL, and the credential §7b's gate
-# proves. `credential` takes an OPEN argument — a NAME; `notify` takes an
-# OPTIONAL closed one — with none it sends the test alert, and with `creds` it
-# shows the phone's credential instead (`at_deploy/cli.py`).
+# here for the same reason they were under the parent: the credential `notify`
+# posts with, and the credential §7b's gate proves. `credential` takes an
+# argument — a NAME; `notify` takes none (`at_deploy/cli.py`).
 _ENVIRONMENT: tuple[Node, ...] = (
     Node("up", "deploy.up.about"),
     Node("update", "deploy.update.about"),

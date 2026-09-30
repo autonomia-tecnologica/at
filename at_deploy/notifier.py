@@ -5,10 +5,21 @@ no token: `auth-default-access: deny-all`, and nothing else decides what a token
 may do (`services/environment.py`). This is the other half, and it is the half
 §3 asks a SCOPE for. §3's sentence is about a service that talks to AT and gets
 a delimited role; **the mirror of it is here** — AT talks to the SERVICE, and
-the credential it carries does one thing: publish to the topic. Measured against
-the image at the pin: with `ntfy access at at write-only`, the token answers
-`200` publishing to `at`, `403` publishing to any other topic, and `403`
-reading its own — the three answers the scope is, in that order.
+the credential it carries publishes AND reads the topic — one account, because
+the edge is now what decides who reaches it at all (see below). Measured
+against the image at the pin: with `ntfy access at at read-write`, the account
+answers `200` on the topic `at`, and `403` on any other — the scope the gate
+mirrors.
+
+**Basic on the notifier's own name is what changed this** (the gate now fronts
+it — `at_deploy/environment.py`'s `_caddy_conf`). Authelia's forward-auth takes
+an `Authorization: Basic` header on the request itself instead of redirecting,
+so the person's own admin account — the SAME Chave Principal that logs into
+`at.local` — is what proves a phone at `ntfy.at.local` too: no second ntfy
+account for it, and no credential of its own to print. Once the edge has
+proved the person, it swaps whatever `Authorization` the client sent for the
+M2M credential below and hands the request straight to the notifier — the
+notifier never sees the person's own credential, only AT's.
 
 **The credential is AT's, drawn by AT, and it lives in a `0600` file — SEALED.**
 A token is a SECRET, and the vault (§4) took the file over: what it keeps is the
@@ -20,78 +31,28 @@ credencial volta a ser lida com a Chave Principal, e é isso que faz uma pasta
 copiada publicar de novo (§3, a promessa do backup).
 
 **Quem lê o valor claro é o `at-deploy`, de FORA, e é ele que pede a Chave
-Principal.** Nenhum container lê as duas pontas — o notificador monta só o
+Principal.** Nenhum container lê a credencial — o notificador monta só o
 `server.yml`, e a fatia 2 do item 50 mediu isso —, então o diretório de execução
-não é o lugar delas: quem as lê é o processo que roda o `up`, o `notify` e o
-`notify creds`, e nenhum dos três compartilha a chave derivada do outro. Cada
+não é o lugar dela: quem a lê é o processo que roda o `up` e a entrega
+(`notify`), e nenhum dos dois compartilha a chave derivada do outro. Cada
 leitura abre o envelope com a Chave Principal do PRÓPRIO ato — a mesma porta da
-subida (`environment.unlock`, e `sealing_key` para quem SELA) —, e **um alerta
-sem Chave Principal não sai**. A alternativa era pior das
-duas formas: deixar em claro um valor numa pasta que é copiada sem criptografia,
-ou mandar o envelope no cabeçalho e deixar o notificador recusar o
-`Authorization`. E o preço é o de §7f, dito: a entrega é a parte de melhor
-esforço, e um alerta que não sai é um alerta que não sai.
+subida (`environment.unlock`) —, e **um alerta sem Chave Principal não sai**. A
+alternativa era pior das duas formas: deixar em claro um valor numa pasta que é
+copiada sem criptografia, ou mandar o envelope no cabeçalho e deixar o
+notificador recusar o `Authorization`. E o preço é o de §7f, dito: a entrega é
+a parte de melhor esforço, e um alerta que não sai é um alerta que não sai.
 
 **Where the value may travel, and where it may not.** The account ntfy demands
-has a password, so AT draws one and hands it over on the STDIN of `podman exec
--i` — never in the argv, which the whole machine reads through `ps`. The token
-itself is drawn BY ntfy inside the container and comes back on STDOUT, which is
-the one place AT ever reads it; the argv never carries it. And AT's own
+has a password, and AT draws one too — but not here: it is the SAME value
+Caddy already carries in its own config, drawn once before any container
+exists (`environment.draw_notify_gate`), because the manifest starts Caddy
+before the notifier and nothing here can wait for ntfy to hand one back. This
+module only recovers it (`environment.notify_gate_password`) and hands it to
+`podman exec -i`'s STDIN — never in the argv, which the whole machine reads
+through `ps`. The token itself is drawn BY ntfy inside the container and comes
+back on STDOUT, which is the one place AT ever reads it. And AT's own
 credential is never printed: the messages name the FILE, `status` says whether
 it exists, and the delivery says what the notifier answered.
-
-**The phone's credential is printed on demand, with the Chave Principal as the
-door.** The ACL has two ends, and §7f names the other one: AT publishes, the
-phone reads. That credential is the PERSON'S, and there is no way for it to
-reach a phone except through the person's eyes — but "reach a phone" happens
-more than once in a credential's life (a new phone, a re-installed app, a
-person who did not save the scrollback), so a value sealed behind the same
-Main Key that opens every other secret this vault keeps does not need a
-print-once rule on TOP of the seal. **`at-deploy notify creds`**
-opens it exactly like `push` opens AT's own token: the Main Key is asked, the
-envelope is unsealed, and what comes back is the value — every time, not the
-first time (2026-09-28, replacing the earlier once-only rule). Its scope is
-the mirror of AT's — `read-only` on the topic, and nothing else — so the two
-credentials §6 declares neither serve for the other's work nor for anything
-beyond the topic.
-
-**Duas credenciais para o celular, e não uma** (2026-09-28): o app do ntfy não
-tem campo para um token cru — o login dele pede usuário e senha, e o campo do
-usuário não aceita ficar vazio, que é a forma de que o truque do ntfy
-(`Authorization` via Basic com usuário vazio) precisa. Então a senha da conta
-`phone`, que `_draw` sempre sorteou e que antes se jogava fora, agora fica —
-selada do mesmo jeito que o token —, e o app loga com a conta de verdade:
-usuário `phone`, esta senha. O token continua existindo para quem tem como
-mandar um cabeçalho (`reached`, a prova deste arquivo).
-
-**E o selo não fica no meio da impressão.** O envelope é escrito no arquivo, e o
-que vai para a tela é o valor DESTA abertura — sorteado agora, ou lido de volta
-com a Chave Principal, tanto faz: quem tem a Chave Principal já provou quem é, e
-reler não é um segredo maior do que sortear. A única coisa que não sai em claro
-é o arquivo:
-o que fica na pasta é sempre o envelope, e é a Chave desta chamada que o abre
-(`subscribe`).
-
-**The road is a NAME, and the certificate on it is AT's own.** §7f's sentence
-that the notifier does not go behind the gate is what lets a headless phone
-connect at all; §7a's names are what it connects TO. The phone points at
-`ntfy.at.local`, on `443`, and the edge serves it with the certificate it issues
-per name (`tls internal`). **E quem precisa confiar nesse certificado é o APP e
-não o aparelho**, e isso é uma medição: no Android um app moderno ignora a CA
-que a pessoa instalou no sistema, e o app do ntfy tem a gestão de certificados
-DELE, com certificado próprio desde a v1.22.1. Então o que a pessoa importa é a
-CA do AT — `environment.authority_file` é nomeado por causa disto —, e a
-mensagem do celular diz qual arquivo é e onde ele se importa. O mesmo endereço
-que a pessoa vai digitar é o da prova: `phone_url` é o nome, e não o laço.
-
-**A leitura é PROVADA, e é o que a palavra do celular promete.** `reached` e
-`turned_away` são as duas metades — o tópico responde a quem traz o token do
-celular, e recusa quem não traz nenhum —, perguntadas pelo nome, na estrada que
-o celular vai usar. Uma prova que não alcança nada não é uma prova: `unproved`
-nomeia a metade que não fechou, e `subscribe` fecha `PHONE_UNPROVED` quando
-alguma não fecha. O token FICA — ele foi sorteado, e o arquivo é dele —, e o que
-não fechou é a leitura, dita com a estrada inteira à mostra para quem está com o
-celular na mão.
 
 **The service's own folder is where the token sits, and the container sees it.**
 That is the same place the configuration AT wrote for ntfy already lives, and
@@ -103,21 +64,22 @@ nothing else — which is the scope above doing its job.
 
 from __future__ import annotations
 
+import base64
 import re
-import secrets
 import time
 import urllib.error
 import urllib.request
 from pathlib import Path
 
-from at.core import files, gate
+from at.core import files
 from at.encryption import vault
 from at.i18n import tr
 from at_deploy import environment, podman
 
 # The topic, and the account AT's credential belongs to. The topic is the
-# NAME and not the brand: the phone subscribes to it and AT publishes to it,
-# and it is the subject §3's per-topic scope is written about.
+# NAME and not the brand: the phone reaches it through the edge now (the
+# module's docstring), and it is the subject §3's per-topic scope is written
+# about.
 TOPIC = "at"
 USER = "at"
 
@@ -125,61 +87,26 @@ USER = "at"
 # whose it is. The file carries the ENVELOPE of the value and nothing beside it.
 LABEL = "at"
 
-# §3's delimited scope, in ntfy's own word for it: AT publishes and does
-# nothing else — it does not read the topic back, and it does not reach another
-# one. Measured (the module's docstring).
-SCOPE = "write-only"
-
-# The other end of the ACL (§7f), and it is another ACCOUNT and not another
-# token of the same one: ntfy's access is per user and per topic, so one account
-# cannot be `write-only` and `read-only` on the same topic at once — and the two
-# ends §6 declares are two credentials, each with the scope its own work needs.
-PHONE_USER = "phone"
-PHONE_LABEL = "phone"
-PHONE_SCOPE = "read-only"
+# §3's delimited scope, in ntfy's own word for it: the account publishes AND
+# reads, and reaches no other topic. It is `read-write` and not `write-only`
+# because it is now the ONE account the edge's M2M credential authenticates
+# as (the module's docstring) — everybody who reaches the topic from outside
+# does so through it, proved first by the Chave Principal at the edge.
+SCOPE = "read-write"
 
 # Where the credential lives: the service's own state folder (`environment.state`),
 # which is the one folder the container mounts and the one the backup covers.
 TOKEN_FILE = "token"
-# The phone's, beside it and inside the same folder — so the copied folder comes
-# back with BOTH ends of the ACL, which is what §3's backup promise costs.
-PHONE_FILE = "phone-token"
 
-# The phone's ACCOUNT PASSWORD, kept where the token is (2026-09-28). ntfy's own
-# apps do not offer a way to log a subscription in with a bare token — the
-# Login dialog asks for a username and a password, and the username field
-# cannot be left blank there, which is the one shape ntfy's basic-auth-as-token
-# trick needs (MEASURED: `curl -u ':<token>'` answers `200`, `curl -u
-# 'x:<token>'` answers `401` — the username field is not ignored, it has to be
-# EMPTY, and an app's form that refuses an empty field cannot send that). So the
-# password `_draw` used to draw and forget is kept too, sealed the same way as
-# the token: the app logs in with the real account, `phone` and this password,
-# instead of routing the token through a form that cannot carry it.
-PHONE_PASSWORD_FILE = "phone-password"
-
-# O escopo da chave do cofre que sela as duas pontas (§4: uma chave por serviço
+# O escopo da chave do cofre que sela a credencial (§4: uma chave por serviço
 # ou finalidade). É o nome do SERVIÇO dono do valor — o mesmo com que o
-# `environment` sela todo valor de um serviço —, e não um nome novo: as duas
-# credenciais são do notificador, e é sob ele que a Chave Principal as abre.
+# `environment` sela todo valor de um serviço.
 VAULT_SCOPE = environment.NOTIFIER
 
-# A leitura do celular, no vocabulário do PRÓPRIO ntfy: um `poll` do tópico
-# devolve o que está na memória dele e fecha. É o que o app faz ao abrir a
-# inscrição, e é por ele que a prova pergunta (`_close`).
-POLL = "json?poll=1"
-
-# As duas respostas que a prova lê. Com o token do celular o tópico responde;
-# sem token nenhum ele recusa, que é o que `auth-default-access: deny-all`
-# promete e o que faz do token a porta. Os dois números são MEDIDOS contra a
-# imagem do pino, como o escopo — o docstring do módulo conta a medição.
-READ = 200
-NO_TOKEN_REFUSED = 403
-
-# How much password AT draws for the account it creates. AT's own account
-# still has nobody who logs in with it — the credential that matters there is
-# the token — but the phone's is kept (`PHONE_PASSWORD_FILE`), so this only has
-# to be a value nobody can guess, not one a person types.
-PASSWORD_BYTES = 32
+# How much password Caddy's M2M credential draws — read by `environment
+# .draw_notify_gate`, named here because this is the module that turns it back
+# into the account's password (`decode_m2m`).
+M2M_BYTES = 32
 
 # What every alert announces itself with. At the default priority a message
 # arrives silently on the phone, and a message nobody notices is a message not
@@ -197,16 +124,37 @@ TIMEOUT = 10.0
 # alphabet tomorrow still parses instead of silently answering none.
 TOKEN_WORD = re.compile(r"tk_[a-z0-9]{10,}")
 
-# The outcomes of `provision`, of `subscribe`, and of `push`. The `cli` is what
-# turns the push's into an exit code.
+# The outcomes of `provision` and of `push`. The `cli` is what turns the
+# push's into an exit code.
 DRAWN = "drawn"       # AT had none, and made one
 HELD = "held"         # AT already had one, and it was left alone
-PHONE_DRAWN = "phone_drawn"  # the phone had none, and got one — shown
-PHONE_HELD = "phone_held"    # the phone already had one — shown again, with the Main Key
-PHONE_UNPROVED = "phone_unproved"  # the token is drawn, and the read is not proved
 SENT = "sent"         # the notifier took the alert
 NO_TOKEN = "no_token"  # nothing to authenticate with
 FAILED = "failed"     # it was asked and did not happen
+
+
+def encode_m2m(password: str) -> str:
+    """`user:password`, base64 — the shape an `Authorization: Basic` header
+    carries, and the value Caddy's M2M credential IS (`environment
+    .draw_notify_gate`).
+
+    **It is computed once, at DRAW time, and never at read time.** Opening a
+    sealed envelope only ever replaces the sealed text with the clear one
+    (`environment._opened`) — it cannot wrap what comes out in `user:` and
+    base64 it afterwards. So what gets sealed is already this shape, and the
+    Caddyfile embeds it exactly as read.
+    """
+    return base64.b64encode(f"{USER}:{password}".encode("ascii")).decode("ascii")
+
+
+def decode_m2m(value: str) -> str:
+    """The raw password a drawn M2M value carries — what `ntfy user add` takes.
+
+    The reverse of `encode_m2m`, and the only place it runs: once, when the
+    notifier stands and `provision` creates the account with the SAME
+    password Caddy already has in its own config.
+    """
+    return base64.b64decode(value).decode("ascii").split(":", 1)[1]
 
 
 def token_file() -> Path:
@@ -217,16 +165,6 @@ def token_file() -> Path:
     `App/services/<service>/` — and what makes the credential survive a backup.
     """
     return environment.state(environment.NOTIFIER) / TOKEN_FILE
-
-
-def phone_file() -> Path:
-    """`App/services/notifier/phone-token` — the phone's credential (§7f).
-
-    The same folder as AT's and for the same reason: the state of a service
-    lives under `App/services/<service>/`, so a copied folder carries both ends
-    of the ACL and comes back able to publish and to read.
-    """
-    return environment.state(environment.NOTIFIER) / PHONE_FILE
 
 
 def _held(path: Path) -> str | None:
@@ -307,127 +245,6 @@ def token(key: bytes | None) -> str | None:
 def write_token(value: str, key: bytes) -> Path:
     """Keep AT's credential SEALED — never printed, read only by the POST."""
     return _sealed(token_file(), value, key)
-
-
-def has_phone() -> bool:
-    """Se a pasta guarda o token do celular — sem abri-lo (`has_token`)."""
-    return _held(phone_file()) is not None
-
-
-def phone_token(key: bytes | None) -> str | None:
-    """O valor do token do celular, aberto com a Chave desta leitura.
-
-    It IS printable, and it is printed in exactly one place (`subscribe`) — e de
-    lá sai o valor SORTEADO, nunca uma segunda leitura. O que esta porta responde
-    é o que a prova da leitura precisa, e `status` diz o arquivo.
-    """
-    return _value(_held(phone_file()), key)
-
-
-def write_phone_token(value: str, key: bytes) -> Path:
-    """Keep the phone's credential beside AT's, sealed at the same `0600`."""
-    return _sealed(phone_file(), value, key)
-
-
-def phone_password_file() -> Path:
-    """`App/services/notifier/phone-password` — the account ntfy's own app logs in with.
-
-    Beside the token, in the same folder, for the same reason (`phone_file`):
-    the two are the phone's whole ACL end, and a copied folder carries both.
-    """
-    return environment.state(environment.NOTIFIER) / PHONE_PASSWORD_FILE
-
-
-def has_phone_password() -> bool:
-    """Se a pasta guarda a senha da conta `phone` — sem abri-la (`has_phone`)."""
-    return _held(phone_password_file()) is not None
-
-
-def phone_password(key: bytes | None) -> str | None:
-    """O valor claro da senha da conta `phone`, aberto com a Chave desta leitura."""
-    return _value(_held(phone_password_file()), key)
-
-
-def write_phone_password(value: str, key: bytes) -> Path:
-    """Keep the phone's account password sealed, beside its token."""
-    return _sealed(phone_password_file(), value, key)
-
-
-# ------------------------------------------------------ the phone's read ---
-
-def phone_url() -> str:
-    """O endereço que o CELULAR usa — o nome, na borda, e nunca o laço.
-
-    É o que vai para o aparelho (`notifier_public_url`) com o caminho da leitura
-    no vocabulário do ntfy (`POLL`). **A prova pergunta AQUI de propósito**: a
-    estrada que precisa ser provada é a do celular — o nome, na 443, com o
-    certificado da borda —, e o laço é a estrada do AT (`target`), que funciona
-    por construção e não diria nada sobre o aparelho.
-    """
-    return f"{environment.notifier_public_url()}/{TOPIC}/{POLL}"
-
-
-def _ask(headers: dict[str, str], answer: gate.Answer | None) -> int | None:
-    """A pergunta da prova, na estrada do celular e pelo transporte DA BORDA.
-
-    O transporte padrão é o do ambiente (`through_edge`) e não o do portão
-    (`gate.real`), e a diferença é MEDIDA: o nome que o celular digita não é
-    resolvido pela máquina que roda o comando — o resolver dela não é o do
-    aparelho —, então perguntar ao nome pelo `gate.real` responderia "não deu
-    para saber" sobre uma borda de pé. O que a estrada do celular tem de seu é o
-    NOME no SNI e no `Host`; o endereço da conexão é da rede do ambiente.
-    """
-    return gate.ask(phone_url(), headers, answer or environment.through_edge)
-
-
-def reached(answer: gate.Answer | None = None, key: bytes | None = None) -> bool:
-    """Com o token do celular, o tópico responde pelo nome — a primeira metade.
-
-    O token viaja no cabeçalho e nunca no argv, a mesma regra que a entrega
-    segue, e o que se lê é o STATUS — a resposta que o ntfy dá ao app. Um
-    "nada respondeu" (`None`) não é nem um nem outro: é "não deu para saber", e
-    é por isso que a comparação é com `READ` e não com "diferente de erro".
-
-    **`key` é a chave derivada desta leitura** (§4): o que a pasta guarda é o
-    envelope, e a prova precisa do valor que o celular guardou. Sem ela um token
-    selado não abre, e a metade não fecha — que é a resposta honesta de quem não
-    abriu o que a pasta guarda.
-    """
-    held = phone_token(key)
-    if held is None:
-        return False
-    return _ask({"Authorization": f"Bearer {held}"}, answer) == READ
-
-
-def turned_away(answer: gate.Answer | None = None) -> bool:
-    """Sem token nenhum, o tópico recusa — a outra metade, e a que faz a porta.
-
-    É o `auth-default-access: deny-all` medido: quem chega sem credencial leva
-    `NO_TOKEN_REFUSED`, e é isso que diz que a ACL por tópico é a autenticação
-    deste serviço. Um `200` aqui seria o notificador aberto a quem chegasse.
-    """
-    return _ask({}, answer) == NO_TOKEN_REFUSED
-
-
-def unproved(answer: gate.Answer | None = None,
-             key: bytes | None = None) -> str | None:
-    """A sentença da metade que não fechou — ou `None` quando as duas fecham.
-
-    As duas são perguntadas na ordem em que o celular as encontra, e a caminhada
-    PARA na primeira que não fecha: perguntar a segunda depois de o token não
-    ler seria perguntar sobre uma porta que já não se sabe fechada.
-    """
-    if not reached(answer, key):
-        return "services.notifier.phone.unread"
-    if not turned_away(answer):
-        return "services.notifier.phone.unrefused"
-    return None
-
-
-def proved(answer: gate.Answer | None = None,
-           key: bytes | None = None) -> bool:
-    """Se o celular lê o notificador pelo nome — as duas metades de uma vez."""
-    return unproved(answer, key) is None
 
 
 def target() -> str:
@@ -551,7 +368,7 @@ def _inside(*argv: str, **kw: object):
                        "ntfy", *argv], **kw)
 
 
-def _draw(user: str, label: str, scope: str) -> tuple[str, str] | None:
+def _draw(user: str, label: str, scope: str, password: str) -> str | None:
     """The four calls that make ONE credential in the notifier, in this order.
 
     1. **the account starts clean.** `user remove` first, because the only way a
@@ -559,25 +376,23 @@ def _draw(user: str, label: str, scope: str) -> tuple[str, str] | None:
        rotation: removing the account takes its tokens with it, so the credential
        that was replaced stops working instead of staying valid in a database
        nobody looks at. A missing account is a failure here and not an error.
-    2. **the account.** ntfy refuses a user with no password, so AT draws one,
-       hands it over on STDIN — never in the argv.
+    2. **the account.** ntfy refuses a user with no password, so AT hands one
+       over on STDIN — never in the argv. `password` is not drawn here: it is
+       Caddy's OWN M2M credential (`environment.notify_gate_password`), because
+       the two have to agree on the same value or the edge's Basic auth fails
+       against the account this creates.
     3. **the scope.** §3 asks least privilege for whoever reaches AT, and the
        mirror of it is this line: the account reaches the topic with the scope
        its own work needs and does nothing else.
     4. **the token**, drawn by ntfy itself and read off its own line. AT never
-       invents the value, so it never has to write it into an argv.
-
-    Returns `(token, password)`, and not the token alone (2026-09-28): the
-    caller decides what to keep. AT's own account still has nobody who logs in
-    with it (`provision` throws the password away, as it always did); the
-    phone's does, because ntfy's own apps have no field for a bare token
-    (`PHONE_PASSWORD_FILE`'s comment).
+       invents the value, so it never has to write it into an argv. It is not
+       what the edge authenticates with — that is the password above — but the
+       delivery still uses it (`push`), so it is drawn all the same.
 
     `None` is a step that refused, and it has already been said in the caller's
-    own word for WHICH credential was being made (`subscribe`, `provision`).
+    own word for WHICH call failed (`provision`).
     """
     _inside("user", "remove", user)
-    password = secrets.token_urlsafe(PASSWORD_BYTES)
     added = _inside("user", "add", "--role", "user", user,
                     input=f"{password}\n{password}\n")
     if added.returncode != 0:
@@ -594,19 +409,25 @@ def _draw(user: str, label: str, scope: str) -> tuple[str, str] | None:
     if created.returncode != 0 or found is None:
         print(tr("services.notifier.undrawn", call=f"ntfy token add {user}"))
         return None
-    return found.group(0), password
+    return found.group(0)
 
 
 def provision(key: bytes | None) -> str:
     """Create AT's credential in the notifier — the environment's own act (§7f).
 
-    The write end of the ACL, and it is the environment that draws it: it is
-    made when the notifier comes up, by the four calls `_draw` names, and kept
+    Made when the notifier comes up, by the four calls `_draw` names, and kept
     in a `0600` file beside the notifier's own state — **selado**, porque um
     valor que o AT sorteia vai para a pasta como o envelope do cofre (§4, item
     50). `key` é a chave derivada desta subida, e ela vem do `up`, que a pediu
     antes de qualquer container: o que falta aqui é exatamente o que faz o `up`
     pedir a Chave Principal (`environment`).
+
+    **The account's password is not drawn here — it is READ.** Caddy's own M2M
+    credential was drawn before ANY container, because the manifest starts
+    Caddy before the notifier and nothing here could wait for ntfy to hand one
+    back (`environment.draw_notify_gate`). This is where that same value
+    becomes the account ntfy actually holds — the one act that makes the edge's
+    Basic auth and the notifier's own user table agree.
 
     An environment that already has a credential is left exactly as it is: the
     file is the truth, and whoever wants a new one deletes it and brings the
@@ -633,129 +454,16 @@ def provision(key: bytes | None) -> str:
                  where=f"{environment.NOTIFIER_DATA}/{environment.NOTIFIER_AUTH}"))
         return FAILED
 
-    drawn = _draw(USER, LABEL, SCOPE)
-    if drawn is None:
+    password = environment.notify_gate_password(key)
+    if password is None:
+        print(tr("services.notifier.unsealed", where=environment.notify_gate_file()))
         return FAILED
 
-    token, _password = drawn
+    token = _draw(USER, LABEL, SCOPE, password)
+    if token is None:
+        return FAILED
+
     write_token(token, key)
     print(tr("services.notifier.drawn", where=token_file(), topic=TOPIC,
              scope=SCOPE))
     return DRAWN
-
-
-def _close(answer: gate.Answer | None, key: bytes | None) -> bool:
-    """Diz a prova da leitura, e responde se ela fechou.
-
-    **Uma prova que não alcança nada não é uma prova.** `unproved` nomeia qual
-    das duas metades não fechou, e o veredito sai com a estrada inteira à mostra
-    — a URL, o tópico e o arquivo da CA —, porque quem lê isto está com o
-    celular na mão e o que ele precisa saber é o que conferir no aparelho.
-    `key` é a Chave desta leitura: o token da pasta é o envelope, e é com ela que
-    a metade que lê abre o que o celular guardou.
-    """
-    reason = unproved(answer, key)
-    if reason is None:
-        print(tr("services.notifier.phone.proved", url=phone_url(),
-                 topic=TOPIC))
-        return True
-    print(tr(reason, url=phone_url(), topic=TOPIC,
-             host=environment.notifier_host(),
-             authority=environment.authority_file(),
-             code=NO_TOKEN_REFUSED))
-    return False
-
-
-def subscribe(answer: gate.Answer | None = None,
-              secret: environment.Ask | None = None) -> str:
-    """The phone's credential — drawn if there is none, shown either way (§7f).
-
-    §6 says it in one line: in `ntfy` the ACL is per topic, **AT publishes and
-    the phone reads**, and neither token serves for anything else. The write end
-    is `provision`'s and happens with the environment; this is the read end, and
-    it is the OPERATOR's act (item 27): the phone is not the machine the
-    environment runs on, so nothing here can be decided by bringing the
-    environment up.
-
-    **It is shown every time, on demand, and that is the point of the word**
-    (`at-deploy notify creds`, 2026-09-28). The earlier shape of this
-    door printed the value once and refused to again — the file was "where a
-    person reads it a second time", which meant reading it back by hand, past
-    the vault, past the point of the vault existing at all. That is not a
-    security property, only friction, and a person who still has the Main Key
-    has already proven who they are — so asking again is the same
-    question `unlock` and `sealing_key` already answer, not a second gate.
-
-    **Two values now, and not one.** ntfy's own apps do not have a field for a
-    bare token — the Login dialog asks for a username and password, and the
-    username cannot be left empty there, which is the one shape ntfy's
-    basic-auth-as-token trick needs (`PHONE_PASSWORD_FILE`'s comment). So the
-    account's real password is kept too, sealed beside the token: the app logs
-    in with `phone` and this password, and the token stays for whoever's client
-    DOES take a header (`Authorization: Bearer`, `reached`).
-
-    Two scopes and not one, and it is measured (§ the module's docstring): the
-    account may READ the topic and nothing else — it cannot publish to it, and
-    it cannot reach another one. An environment that already has BOTH files is
-    left alone — no re-draw, no rotation — and the way to a new pair is
-    deleting them and running this again, which is the rotation `_draw` starts
-    clean for.
-
-    **A pasta que só tinha o token (o formato de antes do par) entra pela mesma
-    porta**: falta a senha, e é a MESMA condição de "não há credencial ainda" —
-    a rotação que `_draw` sempre começa com `user remove` cuida disso de graça,
-    porque o token velho para de valer no mesmo golpe que cria o par novo.
-    Nenhuma migração à parte, e nenhum estado onde só uma metade existe.
-
-    **A leitura é PROVADA no fim do ato, e é o que a palavra promete** (§7f): o
-    celular não é a máquina onde o ambiente roda, então "o token existe" não é a
-    mesma coisa que "o celular lê". As duas metades são perguntadas pelo NOME, na
-    borda (`_close`), e o ato termina `PHONE_UNPROVED` quando alguma não fecha —
-    o token fica, porque ele foi sorteado, e o que não fechou é a leitura. É a
-    mesma regra da entrega: `notify` também recusa quando o alerta não sai.
-
-    **E ele PEDE a Chave Principal, porque ele SELA e porque ele ABRE.** O que a
-    pasta guarda é o envelope (§4, item 50): o sorteio que sai daqui vai selado,
-    e a leitura desta chamada, ou de qualquer outra depois dela, abre o que está
-    lá — as duas coisas precisam da Chave, e é por isso que esta porta pergunta
-    SEMPRE (`environment.sealing_key`), e não a que pergunta só quando a pasta
-    tem o que abrir.
-    """
-    if not podman.present():
-        # A machine with no runtime has no notifier to ask, and there is nothing
-        # to wait for: `up` is what names the two ways out, and this word is the
-        # operator's and can be reached before the environment ever stood. **E
-        # ele vem ANTES da Chave Principal de propósito**: sem runtime a prova não tem por
-        # onde ser feita, e perguntar a Chave Principal antes seria pedir o que ainda não
-        # faz falta.
-        print(tr("services.no_podman.status"))
-        return FAILED
-    key, refusal = environment.sealing_key(secret)
-    if refusal is not None:
-        return FAILED
-    if has_phone() and has_phone_password():
-        # `key` já provou que abre tudo o que a pasta guarda selado
-        # (`environment._ask_phrase`, chamado por `sealing_key` acima, confere
-        # as DUAS pontas do notificador — `environment._sealed_files`): o que
-        # seria uma Chave Principal errada já se recusou lá, antes de chegar aqui.
-        token, password = phone_token(key), phone_password(key)
-        print(tr("services.notifier.phone.held", token=token, password=password,
-                 where=phone_file(), url=environment.notifier_public_url(),
-                 topic=TOPIC, authority=environment.authority_file()))
-        return PHONE_HELD if _close(answer, key) else PHONE_UNPROVED
-    if not _ready():
-        print(tr("services.notifier.not_ready",
-                 where=f"{environment.NOTIFIER_DATA}/{environment.NOTIFIER_AUTH}"))
-        return FAILED
-
-    drawn = _draw(PHONE_USER, PHONE_LABEL, PHONE_SCOPE)
-    if drawn is None:
-        return FAILED
-
-    token, password = drawn
-    write_phone_token(token, key)
-    write_phone_password(password, key)
-    print(tr("services.notifier.phone.drawn", token=token, password=password,
-             topic=TOPIC, scope=PHONE_SCOPE, url=environment.notifier_public_url(),
-             authority=environment.authority_file(), where=phone_file()))
-    return PHONE_DRAWN if _close(answer, key) else PHONE_UNPROVED

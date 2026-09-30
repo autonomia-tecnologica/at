@@ -1,12 +1,11 @@
 """The deploy's Wizard: §7 walked in order, over the words the `cli` already has.
 
-Three things are proved here and nothing else. **§5's one-way rule** — every step
+Two things are proved here and nothing else. **§5's one-way rule** — every step
 is a word the `cli` offers, reached through the `cli`'s own dispatch, so the
-screen cannot do anything the command line cannot. **The sequence holds itself
-back** — a required step that did not close does not open the next one, and
-"closed" is the environment standing and not the exit code, which is the whole
-reason §7a's way out needed its own answer. And **the phone's credential is
-shown on demand** (2026-09-28), by the same code the `cli` prints it with.
+screen cannot do anything the command line cannot. And **the sequence holds
+itself back** — a required step that did not close does not open the next one,
+and "closed" is the environment standing and not the exit code, which is the
+whole reason §7a's way out needed its own answer.
 
 The window is the `tkinter` that never draws, the way `at/tests/test_wizard.py`
 does it: this machine HAS a display, so a test that opened a real one would be a
@@ -34,19 +33,23 @@ from at_deploy import notifier, podman, vpn, wizard
 from at_deploy.cli import OK, REFUSED, USAGE, main
 
 # The token the fake notifier draws, and it is nobody's: what the tests read is
-# where it WENT — into the window, once.
+# where it WENT.
 DRAWN_TOKEN = "tk_abcdefghijklmnopqrstuvwxyz012"
-TOKEN_LINE = f"token {DRAWN_TOKEN} created for user phone, never expires"
+TOKEN_LINE = f"token {DRAWN_TOKEN} created for user at, never expires"
 
 
-def edge(url: str, headers: dict[str, str]) -> int:
-    """A borda, sem socket — o seam `gate.Answer` da prova do celular (§7f).
+class Answer:
+    """A stand-in for the notifier's HTTP answer, for the `notify` step's own
+    push — no socket, the way every other suite fakes `urlopen`."""
 
-    O que se prova aqui não é a PROVA — ela é do `test_operator` —, e sim que o
-    passo da janela a alcança: `notify creds` pergunta pelo nome ao fim do ato,
-    e um `Tk` não pode abrir um socket para responder.
-    """
-    return 200 if headers.get("Authorization") else 403
+    def __init__(self, status: int = 200) -> None:
+        self.status = status
+
+    def __enter__(self) -> "Answer":
+        return self
+
+    def __exit__(self, *exc: object) -> bool:
+        return False
 
 
 CREDENTIAL = "uma-frase-bem-longa"
@@ -289,14 +292,11 @@ class TheStepsAreTheClisWords(unittest.TestCase):
         # A list, so that a step added or moved here is a decision somebody makes
         # on purpose: §7a's is first because nothing stands before it, §7b's
         # follows (a witness has to exist before the gate can be proved), and
-        # §7f's two close it.
+        # §7f's closes it.
         self.assertEqual([step.word for step in wizard.STEPS],
-                         ["up", "credential", "switch", "notify", "notify"])
-        # `notify` twice, and not a duplicate: §7f's two acts share the CLI word
-        # (2026-09-28) — the last Step's `argv` is what makes the second one
-        # `notify creds` and not the same screen run again.
+                         ["up", "credential", "switch", "notify"])
         self.assertEqual([step.argv for step in wizard.STEPS],
-                         [(), (), (), (), ("creds",)])
+                         [(), (), (), ()])
 
     def test_every_step_is_a_word_the_cli_offers(self):
         # `cli.WORDS` is read off the tree that OFFERS the words, so a step that
@@ -327,7 +327,7 @@ class TheStepsAreTheClisWords(unittest.TestCase):
         # comes back as text — the screen draws it and adds nothing.
         seen: list[list[str]] = []
 
-        def door(argv, ask=None, secret=None, answer=None) -> int:
+        def door(argv, ask=None, secret=None) -> int:
             seen.append(argv)
             print("o que a palavra disse")
             return USAGE
@@ -345,7 +345,7 @@ class TheStepsAreTheClisWords(unittest.TestCase):
         # nobody gave.
         seen: list[list[str]] = []
 
-        def door(argv, ask=None, secret=None, answer=None) -> int:
+        def door(argv, ask=None, secret=None) -> int:
             seen.append(argv)
             return OK
 
@@ -440,14 +440,6 @@ class TheSequenceHoldsItselfBack(FolderCase):
 class TheWindow(FolderCase):
     """What the window draws, what it walks, and what it shows once."""
 
-    def setUp(self):
-        super().setUp()
-        self.secret = "uma-senha-do-celular-que-ninguem-guarda"
-        drawn = mock.patch.object(notifier.secrets, "token_urlsafe",
-                                  lambda size: self.secret)
-        drawn.start()
-        self.addCleanup(drawn.stop)
-
     def test_the_window_builds_on_the_first_step_with_the_next_one_held(self):
         fake, walk = self.window(ask=lambda q: "", secret=lambda q: PHRASE)
         self.assertEqual(walk.index, 0)
@@ -510,11 +502,18 @@ class TheWindow(FolderCase):
         # person never sees anything the words did not print.
         self.person()
         self.machine()
+
+        def urlopen(request, timeout=None):
+            return Answer(200)
+
+        posted = mock.patch.object(notifier.urllib.request, "urlopen", urlopen)
+        posted.start()
+        self.addCleanup(posted.stop)
+
         fake = FakeTkinter()
         with mock.patch.object(env, "GRACE", 0.0), mock.patch.dict(
                 sys.modules, {"tkinter": fake}):
-            walk = wizard.build(fake.root, ask=lambda q: "", secret=lambda q: PHRASE,
-                                answer=edge)
+            walk = wizard.build(fake.root, ask=lambda q: "", secret=lambda q: PHRASE)
 
             fake.button(i18n.tr("deploy.wizard.run")).press()
             self.assertTrue(walk.closed, "`up` did not close over a standing machine")
@@ -524,50 +523,9 @@ class TheWindow(FolderCase):
 
             fake.button(i18n.tr("deploy.wizard.run")).press()
 
-        self.assertIn(i18n.tr("services.notifier.phone.drawn",
-                              token=DRAWN_TOKEN, password=self.secret,
-                              topic=notifier.TOPIC,
-                              scope=notifier.PHONE_SCOPE,
-                              url=env.notifier_public_url(),
-                              authority=env.authority_file(),
-                              where=notifier.phone_file()),
+        self.assertIn(i18n.tr("services.notifier.delivered", topic=notifier.TOPIC,
+                              detail="200"),
                       fake.area().content)
-        # E a leitura sai provada na mesma tela: a palavra pergunta pelo nome ao
-        # fim do ato, e um `Tk` que não pudesse perguntar seria uma janela que
-        # promete menos do que a `cli`.
-        self.assertIn(i18n.tr("services.notifier.phone.proved",
-                              url=notifier.phone_url(), topic=notifier.TOPIC),
-                      fake.area().content)
-
-    def test_the_phone_credential_is_shown_every_time_the_step_runs(self):
-        # 2026-09-28: the print-once rule is gone — a value sealed behind the
-        # Chave Principal does not need a SECOND gate on top, so the step shows
-        # it again on every run, not just the first.
-        self.machine()
-        with mock.patch.object(env, "GRACE", 0.0):
-            _, first = wizard.run_step("notify", secret=lambda q: PHRASE,
-                                       answer=edge, argv=("creds",))
-            _, second = wizard.run_step("notify", secret=lambda q: PHRASE,
-                                        answer=edge, argv=("creds",))
-        self.assertIn(DRAWN_TOKEN, first)
-        self.assertIn(DRAWN_TOKEN, second)
-        self.assertIn(self.secret, second)
-
-    def test_the_window_shows_the_phone_credential_again_on_a_second_press(self):
-        # The screen's half of the same rule: what the window shows is replaced
-        # on every run, and the second press still has the value to replace it
-        # WITH, because the step opens the same envelope again instead of
-        # refusing a second look.
-        self.machine()
-        fake, walk = self.window(ask=lambda q: "", secret=lambda q: PHRASE,
-                                 answer=edge)
-        walk.index = len(wizard.STEPS) - 1
-        with mock.patch.object(env, "GRACE", 0.0):
-            fake.button(i18n.tr("deploy.wizard.run")).press()
-            self.assertIn(DRAWN_TOKEN, fake.area().content)
-            fake.button(i18n.tr("deploy.wizard.run")).press()
-        self.assertIn(DRAWN_TOKEN, fake.area().content)
-        self.assertIn(self.secret, fake.area().content)
 
     def test_the_finish_button_is_the_last_steps_next_and_closes_the_window(self):
         self.machine()

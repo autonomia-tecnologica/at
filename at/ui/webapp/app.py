@@ -1621,9 +1621,9 @@ class Handler(BaseHTTPRequestHandler):
         segura desde o `boot` é a chave derivada do escopo do notificador
         (`keys.notifier_key`), e é ela que abre o envelope do arquivo — o MESMO
         arquivo que `at_deploy.notifier` grava, no mesmo escopo (§4, item 50).
-        A leitura usa a ponta `read-only` da ACL, que é a do celular
-        (`notifier.phone_token`): AT publica e a pessoa lê, e é a mesma chave
-        que abre as duas — a decisão está no docstring daquele módulo.
+        A conta é `read-write` (`notifier.token`): o mesmo valor que publica
+        também lê, e é a única credencial que o produto inteiro usa para falar
+        com o notificador.
 
         **E a página não encosta em nada disso.** O que sai daqui são as
         mensagens, reduzidas aos campos que a página desenha, e nunca o valor

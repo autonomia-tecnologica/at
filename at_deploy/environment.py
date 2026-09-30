@@ -54,19 +54,27 @@ machine and behind the gate, answering on the network because the loop is a
 place nobody in the environment can reach. And
 §7f's `notifier` is up as the LAST of them: ntfy, configured by AT to keep
 everything it remembers inside its own state folder, **published where §7e
-publishes** — o endereço da rede privada quando há uma, o laço quando não há,
-porque o celular que o lê não é esta máquina (`_notifier_ports`) —, e **out of
-the gate**, the one thing §7f inherits instead of deciding.
+publishes** — o endereço da rede privada quando há uma, o laço quando não há
+(`_notifier_ports`), para a entrega do próprio AT alcançar o container do lado
+de fora —, e reached from OUTSIDE only through the edge, which now fronts it
+too.
 
-**The gate does NOT front the notifier, and that is a measurement.** The gate
-authenticates by redirect and session cookie, and a headless phone app takes the
-302 and never connects: measured in the retired environment, the notifier
-answered `subscribers=0` behind Authelia and `101` without it. So the Caddyfile
-the environment generates does not name the notifier and the identity provider's
-access rule does not either — the notifier is not one more app behind the gate,
-and its authentication, wherever it is exposed, is the token ACL §6 declares for
-it. Putting it behind the gate is the one change here that has already been
-measured to break it.
+**The gate DOES front the notifier, and it took a second measurement to get
+there.** The gate authenticates by redirect and session cookie, and a headless
+phone app used to take the 302 and never connect — measured in the retired
+environment, `subscribers=0` behind Authelia and `101` without it. **Basic on
+the request itself is the other half of that same measurement**: Authelia's
+forward-auth reads an `Authorization: Basic` header on the request and
+authenticates it directly, with no redirect at all, when one is present — so a
+headless client that always sends its credential (the ntfy app's login is
+exactly that shape) never takes the 302 that used to break it. The identity
+provider's access rule names `ntfy.at.local` beside the site's own domain
+(`_identity_conf`), and the Caddyfile fronts it with the SAME `forward_auth`
+— but never the WebApp: past the ask, the edge reverse-proxies straight to
+`at-notifier`, swapping whatever `Authorization` the client sent for the M2M
+credential it drew before either container existed (`draw_notify_gate`,
+`_caddy_conf`). The notifier's own account, `ntfy access at at read-write`,
+never sees the person's credential — only AT's.
 
 **The WebApp's image carries nothing of AT's, and that is the decision.** The
 app's own binary — `at-cli`, never the `at-deploy` that is putting the container
@@ -1029,12 +1037,16 @@ def _caddy_conf() -> str:
     site reachable is the port the container publishes (§7e). And the site is
     the site: `site_host` is §7a's, and it is the same on both paths.
 
-    **E o SEGUNDO nome vem com eles**: §7f's notifier is served by this same
-    edge, with its own certificate and WITHOUT the ask (`outside`), and it is
-    reached by the container's name on the network like the WebApp — that is
-    what the notifier joins the environment's network for, and what keeps the
-    `subscribers=0` measurement respected: the edge fronting it is not the
-    gate asking about it.
+    **E o SEGUNDO nome vem com eles, agora ATRÁS do mesmo Authelia** (`notify`):
+    o notificador não fica mais fora do portão — Authelia aceita
+    `Authorization: Basic` na própria requisição em vez de redirecionar, e é
+    isso que deixa um app sem interface autenticar sem levar o 302 que o
+    quebrava. Quem prova é a mesma Chave Principal do site; quem alcança o
+    notificador depois disso é o M2M do Caddy (`_caddy_conf` embute
+    `notify_gate_file()`), nunca a credencial da pessoa — o notificador não a
+    vê. E é a borda quem fala com o notificador DIRETO, pelo nome do
+    container: nenhum tráfego de fora dela alcança `at-notifier` de outra
+    forma.
 
     **E o TERCEIRO nome é o único que não tem serviço atrás**: `cert.at.local` é
     a CA do AT num site de um arquivo só (`files`), e o arquivo é o `root.crt`
@@ -1051,7 +1063,8 @@ def _caddy_conf() -> str:
         auth=f"{container(IDENTITY)}:{IDENTITY_PORT}",
         bind=ALL,
         upstream=container(WEBAPP),
-        outside=((notifier_host(), f"{container(NOTIFIER)}:{NOTIFIER_PORT}"),),
+        notify=(notifier_host(), f"{container(NOTIFIER)}:{NOTIFIER_PORT}",
+                _held(notify_gate_file())),
         files=((cert_host(), str(caddy_service.authority_file(CADDY_DATA))),),
     )
 
@@ -1128,21 +1141,21 @@ def _prune_names() -> tuple[str, ...]:
 def _drawn_files() -> tuple[Path, ...]:
     """Os arquivos que o AT SORTEIA: onde os valores selados moram (item 50).
 
-    O portão, que é do Caddy, os três que o provedor assina, cifra e prova com
-    (§7b) e **a credencial do AT no notificador** (§7f): os três conjuntos são
-    nomeados juntos porque a pergunta que os usa é uma só — "há o que selar, ou
-    o que abrir?" —, e ela é feita ANTES de qualquer sorteio. A credencial do
-    notificador entra aqui porque quem a sorteia é o `up`, depois de os serviços
-    subirem (`notifier.provision`): um arquivo que falta é um sorteio que vem
-    aí, e um sorteio SELA.
-
-    **A do celular NÃO entra**: quem a sorteia é o `notify creds`, um ato da
-    pessoa e não da subida — quem responde por ela é a porta de quem sela
-    (`sealing_key`).
+    O portão e a credencial M2M do notificador, que são do Caddy, os três que
+    o provedor assina, cifra e prova com (§7b) e **a credencial do AT no
+    notificador** (§7f): os conjuntos são nomeados juntos porque a pergunta
+    que os usa é uma só — "há o que selar, ou o que abrir?" —, e ela é feita
+    ANTES de qualquer sorteio. A credencial do notificador entra aqui porque
+    quem a sorteia é o `up`, depois de os serviços subirem
+    (`notifier.provision`): um arquivo que falta é um sorteio que vem aí, e um
+    sorteio SELA. A M2M entra pela razão oposta — quem a sorteia é o `up`
+    ANTES de qualquer serviço (`draw_notify_gate`), porque é o Caddyfile que a
+    carrega e o Caddy sobe antes do notificador existir.
     """
     from at_deploy import notifier  # noqa: PLC0415 — notifier reads this module
 
     return (caddy_service.gate_file(),
+            notify_gate_file(),
             *(state(IDENTITY) / name for name in IDENTITY_SECRETS),
             notifier.token_file())
 
@@ -1160,21 +1173,22 @@ def _sealed_files() -> tuple[tuple[Path, str], ...]:
     `configuration.yml` e o `Caddyfile` carregam os envelopes inline, e são eles
     que a conferência da Chave Principal tem de abrir.
 
-    **E as duas pontas do notificador entram nomeadas** (§7f): elas não são
-    `writes` de serviço nenhum — o container não as lê, e por isso não há texto
-    composto que as carregue inline —, e o escopo delas é o do SERVIÇO dono do
-    valor, `notifier`, como o de qualquer outro.
+    **E a credencial do AT no notificador entra nomeada** (§7f): ela não é
+    `writes` de serviço nenhum — o container não a lê, e por isso não há texto
+    composto que a carregue inline —, e o escopo dela é o do SERVIÇO dono do
+    valor, `notifier`. **A M2M entra pelo escopo do CADDY**, ao lado do
+    portão: é o `Caddyfile` dele que a carrega inline, como carrega o portão
+    (`draw_notify_gate`).
     """
     from at_deploy import notifier  # noqa: PLC0415 — notifier reads this module
 
-    found = tuple((where, CADDY) for where in (caddy_service.gate_file(),))
+    found = tuple((where, CADDY)
+                  for where in (caddy_service.gate_file(), notify_gate_file()))
     found += tuple((state(IDENTITY) / name, IDENTITY) for name in IDENTITY_SECRETS)
     for service in SERVICES:
         found += tuple((state(service.name) / name, service.name)
                        for name, _ in service.writes)
-    found += ((notifier.token_file(), NOTIFIER),
-              (notifier.phone_file(), NOTIFIER),
-              (notifier.phone_password_file(), NOTIFIER))
+    found += ((notifier.token_file(), NOTIFIER),)
     return found
 
 
@@ -1234,11 +1248,9 @@ def _needs_phrase() -> bool:
     guarda selado, **selar** o que este `up` vai sortear, e **migrar** o valor
     que nasceu em claro (`_clear_drawn`, o corte `f` do item 50). Uma pasta com
     os valores todos no lugar e todos selados não a pede: não há o que abrir nem
-    o que sortear. **E as duas pontas do notificador entram na pergunta**: a
-    credencial do AT é um dos arquivos que o `up` sorteia (`_drawn_files`), e a
-    do celular, que o `up` não sorteia, é conferida como qualquer selo da pasta
-    (`_sealed_files`) — quem a abre no dia a dia é o `notify creds`, pela porta
-    de quem sela.
+    o que sortear. **E a credencial do notificador entra na pergunta**: ela é
+    um dos arquivos que o `up` sorteia (`_drawn_files`), como a M2M do Caddy
+    que a acompanha.
     """
     for where in _drawn_files():
         if not where.exists():
@@ -1328,9 +1340,7 @@ def sealing_key(secret: Ask | None) -> tuple[bytes | None, str | None]:
     a Chave", e é a diferença que um ato que SELA não pode ignorar: uma pasta que
     nasceu antes do selo não tem o que ABRIR e, no entanto, o valor que o ato vai
     sortear tem de sair selado — sem Chave ele iria para a pasta em claro, que é
-    exatamente o que o item 50 existe para não haver. Quem a usa é o `notify
-    creds` (`notifier.subscribe`), que sorteia o par se faltar, mostra o que há
-    e sela o que fica.
+    exatamente o que o item 50 existe para não haver.
 
     A recusa é a mesma das outras portas: sem terminal não se pergunta (§3, a
     postura fechada), e uma Chave Principal que não abre o que a pasta guarda não sela nada
@@ -1423,6 +1433,78 @@ def draw_gate(key: bytes) -> str:
     envelope = vault.seal(drawn, vault.derived_key(key, CADDY))
     files.atomic_write_text(caddy_service.gate_file(), f"{envelope}\n")
     return envelope
+
+
+# The M2M credential the edge attaches when it proxies straight to the
+# notifier (§7f), beside the gate's own file and for the same reason: the
+# Caddyfile is what carries it, and it is the Caddy's Caddyfile. Its NAME is
+# `notify`, and not the gate's, because the two are two lines the same file
+# needs, not one value read twice.
+NOTIFY_GATE_FILE = "notify"
+
+# How much password the value draws — the raw password's length, before it is
+# turned into the base64 shape `notifier.encode_m2m` needs.
+NOTIFY_GATE_BYTES = 32
+
+
+def notify_gate_file() -> Path:
+    """`App/caddy/notify` — the M2M credential's file, beside the gate's own.
+
+    It is the Caddy's for the reason `gate_file` already is: the Caddyfile is
+    its only writer and its only reader outside this module, so the file lives
+    where every other artifact of that service lives.
+    """
+    return caddy_service.directory() / NOTIFY_GATE_FILE
+
+
+def draw_notify_gate(key: bytes) -> str:
+    """Draw the notifier's M2M credential, once, and SEAL it — mirrors `draw_gate`.
+
+    **Drawn BEFORE any container, like the gate's own secret, and for the SAME
+    reason of ORDER**: the manifest starts Caddy before the notifier (§7f is
+    the LAST service), so nothing here can wait for ntfy to hand back a value
+    of its own — the value has to exist, and be RIGHT, before the Caddyfile is
+    even written. AT chooses it instead of ntfy, which is the whole point: a
+    value AT draws is a value AT can embed anywhere it needs to, before the
+    thing that would normally draw it even exists.
+
+    **O que fica selado já é o FORMATO do cabeçalho** (`notifier.encode_m2m`),
+    e não a senha crua: abrir um envelope embutido só troca o texto selado
+    pelo texto claro no MESMO lugar (`_opened`) — não há como envolvê-lo em
+    `usuário:` e cifrar em base64 depois. `notifier.decode_m2m` é quem
+    recupera a senha crua, uma vez, quando o notificador sobe e `provision`
+    cria a conta com o MESMO valor.
+    """
+    held = _held(notify_gate_file())
+    if held and vault.envelopes(held):
+        return held
+    from at_deploy import notifier  # noqa: PLC0415 — notifier reads this module
+
+    password = secrets.token_urlsafe(NOTIFY_GATE_BYTES)
+    envelope = vault.seal(notifier.encode_m2m(password), vault.derived_key(key, CADDY))
+    files.atomic_write_text(notify_gate_file(), f"{envelope}\n")
+    return envelope
+
+
+def notify_gate_password(key: bytes | None) -> str | None:
+    """O valor claro da senha M2M — o que `ntfy user add` precisa (`provision`).
+
+    A mesma leitura que `notifier._value` faz do que a pasta guarda — o
+    envelope, ou o valor em claro de uma pasta que nasceu antes do selo —,
+    revertida do formato do cabeçalho (`notifier.decode_m2m`) para a senha
+    crua que a conta do ntfy toma.
+    """
+    from at_deploy import notifier  # noqa: PLC0415 — notifier reads this module
+
+    text = _held(notify_gate_file())
+    if not text:
+        return None
+    value = text
+    if vault.envelopes(text):
+        if key is None:
+            return None
+        value = vault.unseal(text, vault.derived_key(key, CADDY))
+    return notifier.decode_m2m(value) if value else None
 
 
 def _drawn(service: str, name: str, key: bytes) -> str:
@@ -1540,6 +1622,12 @@ def _identity_conf() -> str:
     dot unless it is an IP — and that last one is why the site on the loop is an
     ADDRESS and not the word `localhost` (`site_host`).
 
+    **E agora o notificador tem regra própria, pela mesma razão que o site.**
+    `default_policy: deny` recusa qualquer domínio sem regra — Basic incluído
+    —, então `ntfy.at.local` precisa da SUA linha para o `forward_auth` da
+    borda deixar passar quem provou a Chave Principal. É `one_factor` como o
+    site: a mesma conta, o mesmo fator, um domínio a mais na lista fechada.
+
     **The portal gets a path, and it is the fourth thing the provider is told.**
     `server.address` carries it and `authelia_url` names it (`portal_url`), so
     the provider serves its page under the same address the edge routes around
@@ -1632,6 +1720,8 @@ def _identity_conf() -> str:
         "  rules:",
         f"    - domain: {site}",
         "      policy: one_factor",
+        f"    - domain: {notifier_host()}",
+        "      policy: one_factor",
         "notifier:",
         "  filesystem:",
         f"    filename: {IDENTITY_CONFIG}/{IDENTITY_NOTIFICATIONS}",
@@ -1684,13 +1774,18 @@ def notifier_url() -> str:
 
     **Ele NÃO é o endereço que a pessoa digita**, e desde que o notificador tem
     nome os dois se separaram de propósito (`notifier_public_url`): AT fala com
-    o serviço por um ENDEREÇO CRU — o laço quando a máquina não está em rede
-    privada nenhuma, o dela quando está (§7e, o MESMO endereço que a `Port`
-    publica) —, e um alerta não depende do DNS interno, da borda nem do
-    certificado do AT: se qualquer um dos três cair, o alerta ainda sai. O que a
-    PESSOA e o celular usam é o nome, e a estrada é outra (`phone_url`).
+    o serviço por um ENDEREÇO CRU, e um alerta não depende do DNS interno, da
+    borda nem do certificado do AT: se qualquer um dos três cair, o alerta
+    ainda sai. O que a PESSOA e o celular usam é o nome, pela borda.
+
+    **E é sempre o LAÇO, não mais o endereço da rede privada quando há uma**:
+    o notificador não é mais alcançado por nenhum outro caminho de fora —
+    quem chega de outro lugar passa pela borda, que fala com o container pelo
+    nome dele na rede do ambiente (`_caddy_conf`) —, então esta porta só
+    precisa responder a ESTA máquina, que é o laço sempre. `_notifier_ports`
+    publica no mesmo endereço, porque os dois não podem divergir.
     """
-    return f"http://{vpn.address() or LOOP}:{NOTIFIER_PORT}"
+    return f"http://{LOOP}:{NOTIFIER_PORT}"
 
 
 def notifier_public_url() -> str:
@@ -1699,9 +1794,11 @@ def notifier_public_url() -> str:
     §7f's two ends are AT and the phone, and they reach the service by different
     roads on purpose. This is the phone's: the name `ntfy.at.local` resolved by
     the environment's DNS, at the port the edge publishes, with the certificate
-    the edge serves it under. It is what ntfy hands back inside every
-    notification it delivers — a link that leads nowhere is worse than no link —
-    and it is what `services phone` tells the person to point the app at.
+    the edge serves it under and, since this fatia, `forward_auth` in front of
+    it too. It is what ntfy hands back inside every notification it delivers —
+    a link that leads nowhere is worse than no link — and it is the address
+    the person points the app at, proving the SAME Chave Principal `at.local`
+    already asks for.
     """
     return caddy_service.address(notifier_host(), PORT)
 
@@ -1726,13 +1823,14 @@ def _notifier_conf() -> str:
 
     **Authentication is ON, and the door is shut to whoever brings no token.**
     `auth-default-access: deny-all` is ntfy's own advice for a private instance,
-    and it is the posture §6 declares for this service: AT publishes, the phone
-    reads, and each of them carries the token its own scope allows. The database
-    is born empty and lives inside the mounted folder; a notifier nobody has
-    written a token into answers nobody, which is the honest state of installed
-    and not yet configured. **A borda na frente não muda isso**: ela não
-    pergunta nada (o `forward_auth` não o nomeia), então quem chega continua
-    batendo na ACL por tópico — o token é a porta, e ela é a mesma.
+    and it is the posture §6 declares for this service: the account AT drew
+    both publishes and reads, and reaches no other topic. The database is born
+    empty and lives inside the mounted folder; a notifier nobody has written a
+    token into answers nobody, which is the honest state of installed and not
+    yet configured. **E agora a borda pergunta primeiro**: `ntfy.at.local`
+    entra na regra de acesso do provedor (`_identity_conf`), então o que chega
+    à ACL do tópico já passou pela Chave Principal — a mesma dupla camada que
+    o site sempre teve, e não um `deny-all` sozinho.
     """
     return "\n".join([
         f"# {tr('services.notifier.file.header')}",
@@ -1747,28 +1845,22 @@ def _notifier_conf() -> str:
 
 
 def _notifier_ports() -> tuple[Port, ...]:
-    """A porta do notificador, no endereço onde o CELULAR o alcança (§7f).
+    """A porta do notificador, e ela fica no LAÇO — nunca mais na rede privada.
 
-    **É o terceiro serviço que sai do laço, e ele sai pela mesma decisão que o
-    primeiro**: o endereço da rede privada quando a máquina está numa (§7e), o
-    laço quando não está — a mesma expressão de `_caddy_ports`, e nunca `0.0.0.0`,
-    que é uma porta na LAN e o que este produto não promete. Antes dela o
-    notificador estava no laço, que é um lugar onde celular nenhum está: o push
-    que o §7f existe para fazer chegava a lugar nenhum.
+    **Ela costumava sair para a rede privada, e não sai mais.** O celular
+    reaches it now only through the edge (`_caddy_conf`, `notifier_public_url`),
+    which is what a `forward_auth` proving the Chave Principal actually buys:
+    publicar o serviço num segundo endereço deixaria um caminho externo que
+    nunca prova nada — a ACL por tópico sozinha, exatamente a exposição que a
+    borda existe agora para fechar. O que sai é a mesma porta de sempre, mas
+    só onde esta máquina se alcança: o laço.
 
-    **O que sai é a PORTA e nada mais dele.** O `deny-all` continua, e sem token
-    ninguém lê: quem expõe o notificador expõe a ACL por tópico, e nunca a
-    borda — é a medição do módulo, `subscribers=0` atrás do portão e `101` sem
-    ele, e repeti-la é o defeito. O que o AT publica continua sendo um endereço
-    cru (`notifier_url`), e o endereço é este mesmo: a `Port` e a entrega não
-    podem divergir, senão a máquina em rede publicaria a porta num lugar e o
-    alerta bateria em outro.
-
-    Ela é uma função pela mesma razão que `_caddy_ports`: o endereço é medido
-    quando o ambiente sobe, e um valor lido no import deixaria de ser verdade no
-    momento em que a pessoa entrasse numa rede.
+    **A `Port` e a entrega não podem divergir**: o que o AT publica continua
+    sendo um endereço cru (`notifier_url`), e o endereço é este mesmo — os dois
+    são o laço, sempre, porque é AT que fala com o container de dentro da
+    própria máquina, e nunca outro dispositivo.
     """
-    return (Port(NOTIFIER_PORT, address=vpn.address() or LOOP),)
+    return (Port(NOTIFIER_PORT, address=LOOP),)
 
 
 @dataclass(frozen=True)
@@ -1938,11 +2030,12 @@ SERVICES: tuple[Service, ...] = (
         ),
         # The site's port, and it is published outside the loop when the machine
         # is on a private network (§7e): the edge is what the person reaches.
-        # The DNS's `53` and §7f's notifier are the other two, each for its own
-        # half of the same reason — the names the DNS answers exist nowhere else
-        # (`_dnsmasq_ports`), and the phone that reads the notifier is not this
-        # machine (`_notifier_ports`). Everything else of the environment is on
-        # the loop or on nothing at all.
+        # The DNS's `53` is the other one, for the same reason — the names it
+        # answers exist nowhere else (`_dnsmasq_ports`). Everything else of the
+        # environment is on the loop or on nothing at all — the notifier
+        # included, since this fatia: whoever reaches it from outside goes
+        # through THIS port, and not a second one of its own
+        # (`_notifier_ports`).
         ports=_caddy_ports,
         mounts=(Mount(CADDY_CONFIG), Mount(CADDY_DATA, host=CADDY_STORAGE)),
         writes=(("Caddyfile", _caddy_conf),),
@@ -2265,12 +2358,12 @@ def _materialize(service: Service, key: bytes | None) -> Path:
 
     O que NÃO vem para cá são as pastas que o container enche: elas continuam na
     pasta de estado, que é a que o backup leva, e um `Mount` com `host` não
-    passa por aqui. E o que não é lido por container nenhum também não: as duas
-    credenciais do notificador (`notifier.token_file`) moram na pasta de estado,
-    **seladas**, e quem as lê é o AT, do lado de fora — o container do
-    notificador monta só o `server.yml`. Elas não têm cópia clara aqui porque
-    não há container que as monte: quem as abre é o ato de fora que as pede, com
-    a Chave Principal dele (`notifier.token`, `notifier.phone_token`).
+    passa por aqui. E o que não é lido por container nenhum também não: a
+    credencial do notificador (`notifier.token_file`) mora na pasta de estado,
+    **selada**, e quem a lê é o AT, do lado de fora — o container do
+    notificador monta só o `server.yml`. Ela não tem cópia clara aqui porque
+    não há container que a monte: quem a abre é o ato de fora que a pede, com
+    a Chave Principal dele (`notifier.token`).
     """
     where = materialized(service.name)
     if not service.writes:
@@ -2741,6 +2834,9 @@ def bring_up(ask: Ask | None = None, secret: Ask | None = None) -> str:
         draw_gate(key)
         if drawing:
             print(tr("services.gate.drawn", where=where))
+        # A M2M do notificador é a mesma decisão de ordem: o Caddyfile é quem a
+        # carrega, e o Caddy sobe antes de o notificador sequer existir.
+        draw_notify_gate(key)
         # E os três do provedor, pela mesma razão de ordem: o `configuration.yml`
         # é composto a partir do que a pasta guarda, e o provedor lê esse arquivo
         # ao SUBIR.
@@ -2995,10 +3091,9 @@ def status() -> None:
     The credential's import is inside the function because `notifier` reads THIS
     module — the two are one subject.
 
-    §7f's credentials close the report, and each line closes with the FILE and
-    never with the value: AT's token is a secret and the phone's is printed
-    once, at the moment it is drawn (`at_deploy/notifier.py`), and what a
-    person needs from this report is that each one exists and where it lives.
+    §7f's credential closes the report, and the line closes with the FILE and
+    never with the value: a secret that is never printed, and what a person
+    needs from this report is that it exists and where it lives.
     """
     from at_deploy import notifier  # noqa: PLC0415 — it reads this module
 
@@ -3062,12 +3157,6 @@ def status() -> None:
              scope=notifier.SCOPE)
           if notifier.has_token()
           else tr("services.notifier.credential.absent", where=where))
-
-    phone = notifier.phone_file()
-    print(tr("services.notifier.phone.at", where=phone, topic=notifier.TOPIC,
-             scope=notifier.PHONE_SCOPE)
-          if notifier.has_phone()
-          else tr("services.notifier.phone.absent", where=phone))
 
 
 def standing() -> bool:

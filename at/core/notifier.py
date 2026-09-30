@@ -31,31 +31,16 @@ folder has not drawn yet — every one of them is a push that does not go out,
 and none of them is an exception the clock's round has to survive by name
 (`at.ui.ask.remind` catches broadly, the way `tick` does).
 
-**The READ is the other end of the ACL, and it is the PHONE's credential**
-(TASK-176, fatia 3/3). ntfy's access is per ACCOUNT and per topic, so the one
-AT holds cannot be `write-only` and `read-only` at the same time — the write
-end (`token`) and the read end (`phone-token`) are two accounts, and §7f names
-both. What the WebApp reads the topic WITH is therefore the phone's credential,
-and it is the choice the item left open because the alternative would have been
-a THIRD account drawn for the page: that drawing is the environment's act and it
-asks the Main Key, which no WebApp holds — so a credential of its own is one
-this process could never make, and reusing the end that already exists is the
-only road that does not need one.
+**The READ uses the SAME credential the push does** (since the notifier's edge
+fronting: `at_deploy/notifier.py`'s own account is `read-write`, and it is the
+one account the whole product talks to the service with — AT from inside this
+module, and the person's own admin login from outside it, through the edge's
+M2M swap). Nothing here reseals, redraws or prints anything; the value goes
+into the `Authorization` header of one GET and nowhere else.
 
-**And it is not a new envelope.** `phone-token` is sealed under the same scope
-the WebApp's key is derived from (`VAULT_SCOPE` is the notifier's own name), so
-the key this boot holds opens it exactly as it opens AT's — the same file,
-opened by somebody who already could (§ container.md's own sentence about the
-write end). Nothing here reseals, redraws or prints anything; the value goes
-into the `Authorization` header of one GET and nowhere else, and the person's
-own phone keeps logging in with the account password it was given.
-
-**The read is PAGED the way the phone reads**: ntfy answers `poll=1` with what
-its memory holds and closes the connection — the same `json?poll=1` the phone's
-app asks on open, and the same shape `at_deploy.notifier.reached` proves the
-ACL with. It is not a stream: this door answers a request that was made and
-never holds a connection open, which is what keeps a page refresh from being a
-subscription.
+**The read is PAGED, and never a stream**: ntfy answers `poll=1` with what its
+memory holds and closes the connection, which is what keeps a page refresh
+from being a subscription.
 """
 
 from __future__ import annotations
@@ -70,16 +55,14 @@ from pathlib import Path
 from at.core import paths
 from at.encryption import vault
 
-# The scope the Main Key derives this key under, and the two files it opens —
-# the same words `at_deploy/notifier.py` spells (`VAULT_SCOPE`, `TOKEN_FILE`,
-# `PHONE_FILE`), kept apart rather than imported across the line `at` does not
-# cross.
+# The scope the Main Key derives this key under, and the file it opens — the
+# same words `at_deploy/notifier.py` spells (`VAULT_SCOPE`, `TOKEN_FILE`), kept
+# apart rather than imported across the line `at` does not cross.
 NOTIFIER = "notifier"
 TOKEN_FILE = "token"
-PHONE_FILE = "phone-token"
 
-# The topic AT's credential is scoped to write-only — `at_deploy.notifier
-# .TOPIC`, spelled again for the same reason as the two above.
+# The topic AT's credential is scoped to read-write — `at_deploy.notifier
+# .TOPIC`, spelled again for the same reason as the one above.
 TOPIC = "at"
 
 # A leitura, no vocabulário do PRÓPRIO ntfy: um `poll` do tópico devolve o que
@@ -116,16 +99,6 @@ def token_file() -> Path:
     return paths.services_dir() / NOTIFIER / TOKEN_FILE
 
 
-def phone_file() -> Path:
-    """`App/services/notifier/phone-token` — the READ end of the ACL (§7f).
-
-    The same folder and the same file name `at_deploy.notifier.phone_file`
-    names, for the reason above — and, like the write end, this process only
-    ever opens it, never draws one.
-    """
-    return paths.services_dir() / NOTIFIER / PHONE_FILE
-
-
 def _held(where: Path) -> str | None:
     try:
         kept = where.read_text(encoding="utf-8").strip()
@@ -152,24 +125,10 @@ def _value(text: str | None, key: bytes | None) -> str | None:
 
 
 def token(key: bytes | None) -> str | None:
-    """The write credential's clear value, opened with the DERIVED key this
-    boot holds — or `None` when there is nothing to open it with."""
+    """The credential's clear value, opened with the DERIVED key this boot
+    holds — or `None` when there is nothing to open it with. The one account
+    both publishes and reads (`read-write`), so this same value serves both."""
     return _value(_held(token_file()), key)
-
-
-def phone_token(key: bytes | None) -> str | None:
-    """The READ credential's clear value — the phone's, opened with the SAME
-    derived key.
-
-    **One key, two files, and that is the whole of the decision** (the module's
-    docstring): both ends of the ACL belong to the notifier and are sealed
-    under its scope, so the key the WebApp was handed at `up` opens the read
-    end exactly as it opens the write one. A `None` here is the same answer
-    `token` gives: this boot cannot open what the folder keeps, or the folder
-    has not had a phone credential drawn yet — neither of which is an
-    exception, and both of which make the read answer nothing.
-    """
-    return _value(_held(phone_file()), key)
 
 
 def target() -> str | None:
@@ -241,9 +200,9 @@ def _messages(body: object) -> list[dict]:
 def read(key: bytes | None) -> tuple[list[dict], str]:
     """O que o tópico está segurando AGORA: `(mensagens, recusa)`.
 
-    It is the `poll` the phone asks on open (the module's docstring), read
-    with the phone's credential and never with AT's — the write end cannot read
-    its own topic back, and that is measured (§7f).
+    It is the `poll` the notifier answers on demand (the module's docstring),
+    read with the SAME credential the push uses — the account is `read-write`,
+    and this is one process opening one file it already could.
 
     **A read that did not happen is not an empty topic**, so the two come back
     told apart: `recusa` is the empty string when the notifier answered, and
@@ -255,7 +214,7 @@ def read(key: bytes | None) -> tuple[list[dict], str]:
     where = target()
     if where is None:
         return [], "no_address"
-    held = phone_token(key)
+    held = token(key)
     if held is None:
         return [], "no_token"
     request = urllib.request.Request(f"{where}/{POLL}")

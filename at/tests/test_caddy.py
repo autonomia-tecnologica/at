@@ -472,16 +472,16 @@ class TheAdaptedGate(FolderCase):
         self.assertEqual(len(routes), 1)
         self.assertIsNone(routes[0].get("match"))
 
-    def test_the_second_site_is_one_the_caddy_takes_and_does_not_ask_about(self):
+    def test_the_second_site_is_one_the_caddy_takes_and_asks_too(self):
         # **O arquivo com dois nomes é um arquivo que o Caddy ACEITA**, e o que
         # se lê aqui é o que ele ENTENDEU: os dois no mesmo servidor, na mesma
-        # porta, separados por casador de HOST — e o do notificador sem
-        # pergunta nenhuma, que é a medição que o mantém fora do portão
-        # (`subscribers=0` atrás do Authelia, `101` sem ele).
+        # porta, separados por casador de HOST — e o do notificador PERGUNTA
+        # também agora, com o MESMO `forward_auth`, mas troca o `Authorization`
+        # pelo M2M antes de encaminhar direto ao notificador (nunca ao WebApp).
         text = caddy.caddyfile(
             "at.local", 443, 41234, gate="segredo-sorteado", auth="127.0.0.1:9091",
             bind="0.0.0.0", upstream="at-webapp",
-            outside=(("ntfy.at.local", "at-notifier:2586"),),
+            notify=("ntfy.at.local", "at-notifier:2586", "dXNlcjpzZW5oYQ=="),
         )
         servers = self.adapted(text)
         # Um servidor só: os dois blocos dividem a porta e o `bind`, e é o
@@ -491,13 +491,17 @@ class TheAdaptedGate(FolderCase):
         self.assertEqual(server["listen"], ["0.0.0.0:443"])
         hosts = {tuple(route["match"][0]["host"]): route for route in server["routes"]}
         self.assertEqual(sorted(hosts), [("at.local",), ("ntfy.at.local",)])
-        askless = json.dumps(hosts[("ntfy.at.local",)])
-        self.assertIn("at-notifier:2586", askless)
-        self.assertNotIn("forward_auth", askless)
-        self.assertNotIn("segredo-sorteado", askless)
+        notify = json.dumps(hosts[("ntfy.at.local",)])
+        self.assertIn(caddy.AUTH_URI, notify)
+        self.assertIn("127.0.0.1:9091", notify)
+        self.assertIn("at-notifier:2586", notify)
+        self.assertIn("dXNlcjpzZW5oYQ==", notify)
+        # O segredo do portão é do WebApp: o notificador nunca o vê, e não
+        # alcança o WebApp de jeito nenhum.
+        self.assertNotIn("segredo-sorteado", notify)
+        self.assertNotIn("at-webapp", notify)
         # E o site continua com a pergunta e com o segredo — os dois nomes não
-        # se confundem. O Caddy escreve o `forward_auth` como um proxy com
-        # `rewrite` para o `uri` da pergunta, então é isso que se lê aqui.
+        # se confundem.
         asked = json.dumps(hosts[("at.local",)])
         self.assertIn(caddy.AUTH_URI, asked)
         self.assertIn("127.0.0.1:9091", asked)
@@ -508,13 +512,13 @@ class TheAdaptedGate(FolderCase):
         # **O terceiro nome não tem serviço atrás: tem um ARQUIVO** — a CA do
         # AT —, e o que se lê aqui é o que o Caddy ENTENDEU: um site com
         # certificado próprio, o pedido reescrito sobre o caminho do arquivo e o
-        # `file_server` que o devolve. Sem pergunta e sem o segredo, como o
-        # notificador: quem precisa da CA ainda não confia no certificado que
-        # responderia à pergunta.
+        # `file_server` que o devolve. Sem pergunta e sem o segredo, ao
+        # contrário do notificador: quem precisa da CA ainda não confia no
+        # certificado que responderia à pergunta.
         text = caddy.caddyfile(
             "at.local", 443, 41234, gate="segredo-sorteado", auth="127.0.0.1:9091",
             bind="0.0.0.0", upstream="at-webapp",
-            outside=(("ntfy.at.local", "at-notifier:2586"),),
+            notify=("ntfy.at.local", "at-notifier:2586", "dXNlcjpzZW5oYQ=="),
             files=(("cert.at.local", "/data/pki/authorities/local/root.crt"),),
         )
         everything = self.everything(text)

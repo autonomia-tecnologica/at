@@ -54,11 +54,7 @@ SAID = (
     "services.notifier.unsealed",
     "services.notifier.delivered", "services.notifier.undelivered",
     "services.notifier.test.title", "services.notifier.test.body",
-    # §7f's other end: the phone's credential, and the two sentences that carry
-    # it — one of them carrying the VALUE, which is what makes it the one
-    # message of this product a person has to be able to read twice.
-    "services.notifier.phone.drawn", "services.notifier.phone.held",
-    "deploy.notify.about", "deploy.notify.ask",
+    "deploy.notify.about",
 )
 
 
@@ -232,48 +228,56 @@ class TheCredential(FolderCase):
         self.assertIsNone(notifier.token(outra))
         self.assertEqual(notifier.token(self.key()), DRAWN_TOKEN)
 
-    def test_the_scope_is_write_only_and_that_is_the_mirror_of_sections_sentence(self):
+    def test_the_scope_is_read_write_since_the_edge_fronts_the_notifier(self):
         # §3 delimits the scope of a service that talks to AT; this is the
-        # mirror — AT talks to the service, and the credential publishes and
-        # does nothing else. `read-write` here would make the scope decorative.
-        self.assertEqual(notifier.SCOPE, "write-only")
+        # mirror — AT talks to the service, and the credential is the ONE the
+        # edge's M2M swap authenticates as for everybody, so it has to both
+        # publish and read.
+        self.assertEqual(notifier.SCOPE, "read-write")
 
     def test_the_target_is_the_topic_at_the_address_the_environment_publishes(self):
         # The address is the environment's own, and the two modes of it — where
         # the notifier listens and where AT posts — cannot drift.
         self.assertEqual(notifier.target(), f"{env.notifier_url()}/{notifier.TOPIC}")
         self.assertEqual(notifier.target(),
-                         f"http://{env.vpn.address() or env.LOOP}:{env.NOTIFIER_PORT}/at")
+                         f"http://{env.LOOP}:{env.NOTIFIER_PORT}/at")
 
-    def test_the_delivery_follows_the_port_out_of_the_loop(self):
-        # **A entrega segue a PORTA** (§7f, a decisão desta fatia): quando a
-        # máquina está numa rede privada, o container publica no endereço dela e
-        # o AT publica ali também — senão o alerta bateria num endereço onde não
-        # há container nenhum, e o push não chegaria. O endereço continua CRU:
-        # sem nome, sem borda e sem o certificado do AT no caminho, que é a
-        # propriedade que `notifier_url` existe para guardar.
+    def test_the_delivery_stays_on_the_loop_even_on_a_private_network(self):
+        # **A entrega fica no LAÇO, mesmo numa rede privada** (esta fatia): o
+        # notificador não sai mais para fora dele — quem chega de fora passa
+        # pela borda —, então esta porta só precisa responder a ESTA máquina,
+        # que é o laço sempre. O endereço continua CRU: sem nome, sem borda e
+        # sem o certificado do AT no caminho, que é a propriedade que
+        # `notifier_url` existe para guardar.
         network = "100.64.0.1"
         with mock.patch.object(vpn, "address", lambda call=None: network):
             self.assertEqual(env.notifier_url(),
-                             f"http://{network}:{env.NOTIFIER_PORT}")
+                             f"http://{env.LOOP}:{env.NOTIFIER_PORT}")
             self.assertEqual(
                 notifier.target(),
-                f"http://{network}:{env.NOTIFIER_PORT}/{notifier.TOPIC}")
+                f"http://{env.LOOP}:{env.NOTIFIER_PORT}/{notifier.TOPIC}")
 
 
 class TheProvision(FolderCase):
-    """The credential is created by AT, inside the notifier, once."""
+    """The credential is created by AT, inside the notifier, once.
+
+    **The password is not drawn here any more.** Caddy's own M2M credential is
+    what `provision` hands `ntfy user add` (`environment.notify_gate_password`)
+    — drawn before any container exists, exactly as `up` draws it — so every
+    test below draws it first, the way `up` would.
+    """
 
     def setUp(self):
         super().setUp()
         self.secret = "uma-senha-sorteada-que-ninguem-guarda"
-        self.drawn = mock.patch.object(notifier.secrets, "token_urlsafe",
+        self.drawn = mock.patch.object(env.secrets, "token_urlsafe",
                                        lambda size: self.secret)
         self.drawn.start()
         self.addCleanup(self.drawn.stop)
 
     def provision(self, **kw):
         fake = self.runtime(**kw)
+        env.draw_notify_gate(self.key())
         with mock.patch.object(env, "GRACE", 0.0):
             outcome, text = self.quiet(notifier.provision, self.key())
         return fake, outcome, text
@@ -305,6 +309,21 @@ class TheProvision(FolderCase):
         self.assertIn(i18n.tr("services.notifier.unsealed",
                               where=notifier.token_file()), text)
         self.assertEqual(fake.calls, [])
+
+    def test_a_draw_with_no_m2m_credential_yet_is_refused(self):
+        # A ordem que `up` sempre segue — a M2M do Caddy nasce ANTES de
+        # qualquer container — não é garantida por este teste sozinho, então
+        # `provision` tem de recusar em voz alta se ela faltar, e não sortear
+        # uma senha às pressas que o Caddyfile já escrito não teria.
+        fake = self.runtime()
+        with mock.patch.object(env, "GRACE", 0.0):
+            outcome, text = self.quiet(notifier.provision, self.key())
+        self.assertEqual(outcome, notifier.FAILED)
+        self.assertFalse(notifier.has_token())
+        self.assertIn(i18n.tr("services.notifier.unsealed",
+                              where=env.notify_gate_file()), text)
+        self.assertFalse(
+            [call for call in fake.argv() if call[:2] == ["exec", "-i"]])
 
     def test_the_scope_is_granted_in_ntfys_own_word(self):
         fake, _, _ = self.provision()

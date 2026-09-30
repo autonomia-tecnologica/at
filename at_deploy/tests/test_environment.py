@@ -92,7 +92,6 @@ SAID = (
     # never the value. The delivery's own sentences are gated beside it, in
     # `test_notifier.py`.
     "services.notifier.credential.at", "services.notifier.credential.absent",
-    "services.notifier.phone.at", "services.notifier.phone.absent",
     # Item 27's second operator act (§7b): the credential, the derivation the
     # provider reads, and the restart that makes the new one the one it proves.
     "services.credential.changed", "services.credential.hosted",
@@ -844,15 +843,17 @@ class TheIdentityProvider(FolderCase):
         # pergunta, então não passa pela regra que a responde.
         self.assertNotIn(caddy.PORTAL, text[text.index("access_control:"):])
 
-    def test_the_access_control_keeps_naming_the_site_alone(self):
-        # A regra responde pelo SITE — o domínio que a pergunta traz. O portal é
-        # roteado fora da pergunta, então uma regra para ele seria uma regra que
-        # nada consulta.
+    def test_the_access_control_names_the_site_and_the_notifier(self):
+        # A regra responde pelos DOIS domínios que o `forward_auth` pergunta
+        # sobre — o site e, desde esta fatia, o notificador — e mais nenhum: o
+        # portal é roteado fora da pergunta, então uma regra para ele seria uma
+        # regra que nada consulta.
         self.up()
         text = self.conf()
         rules = text[text.index("access_control:"):text.index("notifier:")]
-        self.assertEqual(rules.count("- domain:"), 1)
+        self.assertEqual(rules.count("- domain:"), 2)
         self.assertIn(f"- domain: {env.site_host()}", rules)
+        self.assertIn(f"- domain: {env.notifier_host()}", rules)
 
     def test_the_storage_and_the_users_are_where_bill_mounts_them(self):
         # §7: the persistent state of the service lives in the folder, and this
@@ -1257,16 +1258,15 @@ class ThePrivateNetwork(FolderCase):
             dns = _call(fake, "at-dnsmasq")
             self.assertIn("100.64.0.1:53:53/udp", dns)
             self.assertIn("100.64.0.1:53:53/tcp", dns)
-            # **E a PORTA do notificador sai do laço pela mesma decisão**: §7f o
-            # expõe ao celular, e o celular não é esta máquina. O que sai é a
-            # porta, no endereço da rede — e a entrega do AT segue a porta
-            # (`notifier_url`), senão o alerta bateria num endereço onde não há
-            # container nenhum publicado.
+            # **E a PORTA do notificador FICA no laço, mesmo numa rede** —
+            # a decisão desta fatia: quem chega de fora passa pela borda agora
+            # (`_caddy_conf`), então esta porta só precisa responder a ESTA
+            # máquina, e a entrega do AT segue ela (`notifier_url`).
             self.assertIn(
-                f"100.64.0.1:{env.NOTIFIER_PORT}:{env.NOTIFIER_PORT}/tcp",
+                f"{env.LOOP}:{env.NOTIFIER_PORT}:{env.NOTIFIER_PORT}/tcp",
                 _call(fake, env.container(env.NOTIFIER)))
             self.assertEqual(env.notifier_url(),
-                             f"http://100.64.0.1:{env.NOTIFIER_PORT}")
+                             f"http://{env.LOOP}:{env.NOTIFIER_PORT}")
 
     def test_without_a_network_the_site_is_bills_own_name(self):
         # O estado suportado, e não um degradado: a máquina não está em rede
@@ -1509,18 +1509,14 @@ class TheStatus(FolderCase):
                 _, text = self.quiet(env.status)
                 self.assertIn(i18n.tr(f"services.status.{expected}"), text)
 
-    def test_the_notifiers_credentials_are_said_only_with_the_notifier_up(self):
-        # O relato: as duas linhas do notificador apareciam para quem nem tem o
-        # ntfy. Elas são fatos sobre um serviço DE PÉ, e um credencial que
-        # existiria para um notificador que ninguém subiu não é um fato.
+    def test_the_notifiers_credential_is_said_only_with_the_notifier_up(self):
+        # O relato: a linha do notificador aparecia para quem nem tem o ntfy.
+        # É um fato sobre um serviço DE PÉ, e uma credencial que existiria
+        # para um notificador que ninguém subiu não é um fato.
         self.runtime(fails=("container",))
         _, text = self.quiet(env.status)
         self.assertNotIn(
             i18n.tr("services.notifier.credential.absent", where=notifier.token_file()),
-            text,
-        )
-        self.assertNotIn(
-            i18n.tr("services.notifier.phone.absent", where=notifier.phone_file()),
             text,
         )
 
@@ -1793,16 +1789,18 @@ class TheNames(FolderCase):
         self.assertNotIn("reverse_proxy", block)
         self.assertNotIn(f"\troot * {env.CADDY_DATA}", block)
 
-    def test_the_notifier_name_never_goes_through_the_ask(self):
-        # A medição que esta fatia NÃO repete: atrás do portão o notificador
-        # responde `subscribers=0`, porque o app do celular pega o 302 e nunca
-        # conecta. O bloco dele é um dos que não têm pergunta nenhuma.
+    def test_the_notifier_name_goes_through_the_ask_too(self):
+        # A medição que esta fatia inverte: atrás do portão o notificador
+        # respondia `subscribers=0`, porque o app do celular pegava o 302 e
+        # nunca conectava — mas o Basic na própria requisição não redireciona,
+        # e é isso que faz o bloco dele perguntar agora, com o MESMO
+        # `forward_auth` do site, e sem o segredo do gate (que é do WebApp).
         self.runtime()
         self.quiet(env.up, secret=self.phrase)
         text = (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8")
         start = text.index(f"https://{env.notifier_host()} {{")
         block = text[start:text.index(f"https://{env.cert_host()} {{")]
-        self.assertNotIn("forward_auth", block)
+        self.assertIn("forward_auth", block)
         self.assertNotIn(caddy.GATE_HEADER, block)
         # E a pergunta continua no site: os nomes não se confundem.
         self.assertIn("forward_auth", text[:text.index(f"https://{env.notifier_host()} {{")])
@@ -1825,13 +1823,16 @@ class TheNames(FolderCase):
 
 
 class TheNotifier(FolderCase):
-    """§7f's notifier: the service, the memory it keeps, and the rule it inherits.
+    """§7f's notifier: the service, the memory it keeps, and the gate now in
+    front of it.
 
-    The notifier is the one service of §7 the edge fronts WITHOUT asking about,
-    and the rule that keeps it out of the gate is a MEASUREMENT and not a
-    preference — which is why it is read here as the absence of the gate in
-    everything the environment writes around it: no `forward_auth`, no gate
-    secret, and no line of it in the provider's access rule.
+    Basic on the request itself is what let the gate front the notifier
+    without repeating the old measurement (a headless app taking the 302 and
+    never connecting) — so this reads as the PRESENCE of the ask in everything
+    the environment writes around it: `forward_auth`, a line in the provider's
+    access rule, and a reverse proxy straight to the notifier with the M2M
+    swapped in — never the WebApp's own gate secret, which the notifier would
+    have no use for.
     """
 
     def up(self) -> FakeRuntime:
@@ -1935,25 +1936,26 @@ class TheNotifier(FolderCase):
         self.assertTrue(str(env.authority_file()).startswith(
             str(env.state(env.CADDY))))
 
-    def test_the_gate_does_not_front_the_notifier(self):
-        # Measured in the retired environment and inherited: behind Authelia the
-        # notifier answered `subscribers=0` — the gate authenticates by redirect
-        # and session cookie, and the phone app takes the 302 and never connects
-        # —, and `101` without it. **A borda passa a servi-lo, e a porta que ela
-        # não abre é a pergunta**: o bloco dele é um site sem `forward_auth` e
-        # sem o segredo, e a regra de acesso do provedor não o nomeia. Quem
-        # chega nele continua batendo na ACL por tópico.
+    def test_the_gate_now_fronts_the_notifier_but_never_hands_it_the_webapps_secret(self):
+        # Measured in the retired environment: behind Authelia the notifier
+        # answered `subscribers=0` — the gate authenticates by redirect and
+        # session cookie, and the phone app took the 302 and never connected —,
+        # and `101` without it. **Basic na própria requisição é a outra metade
+        # da mesma medição**: o app sempre manda a credencial, então nunca leva
+        # o 302 — e é isso que deixa o bloco dele perguntar também, com o MESMO
+        # `forward_auth`, e a regra de acesso do provedor NOMEIA o nome dele.
         fake = self.up()
         caddyfile = (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8")
         block = caddyfile[caddyfile.index(f"https://{env.notifier_host()} {{"):]
-        self.assertNotIn("forward_auth", block)
+        self.assertIn("forward_auth", block)
+        # O segredo do gate é do WebApp, e o notificador não o entende — quem
+        # o alcança é o M2M, trocado no `header_up Authorization`.
         self.assertNotIn(caddy.GATE_HEADER, block)
         identity = (env.state(env.IDENTITY) / env.IDENTITY_YAML).read_text(encoding="utf-8")
-        # O NOME que o ambiente dá ao serviço, e não a palavra: o `notifier` do
-        # Authelia é uma chave DELE — é assim que ele diz o que tem a contar a
-        # alguém —, e não §7f entrando na borda.
+        self.assertIn(env.notifier_host(), identity)
+        # O NOME do container continua fora: quem a borda alcança é ele, mas
+        # o Authelia só conhece o NOME que a pessoa digita.
         self.assertNotIn(env.container(env.NOTIFIER), identity)
-        self.assertNotIn(env.notifier_host(), identity)
         argv = _call(fake, env.container(env.NOTIFIER))
         self.assertNotIn(env.GATE_ENV, argv)
         self.assertNotIn(caddy.GATE_HEADER, argv)
@@ -1995,8 +1997,9 @@ class TheNotifier(FolderCase):
 
     def test_the_credential_is_scoped_to_the_topic(self):
         # §3's delimited scope, mirrored: AT talks to the service, and the
-        # credential it carries publishes and does nothing else. `write-only` on
-        # the topic is the scope, in ntfy's own word.
+        # credential it carries reaches this ONE topic and no other.
+        # `read-write` is the scope, in ntfy's own word — it is now the ONE
+        # account the edge's swapped `Authorization` authenticates as too.
         fake = self.up()
         self.assertIn(["exec", "-i", env.container(env.NOTIFIER), "ntfy", "access",
                        notifier.USER, notifier.TOPIC, notifier.SCOPE], fake.calls)
@@ -2027,13 +2030,7 @@ SESSION = "the provider's session secret"
 ENCRYPTION = "the provider's storage key"
 SIGNATURE = "the provider's reset-password signature"
 TOKEN = "AT's notifier credential"
-PHONE = "the phone's notifier credential"
-
-# Nobody's phone credential: the shape is ntfy's own, and what the catalogue
-# reads is that the deploy keeps it at 0600 — the one value it also SAYS, once,
-# because a phone is not the machine and the only road there is a person's eyes
-# (`notifier.subscribe`).
-DRAWN_PHONE = "tk_zyxwvutsrqponmlkjihgfedcba9876"
+M2M = "the notifier's M2M credential (Caddy's own)"
 
 # Os valores que a pasta que nasceu ANTES do selo guardava, e que a migração
 # existe para matar (item 50, corte `f`). Eles são reconhecíveis de propósito:
@@ -2061,20 +2058,20 @@ FILLED_BY_CONTAINERS = (
 def _sealed_values() -> dict[str, tuple[Path, str]]:
     """Onde cada valor que o AT SELA mora, e o escopo da chave que o abre (item 50).
 
-    São os SEIS deste corte — o portão, que é do Caddy, os três do provedor e
-    **as duas pontas do notificador** (§7f, o corte `d`) —, e o par
+    São os SEIS deste corte — o portão e a M2M do notificador, os dois do
+    Caddy, os três do provedor e a credencial do AT no notificador —, e o par
     `(arquivo, escopo)` é o que a subida usa para os abrir: o escopo é o serviço
     dono do valor (§4), e é o nome dele que a pasta não precisa carregar porque o
     arquivo já o diz.
     """
     return {
         GATE: (caddy.gate_file(), env.CADDY),
+        M2M: (env.notify_gate_file(), env.CADDY),
         SESSION: (env.state(env.IDENTITY) / env.IDENTITY_SESSION, env.IDENTITY),
         ENCRYPTION: (env.state(env.IDENTITY) / env.IDENTITY_ENCRYPTION,
                      env.IDENTITY),
         SIGNATURE: (env.state(env.IDENTITY) / env.IDENTITY_JWT, env.IDENTITY),
         TOKEN: (notifier.token_file(), env.NOTIFIER),
-        PHONE: (notifier.phone_file(), env.NOTIFIER),
     }
 
 
@@ -2109,9 +2106,11 @@ def _catalogue() -> tuple[tuple[Path, int | None, frozenset[str]], ...]:
     return (
         # §7b's gate: drawn by the deploy at installation, read by the Caddy (the
         # line it attaches to every request) and by AT (the check that makes an
-        # identity an identity). Two files, one value.
+        # identity an identity). Two files, one value. The M2M is drawn the
+        # same way, beside it, for the notifier's own site (`draw_notify_gate`).
         (caddy.gate_file(), None, frozenset({GATE})),
-        (env.state(env.CADDY) / "Caddyfile", None, frozenset({GATE})),
+        (env.notify_gate_file(), None, frozenset({M2M})),
+        (env.state(env.CADDY) / "Caddyfile", None, frozenset({GATE, M2M})),
         # The provider's three, drawn once and kept beside the file that carries
         # them; the YAML is the same three values inline, which is why it names
         # all of them.
@@ -2138,11 +2137,9 @@ def _catalogue() -> tuple[tuple[Path, int | None, frozenset[str]], ...]:
         (env.state(env.REDIS) / env.REDIS_CONF, None, frozenset()),
         (env.pin_file(), None, frozenset()),
         (env.state(env.NOTIFIER) / env.NOTIFIER_YAML, None, frozenset()),
-        # §7f's two ends of the ACL: AT's credential and the phone's, the one
-        # pair the deploy keeps to itself — a `0600` file, never in an argv and
-        # never printed.
+        # §7f's own credential: the one file the deploy keeps to itself — a
+        # `0600` file, never in an argv and never printed.
         (notifier.token_file(), 0o600, frozenset({TOKEN})),
-        (notifier.phone_file(), 0o600, frozenset({PHONE})),
     )
 
 
@@ -2162,21 +2159,15 @@ class TheClearState(FolderCase):
     """
 
     def up(self) -> None:
-        """The environment up — the whole of the deploy's writing happens here.
-
-        One stand-in: §7f draws the phone's credential in `subscribe`, which
-        needs the notifier standing for real. Its writer is called directly — com
-        a Chave da Chave Principal, porque o que ele grava é o envelope —, so what is
-        proved is the mode and the place and not the door.
-        """
+        """The environment up — the whole of the deploy's writing happens here."""
         self.runtime()
         self.quiet(env.up, secret=self.phrase)
-        notifier.write_phone_token(DRAWN_PHONE, self.phrase_key())
 
     def written(self) -> set[Path]:
         """Every file the deploy wrote, by the path it wrote it at."""
         found = {where for where in env.pin_file().parent.rglob("*") if where.is_file()}
         found.add(caddy.gate_file())
+        found.add(env.notify_gate_file())
         return found
 
     def umask(self) -> int:
@@ -2795,15 +2786,13 @@ class TheRunDirectory(FolderCase):
         self.assertNotEqual(env.gate_opened(), caddy.gate_secret())
 
     def test_the_credentials_of_the_notifier_are_read_by_no_container(self):
-        # §7f's two ends are read by AT, from OUTSIDE, and by no container: they
-        # stay in the state folder and get no copy — and the state folder is no
-        # longer mounted whole into the notifier, which is what put them inside
-        # it. Quem as lê é o `notify`, e é a pasta que as guarda.
+        # §7f's credential is read by AT, from OUTSIDE, and by no container: it
+        # stays in the state folder and gets no copy — and the state folder is
+        # no longer mounted whole into the notifier, which is what put it
+        # inside it. Quem a lê é o `notify`, e é a pasta que a guarda.
         fake = self.up()
-        notifier.write_phone_token(DRAWN_PHONE, self.phrase_key())
         argv = _call(fake, env.container(env.NOTIFIER))
         self.assertFalse((env.materialized(env.NOTIFIER) / notifier.TOKEN_FILE).exists())
-        self.assertFalse((env.materialized(env.NOTIFIER) / notifier.PHONE_FILE).exists())
         self.assertNotIn(f"{env.state(env.NOTIFIER)}:{env.NOTIFIER_CONFIG}:Z", argv)
         self.assertTrue(notifier.token_file().is_file())
 

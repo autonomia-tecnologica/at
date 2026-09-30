@@ -393,7 +393,7 @@ def address(host: str, port: int) -> str:
 def caddyfile(host: str, port: int, backend: int, gate: str | None = None,
               storage: str | Path | None = None, auth: str | None = None,
               bind: str | None = None, upstream: str | None = None,
-              outside: tuple[tuple[str, str], ...] = (),
+              notify: tuple[str, str, str] | None = None,
               files: tuple[tuple[str, str], ...] = ()) -> str:
     """The Caddyfile AT generates: TLS in front, the WebApp behind.
 
@@ -405,15 +405,20 @@ def caddyfile(host: str, port: int, backend: int, gate: str | None = None,
     be a local port that rewrites the running configuration with no credential
     at all.
 
-    **`outside` is what the edge serves BESIDE the site, and never through the
-    ask**: each pair is a `(name, upstream)` and each becomes a site of its own,
-    with its own certificate (`tls internal` issues per name) and nothing of the
-    gate in it — no `forward_auth`, no `header_up`. §7f's notifier is the one
-    that exists, and it is there because a measurement put it there: the gate
-    authenticates by redirect and session cookie, and a headless phone app takes
-    the 302 and never connects (`subscribers=0` behind Authelia, `101` without
-    it). A service the edge fronts with a certificate and no question is the
-    same door its own token ACL already guards.
+    **`notify` is §7f's notifier, fronted by the SAME `forward_auth` and a
+    different upstream** — `(host, upstream, credential)`, and each becomes a
+    site of its own, with its own certificate (`tls internal` issues per name).
+    It took a second measurement to get here: the gate authenticates by
+    redirect and session cookie, and a headless phone app used to take the 302
+    and never connect (`subscribers=0` behind Authelia, `101` without it) — but
+    Authelia's forward-auth reads an `Authorization: Basic` header on the
+    request itself and skips the redirect when one is there, which is exactly
+    the shape a client that always sends its credential has. So this site asks
+    too, with no portal to route around (nothing here is a browser), and past
+    the ask it reverse-proxies straight to `upstream` — never to the WebApp —
+    swapping whatever `Authorization` the client sent for `credential`, the
+    M2M value AT drew for this ONE account. The notifier never sees the
+    person's own credential.
 
     **A site of its own and not a host matcher inside the one above**, and the
     reason is the certificate and the `handle`s: two names in one block share
@@ -423,11 +428,11 @@ def caddyfile(host: str, port: int, backend: int, gate: str | None = None,
 
     **`files` is what the edge serves out of a FILE — and it is a file and not a
     folder.** Each pair is a `(name, path)` and each becomes a site of its own,
-    with its own certificate and, like `outside`, nothing of the gate: §7a's
-    `cert.at.local` is the one that exists, and it is outside the ask for the
-    same reason the notifier is and one more — whoever needs it is a device that
-    does not trust AT yet, and a `forward_auth` in front of a CA is a question
-    asked by the certificate that CA would have to sign.
+    with its own certificate and nothing of the gate: §7a's `cert.at.local` is
+    the one that exists, and it is outside the ask for the same reason `notify`
+    is not — whoever needs it is a device that does not trust AT yet, and a
+    `forward_auth` in front of a CA is a question asked by the certificate that
+    CA would have to sign.
 
     **Every request is rewritten onto the ONE path, and the folder is never
     served.** The path is inside the Caddy's own storage (`AUTHORITY`), which
@@ -466,7 +471,7 @@ def caddyfile(host: str, port: int, backend: int, gate: str | None = None,
     container path: the name the certificate carries is the private network's
     (§7e) and the container holds no address of that name, so the site listens
     on everything the container has and what makes it reachable is the port the
-    container PUBLISHES. Every site `outside` binds the same way, for the same
+    container PUBLISHES. Every other site binds the same way, for the same
     reason.
     """
     behind = upstream or LOOPBACK
@@ -536,15 +541,24 @@ def caddyfile(host: str, port: int, backend: int, gate: str | None = None,
         lines.append("\t}")
     lines.append("}")
 
-    # And the sites the edge serves BESIDE the one above: no ask, no portal, no
-    # secret — a name, its certificate, and the service behind it.
-    for name, target in outside:
+    # The notifier's own site: the SAME ask, a DIFFERENT upstream, and the M2M
+    # credential that replaces whatever `Authorization` the client sent. No
+    # portal here — nothing on this road is a browser to route around the ask
+    # for — and no gate header either: the notifier does not read it, only
+    # Basic.
+    if notify is not None and auth:
+        notify_host, notify_upstream, notify_credential = notify
         lines += [
             "",
-            f"{address(name, port)} {{",
+            f"{address(notify_host, port)} {{",
             *([f"\tbind {bind}"] if bind else []),
             "\ttls internal",
-            f"\treverse_proxy {target}",
+            f"\tforward_auth {auth} {{",
+            f"\t\turi {AUTH_URI}",
+            "\t}",
+            f"\treverse_proxy {notify_upstream} {{",
+            f'\t\theader_up Authorization "Basic {notify_credential}"',
+            "\t}",
             "}",
         ]
 

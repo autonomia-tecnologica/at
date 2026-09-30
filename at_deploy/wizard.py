@@ -3,22 +3,19 @@
 §6 says this artifact is a `cli` and a Wizard, and that HERE the Wizard is the
 natural front, because deploying is a SEQUENCE and not a sentence: it checks the
 requirements, brings one thing up, moves on to the next. This file is that
-sequence, and it is made of the `cli`'s own words — `up`, `credential`, `switch`,
-`notify`, `notify creds` — walked one screen at a time.
+sequence, and it is made of the `cli`'s own words — `up`, `credential`,
+`switch`, `notify` — walked one screen at a time.
 
 **A step is a word (and, since 2026-09-28, an optional fixed tail after it), and
 nothing else.** `run_step` spells the argv a person would type and hands it to
 the same dispatch the command line walks (`cli.services`), so §5's one-way rule
 is not a promise written here but a property of the file: a step whose word the
 `cli` did not take would not compile into an argv, and neither would one whose
-tail (`Step.argv`) is not a shape `cli.services` accepts. `notify` and
-`notify creds` share the word for the same reason they share it on the command
-line — one subject, two acts — and are two Steps because a person picks one or
-the other, not both in the same screen. And the window writes no sentence of
-its own for what a step did — what the person reads under the step is what the
-word PRINTED, captured and drawn in the window. That is the whole reason the
-readers are the window's (`ask`, `secret`) instead of the terminal's: the same
-act, the same words, on a screen.
+tail (`Step.argv`) is not a shape `cli.services` accepts. And the window writes
+no sentence of its own for what a step did — what the person reads under the
+step is what the word PRINTED, captured and drawn in the window. That is the
+whole reason the readers are the window's (`ask`, `secret`) instead of the
+terminal's: the same act, the same words, on a screen.
 
 **A step that did not close does not open the next one**, and "closed" is not the
 exit code: the two ways out of a machine with no Podman (§7a), and a refused
@@ -34,12 +31,11 @@ machine without a display is a legitimate place to run the deploy — §5's one-
 rule is what makes that not a loss — and what it is owed is to be told so and
 handed the words (`cli.main` prints the help after it).
 
-**The phone's credential appears here, and it is the one thing this window shows
-that is a credential.** The `notify creds` step runs the word that draws it if
-there is none, and what lands in the window is the message the word printed —
-every time the step runs, not just the first (2026-09-28: printing on demand
-replaced the earlier print-once rule). The rule §7f declares for the phone is
-kept by the same code the `cli` keeps it with, because it IS the same code.
+**No credential appears here any more** (this fatia): the phone no longer
+needs one of its own — the edge fronts the notifier now, and the SAME Chave
+Principal the person already types for `at.local` proves it at
+`ntfy.at.local` too. The `notify` step keeps proving the delivery by hand,
+the way it always did.
 """
 
 from __future__ import annotations
@@ -109,10 +105,9 @@ class Step:
     about: str
     required: bool
     settled: Callable[[int], bool] = _ok
-    # The fixed words after `word`, for a step whose act is not the word ALONE
-    # (2026-09-28): `notify creds` is still the word `cli.WORDS` offers — §5's
-    # rule reads `.word`, not the full line — and this is the rest of the argv
-    # a person would have typed after it.
+    # The fixed words after `word`, for a step whose act is not the word ALONE.
+    # No step needs one today, and the field stays generic for the shape
+    # `cli.services` already accepts.
     argv: tuple[str, ...] = ()
 
 
@@ -123,8 +118,7 @@ class Step:
 # and it is the one required step, because nothing else has anything to stand on
 # before it. `credential` and `switch` are §7b: who the gate proves, and the gate
 # proved in front of AT before the folder records that its authenticator is the
-# gate. `notify` and `notify creds` are §7f, the two ends of the delivery — and
-# the credential's is the one that prints.
+# gate. `notify` is §7f's delivery, proved by hand.
 #
 # `switch` is optional and not a step that forces itself: §6 makes the switch the
 # person's act, and a folder with the environment up and the Forms still on is a
@@ -136,13 +130,11 @@ STEPS: tuple[Step, ...] = (
     Step("credential", "deploy.credential.about", False),
     Step("switch", "deploy.switch.about", False, _switch_settled),
     Step("notify", "deploy.notify.about", False),
-    Step("notify", "deploy.wizard.phone.about", False, argv=("creds",)),
 )
 
 
 def run_step(word: str, ask: Ask | None = None, secret: Ask | None = None,
              name: str | None = None,
-             answer: gate.Answer | None = None,
              argv: tuple[str, ...] = ()) -> tuple[int, str]:
     """Run ONE step and hand back what it said.
 
@@ -168,7 +160,7 @@ def run_step(word: str, ask: Ask | None = None, secret: Ask | None = None,
 
     said = io.StringIO()
     with redirect_stdout(said):
-        code = cli.services(call, ask, secret, answer)
+        code = cli.services(call, ask, secret)
     return code, said.getvalue()
 
 
@@ -201,10 +193,9 @@ class Walk:
         return self.index == len(self.steps) - 1
 
     def run(self, ask: Ask | None = None, secret: Ask | None = None,
-            name: str | None = None,
-            answer: gate.Answer | None = None) -> tuple[int, str]:
+            name: str | None = None) -> tuple[int, str]:
         """Run the current step, and record whether it closed."""
-        code, said = self._run(self.step.word, ask, secret, name, answer,
+        code, said = self._run(self.step.word, ask, secret, name,
                                self.step.argv)
         self.closed = self.step.settled(code)
         return code, said
@@ -227,8 +218,7 @@ class Walk:
         return self.NEXT
 
 
-def build(root: object, ask: Ask | None = None, secret: Ask | None = None,
-          answer: gate.Answer | None = None) -> Walk:
+def build(root: object, ask: Ask | None = None, secret: Ask | None = None) -> Walk:
     """Draw the window on an existing `Tk` root, and answer with its `Walk`.
 
     Separate from `open_wizard` so a test can build the window and destroy it
@@ -257,10 +247,8 @@ def build(root: object, ask: Ask | None = None, secret: Ask | None = None,
     note = tk.Label(head, anchor="w", justify="left", foreground="gray")
     note.pack(fill="x")
 
-    # What the step PRINTED, and nothing else: replaced on every run, so a
-    # credential (`notify creds`) is on the screen while the step is and is gone
-    # once the step moves on — not because the value stops existing, but because
-    # this box only ever holds the last run's own text.
+    # What the step PRINTED, and nothing else: replaced on every run — this
+    # box only ever holds the last run's own text.
     said = tk.Text(root, height=14, width=72, wrap="word")
     said.pack(fill="both", expand=True, padx=16)
 
@@ -284,7 +272,7 @@ def build(root: object, ask: Ask | None = None, secret: Ask | None = None,
         )
 
     def on_run() -> None:
-        _, text = walk.run(ask, secret, answer=answer)
+        _, text = walk.run(ask, secret)
         said.delete("1.0", "end")
         said.insert("end", text)
         show()

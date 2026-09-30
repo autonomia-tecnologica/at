@@ -24,6 +24,7 @@ app
 architected
 argv
 arquivos
+attaches
 autenticação
 auth
 authelia
@@ -31,6 +32,7 @@ backend
 bcp
 belo
 caddyfile
+chave
 cli
 comeu
 concorda

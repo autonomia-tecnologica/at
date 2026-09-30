@@ -23,7 +23,7 @@ import sys
 from collections.abc import Callable, Sequence
 
 from at import __version__
-from at.core import actors, boot, files, gate, install, licenses, paths, tables
+from at.core import actors, boot, files, install, licenses, paths, tables
 from at.i18n import tr
 
 from at_deploy import environment, tree
@@ -44,13 +44,6 @@ WORDS = tree.environment_words()
 # and the `users.yml` it derives is keyed by one (§7b). The tree carries what a
 # word IS and not how it is spelled after it, which is why this is said here.
 ARGUMENT = "credential"
-
-# `notify` takes an OPTIONAL fixed word, and not a NAME (unlike `credential`
-# above): with none, it sends the test alert it always sent; with `creds`, it
-# shows the phone's read credential instead — a second act sharing the word
-# because it is the same subject (§7f's delivery), not a second argument's
-# worth of vocabulary.
-NOTIFY_CREDS = "creds"
 
 # The two acts of `ca`, read off the tree that offers them, for the reason the
 # environment's words are: a word can never dispatch without being offered (§5). The
@@ -152,7 +145,6 @@ def services(
     rest: list[str],
     ask: Ask | None = None,
     secret: Ask | None = None,
-    answer: gate.Answer | None = None,
 ) -> int:
     """The environment's eight root words (§7a) — one function behind all of them.
 
@@ -174,26 +166,16 @@ def services(
     is the way back — both local, which is the whole point of the return existing
     (`at_deploy/switch.py`).
 
-    `notify` is §7f's, and it is TWO acts sharing one word (2026-09-28): with no
-    argument, it proves the delivery by hand — one alert, through the credential
-    `up` created, to the topic; with `creds`, it draws the phone's credential if
-    there is none, and prints it — either way, every time it runs, because it
-    has to reach the phone and a phone is not always the one that read it last
-    (replacing the earlier print-once rule). One word and not two, because a
-    second top-level word for the same subject would be a second thing to
-    remember for one delivery.
+    `notify` is §7f's: it proves the delivery by hand — one alert, through the
+    credential `up` created, to the topic. It takes no argument any more
+    (2026-09-28): the phone no longer needs a credential of its own to print —
+    the edge fronts the notifier now, and the SAME Chave Principal that logs
+    into `at.local` is what proves it at `ntfy.at.local` too.
 
     **The last one is the OPERATOR's act** (item 27), and it is here because the
     environment is what it is about. `credential` is §7b's: it gives a person
     the credential the gate proves, and it is the one word of this surface that
-    takes an open ARGUMENT (a NAME); `notify creds` takes a closed one — `creds`
-    is the only word there is to say after it.
-
-    **Os dois atos do §7f — `notify` sozinho e `notify creds` — pedem a Chave
-    Principal** (item 50): o que a pasta guarda das duas credenciais é o envelope
-    do cofre, e quem o abre é a Chave daquele ato. É por isso que o `secret`
-    deste surface chega a eles: a mesma porta sem eco por onde o `up` e o
-    `credential` já a leem.
+    takes an ARGUMENT (a NAME).
 
     The Podman is checked by the ENVIRONMENT and not here: the two ways out of a
     machine without it are §7a's sentence, and they are composed where the
@@ -203,9 +185,6 @@ def services(
 
     `ask` and `secret` are injectable the way `boot` takes its own: a test walks
     the whole offer, and the whole credential conversation, without a terminal.
-    And `answer` is the SEAM of the phone's proof — the same `gate.Answer` the
-    switch asks through —, so that the whole act, proof included, is provable
-    without a socket.
     """
     from at_deploy import notifier, switch
 
@@ -221,12 +200,6 @@ def services(
             # exist would not say that: the usage is this word's own.
             print(tr("deploy.credential.ask"))
             return USAGE
-    elif word == "notify":
-        if args not in ([], [NOTIFY_CREDS]):
-            # A closed vocabulary of one: the usage says the only word that
-            # completes it, instead of the WORDS list, which would not.
-            print(tr("deploy.notify.ask"))
-            return USAGE
     elif args:
         return _reject(word)
 
@@ -236,21 +209,6 @@ def services(
     if word == "down":
         environment.down()
         return OK
-    if word == "notify" and args == [NOTIFY_CREDS]:
-        # §7f's other end, and the person's act: the phone's credential is drawn
-        # by the notifier if there is none, kept at `0600` SEALED, and PRINTED —
-        # every time this runs, not just the first (`notifier.subscribe`,
-        # 2026-09-28). **E o ato prova a leitura pelo NOME**, com o token e sem
-        # ele: um token que existe num arquivo não é um celular que lê, e a
-        # palavra promete a leitura (`PHONE_UNPROVED`).
-        #
-        # **A Chave Principal entra aqui porque o ato SELA e porque ele ABRE** (§4, item
-        # 50): o valor sorteado — ou já sorteado antes — vai/vem da pasta como
-        # envelope, e é a mesma Chave que sela e que reabre. As duas coisas pedem
-        # a Chave, e é o mesmo leitor sem eco da subida.
-        outcome = notifier.subscribe(
-            answer, secret if secret is not None else _secret())
-        return OK if outcome in (notifier.PHONE_DRAWN, notifier.PHONE_HELD) else REFUSED
     if word == "notify":
         # §7f's delivery, proved from the outside: the alert goes out the same
         # way a real one does — the credential on the file and the POST to the

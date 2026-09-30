@@ -2607,18 +2607,18 @@ class TheReadOnlySwitch(ServerCase):
 class TheNotificationRoute(ServerCase):
     """A rota que consome o tópico do notificador por dentro (TASK-176, 3/3).
 
-    **A credencial com que ela lê é a do CELULAR** — a ponta `read-only` da ACL
-    (§7f) —, aberta pela chave derivada do escopo do notificador que o processo
-    segurou no `boot`. O token do AT é `write-only` e não lê o próprio tópico,
-    que é medido; o que os testes medem é que o cabeçalho leva o valor do
-    arquivo do celular e que a PÁGINA não recebe nenhum dos dois.
+    **A credencial com que ela lê é a mesma que publica** — a conta é
+    `read-write` desde que a borda passou a autenticar quem chega de fora
+    (§7f) —, aberta pela chave derivada do escopo do notificador que o
+    processo segurou no `boot`. O que os testes medem é que o cabeçalho leva
+    o valor do arquivo e que a PÁGINA não recebe o valor de volta.
 
     **O seam é o próprio `notifier.read`** e não o `urlopen`: `notifier.urllib
     .request` É o `urllib.request` do processo inteiro, e trocar o `urlopen` ali
     trocaria também o que o cliente DESTE teste usa para falar com o servidor —
     o que o teste mede é a ROTA, e o que ela pergunta ao motor é o que ele
-    responde aqui. O que o `urlopen` leva (a URL do `poll` e o `Bearer` do
-    celular) é do `test_notifier`.
+    responde aqui. O que o `urlopen` leva (a URL do `poll` e o `Bearer`) é do
+    `test_notifier`.
     """
 
     CREDENTIAL = "uma-frase-bem-longa"
