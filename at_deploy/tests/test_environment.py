@@ -64,7 +64,7 @@ SAID = (
     "services.status.running", "services.status.installed", "services.status.missing",
     "services.status.head.service", "services.status.head.state",
     "services.status.head.image",
-    "services.dnsmasq.file.header", "services.gate.drawn",
+    "services.gate.drawn",
     # A migração da pasta que nasceu antes do selo (item 50, corte `f`): o ato
     # que re-sorteia e sela o que estava em claro.
     "services.migrated",
@@ -297,16 +297,16 @@ class TheManifest(unittest.TestCase):
     """What the binary carries: the services of §7a, pinned in version and digest."""
 
     def test_the_services_of_the_section_are_declared(self):
-        # §7a: "dnsmasq e o Caddy são os primeiros serviços". §7b adds the gate
-        # and §7c the WebApp, and the order is the ORDER THINGS COME UP: the
-        # edge asks the provider about every request and proxies to the WebApp,
-        # so both stand before it. **O Redis vem ANTES do provedor** porque é
+        # TASK-187: o dnsmasq saiu — não há mais DNS do ambiente. O Redis vem
+        # PRIMEIRO agora, e o resto da ordem é a ORDER THINGS COME UP: a borda
+        # pergunta ao provedor sobre todo pedido e faz proxy para o WebApp, então
+        # os dois estão antes dela. **O Redis vem ANTES do provedor** porque é
         # ele quem lê o registro de sessões quando sobe, e um portão que sobe
         # com o registro atrás é um portão sem onde guardar quem está dentro.
         # §7f's notifier stands last, and it is the one nothing in front of it
         # depends on.
         self.assertEqual([service.name for service in env.SERVICES],
-                         ["dnsmasq", env.REDIS, env.IDENTITY, env.WEBAPP,
+                         [env.REDIS, env.IDENTITY, env.WEBAPP,
                           "caddy", env.NOTIFIER])
 
     def test_every_image_is_pinned_in_version_and_hashing(self):
@@ -362,20 +362,16 @@ class TheManifest(unittest.TestCase):
                     self.assertIn(port.address, (env.LOOP, env.vpn.address() or env.LOOP))
                     self.assertNotIn(port.address, ("0.0.0.0", "::"))
 
-    def test_the_caddy_publishes_the_site_and_the_environment_nothing_else(self):
-        # A borda é o que a pessoa alcança: ela publica a porta do SITE, e o
-        # resto do ambiente fica no laço ou em nada. O que decide a rede de cada
-        # serviço é só com quem ele fala (o módulo diz por quê).
+    def test_the_caddy_publishes_the_site_and_the_notifier_and_nothing_else(self):
+        # A borda é o que a pessoa e o celular alcançam: ela publica a porta do
+        # SITE e a do notificador, bem acima dela (TASK-187 — não há mais um
+        # segundo NOME para separá-los), e o resto do ambiente fica no laço ou
+        # em nada. O que decide a rede de cada serviço é só com quem ele fala (o
+        # módulo diz por quê).
         caddy = _service("caddy")
         self.assertEqual(caddy.network, env.NETWORK)
-        self.assertEqual([port.port for port in env.ports_of(caddy)], [env.PORT])
-
-    def test_the_dns_is_the_one_service_of_the_dmz(self):
-        # O dnsmasq é o único que não fala com ninguém, e é o único sozinho na
-        # rede que não tem rota para a do ambiente.
-        alone = [service.name for service in env.SERVICES
-                 if service.network == env.DMZ]
-        self.assertEqual(alone, ["dnsmasq"])
+        self.assertEqual([port.port for port in env.ports_of(caddy)],
+                         [env.PORT, env.PORT + 1])
 
     def test_every_service_reads_what_the_folder_is(self):
         # §7: every service's persistent state lives under `App/services/`, and
@@ -401,13 +397,11 @@ class TheManifest(unittest.TestCase):
 
     def test_the_session_store_joins_the_environment_network_and_publishes_nothing(self):
         # §7b's session store: quem o lê é o provedor, e só ele — então ele está
-        # na rede do ambiente e NÃO na DMZ, que é do DNS sozinho, o único
-        # serviço que não fala com ninguém. **E ele não publica porta nenhuma**:
-        # a porta dele é a da rede, entre containers, e uma porta desta máquina
-        # abriria a memória das sessões a quem está fora do ambiente.
+        # na rede do ambiente. **E ele não publica porta nenhuma**: a porta dele
+        # é a da rede, entre containers, e uma porta desta máquina abriria a
+        # memória das sessões a quem está fora do ambiente.
         store = _service(env.REDIS)
         self.assertEqual(store.network, env.NETWORK)
-        self.assertNotEqual(store.network, env.DMZ)
         self.assertEqual(env.ports_of(store), ())
 
     def test_the_session_store_mounts_its_configuration_and_nothing_else(self):
@@ -421,20 +415,6 @@ class TheManifest(unittest.TestCase):
                           for mount in store.mounts],
                          [(env.REDIS_CONFIG, "", False)])
 
-    def test_the_dnsmasq_publishes_dns_on_both_protocols(self):
-        # UDP e TCP, na mesma porta, e o endereço é um dos dois que §7e permite:
-        # o laço quando a máquina não está em rede nenhuma, o dela quando está.
-        # O DNS é o segundo serviço a sair do laço, e é isso que torna os nomes
-        # do ambiente — `at.local`, `ntfy.at.local` — perguntáveis de fora da
-        # máquina. Onde cada endereço vale é o que `ThePrivateNetwork` e `TheUp`
-        # provam, com o agente fora do caminho; aqui a pergunta é outra.
-        ports = env.ports_of(_service("dnsmasq"))
-        self.assertEqual([(port.port, port.protocol) for port in ports],
-                         [(53, "udp"), (53, "tcp")])
-        for port in ports:
-            self.assertIn(port.address, (env.LOOP, env.vpn.address() or env.LOOP))
-
-
 def _service(name: str) -> env.Service:
     return next(service for service in env.SERVICES if service.name == name)
 
@@ -443,31 +423,31 @@ class ThePin(FolderCase):
     """§3: the pin only moves forward, and an instance ahead is not downgraded."""
 
     def test_a_folder_that_never_pinned_is_behind(self):
-        self.assertEqual(env.decide(_service("dnsmasq"), {}), env.OUTDATED)
+        self.assertEqual(env.decide(_service(env.REDIS), {}), env.OUTDATED)
 
     def test_a_folder_at_the_pin_is_at_the_pin(self):
-        service = _service("dnsmasq")
-        pins = {"dnsmasq": {"version": service.image.version,
+        service = _service(env.REDIS)
+        pins = {env.REDIS: {"version": service.image.version,
                             "digest": service.image.digest}}
         self.assertEqual(env.decide(service, pins), env.CURRENT)
 
     def test_a_folder_behind_the_binary_is_re_pinned(self):
         self.assertEqual(
-            env.decide(_service("dnsmasq"), {"dnsmasq": {"version": "2.89", "digest": "sha256:" + "a" * 64}}),
+            env.decide(_service(env.REDIS), {env.REDIS: {"version": "2.89", "digest": "sha256:" + "a" * 64}}),
             env.OUTDATED,
         )
 
     def test_a_folder_ahead_of_the_binary_warns_and_proceeds(self):
-        service = _service("dnsmasq")
+        service = _service(env.REDIS)
         ahead = {"version": "9.99", "digest": "sha256:" + "b" * 64}
-        self.assertEqual(env.decide(service, {"dnsmasq": ahead}), env.AHEAD)
+        self.assertEqual(env.decide(service, {env.REDIS: ahead}), env.AHEAD)
         # And what it runs is what it HAS: the pin does not move backward.
-        self.assertEqual(env.running(service, {"dnsmasq": ahead}).version, "9.99")
+        self.assertEqual(env.running(service, {env.REDIS: ahead}).version, "9.99")
 
     def test_a_digest_that_moved_at_the_same_version_is_out_of_date(self):
-        service = _service("dnsmasq")
+        service = _service(env.REDIS)
         moved = {"version": service.image.version, "digest": "sha256:" + "c" * 64}
-        self.assertEqual(env.decide(service, {"dnsmasq": moved}), env.OUTDATED)
+        self.assertEqual(env.decide(service, {env.REDIS: moved}), env.OUTDATED)
 
     def test_a_record_nobody_can_read_is_no_record(self):
         env.pin_file().parent.mkdir(parents=True, exist_ok=True)
@@ -507,7 +487,7 @@ class TheOffer(FolderCase):
             with self.subTest(answer=answer):
                 self.quiet(env.up, secret=self.phrase, ask=lambda question, answer=answer: answer)
         self.assertFalse(env.pin_file().exists())
-        self.assertFalse(env.state("dnsmasq").exists())
+        self.assertFalse(env.state(env.REDIS).exists())
 
     def test_nothing_is_asked_of_the_runtime_without_a_podman(self):
         with mock.patch.object(podman, "run", mock.Mock()) as called:
@@ -539,30 +519,17 @@ class TheUp(FolderCase):
         _, text = self.quiet(env.up, secret=self.phrase)
         self.assertNotIn("sha256:", text)
 
-    def test_the_dnsmasq_publishes_dns_and_mounts_its_own_folder(self):
-        # O laço é o endereço de quem não tem rede privada — o estado suportado
-        # —, e o `podman run` é onde a decisão de §7e aparece: com rede, este
-        # mesmo argumento traz o endereço dela (`TheTwoNames`).
-        fake = self.runtime()
-        self.quiet(env.up, secret=self.phrase)
-        argv = _call(fake, "at-dnsmasq")
-        self.assertIn("--network", argv)
-        self.assertIn(env.DMZ, argv)
-        self.assertIn("127.0.0.1:53:53/udp", argv)
-        # O que o container LÊ vem do diretório de execução: a pasta de estado é
-        # a fonte, e o que ele monta é a cópia que serve a subida (item 50).
-        self.assertIn(f"{env.materialized('dnsmasq')}:{env.DNSMASQ_CONFIG}:Z", argv)
-        self.assertNotIn(f"{env.state('dnsmasq')}:{env.DNSMASQ_CONFIG}:Z", argv)
-
-    def test_the_caddy_joins_the_network_and_publishes_the_site(self):
-        # A borda é um container como os outros, e as duas coisas que a fazem a
+    def test_the_caddy_joins_the_network_and_publishes_the_site_and_the_notifier(self):
+        # A borda é um container como os outros, e as coisas que a fazem a
         # borda são a rede em que ela está — onde o WebApp e o portão estão — e
-        # a única porta que ela publica.
+        # as DUAS portas que ela publica (TASK-187): a do site e a do
+        # notificador, bem acima dela.
         fake = self.runtime()
         self.quiet(env.up, secret=self.phrase)
         argv = _call(fake, "at-caddy")
         self.assertIn(env.NETWORK, argv)
         self.assertIn(f"{env.LOOP}:{env.PORT}:{env.PORT}/tcp", argv)
+        self.assertIn(f"{env.LOOP}:{env.PORT + 1}:{env.PORT + 1}/tcp", argv)
         # O `Caddyfile` sai do diretório de execução e o storage da CA NÃO: o
         # primeiro o container só lê, e o segundo é o que ele ENCHE — e o que
         # ele enche tem de sobreviver ao container (item 50).
@@ -581,7 +548,6 @@ class TheUp(FolderCase):
     def test_the_configuration_lands_in_the_state_folder(self):
         self.runtime()
         self.quiet(env.up, secret=self.phrase)
-        self.assertIn("address=/", (env.state("dnsmasq") / "dnsmasq.conf").read_text(encoding="utf-8"))
         self.assertIn("reverse_proxy", (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8"))
 
     def test_the_session_store_lands_with_the_disk_off(self):
@@ -627,7 +593,7 @@ class TheUp(FolderCase):
         fake = self.runtime(fails=("pull",))
         outcome, text = self.quiet(env.up, secret=self.phrase)
         self.assertEqual(outcome, env.FAILED)
-        self.assertIn("dnsmasq", text)
+        self.assertIn(i18n.tr(_service(env.REDIS).label), text)
         self.assertNotIn("run", fake.verbs())
         self.assertFalse(env.pin_file().exists())
 
@@ -637,7 +603,7 @@ class TheUp(FolderCase):
         ahead = {"version": "9.99", "digest": "sha256:" + "d" * 64}
         env.pin_file().parent.mkdir(parents=True, exist_ok=True)
         env.pin_file().write_text(
-            json.dumps({"dnsmasq": ahead}), encoding="utf-8"
+            json.dumps({env.REDIS: ahead}), encoding="utf-8"
         )
         fake = self.runtime()
         # `bring_up` and not `up`: a pin already on the folder makes `up` refuse
@@ -646,13 +612,13 @@ class TheUp(FolderCase):
         outcome, text = self.quiet(env.bring_up, secret=self.phrase)
         self.assertEqual(outcome, env.UP)
         self.assertIn(i18n.tr(
-            "services.up.ahead", service=i18n.tr("services.dnsmasq.name"),
-            held="9.99", pin=_service("dnsmasq").image.version,
+            "services.up.ahead", service=i18n.tr(_service(env.REDIS).label),
+            held="9.99", pin=_service(env.REDIS).image.version,
         ), text)
-        self.assertIn(f"docker.io/dockurr/dnsmasq:9.99@{ahead['digest']}",
+        self.assertIn(f"docker.io/library/redis:9.99@{ahead['digest']}",
                       [call[-1] for call in fake.calls])
         # And the pin it leaves behind is the one it is at, still ahead.
-        self.assertEqual(env.held()["dnsmasq"]["version"], "9.99")
+        self.assertEqual(env.held()[env.REDIS]["version"], "9.99")
 
     def test_the_network_is_created_when_the_machine_does_not_have_it(self):
         fake = self.runtime(fails=("network",))
@@ -757,16 +723,16 @@ class TheUpdate(FolderCase):
         self.runtime()
         self.quiet(env.up, secret=self.phrase)
         pins = env.held()
-        pins["dnsmasq"] = {"version": "9.99", "digest": "sha256:" + "d" * 64}
+        pins[env.REDIS] = {"version": "9.99", "digest": "sha256:" + "d" * 64}
         env.pin_file().write_text(json.dumps(pins), encoding="utf-8")
         fake = self.runtime()
         outcome, text = self.quiet(env.update, secret=self.phrase)
         self.assertEqual(outcome, env.UPDATED)
         self.assertIn(i18n.tr(
-            "services.up.ahead", service=i18n.tr("services.dnsmasq.name"),
-            held="9.99", pin=_service("dnsmasq").image.version,
+            "services.up.ahead", service=i18n.tr(_service(env.REDIS).label),
+            held="9.99", pin=_service(env.REDIS).image.version,
         ), text)
-        self.assertEqual(env.held()["dnsmasq"]["version"], "9.99")
+        self.assertEqual(env.held()[env.REDIS]["version"], "9.99")
 
     def test_the_words_reach_the_cli_and_map_to_an_exit_code(self):
         self.runtime()
@@ -843,17 +809,17 @@ class TheIdentityProvider(FolderCase):
         # pergunta, então não passa pela regra que a responde.
         self.assertNotIn(caddy.PORTAL, text[text.index("access_control:"):])
 
-    def test_the_access_control_names_the_site_and_the_notifier(self):
-        # A regra responde pelos DOIS domínios que o `forward_auth` pergunta
-        # sobre — o site e, desde esta fatia, o notificador — e mais nenhum: o
-        # portal é roteado fora da pergunta, então uma regra para ele seria uma
-        # regra que nada consulta.
+    def test_the_access_control_names_the_site_and_covers_the_notifier_too(self):
+        # UMA regra, desde TASK-187: o notificador não tem nome próprio — ele
+        # responde no MESMO host, numa porta diferente —, e o `domain` do
+        # Authelia lê o Host header sem a porta, então a única linha que nomeia
+        # o site já cobre as duas. O portal é roteado fora da pergunta, então
+        # uma regra para ele seria uma regra que nada consulta.
         self.up()
         text = self.conf()
         rules = text[text.index("access_control:"):text.index("notifier:")]
-        self.assertEqual(rules.count("- domain:"), 2)
+        self.assertEqual(rules.count("- domain:"), 1)
         self.assertIn(f"- domain: {env.site_host()}", rules)
-        self.assertIn(f"- domain: {env.notifier_host()}", rules)
 
     def test_the_storage_and_the_users_are_where_bill_mounts_them(self):
         # §7: the persistent state of the service lives in the folder, and this
@@ -1064,11 +1030,11 @@ class TheGate(FolderCase):
 class ThePermission(FolderCase):
     """§3, Privilege: the environment's one elevation, asked and never assumed.
 
-    §7a's `dnsmasq` publishes DNS on `53`, and a machine that ships the kernel's
-    low-port rule refuses that bind to a user process — which is every Linux, and
-    the one measured here (`ip_unprivileged_port_start = 1024`). The rule says
-    the elevation happens "through an explicit request, with the reason on
-    display", and this is that door.
+    §7a's Caddy publishes the edge on `443`, and a machine that ships the
+    kernel's low-port rule refuses that bind to a user process — which is every
+    Linux, and the one measured here (`ip_unprivileged_port_start = 1024`). The
+    rule says the elevation happens "through an explicit request, with the
+    reason on display", and this is that door.
     """
 
     def machine(self, value: int = 1024):
@@ -1093,29 +1059,27 @@ class ThePermission(FolderCase):
 
     def test_what_is_blocked_is_asked_of_the_manifest(self):
         # Not a hand-written list: a service that starts publishing a low port
-        # tomorrow enters this question by existing. **E a porta 443 entra por
-        # isso**: o site publica nela, ela é baixa, e a resposta não é tratada
-        # em lugar nenhum como um caso à parte — o piso se move UMA vez, para a
-        # mais baixa que o ambiente publica, e as duas passam a caber.
+        # tomorrow enters this question by existing. **A porta 443 entra por
+        # isso, e desde TASK-187 é ela a mais baixa que o ambiente publica**:
+        # o site e o notificador, bem acima dele (`444`) — o piso se move UMA
+        # vez, para a mais baixa, e as duas passam a caber.
         with self.machine(1024):
-            self.assertEqual(env.blocked(), (53, 443))
+            self.assertEqual(env.blocked(), (443, 444))
         with self.machine(444):
-            self.assertEqual(env.blocked(), (53, 443))
+            self.assertEqual(env.blocked(), (443,))
         with self.machine(443):
-            self.assertEqual(env.blocked(), (53,))
-        with self.machine(53):
             self.assertEqual(env.blocked(), ())
 
     def test_the_request_carries_the_reason_and_the_narrowest_value(self):
         # The reason on display (§3), and the floor moves to the LOWEST port the
-        # environment publishes — 53, not 0: the machine grants exactly what AT
+        # environment publishes — 443, not 0: the machine grants exactly what AT
         # needs and nothing below it.
         said, spent = [], []
         box = {"floor": 1024}
 
         def spend(*argv: str) -> None:
             spent.append(argv)
-            box["floor"] = 53  # the machine moved
+            box["floor"] = 443  # the machine moved
 
         with mock.patch.object(env, "floor", lambda: box["floor"]):
             outcome = self.quiet(
@@ -1123,9 +1087,9 @@ class ThePermission(FolderCase):
                 spend=spend,
             )[0]
         self.assertIsNone(outcome)
-        self.assertEqual(spent, [("sysctl", "-w", f"{env.SYSCTL_PORTS}=53")])
+        self.assertEqual(spent, [("sysctl", "-w", f"{env.SYSCTL_PORTS}=443")])
         self.assertIn(env.SYSCTL_PORTS, said[0])
-        self.assertIn("53", said[0])
+        self.assertIn("443", said[0])
 
     def test_declining_moves_nothing_and_says_which_port_is_out_of_reach(self):
         spent = []
@@ -1135,13 +1099,13 @@ class ThePermission(FolderCase):
             )
         self.assertEqual(outcome, env.HOSTED)
         self.assertEqual(spent, [])
-        self.assertIn(i18n.tr("services.elevation.refused", ports="53, 443"), text)
+        self.assertIn(i18n.tr("services.elevation.refused", ports="443, 444"), text)
 
     def test_with_no_terminal_the_permission_is_not_requested(self):
         with self.machine(1024):
             outcome, text = self.quiet(env.elevate)
         self.assertEqual(outcome, env.NO_ANSWER)
-        self.assertIn(i18n.tr("services.elevation.no_tty", ports="53, 443"), text)
+        self.assertIn(i18n.tr("services.elevation.no_tty", ports="443, 444"), text)
 
     def test_a_machine_that_does_not_move_says_so_instead_of_announcing(self):
         # Asking and getting nothing is the one answer that must not be called a
@@ -1150,7 +1114,7 @@ class ThePermission(FolderCase):
             outcome, text = self.quiet(env.elevate, lambda question: "s",
                                        spend=lambda *argv: None)
         self.assertEqual(outcome, env.FAILED)
-        self.assertIn(i18n.tr("services.elevation.failed", ports="53, 443"), text)
+        self.assertIn(i18n.tr("services.elevation.failed", ports="443, 444"), text)
 
     def test_up_asks_before_it_starts_anything_and_leaves_the_folder_alone(self):
         # A refusal is the folder's previous state untouched: no secret drawn, no
@@ -1159,7 +1123,7 @@ class ThePermission(FolderCase):
         with self.machine(1024):
             outcome, text = self.quiet(env.up, secret=self.phrase, ask=lambda question: "n")
         self.assertEqual(outcome, env.HOSTED)
-        self.assertIn(i18n.tr("services.elevation.refused", ports="53, 443"), text)
+        self.assertIn(i18n.tr("services.elevation.refused", ports="443, 444"), text)
         self.assertFalse(caddy.gate_file().exists())
         self.assertEqual(fake.calls, [])
 
@@ -1213,14 +1177,12 @@ class ThePrivateNetwork(FolderCase):
         self.assertIsNone(vpn.name(self.agent('{"Self": {}}')))
         self.assertIsNone(vpn.address(self.agent("")))
 
-    def test_the_network_changes_the_address_and_never_the_name(self):
-        # **A decisão desta fatia, e ela é uma linha**: a rede privada decide
-        # ONDE a borda publica e o que o DNS responde, e nunca QUAIS são os
-        # nomes. O nome da rede (`vpn.name`) nomeava o site enquanto ele era a
-        # única coisa que o ambiente tinha; agora que os nomes do ambiente
-        # penduram todos do domínio dele, um site que respondesse pelo nome da
-        # rede seria um segundo domínio, um segundo certificado, e um portão cujo
-        # `authelia_url` mandaria o celular para um nome que a rede não resolve.
+    def test_the_network_changes_the_address_and_the_name_follows_it_now(self):
+        # **A decisão desta fatia mudou de lado (TASK-187).** A rede privada
+        # decide ONDE a borda publica — nunca mudou — e agora também QUAL nome
+        # ela serve: sem um `dnsmasq` do ambiente para resolver um domínio
+        # próprio, o nome É o da rede (`vpn.name`), que o MagicDNS do próprio
+        # Tailscale já resolve para todo dispositivo do tailnet.
         #
         # O endereço da rede privada não existe nesta máquina — quem responde
         # por ele é o seam —, então quem responde pela PERGUNTA ao endereço
@@ -1229,58 +1191,44 @@ class ThePrivateNetwork(FolderCase):
         with mock.patch.object(vpn, "name", lambda call=None: "host.example-tailnet.ts.net"), \
                 mock.patch.object(vpn, "address", lambda call=None: "100.64.0.1"), \
                 mock.patch.object(env, "address_ready", lambda address: True):
-            self.assertEqual(env.site_host(), env.NAME)
+            self.assertEqual(env.site_host(), "host.example-tailnet.ts.net")
             fake = self.runtime()
             self.quiet(env.up, secret=self.phrase)
             caddyfile = (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8")
             self.assertIn(f"https://{env.site_host()} {{", caddyfile)
-            self.assertNotIn("host.example-tailnet.ts.net", caddyfile)
             identity = (env.state(env.IDENTITY) / env.IDENTITY_YAML).read_text(encoding="utf-8")
             self.assertIn(f"domain: {env.site_host()}", identity)
             # O portal segue o mesmo nome — e carrega o caminho dele, que é o
             # endereço em que a borda o roteia fora do `forward_auth`.
             self.assertIn(
                 f"authelia_url: https://{env.site_host()}{caddy.PORTAL}/", identity)
-            # The name AT answers for points at where the edge actually is.
-            self.assertIn(f"address=/{env.site_host()}/100.64.0.1",
-                          (env.state("dnsmasq") / "dnsmasq.conf").read_text(encoding="utf-8"))
-            # **E a porta do site é publicada no endereço DA REDE**, que é como a
-            # pessoa chega: no caminho container quem publica é o container, e o
-            # §7e só vale se o endereço for o da rede.
-            self.assertIn(f"100.64.0.1:{env.PORT}:{env.PORT}/tcp",
-                          _call(fake, "at-caddy"))
-            # **E o DNS sai do laço pela outra metade da mesma razão**: os nomes
-            # que ele responde — `at.local` e `ntfy.at.local` — não existem em
-            # DNS público nenhum, então o navegador de outra máquina e o celular
-            # só os resolvem perguntando a ELE, e é para cá que o split-DNS do
-            # tailnet aponta. Sem isso o nome não resolve fora da máquina, e a
-            # URL que a pessoa digita não abre.
-            dns = _call(fake, "at-dnsmasq")
-            self.assertIn("100.64.0.1:53:53/udp", dns)
-            self.assertIn("100.64.0.1:53:53/tcp", dns)
+            # **E as DUAS portas do site são publicadas no endereço DA REDE**,
+            # que é como a pessoa e o celular chegam: no caminho container quem
+            # publica é o container, e o §7e só vale se o endereço for o da rede.
+            argv = _call(fake, "at-caddy")
+            self.assertIn(f"100.64.0.1:{env.PORT}:{env.PORT}/tcp", argv)
+            self.assertIn(f"100.64.0.1:{env.PORT + 1}:{env.PORT + 1}/tcp", argv)
             # **E a PORTA do notificador FICA no laço, mesmo numa rede** —
-            # a decisão desta fatia: quem chega de fora passa pela borda agora
-            # (`_caddy_conf`), então esta porta só precisa responder a ESTA
-            # máquina, e a entrega do AT segue ela (`notifier_url`).
+            # quem chega de fora passa pela borda agora (`_caddy_conf`), então
+            # esta porta só precisa responder a ESTA máquina, e a entrega do AT
+            # segue ela (`notifier_url`).
             self.assertIn(
                 f"{env.LOOP}:{env.NOTIFIER_PORT}:{env.NOTIFIER_PORT}/tcp",
                 _call(fake, env.container(env.NOTIFIER)))
             self.assertEqual(env.notifier_url(),
                              f"http://{env.LOOP}:{env.NOTIFIER_PORT}")
 
-    def test_without_a_network_the_site_is_bills_own_name(self):
+    def test_without_a_network_the_site_falls_back_to_at_localhost(self):
         # O estado suportado, e não um degradado: a máquina não está em rede
-        # privada nenhuma, e o site é o nome que o AT responde (§7a) — o
-        # `at.local` inteiro, e não o laço, porque o portão recusa um domínio de
-        # cookie sem ponto e o TLS precisa de um nome para o SNI. Os dois foram
-        # medidos.
-        self.assertEqual(env.site_host(), env.NAME)
+        # privada nenhuma, e o site cai no nome universal — `at.localhost`, que
+        # todo navegador resolve para o laço sozinho, sem DNS nenhum por trás —
+        # porque o portão recusa um domínio de cookie sem ponto e o TLS precisa
+        # de um nome para o SNI. Os dois foram medidos.
+        self.assertEqual(env.site_host(), env.FALLBACK_HOST)
         self.runtime()
         self.quiet(env.up, secret=self.phrase)
         self.assertIn(f"https://{env.site_host()} {{",
                       (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8"))
-        self.assertIn(f"address=/{env.site_host()}/{env.LOOP}",
-                      (env.state("dnsmasq") / "dnsmasq.conf").read_text(encoding="utf-8"))
 
 
 class TheAddress(FolderCase):
@@ -1296,9 +1244,9 @@ class TheAddress(FolderCase):
         # A container published on an address the machine does not have comes up
         # RUNNING AND WITHOUT ITS PORT — so it is not started at all.
         lost = env.Service(
-            name="dnsmasq",
-            label="services.dnsmasq.name",
-            image=_service("dnsmasq").image,
+            name=env.REDIS,
+            label=f"services.{env.REDIS}.name",
+            image=_service(env.REDIS).image,
             ports=(env.Port(53, "udp", address=NOBODY),),
         )
         self.runtime()
@@ -1307,7 +1255,7 @@ class TheAddress(FolderCase):
             outcome, text = self.quiet(env.up, secret=self.phrase)
         self.assertEqual(outcome, env.FAILED)
         self.assertIn(i18n.tr(
-            "services.up.no_address", service=i18n.tr("services.dnsmasq.name"),
+            "services.up.no_address", service=i18n.tr(lost.label),
             address=NOBODY,
         ), text)
 
@@ -1415,14 +1363,14 @@ class TheDown(FolderCase):
             with self.subTest(service=service.name):
                 self.assertIn(["rm", "--force", env.container(service.name)], fake.calls)
         self.assertIn(["network", "rm", env.NETWORK], fake.calls)
-        self.assertIn(i18n.tr("services.down.done", where=env.state("dnsmasq").parent), text)
+        self.assertIn(i18n.tr("services.down.done", where=env.state(env.REDIS).parent), text)
 
     def test_the_folder_is_not_touched(self):
         self.runtime()
         self.quiet(env.up, secret=self.phrase)
-        before = (env.state("dnsmasq") / "dnsmasq.conf").read_text(encoding="utf-8")
+        before = (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8")
         self.quiet(env.down)
-        self.assertEqual((env.state("dnsmasq") / "dnsmasq.conf").read_text(encoding="utf-8"), before)
+        self.assertEqual((env.state("caddy") / "Caddyfile").read_text(encoding="utf-8"), before)
 
     def test_without_a_podman_there_is_nothing_to_bring_down(self):
         _, text = self.quiet(env.down)
@@ -1630,7 +1578,7 @@ class TheWebappContainer(FolderCase):
 
     def test_a_service_that_needs_nothing_is_told_nothing(self):
         fake = self.up()
-        for name in ("dnsmasq", env.REDIS, env.IDENTITY, "caddy", env.NOTIFIER):
+        for name in (env.REDIS, env.IDENTITY, "caddy", env.NOTIFIER):
             with self.subTest(service=name):
                 self.assertNotIn("--env", _call(fake, env.container(name)))
 
@@ -1688,129 +1636,61 @@ class TheWebappBehindIt(FolderCase):
 
 
 class TheNames(FolderCase):
-    """Os nomes do ambiente: o do site, o do notificador e o da CA (§7a, §7f).
+    """O nome do ambiente, e a porta que separa o site do notificador (TASK-187).
 
-    O ambiente responde por UM domínio (`at.local`) e os serviços que são
-    alcançados por um nome penduram o deles embaixo dele: o site fica com o
-    domínio mesmo, o notificador responde em `ntfy.at.local`, e a CA do AT em
-    `cert.at.local` — o único que não tem serviço atrás, e que existe para o
-    aparelho que precisa confiar no certificado poder BUSCÁ-lo em vez de receber
-    um caminho de arquivo. Quem responde os três é o `dnsmasq`, com o endereço
-    onde a borda está de fato — e o que se lê aqui é o que a subida ESCREVE, que
-    é a única coisa que esta suíte pode ler.
+    O ambiente responde por UM nome só — o da rede privada quando há uma
+    (`vpn.name`, que o MagicDNS do próprio Tailscale já resolve), `at.localhost`
+    quando não há — e não tem mais DNS próprio: não há um `dnsmasq` para
+    resolver um segundo nome, então o notificador mora no MESMO nome, numa
+    porta diferente, e a CA própria (`cert.at.local`) não existe mais. O que se
+    lê aqui é o que a subida ESCREVE, que é a única coisa que esta suíte pode
+    ler.
     """
 
-    def test_the_environment_owns_one_domain_and_the_services_hang_under_it(self):
-        self.assertEqual(env.NAME, "at.local")
-        self.assertEqual(env.site_host(), env.NAME)
-        self.assertEqual(env.notifier_host(), f"{env.NOTIFIER_HOST}.{env.NAME}")
-        self.assertEqual(env.cert_host(), f"{env.CERT_HOST}.{env.NAME}")
-        # **E o site É o domínio.** Ele é o que a pessoa digita sem pensar, então
-        # ele fica com o `at.local` inteiro, e o domínio responde — ao contrário
-        # do desenho que o punha num subdomínio próprio e deixava o domínio
-        # pelado sem resposta nenhuma.
-        self.assertIn(env.NAME, env.names())
-        # E o subdomínio próprio que o site já teve não existe mais: um nome
-        # embaixo do domínio que não é o site nem o notificador nem a CA não
-        # entra na lista.
-        self.assertNotIn(f"at.{env.NAME}", env.names())
+    def test_the_environment_owns_one_name_and_the_notifier_hangs_off_its_port(self):
+        self.assertEqual(env.site_host(), env.FALLBACK_HOST)
+        self.assertEqual(env.names(), (env.site_host(),))
 
-    def test_the_dns_answers_every_name_with_the_address_the_edge_is_at(self):
-        # **Nome a nome, e não um curinga.** `address=/.at.local/…` responderia
-        # por um nome que ninguém pediu — a borda não tem certificado para ele,
-        # e a pessoa levaria um erro de handshake em vez de "esse nome não
-        # existe". Uma linha por nome é o que o ambiente responde.
-        self.runtime()
-        self.quiet(env.up, secret=self.phrase)
-        conf = (env.state("dnsmasq") / "dnsmasq.conf").read_text(encoding="utf-8")
-        for name in env.names():
-            with self.subTest(name=name):
-                self.assertIn(f"address=/{name}/{env.LOOP}", conf)
-        self.assertNotIn("*", conf)
-        self.assertEqual(env.names(),
-                         (env.site_host(), env.notifier_host(), env.cert_host()))
-
-    def test_the_dns_follows_the_edge_and_not_the_loop_when_there_is_a_network(self):
-        # O endereço é o da rede quando há uma (§7e) — para os TRÊS nomes, que é
-        # o que diz que a rede decide onde e não quais.
-        with mock.patch.object(vpn, "address", lambda call=None: "100.64.0.1"), \
-                mock.patch.object(env, "address_ready", lambda address: True):
-            self.runtime()
-            self.quiet(env.up, secret=self.phrase)
-            conf = (env.state("dnsmasq") / "dnsmasq.conf").read_text(encoding="utf-8")
-        for name in env.names():
-            with self.subTest(name=name):
-                self.assertIn(f"address=/{name}/100.64.0.1", conf)
-
-    def test_the_edge_serves_the_second_name_with_its_own_certificate(self):
-        # A borda serve o nome do notificador num bloco de site dele, com o
-        # `tls internal` que emite o certificado POR NOME, e com o `bind` do
-        # container — a mesma razão do site: o nome não é um endereço que o
+    def test_the_edge_serves_the_notifier_on_the_second_port(self):
+        # A borda serve o notificador num SEGUNDO bloco de site, no MESMO nome
+        # — `PORT + 1`, e não um nome próprio — com o `tls internal` que emite
+        # por nome (o nome é o mesmo dos dois blocos) e com o `bind` do
+        # container, a mesma razão do site: o nome não é um endereço que o
         # container tenha.
         self.runtime()
         self.quiet(env.up, secret=self.phrase)
         text = (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8")
-        self.assertIn(f"https://{env.notifier_host()} {{", text)
+        self.assertIn(f"https://{env.site_host()}:{env.PORT + 1} {{", text)
         self.assertIn(f"reverse_proxy {env.container(env.NOTIFIER)}:{env.NOTIFIER_PORT}",
                       text)
-        # Três blocos de site, e cada um com o `tls internal` — o certificado de
-        # cada nome é emitido por nome.
-        self.assertEqual(text.count("\ttls internal"), 3)
-        self.assertEqual(text.count(f"\tbind {env.ALL}"), 3)
+        # Dois blocos de site, e cada um com o `tls internal` — o certificado é
+        # o MESMO nome nos dois, emitido uma vez.
+        self.assertEqual(text.count("\ttls internal"), 2)
+        self.assertEqual(text.count(f"\tbind {env.ALL}"), 2)
 
-    def test_the_edge_serves_the_ca_of_the_at_out_of_a_file(self):
-        # **O terceiro nome não tem serviço atrás: ele tem um ARQUIVO.** Quem
-        # responde é a borda, e o que ela devolve é o `root.crt` que ela mesma
-        # emitiu — o MESMO arquivo que a pessoa importa no aparelho
-        # (`authority_file`), dito aqui com o caminho de DENTRO do container, que
-        # é quem lê o arquivo: a pasta de estado vira `/data` lá dentro.
+    def test_the_notifier_block_goes_through_the_ask_too(self):
+        # A medição que a fatia anterior já tinha invertido, intacta: atrás do
+        # portão o notificador respondia `subscribers=0`, porque o app do
+        # celular pegava o 302 e nunca conectava — mas o Basic na própria
+        # requisição não redireciona, e é isso que faz o bloco dele perguntar,
+        # com o MESMO `forward_auth` do site, e sem o segredo do gate (que é do
+        # WebApp).
         self.runtime()
         self.quiet(env.up, secret=self.phrase)
         text = (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8")
-        self.assertIn(f"https://{env.cert_host()} {{", text)
-        authority = caddy.authority_file(env.CADDY_DATA)
-        self.assertEqual(authority, Path(env.CADDY_DATA) / caddy.AUTHORITY)
-        self.assertIn(f"\trewrite * {authority}", text)
-        self.assertIn("\tfile_server", text)
-
-    def test_the_ca_is_not_a_folder_and_neither_name_goes_through_the_ask(self):
-        # **A pasta da CA carrega a CHAVE PRIVADA ao lado do certificado** —
-        # `root.key`, `intermediate.key` —, então o site é o ARQUIVO e nunca o
-        # diretório: todo pedido é reescrito sobre ele, e não há caminho que
-        # alcance o resto do storage. E a pergunta fica fora dos DOIS: quem
-        # precisa da CA é um aparelho que ainda não confia nela, e um
-        # `forward_auth` ali seria uma pergunta cujo certificado é a resposta.
-        self.runtime()
-        self.quiet(env.up, secret=self.phrase)
-        text = (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8")
-        block = text[text.index(f"https://{env.cert_host()} {{"):]
-        self.assertNotIn("forward_auth", block)
-        self.assertNotIn(caddy.GATE_HEADER, block)
-        self.assertNotIn("reverse_proxy", block)
-        self.assertNotIn(f"\troot * {env.CADDY_DATA}", block)
-
-    def test_the_notifier_name_goes_through_the_ask_too(self):
-        # A medição que esta fatia inverte: atrás do portão o notificador
-        # respondia `subscribers=0`, porque o app do celular pegava o 302 e
-        # nunca conectava — mas o Basic na própria requisição não redireciona,
-        # e é isso que faz o bloco dele perguntar agora, com o MESMO
-        # `forward_auth` do site, e sem o segredo do gate (que é do WebApp).
-        self.runtime()
-        self.quiet(env.up, secret=self.phrase)
-        text = (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8")
-        start = text.index(f"https://{env.notifier_host()} {{")
-        block = text[start:text.index(f"https://{env.cert_host()} {{")]
+        start = text.index(f"https://{env.site_host()}:{env.PORT + 1} {{")
+        block = text[start:]
         self.assertIn("forward_auth", block)
         self.assertNotIn(caddy.GATE_HEADER, block)
-        # E a pergunta continua no site: os nomes não se confundem.
-        self.assertIn("forward_auth", text[:text.index(f"https://{env.notifier_host()} {{")])
+        # E a pergunta continua no site: os dois blocos perguntam, cada um a
+        # sua vez.
+        self.assertIn("forward_auth", text[:start])
 
-    def test_the_public_url_of_the_notifier_is_its_name(self):
+    def test_the_public_url_of_the_notifier_is_the_sites_name_on_its_own_port(self):
         # O `base-url` que o ntfy devolve dentro de cada alerta é o que o
         # CELULAR abre, então é o nome — e não o laço, que é onde o AT publica.
         self.assertEqual(env.notifier_public_url(),
-                         f"https://{env.notifier_host()}")
-        self.assertIn(env.notifier_host(), env.notifier_public_url())
+                         f"https://{env.site_host()}:{env.PORT + 1}")
         self.assertNotEqual(env.notifier_public_url(), env.notifier_url())
 
     def test_the_default_port_is_not_written_and_another_one_is(self):
@@ -1843,20 +1723,21 @@ class TheNotifier(FolderCase):
     def conf(self) -> str:
         return (env.state(env.NOTIFIER) / env.NOTIFIER_YAML).read_text(encoding="utf-8")
 
-    def test_the_notifier_publishes_where_the_private_network_puts_it(self):
-        # **A decisão desta fatia**: o que sai do laço é a PORTA do notificador,
-        # no endereço da rede privada quando há uma (§7e) e o laço quando não há
-        # — a mesma decisão que a porta do site já é —, e nunca `0.0.0.0`, que é
+    def test_the_container_of_the_notifier_publishes_on_the_loop_only(self):
+        # **A porta do CONTAINER do notificador não sai do laço, nem numa rede
+        # privada**: quem chega de fora passa pela borda, que fala com ele pelo
+        # nome do container na rede do ambiente (`_caddy_conf`), então esta
+        # porta só precisa responder a ESTA máquina — e nunca `0.0.0.0`, que é
         # uma porta na LAN. **E nada mais dele sai**: o `deny-all` continua, e
         # sem token ninguém lê (§6). O número da porta é o do AT e não o padrão
-        # do ntfy (80, abaixo do piso do kernel): §3 pede o DNS na 53 e mais
-        # nada, e 2586 está acima do piso.
+        # do ntfy (80, abaixo do piso do kernel), e ele fica ACIMA do piso — o
+        # que a borda publica é outra coisa (`_caddy_ports`), e é ela quem
+        # entra na elevação de §3.
         service = _service(env.NOTIFIER)
         ports = env.ports_of(service)
         self.assertEqual(
             [port.published() for port in ports],
-            [f"{env.vpn.address() or env.LOOP}:{env.NOTIFIER_PORT}"
-             f":{env.NOTIFIER_PORT}/tcp"],
+            [f"{env.LOOP}:{env.NOTIFIER_PORT}:{env.NOTIFIER_PORT}/tcp"],
         )
         self.assertNotIn(ports[0].address, ("0.0.0.0", "::"))
         self.assertGreater(env.NOTIFIER_PORT, 1024)
@@ -1922,20 +1803,6 @@ class TheNotifier(FolderCase):
         self.up()
         self.assertIn('auth-default-access: "deny-all"', self.conf())
 
-    def test_the_certificate_the_phone_imports_is_the_edges_own_ca(self):
-        # O certificado da borda é `tls internal` — a CA do próprio Caddy —, e o
-        # app do ntfy não usa o cofre de certificados do aparelho (medido): o que
-        # a pessoa importa é ESTE arquivo, e ele mora na pasta de estado do
-        # serviço, que é a pasta que o backup cobre (§3). É o mesmo storage que o
-        # container monta, e é o `notifier` quem o nomeia na mensagem do celular.
-        caddy_service = _service(env.CADDY)
-        self.assertEqual(caddy_service.mounts[1].host, env.CADDY_STORAGE)
-        self.assertEqual(env.authority_file(),
-                         env.state(env.CADDY) / env.CADDY_STORAGE
-                         / "pki" / "authorities" / "local" / "root.crt")
-        self.assertTrue(str(env.authority_file()).startswith(
-            str(env.state(env.CADDY))))
-
     def test_the_gate_now_fronts_the_notifier_but_never_hands_it_the_webapps_secret(self):
         # Measured in the retired environment: behind Authelia the notifier
         # answered `subscribers=0` — the gate authenticates by redirect and
@@ -1943,19 +1810,15 @@ class TheNotifier(FolderCase):
         # and `101` without it. **Basic na própria requisição é a outra metade
         # da mesma medição**: o app sempre manda a credencial, então nunca leva
         # o 302 — e é isso que deixa o bloco dele perguntar também, com o MESMO
-        # `forward_auth`, e a regra de acesso do provedor NOMEIA o nome dele.
+        # `forward_auth`, coberto pela MESMA regra do site (TASK-187: um nome,
+        # duas portas).
         fake = self.up()
         caddyfile = (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8")
-        block = caddyfile[caddyfile.index(f"https://{env.notifier_host()} {{"):]
+        block = caddyfile[caddyfile.index(f"https://{env.site_host()}:{env.PORT + 1} {{"):]
         self.assertIn("forward_auth", block)
         # O segredo do gate é do WebApp, e o notificador não o entende — quem
         # o alcança é o M2M, trocado no `header_up Authorization`.
         self.assertNotIn(caddy.GATE_HEADER, block)
-        identity = (env.state(env.IDENTITY) / env.IDENTITY_YAML).read_text(encoding="utf-8")
-        self.assertIn(env.notifier_host(), identity)
-        # O NOME do container continua fora: quem a borda alcança é ele, mas
-        # o Authelia só conhece o NOME que a pessoa digita.
-        self.assertNotIn(env.container(env.NOTIFIER), identity)
         argv = _call(fake, env.container(env.NOTIFIER))
         self.assertNotIn(env.GATE_ENV, argv)
         self.assertNotIn(caddy.GATE_HEADER, argv)
@@ -2128,9 +1991,8 @@ def _catalogue() -> tuple[tuple[Path, int | None, frozenset[str]], ...]:
         # DIRETÓRIO ali se ele não existisse (`Mount.file`). Não carrega segredo
         # nenhum: o que ele leva é o que o Authelia tem a dizer.
         (identity / env.IDENTITY_NOTIFICATIONS, None, frozenset()),
-        # No secret at all: the names the DNS answers, the image the folder is
-        # pinned at, and the notifier's own configuration (paths and the posture).
-        (env.state("dnsmasq") / "dnsmasq.conf", None, frozenset()),
+        # No secret at all: the image the folder is pinned at, the Redis's own
+        # configuration, and the notifier's (paths and the posture).
         # O `redis.conf` do §7b: sem segredo nenhum, como os outros dois — o que
         # ele carrega é a decisão do serviço (o disco desligado e o modo
         # protegido aberto para o provedor, que é OUTRO container).
@@ -2290,8 +2152,8 @@ class TheStorageOutOfReach(FolderCase):
             local / "intermediate.key": CA_PRIVATE,
             local / "intermediate.crt": CA_PUBLIC,
             local / caddy.AUTHORITY.name: CA_PUBLIC,
-            self.storage() / "certificates" / "local" / "at.local" / "at.local.key":
-                CA_PRIVATE,
+            self.storage() / "certificates" / "local" / env.site_host()
+            / f"{env.site_host()}.key": CA_PRIVATE,
         }
         for where, body in files_written.items():
             files.atomic_write_text(where, body, mode=0o600)
@@ -2360,22 +2222,6 @@ class TheStorageOutOfReach(FolderCase):
         self.up()
         self.assertFalse((env.materialized(env.CADDY) / env.CADDY_STORAGE).exists())
         self.assertTrue(self.storage().is_dir())
-
-    def test_the_only_name_the_at_has_there_is_the_public_certificate(self):
-        # O único arquivo do storage que o AT nomeia é a metade PÚBLICA da CA —
-        # o `root.crt` que o celular e o navegador da máquina importam
-        # (`authority_file`) —, e as chaves privadas que o container escreveu ao
-        # lado dele não têm nome nenhum no produto: quem as lê é o Caddy, de
-        # dentro.
-        written = self.seeded()
-        self.up()
-        authority = env.authority_file()
-        self.assertEqual(authority, self.storage() / caddy.AUTHORITY)
-        self.assertEqual(authority.suffix, ".crt")
-        self.assertIn(authority, written)
-        private = [where for where in written if where.suffix == ".key"]
-        self.assertTrue(private, "o teste precisa de chaves privadas ao lado para valer")
-        self.assertNotIn(authority, private)
 
 
 class TheStateShape(FolderCase):

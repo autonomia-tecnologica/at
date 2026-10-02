@@ -235,12 +235,12 @@ def storage_dir() -> Path:
 # `App/caddy/storage`, e o container, cujo `/data` é montado da pasta de estado
 # do mesmo serviço (§7a).
 #
-# **Ele é o arquivo que quem precisa CONFIAR no certificado importa**, e é por
-# isso que ele é nomeado: um cliente que valida TLS contra a CA pública recusa o
-# certificado do AT, que é o preço declarado de não depender de um domínio
-# público (§3). Medido: o app do ntfy não usa o cofre de CAs do aparelho, então
-# o que o celular importa é ESTE arquivo, na gestão de certificados do app
-# (`at_deploy/notifier.py`).
+# **Ele é a metade PÚBLICA da CA local**, e é por isso que ele é nomeado: um
+# cliente que valida TLS contra a CA pública recusa o certificado do AT, que é
+# o preço declarado de não depender de um domínio público (§3). **Nada no
+# produto o serve nem o importa hoje** (TASK-187): o certificado válido de quem
+# alcança o AT de outro aparelho vem do `tailscale serve`, de fora do AT, e o
+# `tls internal` da borda fica só para quem a alcança do próprio laço.
 AUTHORITY = Path("pki") / "authorities" / "local" / "root.crt"
 
 
@@ -485,12 +485,12 @@ def caddyfile(host: str, port: int, backend: int, gate: str | None = None,
     **`notify` is §7f's notifier, fronted by the SAME `forward_auth` and a
     different upstream** — `(host, upstream, credential)`, and each becomes a
     site of its own, with its own certificate (`tls internal` issues per name).
-    **`notify_port` is the bundle's own**: the container path names the
-    notifier under a SUBDOMAIN of the site (`ntfy.at.local`) and shares the
-    one port the DNS-resolved name already disambiguates by; the bundle has
-    no DNS of its own, so `where` names the SAME host as the site and this
-    port is what tells the two blocks apart instead — `None` keeps the
-    container path's own answer, `port` unchanged.
+    **`notify_port` is what tells the notifier's block apart when the `host` is
+    the site's own** — since TASK-187 BOTH paths do this: neither the bundle
+    (§6) nor the container environment (§7a) has a DNS of its own to give the
+    notifier a second name, so `host` names the SAME name as the site and this
+    port is what disambiguates instead — `None` keeps `port` unchanged, which
+    is the shape a caller with a genuinely separate name would pass.
     It took a second measurement to get here: the gate authenticates by
     redirect and session cookie, and a headless phone app used to take the 302
     and never connect (`subscribers=0` behind Authelia, `101` without it) — but
@@ -511,11 +511,14 @@ def caddyfile(host: str, port: int, backend: int, gate: str | None = None,
 
     **`files` is what the edge serves out of a FILE — and it is a file and not a
     folder.** Each pair is a `(name, path)` and each becomes a site of its own,
-    with its own certificate and nothing of the gate: §7a's `cert.at.local` is
-    the one that exists, and it is outside the ask for the same reason `notify`
-    is not — whoever needs it is a device that does not trust AT yet, and a
-    `forward_auth` in front of a CA is a question asked by the certificate that
-    CA would have to sign.
+    with its own certificate and nothing of the gate, outside the ask for the
+    same reason `notify` is not: whoever needs such a file is a device that
+    does not trust AT yet, and a `forward_auth` in front of it is a question
+    asked by the certificate that would have to answer. **Nothing in the
+    product passes it today** — the CA file it served (`cert.at.local`) left
+    with the environment's DNS (TASK-187) — and it stays as a capability of
+    the generator, with its own tests, for the next site that has to hand out
+    a file by name.
 
     **Every request is rewritten onto the ONE path, and the folder is never
     served.** The path is inside the Caddy's own storage (`AUTHORITY`), which

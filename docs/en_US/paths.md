@@ -18,7 +18,7 @@
 
 - It is **`at-deploy`** building an environment of services in containers from pinned images (§7). Here there is isolation, and it exists for a specific reason: **containing the blast radius of each service**. A compromise of `ntfy` reaches the notification and nothing else; the checker's reaches the checker. What each service exposes is what it sets out to do, and nothing beyond.
 
-- A service that needs to talk to AT — and not AT to the service — has a delimited scope: a credential with a declared role, and only what that role allows. Least privilege, applied. In `ntfy`, that is the per-topic ACL: the one account AT holds publishes and reads, and reaches no other topic. Who reaches it from outside at all is the gate's business now, not the ACL's alone: `ntfy.at.local` sits behind the same Authelia as the site, proved by Basic on the request itself, and past that ask the edge is what carries AT's own credential — never the person's.
+- A service that needs to talk to AT — and not AT to the service — has a delimited scope: a credential with a declared role, and only what that role allows. Least privilege, applied. In `ntfy`, that is the per-topic ACL: the one account AT holds publishes and reads, and reaches no other topic. Who reaches it from outside at all is the gate's business now, not the ACL's alone: the notifier sits behind the same Authelia as the site — on the same name, on a different port —, proved by Basic on the request itself, and past that ask the edge is what carries AT's own credential — never the person's.
 
 - The container path is what sustains the authentication gate (§7b), and it is where AT comes in as one more app behind it.
 

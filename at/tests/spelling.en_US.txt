@@ -81,6 +81,7 @@ llm
 llms
 lookup
 macos
+magicdns
 mariazinha
 metadata
 micropython
@@ -141,6 +142,7 @@ subtree
 symlink
 tabelas
 tags
+tailnet
 tailscale
 tarball
 tarefas

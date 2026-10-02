@@ -48,6 +48,7 @@ boot
 bootstrap
 bootstraps
 build
+bundle
 burnout
 burnout
 by
@@ -103,6 +104,7 @@ dns
 docker
 ei
 embaixo
+encrypt
 end
 esp
 estadunidense
@@ -156,6 +158,7 @@ json
 kernel
 lan
 languagetool
+let
 linka
 llm
 llms
@@ -165,6 +168,7 @@ login
 m
 mac
 macos
+magicdns
 mariazinha
 markdown
 metadados
@@ -254,8 +258,10 @@ suíte
 symlink
 system
 tags
+tailnet
 tailscale
 tarball
+task
 tcl
 templates
 tk

@@ -34,30 +34,40 @@ network that gave it. So what decides where a service stands is nothing but WHO
 IT HAS TO TALK TO: the Caddy reaches the WebApp (its `reverse_proxy`), the
 WebApp reaches the gate (its own "is my portal standing"), and the Caddy reaches
 the gate (`forward_auth`) — the three stand together, and whoever has business
-with them stands with them. The DNS is the one service that talks to nobody, and
-it is the one service on `DMZ`; separating anything else would buy nothing, and
+with them stands with them. Separating anything else would buy nothing, and
 what keeps the WebApp closed on a network it shares is the gate secret (§7b),
-not the segment.
+not a second segment.
 
-**What each service runs.** `dnsmasq` is up: its configuration is the
-environment's own, the names of access (§7a's own words for it). The `caddy` is
-up as the edge that publishes AT — the same Caddyfile generator the hosted path
-reads, because it is the same Caddy answering the same questions, and what the
-two paths answer DIFFERENTLY is what an address means on each side: the storage
-is a path and not a decision (§7a), and the backend, the provider and the bind
-are the container path's (`_caddy_conf`). The `identity-provider` is up as §7b's
-gate: Authelia, configured by AT to be the one that proves who is calling, with
-AT standing behind it as an app and not as an exception — and the gate secret,
-drawn at installation, is the line that says the request came through it. And
-the `webapp` is up as §7c's container: the WebApp, moved off the person's
-machine and behind the gate, answering on the network because the loop is a
-place nobody in the environment can reach. And
-§7f's `notifier` is up as the LAST of them: ntfy, configured by AT to keep
-everything it remembers inside its own state folder, **published where §7e
-publishes** — o endereço da rede privada quando há uma, o laço quando não há
-(`_notifier_ports`), para a entrega do próprio AT alcançar o container do lado
-de fora —, e reached from OUTSIDE only through the edge, which now fronts it
-too.
+**What each service runs.** The `caddy` is up as the edge that publishes AT —
+the same Caddyfile generator the hosted path reads, because it is the same
+Caddy answering the same questions, and what the two paths answer DIFFERENTLY
+is what an address means on each side: the storage is a path and not a
+decision (§7a), and the backend, the provider and the bind are the container
+path's (`_caddy_conf`). The `identity-provider` is up as §7b's gate: Authelia,
+configured by AT to be the one that proves who is calling, with AT standing
+behind it as an app and not as an exception — and the gate secret, drawn at
+installation, is the line that says the request came through it. And the
+`webapp` is up as §7c's container: the WebApp, moved off the person's machine
+and behind the gate, answering on the network because the loop is a place
+nobody in the environment can reach. And §7f's `notifier` is up as the LAST of
+them: ntfy, configured by AT to keep everything it remembers inside its own
+state folder, **published on the loop and nowhere else** (`_notifier_ports`),
+porque quem o alcança de fora passa pela borda — que fala com ele pelo nome do
+container, na rede do ambiente —, e o único caminho externo é o do §7e, que é
+o da borda.
+
+**There is no DNS of the environment's own, and that is a decision and not a
+gap left by one** (TASK-187): the names the edge used to answer for were its
+own invention — `at.local`, `ntfy.at.local` — and nothing outside the machine
+could resolve them without a `dnsmasq` of AT's to ask. Reached over the private
+network (§7e), the edge is named by the NETWORK's own answer instead
+(`vpn.name`, `site_host`) — a name Tailscale's own MagicDNS already resolves
+for every device on it, which is the resolution the environment used to build
+for itself and does not have to any more. Reached with no private network at
+all, the edge falls back to `at.localhost`, which every browser resolves to
+the loop without asking anything — the same fallback the hosted bundle already
+uses for the same reason (`at.services.authelia.valid_cookie_domain`). Either
+way is one name, and the environment has exactly one to answer for now.
 
 **The gate DOES front the notifier, and it took a second measurement to get
 there.** The gate authenticates by redirect and session cookie, and a headless
@@ -67,10 +77,14 @@ the request itself is the other half of that same measurement**: Authelia's
 forward-auth reads an `Authorization: Basic` header on the request and
 authenticates it directly, with no redirect at all, when one is present — so a
 headless client that always sends its credential (the ntfy app's login is
-exactly that shape) never takes the 302 that used to break it. The identity
-provider's access rule names `ntfy.at.local` beside the site's own domain
-(`_identity_conf`), and the Caddyfile fronts it with the SAME `forward_auth`
-— but never the WebApp: past the ask, the edge reverse-proxies straight to
+exactly that shape) never takes the 302 that used to break it. **The notifier
+answers on a PORT of its own instead of a NAME of its own now**, the same
+trade the hosted bundle already made for the same reason (§6, `caddy.
+caddyfile`'s own `notify_port`): with no DNS of the environment's own, a
+second name is a name nobody resolves, and Authelia's access rule needs no
+second entry either — its `domain` match reads the Host header's name and not
+its port, so the one rule that already names the site covers both
+(`_identity_conf`). Past the ask, the edge reverse-proxies straight to
 `at-notifier`, swapping whatever `Authorization` the client sent for the M2M
 credential it drew before either container existed (`draw_notify_gate`,
 `_caddy_conf`). The notifier's own account, `ntfy access at at read-write`,
@@ -179,18 +193,18 @@ CREDENTIAL_UNKNOWN = "unknown"   # nobody in this folder wears that name
 CREDENTIAL_PENDING = "pending"   # the folder has it; the gate does not yet
 
 # The port the edge is reached on, and it is 443 because that is the port a URL
-# does not say: the person types `https://at.local`, and §7f's phone takes a URL
-# and nothing more — a `:8443` in the middle of it is a port nobody asked to
-# know. The Caddy is the edge, and its port is the ONE the environment publishes
-# outside the loop (§7e).
+# does not say: the person types `https://<site_host()>`, and §7f's phone takes
+# a URL and nothing more — a `:8443` in the middle of it is a port nobody asked
+# to know. The Caddy is the edge, and its port is the FIRST the environment
+# publishes outside the loop (§7e).
 #
-# **It costs no elevation of its own, and that was measured the moment the
-# manifest had a lower port**: a rootless container publishes nothing below the
-# kernel's floor, and §7a's `dnsmasq` publishes DNS on `53` — so the floor has
-# to move to `53` for the environment to come up at all (`elevate`), and `443`
-# stands above it from then on. Before the DNS existed this port had to be an
-# alternative one (`8443`); it does not any more, and the person's rule is that
-# the environment is reached on `443` and on no other port.
+# **It costs its OWN elevation now, and that is the price of there being no
+# DNS of the environment's own any more** (TASK-187): a rootless container
+# publishes nothing below the kernel's floor, and `443` is itself under it on
+# every machine that ships the rule — the floor has to move to `443` for the
+# environment to come up at all (`elevate`). §7f's notifier stands right above
+# it (`PORT + 1`), and costs nothing further: once the floor has moved for
+# `443`, `444` is already past it.
 PORT = 443
 # Where the WebApp answers inside its container. **The address is the fix of
 # this piece, and it is measured**: an app on the container's own loop is
@@ -218,13 +232,6 @@ WEBAPP_PORT = 12345
 # (`forward_auth`) — so those three stand together, and whoever has business
 # with them stands with them.
 NETWORK = "at"
-
-# The network of the service that talks to NOBODY. A DMZ by what it is: the only
-# thing it holds is the DNS, which answers and asks nothing, and what a service
-# there cannot do is reach the WebApp — no route to the environment's network.
-# Separating anything else would cost more than it buys: the notifier has
-# business with the WebApp (§7f), and the edge has business with everything.
-DMZ = "at-dmz"
 
 # The prefix of every container AT creates. A container is named for the
 # service it runs, and the name is AT's: `down` removes what the name says,
@@ -276,22 +283,21 @@ GATE_MOUNT = "/run/at/gate"
 LOOP = "127.0.0.1"
 
 # The machine's rule about low ports, and the ONE thing §7 asks of it. A user
-# process may only bind ports from this floor up, and §7a's first service
-# publishes DNS on 53 — which is under it on every machine that ships the rule.
+# process may only bind ports from this floor up, and §7a's edge publishes on
+# `443` — which is under it on every machine that ships the rule.
 # The name is the DOTTED one the command takes; the file that ANSWERS it spells
 # the same thing with slashes, and the two are not interchangeable.
 SYSCTL_PORTS = "net.ipv4.ip_unprivileged_port_start"
 SYSCTL_FILE = Path("/proc/sys") / SYSCTL_PORTS.replace(".", "/")
 
 # Inside the containers, where each service reads what AT writes for it.
-DNSMASQ_CONFIG = "/etc/dnsmasq.d"
 CADDY_CONFIG = "/etc/caddy"
 CADDY_DATA = "/data"
 
 # A pasta do SERVIÇO que o Caddy monta em `CADDY_DATA`: o storage dele, com a CA
 # local e os certificados emitidos contra ela. Ela é um nome e não a linha do
 # `Mount` porque DOIS lugares têm de concordar sobre ela — o que o container
-# monta, e onde a CA está para quem precisa confiar no certificado (`authority_file`).
+# monta, e onde o Caddy guarda o que emite por nome (`_prune_names`).
 CADDY_STORAGE = "storage"
 IDENTITY_CONFIG = "/config"
 IDENTITY_DATA = "/data"
@@ -378,13 +384,12 @@ GATE_ENV = "AT_GATE"
 # §7f's notifier, and the name is the ROLE and not the brand: ntfy serves it
 # today, and the day another one serves it the rest of this file does not move.
 # **Its port is AT's, and it is neither ntfy's default nor a low one.** ntfy
-# listens on 80, under the kernel's low-port rule, and §3's elevation asks for
-# the narrowest thing that works: the floor moves to the LOWEST port the
-# environment publishes, DNS's 53 is the only one it names, and this is the same
-# decision as the site's port being 8443 and not 443. What is left is the
-# vendor's own other port — `:2586` is the one every example in ntfy's
-# documentation uses for a listener behind a proxy — and the notifier publishes
-# on the loop, where nothing fronts it.
+# listens on 80, under the kernel's low-port rule, and this container port is
+# never published outside the loop at all (`_notifier_ports`) — so it never
+# enters §3's elevation, which only asks about the edge's own ports (`PORT`,
+# `PORT + 1`). What is left is the vendor's own other port — `:2586` is the one
+# every example in ntfy's documentation uses for a listener behind a proxy —
+# and the notifier publishes on the loop, where nothing fronts it.
 NOTIFIER = "notifier"
 NOTIFIER_PORT = 2586
 
@@ -396,23 +401,6 @@ NOTIFIER_PORT = 2586
 # loop. Read by that module (`notifier.NETWORK_ENV`, spelled again there for
 # the same reason `GATE_ENV` is spelled on both sides of that same line).
 NOTIFIER_NETWORK_ENV = "AT_NOTIFIER"
-
-# O nome que o notificador responde embaixo do domínio do ambiente — e ele é a
-# MARCA, ao contrário do nome do SERVIÇO acima, que é o papel. A diferença é
-# quem lê cada um: `NOTIFIER` nomeia o serviço para o AT (e o dia em que outro
-# servir o papel, só ele se muda), e este é o nome que o CELULAR digita e que o
-# app do ntfy guarda como servidor dele. **Medido, e é o que decide a forma**:
-# o ntfy NÃO funciona sob um caminho (`at.local/ntfy`) — o mantenedor diz que é
-# preciso um subdomínio, e o app e a interface quebram sob um prefixo —, então o
-# notificador ganha o dele no mesmo domínio em vez de uma rota.
-NOTIFIER_HOST = "ntfy"
-
-# O TERCEIRO nome do ambiente, e o único que serve um ARQUIVO: a CA do AT, para
-# quem precisa confiar no certificado e não tem como buscá-lo (§7a, item 49).
-# Aqui o nome não é marca nem papel de serviço — é o que ele ENTREGA —, porque
-# não há serviço nenhum atrás dele: quem responde é a borda, e o que ela devolve
-# é o `root.crt` que ela mesma emitiu.
-CERT_HOST = "cert"
 
 # What the notifier's container sees of its own state folder: the configuration
 # AT writes, and the ONE folder where everything it REMEMBERS lives. **The
@@ -437,17 +425,14 @@ NOTIFIER_AUTH = "user.db"
 # never one a person types.
 SECRET_BYTES = 32
 
-# The DOMAIN of the environment — the name it owns and answers for — and the one
-# every service that is reached by a name hangs its own under. The brand is not
-# translated (§3), and `.local` is the name a machine answers to on its own
-# network.
-#
-# **O site fica com este nome, e os outros penduram o deles embaixo.** O site é
-# o que a pessoa digita sem pensar, então ele É o `at.local` (§7a); o notificador
-# em `ntfy.at.local` e a CA em `cert.at.local` ganham o nome próprio deles porque
-# não podem viver sob um caminho (`NOTIFIER_HOST` diz por quê). São TRÊS nomes, e
-# o `names()` é a fonte única dos três.
-NAME = "at.local"
+# O nome do ambiente quando não há rede privada nenhuma — o mesmo truque que o
+# bundle hospedado já usa (`at.services.authelia.valid_cookie_domain`), e pela
+# mesma medida: todo navegador resolve `*.localhost` para o laço sozinho, sem
+# DNS nenhum por trás, e o ponto no meio é o que o portão exige de um domínio
+# de cookie (TASK-187 — antes disso o ambiente respondia por um nome PRÓPRIO,
+# `at.local`, que só um `dnsmasq` do próprio AT resolvia). Com uma rede privada
+# de pé, o nome é o dela (`vpn.name`), e este nunca é usado.
+FALLBACK_HOST = "at.localhost"
 
 # How long the orchestrator waits for an address to exist before it gives up on
 # publishing there. Long enough for an interface to come up, short enough that a
@@ -715,8 +700,8 @@ def elevate(ask: Ask | None = None, spend: Spend | None = None) -> str | None:
     §3 says the environment inevitably demands elevation at some point, that it
     happens **through an explicit request with the reason on display**, and that
     the closed list of what demands it is born with the implementation that asks
-    for it. This is that implementation and this is the first entry of the list:
-    §7a's `dnsmasq` publishes DNS on `53`, and a machine that ships the
+    for it. This is that implementation and this is the one entry of the list:
+    §7a's Caddy publishes the edge on `443`, and a machine that ships the
     kernel's low-port rule — every Linux does — refuses the bind to a user
     process.
 
@@ -863,78 +848,29 @@ def _notifier_command() -> tuple[str, ...]:
 
 
 def site_host() -> str:
-    """The NAME the environment's edge serves the site at — the environment's own.
+    """The NAME the environment's edge serves the site at (TASK-187).
 
-    §7a is what this reads, and it is the environment's DOMAIN and not a fact
-    about the machine: `at.local` is the name the DNS of the environment answers
-    for, and it is a name — which was measured twice, once against each half of
-    the environment. The gate refuses a cookie domain without a dot that is not
-    an IP, so the word `localhost` is out; and TLS needs a NAME for the SNI — a
-    client connecting to an ADDRESS sends none, and the Caddy answers the
-    handshake with `internal error` because it has no certificate it can serve.
+    §7e is what this reads: with a private network up, the name is the one it
+    gives the machine (`vpn.name`) — a name Tailscale's own MagicDNS already
+    resolves for every device on it, so the environment needs no DNS of its
+    own to be reached by it. With none, the fallback is `FALLBACK_HOST`, which
+    every browser resolves to the loop on its own, no resolver asked — the
+    same fallback the hosted bundle already carries (`at.services.authelia.
+    valid_cookie_domain`). Either way it is a NAME and not an address, for the
+    two measurements this piece always had to answer: the gate refuses a
+    cookie domain without a dot that is not an IP, so the word `localhost` is
+    out; and TLS needs a NAME for the SNI — a client connecting to an ADDRESS
+    sends none, and the Caddy answers the handshake with `internal error`
+    because it has no certificate it can serve.
 
-    **O site fica com o domínio, e não com um subdomínio dele.** Ele é o que a
-    pessoa digita sem pensar, então ele É o `at.local`; o notificador e a CA
-    penduram os nomes deles embaixo do mesmo domínio (`NAME`), cada um por uma
-    medição própria — e é o que faz o site e o domínio serem a mesma coisa.
-
-    **The private network does NOT name the site, and that is this piece's
-    decision.** §7e is what the network changes, and what it changes is the
-    ADDRESS the edge publishes on and that the DNS answers with — never the
-    name. The name the network gives the machine (`vpn.name`) named the site
-    while the site was the only thing the environment had; now that the
-    environment's names all hang under its own domain, a site that answered
-    under the network's name would be a second domain, a second certificate and
-    a gate whose `authelia_url` pointed at the other one — the portal a phone
-    reached by the network's name would redirect it to a name the network
-    cannot resolve. What the person points at the environment's DNS is the whole
-    of it, and the backlog already says that is the person's act and not AT's.
-
-    **It is a function and not a constant because every file that has to agree
-    on the name is written when the environment comes up**: the Caddyfile, the
-    identity provider's access rule and its cookie, and the URL the switch says.
+    **It is a function and not a constant for the same reason as before, and
+    one more now**: the private network is measured when the environment
+    comes up — a value read at import would stop being true the moment the
+    person joined one —, and every file that has to agree on the name — the
+    Caddyfile, the identity provider's access rule and its cookie, and the URL
+    the switch says — is written at that same moment.
     """
-    return NAME
-
-
-def notifier_host() -> str:
-    """§7f's notifier by name — `ntfy.at.local`, under the environment's domain.
-
-    It is a NAME of its own and not a path of the site's, and that is a
-    measurement (`NOTIFIER_HOST`): the notifier's own clients do not work under
-    a subpath. What serves it is the edge, with a certificate and WITHOUT the
-    ask — the other half of the same measurement, because a headless phone app
-    takes the gate's 302 and never connects.
-
-    It is a function for the same reason `site_host` is: the files that have to
-    agree about it — the DNS of the environment and the Caddyfile — are written
-    when the environment comes up.
-    """
-    return f"{NOTIFIER_HOST}.{NAME}"
-
-
-def cert_host() -> str:
-    """§7a's CA by name — `cert.at.local`, under the environment's domain.
-
-    **There is no service behind this name, and that is what it is.** The other
-    two names front a container; this one fronts a FILE — the `root.crt` the
-    edge itself issued (`caddy.AUTHORITY`) —, and the reason it exists is that
-    the person who has to trust AT's certificate has no way to carry the file to
-    the device that has to trust it. A phone does not read the machine's disk;
-    it reads a URL.
-
-    It is outside the ask for the notifier's reason and one more: whoever needs
-    the CA is a device that does not trust the CA yet, so a `forward_auth` here
-    would be a question the certificate is what would have to answer — the
-    device takes the 302 before it has any reason to believe the redirect is
-    real. The first visit still asks for the browser's click-through, and that
-    is inherent: it is TLS without a trusted CA.
-
-    It is a function for the same reason the other two are: the files that have
-    to agree about it — the DNS and the Caddyfile — are written when the
-    environment comes up.
-    """
-    return f"{CERT_HOST}.{NAME}"
+    return vpn.name() or FALLBACK_HOST
 
 
 def portal_url() -> str:
@@ -952,67 +888,15 @@ def portal_url() -> str:
 
 
 def names() -> tuple[str, ...]:
-    """Every name the environment answers for, in the order of the manifest.
+    """Every name the environment answers for — one, since TASK-187.
 
-    It is asked of the manifest and never written by hand, the way `networks` is:
-    a service that starts being reached by a name tomorrow enters this question
-    by existing. What decides is whether a service HAS a name — the site keeps
-    the domain's own, the notifier and the CA hang theirs under it — and the
-    services the edge and the WebApp reach by their container names (the gate,
-    the WebApp itself) have none, because nobody types them.
-
-    **`cert_host` is the one that hangs under the domain without fronting a
-    service**, and it enters here for the same reason the notifier does: the
-    device that needs it has to RESOLVE it, and what resolves the names of the
-    environment is `_dnsmasq_conf`, which reads this. A name the DNS does not
-    answer is a name nobody reaches, whatever the edge would serve on it.
+    It stayed its own function, and not a bare call to `site_host`, because
+    `_prune_names` reads it to know which of the Caddy's own certificates are
+    stale: the name changes between a subida on a private network and one
+    without it, and a certificate issued for yesterday's name is a private key
+    the backup would carry for nothing.
     """
-    return (site_host(), notifier_host(), cert_host())
-
-
-def _dnsmasq_conf() -> str:
-    """The names the environment answers for, in dnsmasq's words.
-
-    §7a gives this service one job — customizing the access URLs — and the names
-    are the environment's: `at.local`, which is the site, `ntfy.at.local`,
-    which is §7f's notifier, and `cert.at.local`, which is the CA the edge
-    serves. The ADDRESS it answers with is where the edge actually is: the
-    private network's
-    when the machine is on one (§7e), the loop otherwise — the network decides
-    WHERE, never WHAT the names are.
-
-    **Nome a nome, e não um curinga.** `address=/.at.local/…` responderia por
-    qualquer nome embaixo do domínio — inclusive um que ninguém pediu, que é uma
-    resposta que o ambiente não tem o que servir: a borda não tem certificado
-    para ele e a pessoa levaria um erro de handshake em vez de um nome que não
-    existe. Uma linha por nome é o que o ambiente responde, e ela cresce com o
-    manifesto (`names`).
-    """
-    where = vpn.address() or LOOP
-    lines = [f"# {tr('services.dnsmasq.file.header')}"]
-    lines += [f"address=/{name}/{where}" for name in names()]
-    return "\n".join(lines) + "\n"
-
-
-def _dnsmasq_ports() -> tuple[Port, ...]:
-    """A porta do DNS, no endereço onde a borda está.
-
-    **Quem pergunta por estes nomes não está na máquina.** `at.local`,
-    `ntfy.at.local` e `cert.at.local` não existem em DNS público nenhum — são do
-    ambiente, e este `dnsmasq` é o único que os responde —, então publicá-lo no
-    laço é responder a quem já está dentro e a mais ninguém: o navegador de
-    outra máquina e o celular não têm a quem perguntar, e o split-DNS do tailnet
-    não tem endereço para onde apontar. O endereço é o mesmo da borda, pela
-    mesma §7e: a rede decide onde, e `_caddy_ports` já é esta expressão.
-
-    **É o segundo serviço que sai do laço, e ele sai pela mesma razão que o
-    primeiro**: o que a pessoa alcança tem que estar alcançável. O que ele
-    publica é um servidor de nomes do ambiente, na rede privada que a pessoa
-    escolheu, e não em todo endereço. O terceiro é a porta do §7f, que o celular
-    alcança pelo mesmo endereço (`_notifier_ports`).
-    """
-    where = vpn.address() or LOOP
-    return (Port(53, "udp", address=where), Port(53, address=where))
+    return (site_host(),)
 
 
 def _caddy_conf() -> str:
@@ -1037,24 +921,21 @@ def _caddy_conf() -> str:
     site reachable is the port the container publishes (§7e). And the site is
     the site: `site_host` is §7a's, and it is the same on both paths.
 
-    **E o SEGUNDO nome vem com eles, agora ATRÁS do mesmo Authelia** (`notify`):
-    o notificador não fica mais fora do portão — Authelia aceita
-    `Authorization: Basic` na própria requisição em vez de redirecionar, e é
-    isso que deixa um app sem interface autenticar sem levar o 302 que o
-    quebrava. Quem prova é a mesma Chave Principal do site; quem alcança o
-    notificador depois disso é o M2M do Caddy (`_caddy_conf` embute
+    **E o notificador vem com eles, atrás do mesmo Authelia, numa PORTA e não
+    num NOME** (`notify`, `notify_port` — TASK-187, o mesmo desenho que o
+    bundle hospedado já usa, `caddy.caddyfile`'s own docstring on
+    `notify_port`): sem um `dnsmasq` para resolver um segundo nome, o `host`
+    que `notify` carrega é o MESMO `site_host()`, e `PORT + 1` é o que separa
+    os dois blocos do Caddyfile — a mesma pergunta ao Authelia, porque o
+    `domain` dele não lê a porta da requisição (`_identity_conf`). Authelia
+    aceita `Authorization: Basic` na própria requisição em vez de
+    redirecionar, e é isso que deixa um app sem interface autenticar sem levar
+    o 302 que o quebrava. Quem prova é a mesma Chave Principal do site; quem
+    alcança o notificador depois disso é o M2M do Caddy (`_caddy_conf` embute
     `notify_gate_file()`), nunca a credencial da pessoa — o notificador não a
     vê. E é a borda quem fala com o notificador DIRETO, pelo nome do
     container: nenhum tráfego de fora dela alcança `at-notifier` de outra
     forma.
-
-    **E o TERCEIRO nome é o único que não tem serviço atrás**: `cert.at.local` é
-    a CA do AT num site de um arquivo só (`files`), e o arquivo é o `root.crt`
-    que está no storage que este container já monta em `CADDY_DATA` — o mesmo
-    que a borda emite o certificado contra, e o mesmo que a pessoa importa no
-    aparelho. Ele é escrito com o caminho ABSOLUTO do container e não com o
-    caminho da pasta: quem lê o arquivo é o Caddy de dentro, e a pasta de
-    estado vira `/data` lá dentro (é o `Mount` logo abaixo).
     """
     return caddy_service.caddyfile(
         site_host(), PORT, WEBAPP_PORT,
@@ -1063,48 +944,31 @@ def _caddy_conf() -> str:
         auth=f"{container(IDENTITY)}:{IDENTITY_PORT}",
         bind=ALL,
         upstream=container(WEBAPP),
-        notify=(notifier_host(), f"{container(NOTIFIER)}:{NOTIFIER_PORT}",
+        notify=(site_host(), f"{container(NOTIFIER)}:{NOTIFIER_PORT}",
                 _held(notify_gate_file())),
-        files=((cert_host(), str(caddy_service.authority_file(CADDY_DATA))),),
+        notify_port=PORT + 1,
     )
 
 
 def _caddy_ports() -> tuple[Port, ...]:
-    """The site's port, on the address §7e puts the site at.
+    """O site e o notificador, nas duas portas do mesmo endereço (§7e, TASK-187).
 
-    It is the port the person reaches, and it is published on the machine's
-    PRIVATE NETWORK address when there is one — the same expression the DNS's
-    own answer uses — and on the loop when there is not, which is the supported
-    state and not a degraded one. **It is not `0.0.0.0`**: a port published on
-    every address is a port on the LAN, and what §7a measured and this product
-    promises is that nothing of AT's is out there except the edge on the network
-    the person chose.
+    São as duas portas que um navegador e o app do celular alcançam: a do
+    site (`PORT`) e a do notificador, bem acima dela (`PORT + 1`) — desde que
+    não há DNS do ambiente para lhe dar um segundo nome, é a porta o que os
+    separa (`_caddy_conf`'s `notify_port`). As duas publicam no endereço da
+    REDE PRIVADA quando há uma — a mesma expressão que `site_host` usa — e no
+    laço quando não há, que é o estado suportado e não um degradado.
+    **Nenhuma delas é `0.0.0.0`**: uma porta publicada em todo endereço é uma
+    porta na LAN, e o que §7a mede e este produto promete é que nada do AT
+    fica exposto ali fora, exceto a borda, na rede que a pessoa escolheu.
 
-    It is a function and not a constant for the same reason `site_host` is: the
-    address is measured when the environment comes up, and a value read at
-    import would stop being true the moment the person joined a network.
+    É uma função e não uma constante pela mesma razão que `site_host`: o
+    endereço é medido quando o ambiente sobe, e um valor lido na importação
+    deixaria de ser verdade no instante em que a pessoa entrasse numa rede.
     """
-    return (Port(PORT, address=vpn.address() or LOOP),)
-
-
-def authority_file() -> Path:
-    """A CA que o certificado da borda carrega — e o arquivo que o CELULAR importa (§7f).
-
-    A borda emite com `tls internal`, que é a CA do próprio Caddy, e é por isso
-    que o certificado de `ntfy.at.local` não é de autoridade pública nenhuma: §3
-    declara esse preço, e quem precisa confiar nele tem de ser apresentado à CA.
-    O arquivo é o MESMO para os dois caminhos — a linha do Caddy que o escreve é
-    dele e não muda (§ `caddy.authority_file`) —, e o que muda é onde ele está:
-    aqui é o storage do serviço, dentro da pasta de estado, que é a pasta que o
-    backup cobre.
-
-    **Ele é nomeado porque o app do celular não usa o cofre do aparelho.** Medido:
-    no Android um app moderno ignora a CA que a pessoa instalou no sistema, e o
-    app do ntfy tem a gestão de certificados DELE (desde a v1.22.1). Então o que
-    a pessoa importa é este arquivo, dentro do app — e sem esta linha ninguém
-    teria como saber qual arquivo é (`notifier.py` o diz na mensagem do celular).
-    """
-    return caddy_service.authority_file(state(CADDY) / CADDY_STORAGE)
+    where = vpn.address() or LOOP
+    return (Port(PORT, address=where), Port(PORT + 1, address=where))
 
 
 def _prune_names() -> tuple[str, ...]:
@@ -1622,11 +1486,14 @@ def _identity_conf() -> str:
     dot unless it is an IP — and that last one is why the site on the loop is an
     ADDRESS and not the word `localhost` (`site_host`).
 
-    **E agora o notificador tem regra própria, pela mesma razão que o site.**
-    `default_policy: deny` recusa qualquer domínio sem regra — Basic incluído
-    —, então `ntfy.at.local` precisa da SUA linha para o `forward_auth` da
-    borda deixar passar quem provou a Chave Principal. É `one_factor` como o
-    site: a mesma conta, o mesmo fator, um domínio a mais na lista fechada.
+    **E o notificador não tem regra própria, e não precisa** (TASK-187): o
+    `domain` que o Authelia lê é o nome do Host header, nunca a porta da
+    requisição — então a MESMA linha que nomeia o site já cobre o notificador,
+    que responde no mesmo nome, só numa porta diferente (`_caddy_conf`'s
+    `notify_port`). Antes, quando o notificador tinha um segundo NOME
+    (`ntfy.at.local`), ele também precisava de uma segunda linha; sem um
+    segundo nome, uma segunda linha seria uma regra que nenhum domínio jamais
+    bate.
 
     **The portal gets a path, and it is the fourth thing the provider is told.**
     `server.address` carries it and `authelia_url` names it (`portal_url`), so
@@ -1720,8 +1587,6 @@ def _identity_conf() -> str:
         "  rules:",
         f"    - domain: {site}",
         "      policy: one_factor",
-        f"    - domain: {notifier_host()}",
-        "      policy: one_factor",
         "notifier:",
         "  filesystem:",
         f"    filename: {IDENTITY_CONFIG}/{IDENTITY_NOTIFICATIONS}",
@@ -1772,11 +1637,11 @@ def notifier_url() -> str:
     same one the container publishes on, and the delivery POSTs to it
     (`services/notifier.py`).
 
-    **Ele NÃO é o endereço que a pessoa digita**, e desde que o notificador tem
-    nome os dois se separaram de propósito (`notifier_public_url`): AT fala com
-    o serviço por um ENDEREÇO CRU, e um alerta não depende do DNS interno, da
-    borda nem do certificado do AT: se qualquer um dos três cair, o alerta
-    ainda sai. O que a PESSOA e o celular usam é o nome, pela borda.
+    **Ele NÃO é o endereço que a pessoa digita**, e os dois se separaram de
+    propósito (`notifier_public_url`): AT fala com o serviço por um ENDEREÇO
+    CRU, e um alerta não depende do nome que resolve a borda, da borda nem do
+    certificado do AT: se qualquer um dos três cair, o alerta ainda sai. O que
+    a PESSOA e o celular usam é o nome, pela borda.
 
     **E é sempre o LAÇO, não mais o endereço da rede privada quando há uma**:
     o notificador não é mais alcançado por nenhum outro caminho de fora —
@@ -1789,18 +1654,18 @@ def notifier_url() -> str:
 
 
 def notifier_public_url() -> str:
-    """Where a PERSON and the phone reach the notifier — its own name, at the edge.
+    """Where a PERSON and the phone reach the notifier — the site's own name, at
+    the edge's SECOND port.
 
     §7f's two ends are AT and the phone, and they reach the service by different
-    roads on purpose. This is the phone's: the name `ntfy.at.local` resolved by
-    the environment's DNS, at the port the edge publishes, with the certificate
-    the edge serves it under and, since this fatia, `forward_auth` in front of
-    it too. It is what ntfy hands back inside every notification it delivers —
-    a link that leads nowhere is worse than no link — and it is the address
-    the person points the app at, proving the SAME Chave Principal `at.local`
-    already asks for.
+    roads on purpose. This is the phone's: `site_host`'s own name — there is no
+    second one since TASK-187 — at `PORT + 1`, with the certificate the edge
+    serves it under and `forward_auth` in front of it too. It is what ntfy
+    hands back inside every notification it delivers — a link that leads
+    nowhere is worse than no link — and it is the address the person points
+    the app at, proving the SAME Chave Principal the site already asks for.
     """
-    return caddy_service.address(notifier_host(), PORT)
+    return caddy_service.address(site_host(), PORT + 1)
 
 
 def _notifier_conf() -> str:
@@ -1827,10 +1692,10 @@ def _notifier_conf() -> str:
     both publishes and reads, and reaches no other topic. The database is born
     empty and lives inside the mounted folder; a notifier nobody has written a
     token into answers nobody, which is the honest state of installed and not
-    yet configured. **E agora a borda pergunta primeiro**: `ntfy.at.local`
-    entra na regra de acesso do provedor (`_identity_conf`), então o que chega
-    à ACL do tópico já passou pela Chave Principal — a mesma dupla camada que
-    o site sempre teve, e não um `deny-all` sozinho.
+    yet configured. **E a borda pergunta primeiro**: a regra do site
+    (`_identity_conf`) já cobre a porta do notificador, então o que chega à
+    ACL do tópico já passou pela Chave Principal — a mesma dupla camada que o
+    site sempre teve, e não um `deny-all` sozinho.
     """
     return "\n".join([
         f"# {tr('services.notifier.file.header')}",
@@ -1939,27 +1804,11 @@ WEBAPP_IMAGE = Image(
 # picks the one this machine is. Moving a pin is a release's act, and it moves
 # forward (§3).
 SERVICES: tuple[Service, ...] = (
-    Service(
-        name="dnsmasq",
-        label="services.dnsmasq.name",
-        image=Image(
-            repo="docker.io/dockurr/dnsmasq",
-            version="2.93",
-            digest="sha256:b40fbaa3a9c3742d5943a4bec789dabc6c5c932b2db76a4e052c84f0b8d173a2",
-        ),
-        ports=_dnsmasq_ports,
-        mounts=(Mount(DNSMASQ_CONFIG),),
-        writes=(("dnsmasq.conf", _dnsmasq_conf),),
-        # The one service of the environment that talks to nobody: it answers,
-        # and what it asks of the environment is nothing. That is why it is the
-        # one service alone on `DMZ` — and why nothing else is.
-        network=DMZ,
-    ),
-    # §7b's session store, and it comes up right after the DNS and BEFORE the
-    # provider: who reads it is the provider, and it reads it when it starts —
-    # a gate that comes up with nowhere to keep who is inside is the memory it
-    # has always been. **É a rede `at` e não a DMZ**: quem fala com ele é o
-    # provedor, e é nesta rede que os dois se alcançam (§ `REDIS`).
+    # §7b's session store, and it comes up FIRST and BEFORE the provider: who
+    # reads it is the provider, and it reads it when it starts — a gate that
+    # comes up with nowhere to keep who is inside is the memory it has always
+    # been. **É a rede `at`**: quem fala com ele é o provedor, e é nesta rede
+    # que os dois se alcançam (§ `REDIS`).
     #
     # **Nada é publicado**, e não é omissão: a porta dele é a da REDE, entre
     # containers, e publicá-la seria abrir a memória das sessões a quem está
@@ -2030,12 +1879,13 @@ SERVICES: tuple[Service, ...] = (
         ),
         # The site's port, and it is published outside the loop when the machine
         # is on a private network (§7e): the edge is what the person reaches.
-        # The DNS's `53` is the other one, for the same reason — the names it
-        # answers exist nowhere else (`_dnsmasq_ports`). Everything else of the
-        # environment is on the loop or on nothing at all — the notifier
-        # included, since this fatia: whoever reaches it from outside goes
-        # through THIS port, and not a second one of its own
-        # (`_notifier_ports`).
+        # The notifier's own port (`PORT + 1`) is the other one, for the same
+        # reason and at the same address — since TASK-187 it is what tells the
+        # two sites of the Caddyfile apart, now that neither has a second NAME
+        # of its own. Everything else of the environment is on the loop or on
+        # nothing at all: whoever reaches the notifier's container from
+        # outside goes through one of THESE two ports, and never a port of its
+        # own (`_notifier_ports`).
         ports=_caddy_ports,
         mounts=(Mount(CADDY_CONFIG), Mount(CADDY_DATA, host=CADDY_STORAGE)),
         writes=(("Caddyfile", _caddy_conf),),
@@ -2200,12 +2050,14 @@ def running(service: Service, pins: dict[str, dict]) -> Image:
 def ports_of(service: Service) -> tuple[Port, ...]:
     """The ports a service publishes, resolved NOW.
 
-    `ports` is a tuple for every service but three, and the exceptions are the
-    SITE's, the DNS's and §7f's notifier's: what address each of them publishes
-    on is §7e's, and §7e is measured when the environment comes up — the
-    machine's address on the private network, or the loop. A value read at
-    import would be a value that stopped being true the moment the person joined
-    a network. It is a callable for the same reason `command` and `writes` are.
+    `ports` is a tuple for every service but two, and the exceptions are the
+    edge's (`_caddy_ports`, which covers the site AND the notifier's own port
+    now, since TASK-187) and §7f's notifier's own, inside the network
+    (`_notifier_ports`): what address each of them publishes on is §7e's, and
+    §7e is measured when the environment comes up — the machine's address on
+    the private network, or the loop. A value read at import would be a value
+    that stopped being true the moment the person joined a network. It is a
+    callable for the same reason `command` and `writes` are.
     """
     return service.ports() if callable(service.ports) else service.ports
 
@@ -2794,8 +2646,8 @@ def bring_up(ask: Ask | None = None, secret: Ask | None = None) -> str:
         return MALFORMED
 
     # §3 (Privilege): the environment inevitably demands elevation somewhere, and
-    # §7a's DNS port is where. It is asked BEFORE anything is drawn or started, so
-    # that a refusal leaves the folder exactly where it was.
+    # §7a's edge port is where. It is asked BEFORE anything is drawn or started,
+    # so that a refusal leaves the folder exactly where it was.
     refusal = elevate(ask)
     if refusal is not None:
         return refusal
@@ -3109,11 +2961,12 @@ def status() -> None:
     # not the report's business to name a door that is not there.
     #
     # **A pergunta vai ao ENDEREÇO onde a borda publica e a resposta diz o
-    # NOME**, e desde que o site é `at.local` os dois não são a mesma coisa: o
-    # nome só resolve numa máquina que use o DNS do ambiente, e o endereço onde
-    # a borda publica é desta máquina sempre (§7e). Perguntar pelo nome diria
-    # "não há nada" sobre uma borda de pé, e a linha que a pessoa mais precisa
-    # ler é justamente a URL.
+    # NOME**, e os dois não são a mesma coisa: o nome é o que `site_host`
+    # resolve — o do Tailscale quando há um, `at.localhost` quando não há —,
+    # e perguntar por ELE dependeria de um terceiro serviço (o agente, o
+    # navegador) respondendo antes que esta função possa dizer que a borda está
+    # de pé. O endereço é desta máquina sempre (§7e), e perguntar por ele não
+    # depende de mais nada.
     served = published(vpn.address() or LOOP, PORT)
     if served:
         print(tr("services.status.site",

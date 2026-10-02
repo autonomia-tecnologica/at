@@ -125,9 +125,8 @@ copiada volta com o Caddy e os certificados que ela tinha.
 A outra pasta que só chega quando se pede é `App/services/`, o estado dos serviços
 do caminho container (§7a). Quem escreve nela é `at-deploy up`: `images.json`
 guarda o pino em que ESTA pasta está, por serviço, e a pasta de cada serviço
-carrega o que ele lê — `dnsmasq/dnsmasq.conf`, os nomes de acesso, e
-`caddy/Caddyfile`, o Caddyfile que o AT gera, com o armazenamento do lado de
-dentro do container. Nada sobe sem o Podman: o AT verifica se ele existe e, não
+carrega o que ele lê — `caddy/Caddyfile`, o Caddyfile que o AT gera, com o
+armazenamento do lado de dentro do container. Nada sobe sem o Podman: o AT verifica se ele existe e, não
 existindo, oferece as duas saídas — instalar, ou seguir no caminho hospedado. As
 imagens são fixadas em versão e hashing, como o §3 exige, então o pino da pasta e o
 do binário são comparados a cada subida — e uma instância À FRENTE do pino do
@@ -234,7 +233,7 @@ Dois ajustes no `vite.config.ts` não são gosto: o polyfill de modulepreload e 
 .venv/bin/pyinstaller --clean --noconfirm at-deploy.spec   # escreve dist/at-deploy
 ```
 
-**Uma release, dois arquivos, e a divisão É o ponto.** O `at-cli` é a pasta e o app — as tabelas, a prosa, o interpretador, o WebApp e o Wizard —, e o `at-deploy` é o §7 inteiro: o Podman, a VPN, o DNS, os containers do portão, a borda, a virada transacional e a única elevação do produto. É um segundo artefato e não um segundo comando do mesmo porque a promessa que o §3 faz se lê do que o ARQUIVO é: um `at-cli` que NÃO CONSEGUE pedir é uma promessa mais forte do que um `at-cli` que não pede. A elevação MUDOU e não se duplica, e o que separa os dois é o grafo de importação — o `at_deploy` importa o `at`, e o `at` não importa nada do deploy —, que a suíte afirma a partir das fontes. O núcleo compartilhado (`paths`, `i18n`, `files`, o motor de tabelas) viaja nos dois, colhido dos mesmos arquivos: uma fonte e não duas.
+**Uma release, dois arquivos, e a divisão É o ponto.** O `at-cli` é a pasta e o app — as tabelas, a prosa, o interpretador, o WebApp e o Wizard —, e o `at-deploy` é o §7 inteiro: o Podman, a VPN, os containers do portão, a borda, a virada transacional e a única elevação do produto. É um segundo artefato e não um segundo comando do mesmo porque a promessa que o §3 faz se lê do que o ARQUIVO é: um `at-cli` que NÃO CONSEGUE pedir é uma promessa mais forte do que um `at-cli` que não pede. A elevação MUDOU e não se duplica, e o que separa os dois é o grafo de importação — o `at_deploy` importa o `at`, e o `at` não importa nada do deploy —, que a suíte afirma a partir das fontes. O núcleo compartilhado (`paths`, `i18n`, `files`, o motor de tabelas) viaja nos dois, colhido dos mesmos arquivos: uma fonte e não duas.
 
 Cada binário é um arquivo só porque é o que o documento fundador promete (§3), e o preço é que todo o conteúdo — Tcl/Tk incluído — é re-extraído a cada execução, então o arranque a frio é mais lento do que seria numa construção em diretório. O deploy não carrega Tcl/Tk nem WebApp: o conteúdo dele são os blocos de `i18n` e as declarações das tabelas, porque ele confirma a Pasta de Trabalho exatamente como o `at-cli` e precisa conseguir criar uma.
 

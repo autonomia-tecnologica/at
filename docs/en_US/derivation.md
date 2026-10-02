@@ -125,9 +125,8 @@ so a copied folder comes back with the Caddy and the certificates it had.
 
 The other folder that arrives only when it is asked for is `App/services/`, the
 state of the container path's services (§7a). What writes in it is `at-deploy up`: `images.json` records the pin this folder IS at, per service, and each
-service's own folder carries what it reads — `dnsmasq/dnsmasq.conf`, the names of
-access, and `caddy/Caddyfile`, the Caddyfile AT generates, with the storage
-inside the container. Nothing comes up without Podman: AT checks whether it
+service's own folder carries what it reads — `caddy/Caddyfile`, the Caddyfile
+AT generates, with the storage inside the container. Nothing comes up without Podman: AT checks whether it
 exists and, if it does not, offers the two ways out — install it, or continue on
 the hosted path. The images are pinned in version and hashing, as §3 demands, so
 the folder's pin and the binary's are compared on every `up` — and an instance
@@ -234,7 +233,7 @@ Two settings in `vite.config.ts` are not taste: the modulepreload polyfill and t
 .venv/bin/pyinstaller --clean --noconfirm at-deploy.spec   # writes dist/at-deploy
 ```
 
-**One release, two files, and the split IS the point.** `at-cli` is the folder and the app — the tables, the prose, the interpreter, the WebApp and the Wizard — and `at-deploy` is §7 whole: the Podman, the VPN, the DNS, the gate's containers, the edge, the transactional switch and the only elevation in the product. It is a second artifact and not a second command of the same one because the promise §3 makes is read off what the FILE is: an `at-cli` that *cannot* ask is a stronger promise than an `at-cli` that does not. The elevation MOVED and is not duplicated, and what keeps the two apart is the import graph — `at_deploy` imports `at`, and `at` imports nothing of the deploy — which the suite affirms from the sources. The shared core (`paths`, `i18n`, `files`, the table engine) travels in both, collected from the same files: one source and not two.
+**One release, two files, and the split IS the point.** `at-cli` is the folder and the app — the tables, the prose, the interpreter, the WebApp and the Wizard — and `at-deploy` is §7 whole: the Podman, the VPN, the gate's containers, the edge, the transactional switch and the only elevation in the product. It is a second artifact and not a second command of the same one because the promise §3 makes is read off what the FILE is: an `at-cli` that *cannot* ask is a stronger promise than an `at-cli` that does not. The elevation MOVED and is not duplicated, and what keeps the two apart is the import graph — `at_deploy` imports `at`, and `at` imports nothing of the deploy — which the suite affirms from the sources. The shared core (`paths`, `i18n`, `files`, the table engine) travels in both, collected from the same files: one source and not two.
 
 Each binary is one file because that is what the founding document promises (§3), and the price is that the whole payload — Tcl/Tk included — is re-extracted on every launch, so cold start is slower than a directory build would be. The deploy carries no Tcl/Tk and no WebApp: its payload is the `i18n` blocks and the table declarations, because it confirms the Working Folder exactly as `at-cli` does and has to be able to make one.
 

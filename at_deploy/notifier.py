@@ -11,15 +11,16 @@ against the image at the pin: with `ntfy access at at read-write`, the account
 answers `200` on the topic `at`, and `403` on any other — the scope the gate
 mirrors.
 
-**Basic on the notifier's own name is what changed this** (the gate now fronts
+**Basic on the notifier's own port is what changed this** (the gate now fronts
 it — `at_deploy/environment.py`'s `_caddy_conf`). Authelia's forward-auth takes
 an `Authorization: Basic` header on the request itself instead of redirecting,
 so the person's own admin account — the SAME Chave Principal that logs into
-`at.local` — is what proves a phone at `ntfy.at.local` too: no second ntfy
-account for it, and no credential of its own to print. Once the edge has
-proved the person, it swaps whatever `Authorization` the client sent for the
-M2M credential below and hands the request straight to the notifier — the
-notifier never sees the person's own credential, only AT's.
+the site — is what proves a phone at the notifier's port too (TASK-187: one
+name, two ports): no second ntfy account for it, and no credential of its own
+to print. Once the edge has proved the person, it swaps whatever
+`Authorization` the client sent for the M2M credential below and hands the
+request straight to the notifier — the notifier never sees the person's own
+credential, only AT's.
 
 **The credential is AT's, drawn by AT, and it lives in a `0600` file — SEALED.**
 A token is a SECRET, and the vault (§4) took the file over: what it keeps is the

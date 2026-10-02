@@ -33,9 +33,9 @@ handed the words (`cli.main` prints the help after it).
 
 **No credential appears here any more** (this fatia): the phone no longer
 needs one of its own — the edge fronts the notifier now, and the SAME Chave
-Principal the person already types for `at.local` proves it at
-`ntfy.at.local` too. The `notify` step keeps proving the delivery by hand,
-the way it always did.
+Principal the person already types for the site proves it at the notifier's
+own port too (TASK-187: one name, two ports). The `notify` step keeps proving
+the delivery by hand, the way it always did.
 """
 
 from __future__ import annotations

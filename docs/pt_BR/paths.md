@@ -18,7 +18,7 @@
 
 - É o **`at-deploy`** montando um ambiente de serviços em containers de imagens fixadas (§7). Aqui existe isolamento, e ele existe por um motivo específico: **conter o raio de explosão de cada serviço**. O comprometimento do `ntfy` alcança a notificação e nada mais; o do corretor alcança o corretor. O que cada serviço expõe é o que ele se propõe a fazer, e nada além.
 
-- Serviço que precisa falar com o AT — e não o AT com ele — tem o escopo delimitado: credencial com papel declarado, e só o que aquele papel permite. Mínimo privilégio, aplicado. No `ntfy`, isso é a ACL por tópico: a única conta que o AT guarda publica e lê, e não alcança nenhum outro tópico. Quem alcança de fora nem chega a isso sozinho: `ntfy.at.local` fica atrás do mesmo Authelia do site, provado por Basic na própria requisição, e depois da pergunta é a borda quem carrega a credencial do AT — nunca a da pessoa.
+- Serviço que precisa falar com o AT — e não o AT com ele — tem o escopo delimitado: credencial com papel declarado, e só o que aquele papel permite. Mínimo privilégio, aplicado. No `ntfy`, isso é a ACL por tópico: a única conta que o AT guarda publica e lê, e não alcança nenhum outro tópico. Quem alcança de fora nem chega a isso sozinho: o notificador fica atrás do mesmo Authelia do site — no mesmo nome, numa porta diferente —, provado por Basic na própria requisição, e depois da pergunta é a borda quem carrega a credencial do AT — nunca a da pessoa.
 
 - O caminho container é o que sustenta o portão de autenticação (§7b), e é onde o AT entra como mais um app atrás dele.
 
