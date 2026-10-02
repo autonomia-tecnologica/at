@@ -36,6 +36,7 @@ from unittest import mock
 
 from at import i18n
 from at.core import actors, boot, paths, settings
+from at.encryption import vault
 from at.services import authelia, caddy, ntfy
 from at.tests import POLL, drawn_gate
 from at.ui.webapp import app as webapp
@@ -236,6 +237,25 @@ class TheSecret(FolderCase):
         drawn = drawn_gate()
         self.assertIsNone(caddy.gate_handed())
         self.assertEqual(caddy.gate_secret(), drawn)
+
+    def test_an_envelope_the_container_path_left_is_not_a_plain_secret(self):
+        # Os dois caminhos escrevem no MESMO `App/caddy/gate` e
+        # `App/caddy/notify` (`at_deploy.environment.gate_file`/
+        # `notify_gate_file`, a mesma `caddy.directory()`), e o container
+        # SELA o que escreve ali. Uma pasta que trocou de caminho carrega o
+        # envelope do outro — lê-lo como senha em claro é o que fazia o
+        # `ntfy user add` recusar (medido contra o binário real, item TASK-177).
+        # Um envelope encontrado é tratado como arquivo ausente: um valor novo,
+        # em claro, substitui o que estava selado.
+        envelope = vault.seal("o-segredo-do-container", os.urandom(32))
+        caddy.gate_file().parent.mkdir(parents=True, exist_ok=True)
+        caddy.gate_file().write_text(f"{envelope}\n", encoding="utf-8")
+
+        drawn = caddy.draw_gate()
+
+        self.assertNotEqual(drawn, envelope)
+        self.assertEqual(caddy.gate_file().read_text(encoding="utf-8").strip(), drawn)
+        self.assertEqual(caddy.draw_gate(), drawn)
 
 
 class TheCaddyfile(FolderCase):
@@ -668,18 +688,19 @@ class TheAddress(FolderCase):
 
     def test_the_loop_is_the_default_and_what_the_product_recommends(self):
         self.assertEqual(webapp.chosen_host(), webapp.HOST)
-        built_once_at(self.served(), 12399, webapp.HOST)
+        built_once_at(self.served(include_caddy=False), 12399, webapp.HOST)
 
     def test_the_folder_may_name_another_address(self):
         # The door is `settings.json`, on the same shelf `basic_auth` sits on:
         # an adjustment of the installation, and never a credential.
         self.chose("0.0.0.0")
         self.assertEqual(webapp.chosen_host(), "0.0.0.0")
-        built_once_at(self.served(), 12399, "0.0.0.0")
+        built_once_at(self.served(include_caddy=False), 12399, "0.0.0.0")
 
     def test_the_command_line_says_it_for_one_run(self):
         self.chose("0.0.0.0")
-        built_once_at(self.served(host="192.168.1.10"), 12399, "192.168.1.10")
+        built_once_at(self.served(host="192.168.1.10", include_caddy=False),
+                      12399, "192.168.1.10")
 
     def test_a_value_that_is_not_a_name_answers_the_default(self):
         for value in (7, "", "   ", True, ["0.0.0.0"]):

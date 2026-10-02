@@ -6,9 +6,9 @@ suportado" — the gate was the container path's alone (§7b). The revision keep
 that sentence true for CONTAINMENT and makes it false for the GATE itself:
 Authelia and ntfy travel vendorized inside `at-cli`, exactly like the Caddy
 already does (`services/caddy.py`), and come up as subprocesses of this same
-process tree — no Podman, no second artifact, no systemd unit. `at-cli webapp
---include-caddy` is the one trigger both flags already answer to, and this
-module is what that trigger now also unpacks and starts. The price, declared:
+process tree — no Podman, no second artifact, no systemd unit. `at-cli webapp`
+is the one trigger all three already answer to, by default — `--no-caddy`
+turns it, and this module's unpacking and starting, off. The price, declared:
 no container means no isolamento por raio de explosão (`paths.md`), which is
 why the level this buys is `A` and never `S`.
 

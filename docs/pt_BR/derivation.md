@@ -118,7 +118,7 @@ A listagem acima é aquilo com que a pasta nasce. Uma pasta chega depois, e só 
 pessoa pedir: `App/caddy/` — o Caddy extraído de dentro do binário, o carimbo que
 diz para que plataforma ele serve, o Caddyfile que o AT gera e o armazenamento do
 próprio Caddy, a autoridade local dele entre o resto. Ela é escrita por
-`at-cli webapp --include-caddy` e por mais nada (§6, §12), e mora em `App/` pelo
+`at-cli webapp` (sem `--no-caddy`) e por mais nada (§6, §12), e mora em `App/` pelo
 motivo que o §3 dá: o que foi extraído para rodar é da pasta, então uma pasta
 copiada volta com o Caddy e os certificados que ela tinha.
 
@@ -163,9 +163,9 @@ python3 -m at task view 3                  # ou TASK-3, ou tarefa-3
 python3 -m at task edit 3 --set status=done
 python3 -m at admin                        # o primeiro administrador: nome, e a credencial sem eco
 python3 -m at pedir "cria uma tarefa pra sexta"   # a proposta, e a resposta
-python3 -m at webapp run                   # laço local, porta 12345; `--port N` muda
-python3 -m at webapp --include-caddy       # exposto, com o TLS do Caddy na `--port`
+python3 -m at webapp run                   # exposto por padrão, com o TLS do Caddy na `--port`
                                              # e o `--host` dizendo o endereço em que atende
+python3 -m at webapp --no-caddy            # laço local, porta 12345; `--port N` muda
 python3 -m at_deploy services up           # o caminho container: os serviços no pino
 python3 -m at_deploy services status       # o que está de pé, e em que imagem
 python3 -m at_deploy services down         # abaixo; a pasta fica
@@ -185,12 +185,12 @@ Superfícies, e o estado de cada uma hoje:
 | Wizard | — | fora do ar enquanto o item 9 não chega à fatia 3: `at-cli` sem palavra imprime o `help` |
 | WebApp | `at-cli webapp run` | lê e edita as tabelas, alcança o interpretador pelo chat e pelo balão, recusa subir numa pasta sem administrador e — havendo um — pede a credencial e não responde nada da API antes de ela ser provada; e é onde o teto se MOVE: a entrada Pessoas, com as telas do ator e do papel, a lista fechada contra a qual um papel se escreve, e a credencial de máquina que o AT mina |
 
-`at-cli webapp` serve em HTTP no laço local, e `--include-caddy` é a exposição para
-a qual o §3 exige TLS: o Caddy que veio dentro do binário o termina, com o
-certificado do próprio AT, e o WebApp fica em `127.0.0.1` atrás dele. O que o
-`--host` nomeia muda com a bandeira — o laço que ele pode amarrar sem ela, e o
-nome para o qual o certificado é emitido com ela, porque certificado se emite
-para um nome, e `0.0.0.0` não é um.
+`at-cli webapp` expõe por padrão, na exposição para a qual o §3 exige TLS: o
+Caddy que veio dentro do binário o termina, com o certificado do próprio AT, e
+o WebApp fica em `127.0.0.1` atrás dele. `--no-caddy` volta ao laço local em
+HTTP. O que o `--host` nomeia muda com a bandeira — o nome para o qual o
+certificado é emitido por padrão, porque certificado se emite para um nome e
+`0.0.0.0` não é um; e o laço que ele pode amarrar com `--no-caddy`.
 
 Códigos de saída: `0` sucesso · `1` recusado ou falhou · `2` erro de uso.
 

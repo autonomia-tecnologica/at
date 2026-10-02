@@ -119,7 +119,7 @@ That listing is what a folder is born with. One folder arrives later, and only i
 the person asks for it: `App/caddy/` — the Caddy unpacked out of the binary, the
 stamp that says which platform it serves, the Caddyfile AT generates, and the
 Caddy's own storage, its local authority among the rest. It is written by
-`at-cli webapp --include-caddy` and by nothing else (§6, §12), and it lives in
+`at-cli webapp` (without `--no-caddy`) and by nothing else (§6, §12), and it lives in
 `App/` for the reason §3 gives: what was extracted to run belongs to the folder,
 so a copied folder comes back with the Caddy and the certificates it had.
 
@@ -163,9 +163,9 @@ python3 -m at task view 3                  # or TASK-3, or tarefa-3
 python3 -m at task edit 3 --set status=done
 python3 -m at admin                        # the first administrator: a name, and the credential with no echo
 python3 -m at pedir "cria uma tarefa pra sexta"   # the proposal, and the answer
-python3 -m at webapp run                   # local loop, port 12345; `--port N` changes it
-python3 -m at webapp --include-caddy       # exposed, with the Caddy's TLS on `--port`
+python3 -m at webapp run                   # exposed by default, with the Caddy's TLS on `--port`
                                              # and `--host` naming the address it answers on
+python3 -m at webapp --no-caddy            # local loop, port 12345; `--port N` changes it
 python3 -m at_deploy services up           # the container path: the services at the pin
 python3 -m at_deploy services status       # what is standing, and on which image
 python3 -m at_deploy services down         # down; the folder stays
@@ -185,12 +185,12 @@ Surfaces, and the state of each one today:
 | Wizard | — | down until item 9 reaches slice 3: `at-cli` with no word prints the `help` |
 | WebApp | `at-cli webapp run` | reads and edits the tables, reaches the interpreter through the chat and the balloon, refuses to come up in a folder with no administrator and — when there is one — asks for the credential and gives no answer of the API before it is proved; and it is where the ceiling is MOVED: the People entry, with the actor and the role screens, the closed list a role is written against, and the machine credential AT mints |
 
-`at-cli webapp` serves HTTP on the local loop, and `--include-caddy` is the
-exposure §3 demands TLS for: the Caddy that came inside the binary terminates it
-with AT's own certificate, and the WebApp stays on `127.0.0.1` behind it. What
-`--host` names changes with the flag — the loop it may bind without it, and the
-name the certificate is issued for with it, since a certificate is issued for a
-name and `0.0.0.0` is not one.
+`at-cli webapp` exposes by default, the exposure §3 demands TLS for: the Caddy
+that came inside the binary terminates it with AT's own certificate, and the
+WebApp stays on `127.0.0.1` behind it. `--no-caddy` goes back to the local
+loop over HTTP. What `--host` names changes with the flag — the name the
+certificate is issued for by default, since a certificate is issued for a name
+and `0.0.0.0` is not one; and the loop it may bind with `--no-caddy`.
 
 Exit codes: `0` success · `1` refused or failed · `2` usage error.
 

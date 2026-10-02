@@ -50,7 +50,7 @@
 
 - O AT responde em `127.0.0.1`, e esse é o padrão que este produto recomenda e o endereço que ele usa para si. O endereço é um ajuste da instalação — a chave `webapp_host` do `settings.json`, ou o `--host` de uma execução — e **o AT não recusa ouvir fora do laço**. **O motivo de não recusar é que o mesmo endereço significa duas coisas e o app não tem como distingui-las**: o `0.0.0.0` de um container está dentro de uma rede, atrás da borda e do portão (§7b, §7c), e o `0.0.0.0` de uma máquina está numa LAN. Quem responde por um endereço é a rede em volta dele, e é a nota de segurança do ambiente que avalia isso; ouvir fora do laço não é o que este produto recomenda.
 
-- Expor exige autenticação **e** TLS. Como o TLS é do Caddy, e o Caddy é embarcado (§3, Código e delivery), a exposição no caminho hospedado acontece por `at-cli webapp --include-caddy`: o Caddy termina o TLS e publica o AT, e o WebApp responde no laço atrás dele. No caminho container quem fica na borda é o Caddy em container, pelo isolamento.
+- Expor exige autenticação **e** TLS. Como o TLS é do Caddy, e o Caddy é embarcado (§3, Código e delivery), a exposição no caminho hospedado é o que `at-cli webapp` faz por padrão: o Caddy termina o TLS e publica o AT, e o WebApp responde no laço atrás dele. `--no-caddy` é a saída, de volta ao laço em HTTP. No caminho container quem fica na borda é o Caddy em container, pelo isolamento.
 
 - O AT não entrega HSTS, por motivo óbvio: ele serve com certificado próprio, e HSTS transformaria o aviso do navegador em erro sem saída. É o preço de não depender de um domínio público, e de não poder garantir TLS confiável.
 

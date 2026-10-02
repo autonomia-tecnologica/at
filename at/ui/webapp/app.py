@@ -99,12 +99,13 @@ The theme is a LOOKUP against the registry, never a path: an id that names no
 theme falls back to the default, so a query string can never reach a file the
 registry does not name.
 
-**Exposure is the flag, and the WebApp never leaves the loop because of it.** §3
-says exposing demands authentication and TLS, that the TLS is Caddy's, and that
-Caddy travels inside this binary — so `at-cli webapp --include-caddy` puts that
-Caddy in front (`services/caddy.py`), and the WebApp behind it listens where it
-always did, `127.0.0.1`, on a port nobody types. What the person reaches is the
-Caddy's port, with AT's own certificate.
+**Exposure is the default, and the WebApp never leaves the loop because of it.**
+§3 says exposing demands authentication and TLS, that the TLS is Caddy's, and
+that Caddy travels inside this binary — so `at-cli webapp` puts that Caddy in
+front by default (`services/caddy.py`), and the WebApp behind it listens where
+it always did, `127.0.0.1`, on a port nobody types. What the person reaches is
+the Caddy's port, with AT's own certificate. `--no-caddy` is the one way back
+to the loop alone, in HTTP — the shape a quick local run wants.
 
 **The address is a choice of the folder's, and the loop is what it gets by
 default.** `--host` says it for one run and `settings.json` says it for the
@@ -171,8 +172,8 @@ DEFAULT_THEME = "at"
 # the name that needs no resolver to mean this machine.
 LOOPBACK_NAME = "localhost"
 
-# **The bundle's own default** (TASK-177, 02/10/2026): `--include-caddy` now
-# always brings Authelia up beside the Caddy, and Authelia refuses a session
+# **The bundle's own default** (TASK-177, 02/10/2026): the bundle now always
+# brings Authelia up beside the Caddy, and Authelia refuses a session
 # cookie domain with no dot that is not an IP — the exact shape `localhost`
 # has (measured against the real binary, `authelia.valid_cookie_domain`). Every
 # browser resolves a `.localhost` name to the loop on its own (RFC 6761), with
@@ -2201,7 +2202,7 @@ def _report_taken(where: str, port: int) -> None:
 
 
 def run(port: int = DEFAULT_PORT, host: str | None = None,
-        include_caddy: bool = False) -> int:
+        include_caddy: bool = True) -> int:
     """Put AT on a port — in HTTP, or behind the Caddy's TLS.
 
     **One refusal lives here, and it is not a rule about exposure: it is the
@@ -2260,8 +2261,8 @@ def run(port: int = DEFAULT_PORT, host: str | None = None,
         print(tr("caddy.address_needs_name", host=where))
         return 1
 
-    # TASK-177: `--include-caddy` now always bundles the gate beside the TLS,
-    # and Authelia refuses a cookie domain this blunt before anything else
+    # TASK-177: the bundle now always brings the gate beside the TLS, and
+    # Authelia refuses a cookie domain this blunt before anything else
     # even unpacks (`authelia.valid_cookie_domain`, measured against the real
     # binary) — said here, before a port is taken or a secret drawn.
     if include_caddy and not authelia.valid_cookie_domain(where):

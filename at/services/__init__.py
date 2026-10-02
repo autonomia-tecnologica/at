@@ -10,9 +10,9 @@ What is left are four third parties that are not the environment's, and all four
 are there for the same reason: §3 pins a package by carrying it, and the artifact
 that carries it is where the pin lives.
 
-The first is the Caddy: the process that `at-cli webapp --include-caddy` unpacks
-into the folder and puts in front of the WebApp, which is the HOSTED path's TLS
-(§6). The container path's Caddy is a container from a pinned image, and it
+The first is the Caddy: the process that `at-cli webapp` unpacks into the
+folder and puts in front of the WebApp by default, which is the HOSTED path's
+TLS (§6). `--no-caddy` is the one way out of it. The container path's Caddy is a container from a pinned image, and it
 belongs to the deploy — while the Caddyfile both of them run is written once, in
 `caddy.py`, because it is the same Caddy answering the same questions.
 

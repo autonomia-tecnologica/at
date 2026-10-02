@@ -6,9 +6,9 @@
 
 - É o AT e a pasta. O binário é aberto na Pasta de Trabalho, o WebApp sobe pelo comando, o Wizard abre quando não há parâmetro, e a `cli` faz o resto. Não há container nenhum, e a pessoa não precisa de Podman nem de nada além do binário.
 
-- **Não há isolamento**, e o AT não promete nenhum neste caminho: um comprometimento do WebApp é um comprometimento de processo na sua máquina, com acesso ao que o seu usuário tem. Em troca, o padrão é não sair do laço local, e sair dele exige autenticação e TLS.
+- **Não há isolamento**, e o AT não promete nenhum neste caminho: um comprometimento do WebApp é um comprometimento de processo na sua máquina, com acesso ao que o seu usuário tem. Em troca, sair do laço local exige autenticação e TLS, e os dois vêm por padrão.
 
-- Sair do laço local, aqui, é `at-cli webapp --include-caddy`: o Caddy que veio dentro do binário termina o TLS e publica o AT. Sem a bandeira, o WebApp serve em HTTP e só em `127.0.0.1` — e ele recusa que lhe peçam qualquer outro endereço, porque expor sem TLS é o que a regra acima proíbe. O `--host` nomeia o endereço em que o AT atende, e com a bandeira ele precisa ser um nome para o qual um certificado se emite: `0.0.0.0` é todos os endereços, e certificado não tem nenhum.
+- `at-cli webapp` sai do laço local por padrão: o Caddy que veio dentro do binário termina o TLS e publica o AT, na frente do Authelia e do ntfy, do mesmo fornecedor e do mesmo jeito — o portão próprio deste caminho. `--no-caddy` é a única saída disso: com a bandeira, o WebApp serve em HTTP e só em `127.0.0.1` — e ele recusa que lhe peçam qualquer outro endereço, porque expor sem TLS é o que a regra acima proíbe. Sem `--no-caddy`, o `--host` nomeia o endereço em que o AT atende, e precisa ser um nome para o qual um certificado se emite: `0.0.0.0` é todos os endereços, e certificado não tem nenhum.
 
 - As integrações (§7) podem existir sem container: quem instala o serviço por conta e aponta o AT para ele usa o serviço, com a ciência de que o estado daquele serviço não é mais assunto do AT — e, portanto, que o backup da pasta não o cobre. A aprovação de uma demanda arriscada, aqui, acontece na própria máquina: o serviço `notifier` é do caminho container.
 

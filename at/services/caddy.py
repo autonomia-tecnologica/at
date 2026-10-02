@@ -2,12 +2,12 @@
 
 The rule this file answers is one sentence of §3: exposing demands
 authentication **and** TLS, the TLS is Caddy's, and Caddy travels inside the
-binary. So `at-cli webapp --include-caddy` is what turns a loopback WebApp into an
-exposed one, and the four things that happen are these, in this order: the Caddy
-is unpacked into the instance folder, the Caddyfile AT generates is written,
-the Caddy is put in front of the WebApp, and the WebApp stays exactly where it
-always was — `127.0.0.1`. What leaves the loop is the Caddy's port, never the
-WebApp's.
+binary. So `at-cli webapp` turns a loopback WebApp into an exposed one by
+default (`--no-caddy` is the one way out), and the four things that happen
+are these, in this order: the Caddy is unpacked into the instance folder, the
+Caddyfile AT generates is written, the Caddy is put in front of the WebApp,
+and the WebApp stays exactly where it always was — `127.0.0.1`. What leaves
+the loop is the Caddy's port, never the WebApp's.
 
 **The certificate is AT's own, and nothing here delivers HSTS.** Caddy's
 `tls internal` issues against a local CA instead of a public one, because AT
@@ -60,6 +60,7 @@ from pathlib import Path
 from platform import machine
 
 from at.core import files, paths
+from at.encryption import vault
 from at.i18n import tr
 
 # Where the payload travels: `at/vendor/caddy/`, and the same arithmetic
@@ -341,10 +342,21 @@ def gate_file() -> Path:
 def _drawn_in_the_clear(where: Path) -> str:
     """O valor que um arquivo já guarda, ou um sorteado agora e mantido dali
     em diante — em CLARO, e de propósito (`draw_gate`'s own docstring diz
-    por quê). `draw_gate` e `draw_notify_secret` são as duas faces disto."""
+    por quê). `draw_gate` e `draw_notify_secret` são as duas faces disto.
+
+    **O nome do arquivo é o mesmo que o caminho container usa**
+    (`at_deploy.environment.gate_file`/`notify_gate_file`, na mesma
+    `caddy.directory()`), porque os dois são a mesma pasta `App/caddy/` do
+    mesmo Caddy — só que o caminho container SELA o que escreve ali (item
+    50), e o que está selado não é o valor em claro que este caminho lê. Uma
+    pasta que trocou de caminho carrega o envelope do outro, e lê-lo como se
+    fosse a senha é o bug: o `ntfy user add` recebe o texto cifrado inteiro, e
+    recusa. Um envelope encontrado aqui não é um valor já sorteado — é o OUTRO
+    caminho, e o sorteio é o mesmo de um arquivo ausente.
+    """
     try:
         held = where.read_text(encoding="utf-8").strip()
-        if held:
+        if held and not vault.envelopes(held):
             return held
     except FileNotFoundError:
         pass

@@ -616,7 +616,7 @@ class TheProcess(ClockCase):
         with mock.patch.object(webapp, "make_server", return_value=server):
             with mock.patch.object(webapp, "beat", side_effect=reached.set):
                 with redirect_stdout(StringIO()):
-                    webapp.run(0)
+                    webapp.run(0, include_caddy=False)
         self.assertTrue(reached.wait(timeout=5))
         server.server_close.assert_called_once()
 

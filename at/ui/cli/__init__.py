@@ -130,25 +130,25 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 def _webapp(rest: list[str]) -> int:
-    """`at-cli webapp` opens the app, and `--include-caddy` exposes it.
+    """`at-cli webapp` opens the app with the bundle in front; `--no-caddy` keeps it on the loop.
 
-    This is the hosted path: loopback, in HTTP, and nothing leaves it until a
-    person authenticates (§3, Acesso e exposição). The flag is the exception the
-    same rule makes — the Caddy that came inside the binary terminates the TLS
-    and publishes AT, and the WebApp keeps listening on the loop behind it
-    (§6, §12). **Since TASK-177 (02/10/2026) the flag also brings up the
-    bundle's own gate**: Authelia and ntfy, vendorized the same way the Caddy
-    is, fronted by that same Caddy — no container, no isolamento por raio de
-    explosão (nota `A` and not `S`, `rules.md` §3), but a portão de primeira
-    classe where there used to be none. The container path is the other one,
-    where the Caddy at the edge carries the TLS and the gate from inside its
-    own orchestration instead (§7b, §7c).
+    The bundle is the hosted path's own gate, and it is the DEFAULT (since
+    TASK-177's follow-up, 02/10/2026): the Caddy that came inside the binary
+    terminates the TLS and publishes AT, fronted the same way by Authelia and
+    ntfy, vendorized the same way the Caddy is — no container, no isolamento
+    por raio de explosão (nota `A` and not `S`, `rules.md` §3). `--no-caddy` is
+    the one way out of it, back to loopback-only HTTP with nothing leaving it
+    until a person authenticates (§3, Acesso e exposição) — the shape a quick
+    local run wants, and the shape the test suite's own throwaway folders want.
+    The container path is the other one, where the Caddy at the edge carries
+    the TLS and the gate from inside its own orchestration instead (§7b, §7c).
 
     `--host` is the address AT answers on, and it means two different things
-    with and without the flag: without it, the loop it binds and the only
+    with and without `--no-caddy`: with the bundle up, it is the NAME the
+    certificate is issued for, which is why the one address a name cannot be is
+    refused there; with `--no-caddy`, it is the loop it binds and the only
     address it accepts — anything else is refused, because exposure without TLS
-    is what §3 forbids. With it, the NAME the certificate is issued for, which
-    is why the one address a name cannot be is refused there.
+    is what §3 forbids.
 
     The WebApp's own authenticator is up (item 10): Forms asks for the
     credential at the entrance, Basic carries the same one in an
@@ -162,12 +162,12 @@ def _webapp(rest: list[str]) -> int:
     args = rest[1:] if rest[:1] == ["run"] else rest
     port = webapp.DEFAULT_PORT
     host = None
-    include_caddy = False
+    include_caddy = True
 
     while args:
         flag, args = args[0], args[1:]
-        if flag == "--include-caddy":
-            include_caddy = True
+        if flag == "--no-caddy":
+            include_caddy = False
             continue
         if flag not in ("--port", "--porta", "--host") or not args:
             return _reject("webapp")

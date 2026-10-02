@@ -2263,7 +2263,7 @@ class TheExposure(unittest.TestCase):
         with bundle(), mock.patch.object(
             webapp.Server, "serve_forever", side_effect=KeyboardInterrupt
         ), redirect_stdout(output):
-            code = webapp.run(0)
+            code = webapp.run(0, include_caddy=False)
         self.assertEqual(code, 0)
         self.assertIn("http://127.0.0.1:0", output.getvalue())
 
@@ -2288,7 +2288,7 @@ class TheExposure(unittest.TestCase):
         # raising it here is the same ending without a port held for the test.
         with mock.patch.object(webapp.Server, "serve_forever", side_effect=KeyboardInterrupt):
             with redirect_stdout(output):
-                code = webapp.run(0)
+                code = webapp.run(0, include_caddy=False)
         self.assertEqual(code, 0)
         self.assertIn(i18n.tr("webapp.source_open"), output.getvalue())
 
@@ -2334,7 +2334,7 @@ class ThePort(unittest.TestCase):
         try:
             output = io.StringIO()
             with redirect_stdout(output):
-                code = webapp.run(port)
+                code = webapp.run(port, include_caddy=False)
         finally:
             holder.close()
         self.assertEqual(code, 1)
@@ -2344,7 +2344,7 @@ class ThePort(unittest.TestCase):
         with _answering(webapp.__version__) as port:
             output = io.StringIO()
             with redirect_stdout(output):
-                code = webapp.run(port)
+                code = webapp.run(port, include_caddy=False)
         self.assertEqual(code, 1)
         self.assertIn(
             i18n.tr("webapp.instance_up", url=f"http://{webapp.HOST}:{port}",
@@ -2356,7 +2356,7 @@ class ThePort(unittest.TestCase):
         with _answering("9.9.9") as port:
             output = io.StringIO()
             with redirect_stdout(output):
-                code = webapp.run(port)
+                code = webapp.run(port, include_caddy=False)
         self.assertEqual(code, 1)
         self.assertIn(
             i18n.tr("webapp.instance_ahead", url=f"http://{webapp.HOST}:{port}",
@@ -2368,7 +2368,7 @@ class ThePort(unittest.TestCase):
         with _answering("0.0.1") as port:
             output = io.StringIO()
             with redirect_stdout(output):
-                code = webapp.run(port)
+                code = webapp.run(port, include_caddy=False)
         self.assertEqual(code, 1)
         self.assertIn(
             i18n.tr("webapp.instance_behind", url=f"http://{webapp.HOST}:{port}",
@@ -2387,7 +2387,7 @@ class ThePort(unittest.TestCase):
         with _answering("0.0.1") as port:
             output = io.StringIO()
             with redirect_stdout(output):
-                webapp.run(port)
+                webapp.run(port, include_caddy=False)
         self.assertNotIn(
             i18n.tr("webapp.instance_behind_no_deploy", deploy=paths.deploy_file()),
             output.getvalue(),
@@ -2415,7 +2415,7 @@ class ThePort(unittest.TestCase):
         try:
             output = io.StringIO()
             with redirect_stdout(output):
-                code = webapp.run(port)
+                code = webapp.run(port, include_caddy=False)
         finally:
             server.shutdown()
             server.server_close()

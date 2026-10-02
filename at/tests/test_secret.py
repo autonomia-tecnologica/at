@@ -412,7 +412,7 @@ class ThePermissions(SecretCase):
 class TheEntry(SecretCase):
     """A credential is proved with the vault locked (§4, item 8; item 176)."""
 
-    def test_the_vault_is_reached_by_eight_files_and_by_them_alone(self):
+    def test_the_vault_is_reached_by_nine_files_and_by_them_alone(self):
         # Item 14a landed the vault with no caller anywhere and said so in a
         # test; the slice that landed the table gave it the first two. They are
         # the door that SEALS (`core/secrets`) and the engine that knows the
@@ -451,6 +451,14 @@ class TheEntry(SecretCase):
         # quem PROVA alguém continua comparando um hash, com o cofre fechado
         # (`test_vault.py::TheEntry`, e o teste abaixo).
         #
+        # **O nono é `services/caddy.py`** (TASK-177, 02/10/2026): o caminho
+        # hospedado e o caminho container escrevem no MESMO `App/caddy/gate` e
+        # `App/caddy/notify`, e o container sela o que escreve ali. Este arquivo
+        # não sela nem abre nada — ele só RECONHECE o envelope do outro caminho
+        # (`vault.envelopes`), para não ler o texto cifrado como se fosse a sua
+        # própria senha em claro. Reconhecer a forma não é a mesma porta que
+        # lê o conteúdo, e é por isso que ele entra aqui sem ganhar uma chave.
+        #
         # Sorted, because the filesystem hands the files over in an order of its
         # own and the list below is the declaration, not a directory listing.
         callers = sorted(
@@ -462,7 +470,8 @@ class TheEntry(SecretCase):
         self.assertEqual(callers, [
             "at/core/actors.py", "at/core/backup.py", "at/core/cofre.py",
             "at/core/notifier.py", "at/core/secrets.py", "at/core/tables.py",
-            "at_deploy/environment.py", "at_deploy/notifier.py",
+            "at/services/caddy.py", "at_deploy/environment.py",
+            "at_deploy/notifier.py",
         ])
 
     def test_the_surface_that_reaches_the_vault_is_the_deploy_and_no_screen(self):

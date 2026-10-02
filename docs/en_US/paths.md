@@ -6,9 +6,9 @@
 
 - It is AT and the folder. The binary is opened in the Working Folder, the WebApp comes up through the command, the Wizard opens when there is no parameter, and the `cli` does the rest. There is no container at all, and the person needs neither Podman nor anything beyond the binary.
 
-- **There is no isolation**, and AT promises none on this path: a compromise of the WebApp is a process compromise on your machine, with access to what your user has. In exchange, the default is not to leave the local loop, and leaving it demands authentication and TLS.
+- **There is no isolation**, and AT promises none on this path: a compromise of the WebApp is a process compromise on your machine, with access to what your user has. In exchange, leaving the local loop demands authentication and TLS, and both come by default.
 
-- Leaving the local loop, here, is `at-cli webapp --include-caddy`: the Caddy that came inside the binary terminates the TLS and publishes AT. Without the flag, the WebApp serves over HTTP and only on `127.0.0.1` — and it refuses to be asked for any other address, because exposure without TLS is what the rule above forbids. `--host` names the address AT answers on, and with the flag it has to be a name a certificate can be issued for: `0.0.0.0` is every address, and a certificate has none.
+- `at-cli webapp` leaves the local loop by default: the Caddy that came inside the binary terminates the TLS and publishes AT, in front of Authelia and ntfy, from the same vendor and the same way — this path's own gate. `--no-caddy` is the one way out of it: with the flag, the WebApp serves over HTTP and only on `127.0.0.1` — and it refuses to be asked for any other address, because exposure without TLS is what the rule above forbids. Without `--no-caddy`, `--host` names the address AT answers on, and has to be a name a certificate can be issued for: `0.0.0.0` is every address, and a certificate has none.
 
 - The integrations (§7) can exist without a container: whoever installs the service on their own and points AT at it uses the service, knowing that the state of that service is no longer AT's business — and therefore that the folder backup does not cover it. Approving a risky demand, here, happens on the machine itself: the `notifier` service belongs to the container path.
 

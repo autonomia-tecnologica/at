@@ -5,7 +5,8 @@ container from a pinned image (`at_deploy/environment.py`, `at_deploy/
 notifier.py`); the bundle's is this module's — the vendor's tarball, byte for
 byte, unpacked into `App/ntfy/` and run as a subprocess of `at-cli` itself, the
 same arithmetic `caddy.py` and `authelia.py` already answer to. It comes up
-with the same trigger they do: `at-cli webapp --include-caddy`.
+with the same trigger they do: `at-cli webapp`, by default — `--no-caddy` is
+the one way out of all three.
 
 **Account, topic and token are the container path's own names, unchanged.**
 One account (`ACCOUNT`), one topic (`TOPIC`), read-write, because least

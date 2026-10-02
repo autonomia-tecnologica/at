@@ -269,33 +269,33 @@ class TheWebappWords(unittest.TestCase):
                 code = _webapp(list(words))
         return code, started
 
-    def test_it_serves_the_loop_by_default(self):
+    def test_it_bundles_the_caddy_by_default(self):
         code, started = self.run_webapp()
         self.assertEqual(code, OK)
         started.assert_called_once_with(webapp.DEFAULT_PORT, host=None,
-                                        include_caddy=False)
+                                        include_caddy=True)
 
     def test_the_flag_and_the_port_reach_the_server(self):
         # `run` is what a person types as well, and the flags come in any order.
-        code, started = self.run_webapp("run", "--port", "12399", "--include-caddy")
+        code, started = self.run_webapp("run", "--port", "12399", "--no-caddy")
         self.assertEqual(code, OK)
-        started.assert_called_once_with(12399, host=None, include_caddy=True)
+        started.assert_called_once_with(12399, host=None, include_caddy=False)
 
     def test_the_host_reaches_the_server(self):
         code, started = self.run_webapp("--host", "192.168.1.10")
         self.assertEqual(code, OK)
         started.assert_called_once_with(webapp.DEFAULT_PORT, host="192.168.1.10",
-                                        include_caddy=False)
+                                        include_caddy=True)
 
     def test_the_port_keeps_its_other_spelling(self):
         code, started = self.run_webapp("--porta", "12399")
         self.assertEqual(code, OK)
-        started.assert_called_once_with(12399, host=None, include_caddy=False)
+        started.assert_called_once_with(12399, host=None, include_caddy=True)
 
     def test_a_word_it_does_not_take_is_a_usage_error(self):
         for words in (["--port", "abc"], ["--port"], ["--port", "0"],
                       ["--port", "70000"], ["--host"], ["--host", "--port"],
-                      ["--include-caddy", "extra"], ["--caddy"]):
+                      ["--no-caddy", "extra"], ["--caddy"]):
             with self.subTest(words=words):
                 code, started = self.run_webapp(*words)
                 self.assertEqual(code, USAGE)
