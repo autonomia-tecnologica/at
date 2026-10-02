@@ -10,6 +10,7 @@
     "error.interpreter_off": "O interpretador está desligado.",
     "ask.which_hour": "Meia de qual hora? Diga a hora junto, como em `duas e meia`.",
     "ask.which_field": "Em que campo fica {text}? Esta tabela não declara um campo de dia em aberto.",
+    "ask.slang": "Você quis dizer «{text}»? Repita exatamente esta frase para confirmar.",
     "proposal": "{action} {table}: {fields}"
   },
   "en_US": {
@@ -23,6 +24,7 @@
     "error.interpreter_off": "The interpreter is off.",
     "ask.which_hour": "Half of which hour? Name the hour with it, as in `half past two`.",
     "ask.which_field": "Which field holds {text}? This table declares no open day field.",
+    "ask.slang": "Did you mean «{text}»? Repeat this exact sentence to confirm.",
     "proposal": "{action} {table}: {fields}"
   }
 }

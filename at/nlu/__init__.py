@@ -28,6 +28,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from at import i18n
 from at.core import settings
 from at.nlu.interpreter import KINDS, resolve
 from at.nlu.matcher import match
@@ -51,6 +52,7 @@ def propose(
     *,
     language: str | None = None,
     now: datetime | None = None,
+    main_key: str | None = None,
 ) -> Proposal | Question:
     """What a sentence proposes, or the question it comes back as.
 
@@ -59,7 +61,33 @@ def propose(
     where the API begins. A sentence outside the catalogue raises `Refused` with
     the reason's `i18n` key — the surface answers in the active language without
     owning the words.
+
+    **A `Refused` the matcher raised for `nlu.error.no_action` or
+    `nlu.error.no_table` gets one more door before it is re-raised** — the
+    decisor (`at.core.decisor`, TASK-180): a slang layer that reads the same
+    sentence through Jev and either applies a rewritten one, asks for it to be
+    confirmed, or stands by the very refusal the matcher already raised. It is
+    reached HERE and nowhere inside the matcher, which is why it is imported
+    lazily — `match`, the grammar and the vocabulary carry no word of it, and
+    none of this changes when the decisor's own switch does. `main_key` has no
+    caller in `cli` or the WebApp yet; it exists so the decisor can open its
+    credential the day a surface hands one in, and it does nothing where none
+    arrives.
     """
     if not enabled():
         raise Refused("nlu.error.interpreter_off")
-    return match(text, language=language, now=now)
+    try:
+        return match(text, language=language, now=now)
+    except Refused as refused:
+        from at.core import decisor
+
+        decided = decisor.decide(
+            refused,
+            text,
+            language=language or i18n.active_code(),
+            now=now,
+            main_key=main_key,
+        )
+        if decided is not None:
+            return decided
+        raise

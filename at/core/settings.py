@@ -83,6 +83,11 @@ VERSIONING = "versioning_interval"
 # folder with a secret.
 KNOWN = (
     "interpreter",
+    # TASK-180: o switch próprio do decisor (`at.core.decisor.SWITCH`) —
+    # separado de `interpreter` porque um não chama serviço nenhum e o outro
+    # chama o Jev, e os dois não podem ser o mesmo nome (a regra do glossário:
+    # dois nomes que se tocariam não coexistem).
+    "decisor",
     "basic_auth",
     "webapp_host",
     THRESHOLD,

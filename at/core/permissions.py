@@ -165,6 +165,12 @@ EXTRA: dict[str, tuple[str, ...]] = {
     "service": ("read", "edit"),
     "plugin": ("read", "edit"),
     "vocabulary": ("read", "edit"),
+    # TASK-180: o decisor (`at.core.decisor`) é o ato de perguntar ao Jev o que
+    # a frase significa — uma chamada a um serviço externo, e por isso um ato
+    # próprio, com o risco já declarado para `ask` (`RISK_BY_ACTION`) em vez de
+    # um número inventado aqui: a dúvida sobre gíria não é maior nem menor do
+    # que a do `nlu:ask` que já estava reservado para a porta do interpretador.
+    "decisor": ("ask",),
     # TASK-156: a seção lê a lista dos `.enc` — nada aqui edita nada, porque o
     # que entra em `Cofre/` sela sozinho (o vigia, TASK-154), e não por um
     # gesto da página.

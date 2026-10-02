@@ -1,0 +1,28 @@
+{
+  "pt_BR": {
+    "criteria.action.instructions": "A frase é de alguém usando um sistema de gestão de tarefas, escrita em português informal ou gíria. Julgue qual destas ações a pessoa quer fazer. Cada opção já diz, entre parênteses, as palavras que o sistema reconhece SEM ajuda nenhuma — a pergunta é só sobre o que a frase diz FORA delas: gíria, jargão, um jeito de dizer que o sistema ainda não conhece. Se a frase não pede nenhuma destas ações, responda 'none'.",
+    "criteria.table.instructions": "A mesma frase, agora sobre qual tipo de registro ela é a respeito. Cada opção já diz, entre parênteses, as palavras que o sistema reconhece SEM ajuda nenhuma — julgue só o que sobra fora delas. Se a frase não é sobre nenhum destes tipos, responda 'none'.",
+    "criteria.option": "{said} (reconhecida direto, sem ajuda nenhuma, como: {examples})",
+    "criteria.none.action": "A frase não pede nenhuma ação deste sistema",
+    "criteria.none.table": "A frase não é sobre nenhum destes tipos de registro",
+    "criteria.action.desc.list": "Mostrar vários itens de uma vez, uma listagem",
+    "criteria.action.desc.view": "Mostrar os detalhes de um item específico",
+    "criteria.action.desc.create": "Fazer existir um item novo que não existia",
+    "criteria.action.desc.edit": "Mudar um valor de um item que já existe",
+    "criteria.action.desc.cancel": "Encerrar um item em andamento, fechando com um motivo, sem apagar",
+    "criteria.action.desc.delete": "Remover um item por completo, como se nunca tivesse existido"
+  },
+  "en_US": {
+    "criteria.action.instructions": "The sentence is from someone using a task-management system, written in informal English or slang. Judge which of these actions the person wants to take. Each option already names, in parentheses, the words the system recognizes WITHOUT any help — the question is only about what the sentence says OUTSIDE them: slang, jargon, a way of saying it the system does not know yet. If the sentence asks for none of these actions, answer 'none'.",
+    "criteria.table.instructions": "The same sentence, now about which kind of record it is about. Each option already names, in parentheses, the words the system recognizes WITHOUT any help — judge only what is left outside them. If the sentence is about none of these kinds, answer 'none'.",
+    "criteria.option": "{said} (already recognized, with no help at all, as: {examples})",
+    "criteria.none.action": "The sentence asks for none of this system's actions",
+    "criteria.none.table": "The sentence is about none of these kinds of record",
+    "criteria.action.desc.list": "Show several items at once, a listing",
+    "criteria.action.desc.view": "Show the details of one specific item",
+    "criteria.action.desc.create": "Make a new item exist that did not exist before",
+    "criteria.action.desc.edit": "Change a value of an item that already exists",
+    "criteria.action.desc.cancel": "End an ongoing item, closing it with a reason, without erasing it",
+    "criteria.action.desc.delete": "Remove an item completely, as if it had never existed"
+  }
+}
