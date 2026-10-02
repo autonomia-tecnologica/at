@@ -35,9 +35,14 @@ DEPLOY = ROOT / "at_deploy"
 # What `at` keeps of what used to be §7's package, and neither is the
 # environment's. The Caddy the BINARY carries is the HOSTED path's TLS — the
 # environment's Caddy is a container of the deploy's manifest — and the
-# `gitleaks` is the scanner `secret scan` walks the folder with (item 32). Both
-# are third parties the artifact embeds, which is §3's way of pinning a package.
-KEPT = {"caddy", "gitleaks"}
+# `gitleaks` is the scanner `secret scan` walks the folder with (item 32).
+# **`authelia` and `ntfy` joined them on 02/10/2026 (TASK-177)**: the bundle's
+# own gate and notifier, vendorized and run as subprocesses of `at-cli`
+# itself, exactly the Caddy's own arithmetic — and still no container, no
+# orchestration, no elevation, which is the whole of what keeps them on this
+# side of the boundary and not the deploy's. Every one of the five is a third
+# party the artifact embeds, which is §3's way of pinning a package.
+KEPT = {"authelia", "caddy", "gitleaks", "ntfy"}
 
 
 def sources(package: Path) -> list[Path]:

@@ -30,13 +30,13 @@ import time
 import unittest
 import urllib.error
 import urllib.request
-from contextlib import redirect_stdout
+from contextlib import ExitStack, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
 from at import i18n
 from at.core import actors, boot, paths, settings
-from at.services import caddy
+from at.services import authelia, caddy, ntfy
 from at.tests import POLL, drawn_gate
 from at.ui.webapp import app as webapp
 
@@ -547,19 +547,39 @@ class TheAdaptedGate(FolderCase):
 
 
 class TheExposedRun(FolderCase):
-    """`run` with the flag: the Caddy's port in front, the WebApp behind."""
+    """`run` with the flag: the Caddy's port in front, the WebApp behind.
+
+    TASK-177: the flag now also brings up Authelia and ntfy, so every probe
+    here patches their subprocess edges (`start`, `started`, and ntfy's own
+    `wait_auth_db`/`provision`) the same way it already patches the Caddy's —
+    their real `ensure()` still runs, against the real vendored payload,
+    which is what keeps the unpacking honest without paying a live process
+    per test. `TheBundle`, further down, is where the real processes run.
+    """
 
     def setUp(self):
         super().setUp()
         actors.create_admin("Rafael", "uma-frase-bem-longa")
 
+    def _patch_bundle(self, stack: ExitStack) -> None:
+        stack.enter_context(mock.patch.object(authelia, "start", mock.Mock()))
+        stack.enter_context(mock.patch.object(authelia, "started", return_value=True))
+        stack.enter_context(mock.patch.object(ntfy, "start", mock.Mock()))
+        stack.enter_context(mock.patch.object(ntfy, "started", return_value=True))
+        stack.enter_context(mock.patch.object(ntfy, "wait_auth_db", return_value=True))
+        stack.enter_context(mock.patch.object(ntfy, "provision", return_value="tk_x"))
+
     def probe(self, **kw) -> tuple[str, mock.Mock, mock.Mock]:
         output = io.StringIO()
         built = mock.Mock()
         built.return_value.server_address = ("127.0.0.1", 41234)
-        with mock.patch.object(webapp, "make_server", built), \
-                mock.patch.object(caddy, "start", mock.Mock()) as started, \
-                mock.patch.object(caddy, "started", return_value=True):
+        with ExitStack() as stack:
+            stack.enter_context(mock.patch.object(webapp, "make_server", built))
+            started = stack.enter_context(
+                mock.patch.object(caddy, "start", mock.Mock())
+            )
+            stack.enter_context(mock.patch.object(caddy, "started", return_value=True))
+            self._patch_bundle(stack)
             with redirect_stdout(output):
                 code = webapp.run(12399, **kw)
         self.assertEqual(code, 0)
@@ -577,18 +597,18 @@ class TheExposedRun(FolderCase):
         # address is an ADDRESS, and here an address is not what is being named.
         settings.save({**settings.load(), webapp.HOST_KEY: "0.0.0.0"})
         self.probe(include_caddy=True)
-        self.assertIn("https://localhost:12399 {",
+        self.assertIn("https://at.localhost:12399 {",
                       caddy.caddyfile_path().read_text(encoding="utf-8"))
 
     def test_the_caddyfile_names_the_backend_the_webapp_took(self):
         self.probe(include_caddy=True)
         text = caddy.caddyfile_path().read_text(encoding="utf-8")
-        self.assertIn("https://localhost:12399 {", text)
+        self.assertIn("https://at.localhost:12399 {", text)
         self.assertIn("reverse_proxy 127.0.0.1:41234", text)
 
     def test_the_answer_is_the_url_the_person_types(self):
         output, _, started = self.probe(include_caddy=True)
-        self.assertIn(i18n.tr("caddy.serving", url="https://localhost:12399"), output)
+        self.assertIn(i18n.tr("caddy.serving", url="https://at.localhost:12399"), output)
         started.assert_called_once()
 
     def test_a_caddy_that_dies_takes_the_announcement_with_it(self):
@@ -598,9 +618,11 @@ class TheExposedRun(FolderCase):
         output = io.StringIO()
         built = mock.Mock()
         built.return_value.server_address = ("127.0.0.1", 41234)
-        with mock.patch.object(webapp, "make_server", built), \
-                mock.patch.object(caddy, "start", mock.Mock()), \
-                mock.patch.object(caddy, "started", return_value=False):
+        with ExitStack() as stack:
+            stack.enter_context(mock.patch.object(webapp, "make_server", built))
+            stack.enter_context(mock.patch.object(caddy, "start", mock.Mock()))
+            stack.enter_context(mock.patch.object(caddy, "started", return_value=False))
+            self._patch_bundle(stack)
             with redirect_stdout(output):
                 code = webapp.run(12399, include_caddy=True)
         self.assertEqual(code, 1)
@@ -814,6 +836,185 @@ class TheRealTls(FolderCase):
             except OSError:
                 time.sleep(0.1)
         self.fail(f"the Caddy did not answer on {self.url()} in {timeout}s")
+
+
+class TheBundle(FolderCase):
+    """TASK-177: the real gate, in front of the real WebApp, with no container.
+
+    The three binaries this repository vendors — Caddy, Authelia, ntfy — are
+    unpacked and started for real, exactly as `webapp.run(include_caddy=True)`
+    starts them: this class is that sequence, inlined instead of run through
+    `serve_forever`, so the test controls when it ends. What is asserted is
+    what a person and a phone would see: a request with no credential is sent
+    to the portal, one with the right `Authorization: Basic` reaches the
+    WebApp, and a message posted through the notifier's own site arrives in
+    ntfy with the M2M credential swapped in — never the person's own.
+    """
+
+    PASSWORD = "uma-frase-bem-longa"
+    HOST_NAME = "at.localhost"
+
+    def setUp(self):
+        super().setUp()
+        actors.create_admin("Rafael", self.PASSWORD)
+
+        self.port = free_port()
+        self.notify_port = self.port + 1
+        self.server = webapp.make_server(0)
+        self.thread = threading.Thread(
+            target=self.server.serve_forever,
+            kwargs={"poll_interval": POLL}, daemon=True,
+        )
+        self.thread.start()
+
+        self.assertTrue(caddy.ensure(), "the Caddy payload of this platform is not here")
+        self.assertTrue(authelia.ensure(), "the Authelia payload of this platform is not here")
+        self.assertTrue(ntfy.ensure(), "the ntfy payload of this platform is not here")
+
+        caddy.draw_gate()
+        self.notify_secret = caddy.draw_notify_secret()
+
+        self.authelia_port = authelia.free_port()
+        authelia_config = authelia.write(self.HOST_NAME, self.authelia_port, self.port)
+        self.authelia_process = authelia.start(authelia_config, log=False)
+        self.wait_for(self.authelia_port, self.authelia_process)
+
+        self.ntfy_internal_port = ntfy.free_port()
+        ntfy_config = ntfy.write(
+            self.ntfy_internal_port, caddy.address(self.HOST_NAME, self.notify_port)
+        )
+        self.ntfy_process = ntfy.start(ntfy_config, log=False)
+        self.wait_for(self.ntfy_internal_port, self.ntfy_process)
+        self.assertTrue(ntfy.wait_auth_db(ntfy_config))
+        self.assertIsNotNone(ntfy.provision(ntfy_config, self.notify_secret))
+
+        import base64
+        notify_b64 = base64.b64encode(
+            f"{ntfy.ACCOUNT}:{self.notify_secret}".encode("ascii")
+        ).decode("ascii")
+        config = caddy.write_caddyfile(
+            self.HOST_NAME, self.port, self.server.server_address[1],
+            auth=f"{caddy.LOOPBACK}:{self.authelia_port}",
+            notify=(self.HOST_NAME, f"{caddy.LOOPBACK}:{self.ntfy_internal_port}",
+                    notify_b64),
+            notify_port=self.notify_port,
+        )
+        self.process = caddy.start(config, log=False)
+        self.wait_for_tls()
+
+    def tearDown(self):
+        caddy.stop(self.process)
+        ntfy.stop(self.ntfy_process)
+        authelia.stop(self.authelia_process)
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join(timeout=5)
+        super().tearDown()
+
+    def wait_for(self, port: int, process: subprocess.Popen, timeout: float = 20.0) -> None:
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if process.poll() is not None:
+                self.fail(f"exited with {process.returncode} before answering on {port}")
+            try:
+                with socket.create_connection(("127.0.0.1", port), timeout=1):
+                    return
+            except OSError:
+                time.sleep(0.1)
+        self.fail(f"nothing answered on 127.0.0.1:{port} in {timeout}s")
+
+    def wait_for_tls(self, timeout: float = 20.0) -> None:
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if self.process.poll() is not None:
+                self.fail(f"the Caddy exited with {self.process.returncode}")
+            try:
+                with socket.create_connection(("localhost", self.port), timeout=1):
+                    return
+            except OSError:
+                time.sleep(0.1)
+        self.fail(f"the Caddy did not answer on port {self.port} in {timeout}s")
+
+    def asked(self, name: str, port: int, path: str = "/",
+              method: str = "GET", headers: dict[str, str] | None = None,
+              body: bytes = b"") -> bytes:
+        """One TLS request to the bundle's edge, by name — `TheRealTls.asked`'s
+        own shape, with a method, extra headers and a body for the notifier's
+        own site, which only ever takes a `POST`."""
+        context = ssl.create_default_context()
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
+        lines = [f"{method} {path} HTTP/1.1", f"Host: {name}"]
+        for key, value in (headers or {}).items():
+            lines.append(f"{key}: {value}")
+        if body:
+            lines.append(f"Content-Length: {len(body)}")
+        lines.append("Connection: close")
+        request = ("\r\n".join(lines) + "\r\n\r\n").encode() + body
+        with socket.create_connection(("localhost", port), timeout=10) as raw:
+            with context.wrap_socket(raw, server_hostname=name) as tls:
+                tls.sendall(request)
+                answer = b""
+                while chunk := tls.recv(65536):
+                    answer += chunk
+        return answer
+
+    def basic(self, name: str, password: str) -> str:
+        import base64
+        return base64.b64encode(f"{name}:{password}".encode()).decode()
+
+    def test_without_a_credential_the_gate_sends_to_the_portal(self):
+        # Authelia answers a request with no credential and no `Accept` for
+        # HTML with a `401` carrying `Location` instead of a browser's `302`
+        # — measured against the real binary — so what is asserted is the
+        # redirect ITSELF, to the portal path this bundle routes around the
+        # ask (`caddy.PORTAL`), and never the WebApp's own 200.
+        answer = self.asked(self.HOST_NAME, self.port, "/")
+        self.assertFalse(answer.startswith(b"HTTP/1.1 200"), answer[:200])
+        self.assertIn(b"Location:", answer)
+        self.assertIn(caddy.PORTAL.encode(), answer)
+
+    def test_with_the_right_basic_the_request_reaches_the_webapp(self):
+        credential = self.basic("Rafael", self.PASSWORD)
+        answer = self.asked(self.HOST_NAME, self.port, "/",
+                            headers={"Authorization": f"Basic {credential}"})
+        self.assertTrue(answer.startswith(b"HTTP/1.1 200"), answer[:200])
+        self.assertIn(b"<div id=", answer)
+
+    def test_a_wrong_basic_does_not_reach_the_webapp(self):
+        credential = self.basic("Rafael", "senha-errada-nunca-prova-nada")
+        answer = self.asked(self.HOST_NAME, self.port, "/",
+                            headers={"Authorization": f"Basic {credential}"})
+        self.assertFalse(answer.startswith(b"HTTP/1.1 200"), answer[:200])
+
+    def test_the_notifier_site_swaps_the_credential_and_delivers(self):
+        # The person's OWN credential gets this request past the ask — the
+        # same Basic the site itself takes — and past it the edge swaps it
+        # for the M2M value before ntfy ever sees the request (§7f).
+        credential = self.basic("Rafael", self.PASSWORD)
+        answer = self.asked(self.HOST_NAME, self.notify_port, "/at",
+                            method="POST",
+                            headers={"Authorization": f"Basic {credential}"},
+                            body=b"ola do bundle")
+        self.assertTrue(answer.startswith(b"HTTP/1.1 200"), answer[:200])
+
+        # Read it back DIRECTLY off ntfy's own loopback port, with the
+        # account `provision` made — never through the edge, and never with
+        # the person's credential, which proves the swap and not just the
+        # ask.
+        request = (
+            f"GET /at/json?poll=1 HTTP/1.1\r\n"
+            f"Host: 127.0.0.1\r\n"
+            f"Authorization: Basic {self.basic(ntfy.ACCOUNT, self.notify_secret)}\r\n"
+            f"Connection: close\r\n\r\n"
+        ).encode()
+        with socket.create_connection(("127.0.0.1", self.ntfy_internal_port),
+                                      timeout=10) as raw:
+            raw.sendall(request)
+            received = b""
+            while chunk := raw.recv(65536):
+                received += chunk
+        self.assertIn(b"ola do bundle", received)
 
 
 if __name__ == "__main__":

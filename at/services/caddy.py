@@ -28,23 +28,29 @@ was extracted lives in the folder, and the folder is the backup).
 **The gate secret is item 13's, and its absence is not an error.** §7b says AT
 draws a secret per installation, writes it into the Caddyfile it generates,
 Caddy attaches it to every request carrying an identity, and AT refuses
-whoever does not bring it. That is the container path's M2M: the Caddyfile
-carries both lines when the secret is there — the `header_up` that attaches it
-and the `forward_auth` that asks the identity provider who is calling. The
-hosted path has no gate, so the file is absent and the two lines are too.
+whoever does not bring it. The Caddyfile carries both lines when the secret is
+there — the `header_up` that attaches it and the `forward_auth` that asks the
+identity provider who is calling. **A folder with neither an installed
+environment nor a running bundle has no gate**, so the file is absent and the
+two lines are too — the one case this sentence still describes.
 
-**The secret is READ here and DRAWN there.** `gate_secret` and `gate_file` are
-below because the file is this Caddy's own (`App/caddy/gate`), and both
-artifacts read them: `at-cli` refuses the identity that arrives without it, and
-the WebApp's check is what turns the M2M into a door. The DRAWING is the
-environment's installation act and belongs to `at-deploy` (§7b, item 27) —
-the deploy tool is the one that writes the environment's state, and `at-cli` is
-the one that reads it with the deploy artifact absent.
+**The secret is READ here, and DRAWN in TWO different places now (TASK-177,
+2026-10-02).** `gate_secret` and `gate_file` are below because the file is
+this Caddy's own (`App/caddy/gate`), and both artifacts read them: `at-cli`
+refuses the identity that arrives without it, and the WebApp's check is what
+turns the M2M into a door. The container path's draw is `at-deploy`'s
+installation act (§7b, item 27, sealed by the Chave Principal because that
+state folder is copied into a container with no encryption of its own) — the
+deploy tool writes the environment's state, and `at-cli` reads it with the
+deploy artifact absent. **The bundle's draw is `draw_gate`, right below**: the
+hosted path's own, in the clear, because nothing here ever crosses a
+container boundary — the same `App/` the backup already covers.
 """
 
 from __future__ import annotations
 
 import os
+import secrets
 import shutil
 import subprocess
 import sys
@@ -318,13 +324,71 @@ def ensure() -> Path | None:
 
 
 def gate_file() -> Path:
-    """`App/caddy/gate` — the secret's file, drawn by `at-deploy` (§7b).
+    """`App/caddy/gate` — the secret's file, drawn by whoever installs the gate.
 
-    É o arquivo da PASTA, e é ele que o `draw_gate` escreve — o desenho tem um
-    lugar só. Quem lê pode estar lendo outro arquivo (`gate_handed` e
-    `gate_secret`), e é por isso que este nome e a leitura são duas coisas.
+    É o arquivo da PASTA, e dois desenhos escrevem nele — nunca os dois na
+    mesma pasta. O container path o sela (`at_deploy.environment.draw_gate`,
+    item 50, porque aquela pasta de estado é copiada sem criptografia); o
+    bundle hospedado o escreve em claro (`draw_gate`, abaixo, logo abaixo
+    desta função) — a mesma razão do `App/` nunca precisar do selo: nada
+    aqui atravessa fronteira de container. Quem lê pode estar lendo outro
+    arquivo (`gate_handed` e `gate_secret`), e é por isso que este nome e a
+    leitura são duas coisas.
     """
     return directory() / GATE_FILE
+
+
+def _drawn_in_the_clear(where: Path) -> str:
+    """O valor que um arquivo já guarda, ou um sorteado agora e mantido dali
+    em diante — em CLARO, e de propósito (`draw_gate`'s own docstring diz
+    por quê). `draw_gate` e `draw_notify_secret` são as duas faces disto."""
+    try:
+        held = where.read_text(encoding="utf-8").strip()
+        if held:
+            return held
+    except FileNotFoundError:
+        pass
+    value = secrets.token_urlsafe(GATE_BYTES)
+    where.parent.mkdir(parents=True, exist_ok=True)
+    files.atomic_write_text(where, f"{value}\n")
+    return value
+
+
+def draw_gate() -> str:
+    """O segredo do portão, sorteado uma vez e mantido em CLARO (§6, bundle).
+
+    **Este é o desenho do CAMINHO HOSPEDADO**, e não o do item 50: a pasta
+    deste Caddy (`App/caddy/`) nunca é copiada para dentro de um container —
+    ela é a cópia de trabalho de uma única máquina, já coberta pelo backup —,
+    então o valor que o `header_up` carrega não precisa do envelope da Chave
+    Principal que o caminho container exige (`at_deploy.environment.
+    draw_gate`). Um valor já sorteado não é sorteado de novo: rotacioná-lo
+    derrubaria toda sessão que o WebApp já aceitou pelo mesmo Caddy.
+    """
+    return _drawn_in_the_clear(gate_file())
+
+
+def notify_file() -> Path:
+    """`App/caddy/notify` — a credencial M2M do notificador, do bundle.
+
+    O mesmo papel que `at_deploy.environment.notify_gate_file()` dá ao
+    container path, dentro da mesma pasta — `caddy.directory()` — pela mesma
+    razão que `gate_file` já é dela: o Caddyfile é o único escritor e o único
+    leitor fora deste módulo.
+    """
+    return directory() / "notify"
+
+
+def draw_notify_secret() -> str:
+    """A credencial M2M do notificador do bundle, sorteada uma vez, em CLARO.
+
+    O par do `draw_gate` acima, para o SEGUNDO segredo que o Caddyfile do
+    bundle carrega: o valor que `ntfy.provision` usa como senha da conta, e
+    que o Caddy troca no lugar do `Authorization` que o celular mandou
+    (`caddyfile`'s `notify=`). Os dois lados têm de concordar no mesmo valor,
+    e é por isso que ele é sorteado ANTES de o ntfy sequer ter uma conta.
+    """
+    return _drawn_in_the_clear(notify_file())
 
 
 def gate_handed() -> Path | None:
@@ -394,6 +458,7 @@ def caddyfile(host: str, port: int, backend: int, gate: str | None = None,
               storage: str | Path | None = None, auth: str | None = None,
               bind: str | None = None, upstream: str | None = None,
               notify: tuple[str, str, str] | None = None,
+              notify_port: int | None = None,
               files: tuple[tuple[str, str], ...] = ()) -> str:
     """The Caddyfile AT generates: TLS in front, the WebApp behind.
 
@@ -408,6 +473,12 @@ def caddyfile(host: str, port: int, backend: int, gate: str | None = None,
     **`notify` is §7f's notifier, fronted by the SAME `forward_auth` and a
     different upstream** — `(host, upstream, credential)`, and each becomes a
     site of its own, with its own certificate (`tls internal` issues per name).
+    **`notify_port` is the bundle's own**: the container path names the
+    notifier under a SUBDOMAIN of the site (`ntfy.at.local`) and shares the
+    one port the DNS-resolved name already disambiguates by; the bundle has
+    no DNS of its own, so `where` names the SAME host as the site and this
+    port is what tells the two blocks apart instead — `None` keeps the
+    container path's own answer, `port` unchanged.
     It took a second measurement to get here: the gate authenticates by
     redirect and session cookie, and a headless phone app used to take the 302
     and never connect (`subscribers=0` behind Authelia, `101` without it) — but
@@ -550,7 +621,7 @@ def caddyfile(host: str, port: int, backend: int, gate: str | None = None,
         notify_host, notify_upstream, notify_credential = notify
         lines += [
             "",
-            f"{address(notify_host, port)} {{",
+            f"{address(notify_host, notify_port or port)} {{",
             *([f"\tbind {bind}"] if bind else []),
             "\ttls internal",
             f"\tforward_auth {auth} {{",
@@ -580,12 +651,17 @@ def caddyfile(host: str, port: int, backend: int, gate: str | None = None,
 
 
 def write_caddyfile(host: str, port: int, backend: int,
-                    auth: str | None = None) -> Path:
+                    auth: str | None = None,
+                    notify: tuple[str, str, str] | None = None,
+                    notify_port: int | None = None) -> Path:
     """Write the Caddyfile the Caddy is started with, and answer where it is."""
     where = caddyfile_path()
     where.parent.mkdir(parents=True, exist_ok=True)
-    files.atomic_write_text(where,
-                            caddyfile(host, port, backend, gate_secret(), auth=auth))
+    files.atomic_write_text(
+        where,
+        caddyfile(host, port, backend, gate_secret(), auth=auth,
+                  notify=notify, notify_port=notify_port),
+    )
     return where
 
 

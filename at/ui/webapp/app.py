@@ -157,7 +157,7 @@ from at.core import (
 )
 from at.data import schema, store
 from at.prose import listing as prose
-from at.services import caddy
+from at.services import authelia, caddy, ntfy
 from at.ui import ask as door
 from at.ui.webapp import keys, session
 
@@ -170,6 +170,14 @@ DEFAULT_THEME = "at"
 # front, the name is what the certificate is issued for (§3), and `localhost` is
 # the name that needs no resolver to mean this machine.
 LOOPBACK_NAME = "localhost"
+
+# **The bundle's own default** (TASK-177, 02/10/2026): `--include-caddy` now
+# always brings Authelia up beside the Caddy, and Authelia refuses a session
+# cookie domain with no dot that is not an IP — the exact shape `localhost`
+# has (measured against the real binary, `authelia.valid_cookie_domain`). Every
+# browser resolves a `.localhost` name to the loop on its own (RFC 6761), with
+# no resolver this product controls, so the dot is bought for free.
+GATE_LOOPBACK_NAME = "at.localhost"
 
 # The key of `settings.json` that carries the address the folder answers on. It
 # is the same shelf `basic_auth` sits on — an adjustment of the installation and
@@ -2228,7 +2236,7 @@ def run(port: int = DEFAULT_PORT, host: str | None = None,
     # answering, and there is no flag beside it (`paths.source` says why).
     asks = not paths.source()
 
-    where = host or (LOOPBACK_NAME if include_caddy else chosen_host())
+    where = host or (GATE_LOOPBACK_NAME if include_caddy else chosen_host())
 
     # "Sem ator nenhum o AT não expõe" (§3, Acesso e exposição): a folder with
     # nobody to enter it does not open its page. The engine's row does not count
@@ -2252,6 +2260,14 @@ def run(port: int = DEFAULT_PORT, host: str | None = None,
         print(tr("caddy.address_needs_name", host=where))
         return 1
 
+    # TASK-177: `--include-caddy` now always bundles the gate beside the TLS,
+    # and Authelia refuses a cookie domain this blunt before anything else
+    # even unpacks (`authelia.valid_cookie_domain`, measured against the real
+    # binary) — said here, before a port is taken or a secret drawn.
+    if include_caddy and not authelia.valid_cookie_domain(where):
+        print(tr("authelia.cookie_domain", host=where))
+        return 1
+
     # Exposed, the WebApp takes an EPHEMERAL port on the loop and the Caddy holds
     # the port the person reaches: two processes cannot share one, and moving the
     # WebApp is the move that keeps the exposed address the stable one.
@@ -2272,6 +2288,8 @@ def run(port: int = DEFAULT_PORT, host: str | None = None,
         return 1
 
     process = None
+    authelia_process = None
+    ntfy_process = None
     if include_caddy:
         if not caddy.unpacked():
             print(tr("caddy.unpacking", where=caddy.directory()))
@@ -2279,12 +2297,88 @@ def run(port: int = DEFAULT_PORT, host: str | None = None,
             server.server_close()
             print(tr("caddy.no_payload", platform=caddy.label()))
             return 1
-        config = caddy.write_caddyfile(where, port, server.server_address[1])
+
+        # TASK-177: the bundle's two other vendored binaries, unpacked the
+        # same way and with the same refusal — said, not guessed, before any
+        # of the three is asked to run.
+        if not authelia.unpacked():
+            print(tr("authelia.unpacking", where=authelia.directory()))
+        if authelia.ensure() is None:
+            server.server_close()
+            print(tr("authelia.no_payload", platform=authelia.label()))
+            return 1
+        if not ntfy.unpacked():
+            print(tr("ntfy.unpacking", where=ntfy.directory()))
+        if ntfy.ensure() is None:
+            server.server_close()
+            print(tr("ntfy.no_payload", platform=ntfy.label()))
+            return 1
+
+        # The two M2M secrets the Caddyfile below carries — drawn once, kept
+        # in the clear beside the Caddy's own folder (`caddy.draw_gate`'s own
+        # docstring says why), and read again on every later start instead of
+        # redrawn.
+        caddy.draw_gate()
+        notify_secret = caddy.draw_notify_secret()
+
+        # Authelia first: the Caddyfile below names its loopback address, so
+        # it has to exist before that file is written.
+        authelia_port = authelia.free_port()
+        authelia_config = authelia.write(where, authelia_port, port)
+        authelia_process = authelia.start(authelia_config)
+        if not authelia.started(authelia_process):
+            server.server_close()
+            print(tr("authelia.start_failed"))
+            return 1
+
+        # Then ntfy, published by the Caddy on `notify_port` — the site's own
+        # port plus one, the bundle's answer to the container path's DNS
+        # subdomain (`caddy.caddyfile`'s own docstring on `notify_port`).
+        # Provisioning needs the server already running (measured against
+        # the real binary, `ntfy.py`'s own docstring), so the account is made
+        # here and not in the Caddyfile that is about to name it.
+        notify_port = port + 1
+        ntfy_internal_port = ntfy.free_port()
+        ntfy_config = ntfy.write(ntfy_internal_port, caddy.address(where, notify_port))
+        ntfy_process = ntfy.start(ntfy_config)
+        if not ntfy.started(ntfy_process):
+            authelia.stop(authelia_process)
+            server.server_close()
+            print(tr("ntfy.start_failed"))
+            return 1
+        if not ntfy.wait_auth_db(ntfy_config):
+            ntfy.stop(ntfy_process)
+            authelia.stop(authelia_process)
+            server.server_close()
+            print(tr("ntfy.start_failed"))
+            return 1
+        if ntfy.provision(ntfy_config, notify_secret) is None:
+            ntfy.stop(ntfy_process)
+            authelia.stop(authelia_process)
+            server.server_close()
+            print(tr("ntfy.provision_failed"))
+            return 1
+
+        # The Caddyfile's own line is `Authorization: Basic <user:password>`,
+        # base64 — never the raw password `ntfy.provision` already took above
+        # (`notifier.encode_m2m`'s own shape, mirrored: the drawn value is
+        # the password, and this is the ONE place it is wrapped for Caddy).
+        notify_b64 = base64.b64encode(
+            f"{ntfy.ACCOUNT}:{notify_secret}".encode("ascii")
+        ).decode("ascii")
+        config = caddy.write_caddyfile(
+            where, port, server.server_address[1],
+            auth=f"{caddy.LOOPBACK}:{authelia_port}",
+            notify=(where, f"{caddy.LOOPBACK}:{ntfy_internal_port}", notify_b64),
+            notify_port=notify_port,
+        )
         process = caddy.start(config)
         if not caddy.started(process):
             # The Caddy holds the port the person reaches, so its failure is the
             # command's: an AT that answered with a URL here would be announcing
             # an address nothing is on.
+            ntfy.stop(ntfy_process)
+            authelia.stop(authelia_process)
             server.server_close()
             print(tr("webapp.port_taken", port=port))
             return 1
@@ -2308,5 +2402,7 @@ def run(port: int = DEFAULT_PORT, host: str | None = None,
         pass
     finally:
         caddy.stop(process)
+        ntfy.stop(ntfy_process)
+        authelia.stop(authelia_process)
         server.server_close()
     return 0

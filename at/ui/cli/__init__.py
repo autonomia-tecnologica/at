@@ -136,8 +136,13 @@ def _webapp(rest: list[str]) -> int:
     person authenticates (§3, Acesso e exposição). The flag is the exception the
     same rule makes — the Caddy that came inside the binary terminates the TLS
     and publishes AT, and the WebApp keeps listening on the loop behind it
-    (§6, §12). The container is the other path, where the Caddy at the edge
-    carries the TLS and the gate (§7b, §7c).
+    (§6, §12). **Since TASK-177 (02/10/2026) the flag also brings up the
+    bundle's own gate**: Authelia and ntfy, vendorized the same way the Caddy
+    is, fronted by that same Caddy — no container, no isolamento por raio de
+    explosão (nota `A` and not `S`, `rules.md` §3), but a portão de primeira
+    classe where there used to be none. The container path is the other one,
+    where the Caddy at the edge carries the TLS and the gate from inside its
+    own orchestration instead (§7b, §7c).
 
     `--host` is the address AT answers on, and it means two different things
     with and without the flag: without it, the loop it binds and the only

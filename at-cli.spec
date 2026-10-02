@@ -67,6 +67,13 @@ DATAS = [
     # from a checkout gets the same payload, unpacked by `services/caddy.py` on
     # demand, so both paths extract from one place.
     ("at/vendor/caddy", "at/vendor/caddy"),
+    # TASK-177 (02/10/2026): o portão e o notificador do bundle hospedado,
+    # vendorizados byte a byte do mesmo jeito que o Caddy acima — subidos
+    # como subprocesso de `at-cli`, sem container, pelo mesmo gatilho
+    # (`--include-caddy`). `services/authelia.py` e `services/ntfy.py`
+    # desempacotam cada um na hora.
+    ("at/vendor/authelia", "at/vendor/authelia"),
+    ("at/vendor/ntfy", "at/vendor/ntfy"),
     # O `gitleaks` que a pasta varre quando alguém pede `secret scan` (item 32).
     # Ele viaja pelo mesmo motivo e pela mesma forma que o Caddy acima — o
     # tarball do fornecedor, byte a byte, e não o binário desempacotado —, e

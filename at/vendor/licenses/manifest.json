@@ -2,6 +2,14 @@
   "note": "What the two artifacts carry from outside, and under which terms. This is the ONE place that declares it (§3, External dependency): the repository's own rule is that a third party only travels inside an artifact if its licence permits, and that whatever the licence demands travels WITH it. The artifact is a single file with no folder beside it, so the texts live inside it and come out through `at-cli license`. The SBOM (item 46) generates its licence lines from here and is never written by hand.",
   "license_texts": "Each value of `text` is a repository-relative path to a file that exists. `license` is the SPDX identifier, and each text carries a marker that proves the identifier — verified by at/tests/test_licenses.py. The five typefaces keep their files where the WebApp's own vendor manifest pins them (at/ui/webapp/vendor/), and the Caddy's and the gitleaks' are copies of the member inside each vendor's own tarball, held equal to it by the same test.",
   "components": {
+    "authelia": {
+      "name": "Authelia",
+      "version": "4.39.28",
+      "license": "Apache-2.0",
+      "artifacts": ["at-cli"],
+      "text": "at/vendor/licenses/authelia/LICENSE",
+      "note": "The hosted bundle's own gate (TASK-177, 2026-10-02). The vendor's tarball travels byte for byte in at/vendor/authelia/, but it carries no LICENSE of its own inside — the vendor publishes it only at the repository's root — so this copy comes from there, and not from the tarball."
+    },
     "caddy": {
       "name": "Caddy",
       "version": "2.11.4",
@@ -98,6 +106,14 @@
       "artifacts": ["at-cli"],
       "text": "at/ui/webapp/vendor/licenses/marked-LICENSE",
       "note": "The markdown renderer the WebApp HOSTS through /vendor/marked, pinned in at/ui/webapp/vendor/manifest.json where the sha256 travels (lib/markdown.ts is its door). Its text is the vendor's own LICENSE, the file the tarball carries beside the build — and it is the one that also spells the Markdown licence the parser descends from."
+    },
+    "ntfy": {
+      "name": "ntfy",
+      "version": "2.28.0",
+      "license": "Apache-2.0",
+      "artifacts": ["at-cli"],
+      "text": "at/vendor/licenses/ntfy/LICENSE",
+      "note": "The hosted bundle's own notifier (TASK-177, 2026-10-02). The vendor's tarball travels byte for byte in at/vendor/ntfy/, and it carries its own LICENSE beside the binary; this copy is the same bytes, the Caddy's and the gitleaks' own rule."
     },
     "pyinstaller": {
       "name": "PyInstaller",

@@ -1,0 +1,14 @@
+{
+  "pt_BR": {
+    "unpacking": "Extraindo o Authelia para {where}…",
+    "no_payload": "Este binário não carrega um Authelia para {platform}, e expor com o portão precisa dele. Rode a partir de um binário da sua plataforma.",
+    "cookie_domain": "`{host}` não serve de domínio do portão: o Authelia exige um nome com ponto, ou um endereço IP. Diga `--host` com um nome assim, ou deixe o padrão.",
+    "start_failed": "O Authelia não respondeu a tempo — o portão não subiu."
+  },
+  "en_US": {
+    "unpacking": "Unpacking the Authelia into {where}…",
+    "no_payload": "This binary carries no Authelia for {platform}, and exposing with the gate needs it. Run a binary built for your platform.",
+    "cookie_domain": "`{host}` cannot be the gate's domain: Authelia requires a name with a dot, or an IP address. Say `--host` with a name like that, or leave the default.",
+    "start_failed": "The Authelia did not answer in time — the gate did not come up."
+  }
+}
