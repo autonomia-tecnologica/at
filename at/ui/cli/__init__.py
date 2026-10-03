@@ -16,10 +16,10 @@ from collections.abc import Callable, Sequence
 from at import __version__, convert, i18n
 from at.core import (
     actors,
+    assist,
     audit,
     backup,
     boot,
-    decisor,
     files,
     install,
     jobs,
@@ -107,8 +107,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     if word == "lang":
         return _lang(rest)
 
-    if word == "decisor":
-        return _decisor(rest)
+    if word == "assist":
+        return _assist(rest)
 
     if word == permissions.SETTING:
         return _setting(rest)
@@ -459,10 +459,10 @@ def _lang(rest: list[str], ask: Ask | None = None) -> int:
     return OK
 
 
-# -------------------------------------------------------------- the decisor ---
+# -------------------------------------------------------------- the assist ---
 
-def _decisor(rest: list[str], secret: Ask | None = None) -> int:
-    """`at-cli decisor "<frase>"` — what Jev would propose, without running
+def _assist(rest: list[str], secret: Ask | None = None) -> int:
+    """`at-cli assist "<frase>"` — what Jev would propose, without running
     it (TASK-180, fatia 2/3).
 
     The sentence is ONE argument, the same rule `ask` already holds to: a
@@ -475,17 +475,17 @@ def _decisor(rest: list[str], secret: Ask | None = None) -> int:
     off never gets as far as asking a person to type it.
     """
     if len(rest) != 1:
-        return _reject("decisor")
-    if not decisor.enabled():
-        print(tr("decisor.preview.off"))
+        return _reject("assist")
+    if not assist.enabled():
+        print(tr("assist.preview.off"))
         return REFUSED
     if secret is None:
         secret = _readers()[1]
     if secret is None:
-        print(tr("decisor.preview.no_tty"))
+        print(tr("assist.preview.no_tty"))
         return REFUSED
-    main_key = secret(tr("decisor.preview.phrase"))
-    code, answer = door.decisor_preview(rest[0], main_key=main_key)
+    main_key = secret(tr("assist.preview.phrase"))
+    code, answer = door.assist_preview(rest[0], main_key=main_key)
     print(answer)
     return code
 

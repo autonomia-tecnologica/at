@@ -37,7 +37,28 @@ async function send(): Promise<void> {
     // there the sentence stays, and the person tries again.
     sentence.value = "";
   } catch (err) {
-    turn.value = { sentence: text, kind: "refused", proposal: null, text: (err as Error).message };
+    turn.value = {
+      sentence: text, kind: "refused", proposal: null,
+      text: (err as Error).message, assist: false,
+    };
+  } finally {
+    busy.value = false;
+  }
+}
+
+// TASK-180, fatia 3/3: the SAME sentence, asked again with a Main Key — never
+// a second one the person has to retype.
+async function retry(mainKey: string): Promise<void> {
+  if (!turn.value || busy.value) return;
+  const asked = turn.value.sentence;
+  busy.value = true;
+  try {
+    turn.value = await ask(asked, mainKey);
+  } catch (err) {
+    turn.value = {
+      sentence: asked, kind: "refused", proposal: null,
+      text: (err as Error).message, assist: false,
+    };
   } finally {
     busy.value = false;
   }
@@ -51,6 +72,6 @@ async function send(): Promise<void> {
              :placeholder="word('ask_hint')" :aria-label="word('interpreter')">
       <button type="submit" class="btn" :disabled="busy">{{ word("ask") }}</button>
     </form>
-    <AskTurn v-if="turn" :turn="turn" />
+    <AskTurn v-if="turn" :turn="turn" @retry="retry" />
   </aside>
 </template>

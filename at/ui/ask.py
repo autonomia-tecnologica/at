@@ -103,9 +103,9 @@ from typing import Callable
 from at import i18n, nlu
 from at.core import (
     actors,
+    assist,
     audit,
     clock,
-    decisor,
     files,
     jev,
     jobs,
@@ -156,6 +156,12 @@ class Result:
     proposal: str | None
     text: str
     code: int = OK
+    # Whether the assist could still answer THIS exact refusal if a Main Key
+    # arrived with it (TASK-180, fatia 3/3): `True` only for a `refused` whose
+    # reason is one of `assist.TRIGGERS`, with the switch on and no key
+    # already tried. A surface reads this to offer the retry — never to show
+    # one that cannot possibly change the answer.
+    assist: bool = False
 
 
 def ask(
@@ -164,6 +170,7 @@ def ask(
     language: str | None = None,
     now: datetime | None = None,
     actor: dict | None = None,
+    main_key: str | None = None,
 ) -> Result:
     """One sentence, read and — when it is a write — run.
 
@@ -171,13 +178,31 @@ def ask(
     result, with the words the person reads, and `code` says what a process would
     have exited with. `actor` is the row of whoever is asking, and `None` is the
     folder that asks nobody (`ceiling`).
+
+    `main_key` is handed straight to `nlu.propose`, which hands it to the
+    assist (TASK-180, fatia 3/3) — this door opens no credential itself, the
+    same reason `at.core.assist` gives for reading it as an argument rather
+    than asking where it came from. A caller with no key to hand in passes
+    `None`, which is the whole of what `cli`'s `ask` word and a WebApp request
+    with nothing typed already do.
     """
     try:
-        proposed = nlu.propose(text, language=language, now=now)
+        proposed = nlu.propose(text, language=language, now=now, main_key=main_key)
     except nlu.Refused as refused:
         # The refusal already speaks the active language — the reason's key is
         # i18n's — so it is read as it stands.
-        return Result("refused", None, str(refused), REFUSED)
+        #
+        # The assist could still have an answer for EXACTLY this refusal — it is
+        # the one `nlu.propose` already handed every `Refused` to — and the one
+        # thing this call did not carry is a Main Key to open its credential
+        # with. `hinted` is that one fact, never a second judgment about the
+        # sentence: the surface that reads it is free to offer the retry, or not.
+        hinted = (
+            refused.key in assist.TRIGGERS
+            and assist.enabled()
+            and main_key is None
+        )
+        return Result("refused", None, str(refused), REFUSED, assist=hinted)
     if isinstance(proposed, nlu.Question):
         # The question carries the phrase it is about, so the surface asks in the
         # active language without knowing which one the phrase was written in.
@@ -918,11 +943,11 @@ def reminder_due(args: list[str]) -> tuple[int, str]:
     return OK, "\n".join(lines)
 
 
-# -------------------------------------------------------------- the decisor ---
+# -------------------------------------------------------------- the assist ---
 
 
-def decisor_preview(text: str, *, language: str | None = None, main_key: str | None = None) -> tuple[int, str]:
-    """`decisor "<frase>"` — what Jev would propose for `text`, without ever
+def assist_preview(text: str, *, language: str | None = None, main_key: str | None = None) -> tuple[int, str]:
+    """`assist "<frase>"` — what Jev would propose for `text`, without ever
     running it (TASK-180, fatia 2/3).
 
     **The act is a READ, the way `scan` and `reminder_due` already are.**
@@ -932,19 +957,19 @@ def decisor_preview(text: str, *, language: str | None = None, main_key: str | N
     one.
 
     `main_key` is handed in rather than read here: the Cofre's credential is
-    opened by `at.core.decisor`, and a surface that read the vault itself
+    opened by `at.core.assist`, and a surface that read the vault itself
     would be a second door into it.
     """
-    found = decisor.preview(text, language=language or i18n.active_code(), main_key=main_key)
+    found = assist.preview(text, language=language or i18n.active_code(), main_key=main_key)
     if found is None:
-        return REFUSED, tr("decisor.preview.none")
+        return REFUSED, tr("assist.preview.none")
     return OK, tr(
-        "decisor.preview.line",
+        "assist.preview.line",
         action=_jev_label(found.action, is_action=True),
         action_confidence=f"{found.action_confidence:.2f}",
         table=_jev_label(found.table, is_action=False),
         table_confidence=f"{found.table_confidence:.2f}",
-        tier=tr(f"decisor.preview.tier.{found.tier}"),
+        tier=tr(f"assist.preview.tier.{found.tier}"),
     )
 
 

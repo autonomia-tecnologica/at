@@ -64,13 +64,13 @@ def propose(
 
     **A `Refused` the matcher raised for `nlu.error.no_action` or
     `nlu.error.no_table` gets one more door before it is re-raised** — the
-    decisor (`at.core.decisor`, TASK-180): a slang layer that reads the same
+    assist (`at.core.assist`, TASK-180): a slang layer that reads the same
     sentence through Jev and either applies a rewritten one, asks for it to be
     confirmed, or stands by the very refusal the matcher already raised. It is
     reached HERE and nowhere inside the matcher, which is why it is imported
     lazily — `match`, the grammar and the vocabulary carry no word of it, and
-    none of this changes when the decisor's own switch does. `main_key` has no
-    caller in `cli` or the WebApp yet; it exists so the decisor can open its
+    none of this changes when the assist's own switch does. `main_key` has no
+    caller in `cli` or the WebApp yet; it exists so the assist can open its
     credential the day a surface hands one in, and it does nothing where none
     arrives.
     """
@@ -79,9 +79,9 @@ def propose(
     try:
         return match(text, language=language, now=now)
     except Refused as refused:
-        from at.core import decisor
+        from at.core import assist
 
-        decided = decisor.decide(
+        decided = assist.decide(
             refused,
             text,
             language=language or i18n.active_code(),

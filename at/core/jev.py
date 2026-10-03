@@ -18,7 +18,7 @@ running, the way a weather API or a payment gateway would be — "serviço
 interno" in the sense that matters here is that its credential and its switch
 are the folder's own, never a container's.
 
-**This module owns the CALL and the CRITERIA; `at.core.decisor` owns the
+**This module owns the CALL and the CRITERIA; `at.core.assist` owns the
 DECISION.** The prototype that proved the idea (`jev-test/slang_dispatch.py`)
 hard-coded its own Portuguese descriptions of each action and table; this one
 does not, because AT already has a place those descriptions would drift from —
@@ -96,7 +96,7 @@ class Decision:
 
 class JevError(Exception):
     """The call failed, timed out, or answered a shape this door does not
-    read — never raised past `at.core.decisor`, which decides what a service
+    read — never raised past `at.core.assist`, which decides what a service
     that did not answer is worth (the same rule `notifier.publish` answers
     to its own caller instead of raising over)."""
 
@@ -143,12 +143,12 @@ def decide(
             "questions": {
                 ACTION: {
                     "type": "choice",
-                    "instructions": _text("decisor.criteria.action.instructions", language),
+                    "instructions": _text("assist.criteria.action.instructions", language),
                     "criteria": _action_criteria(language),
                 },
                 TABLE: {
                     "type": "choice",
-                    "instructions": _text("decisor.criteria.table.instructions", language),
+                    "instructions": _text("assist.criteria.table.instructions", language),
                     "criteria": _table_criteria(language),
                 },
             },
@@ -187,7 +187,7 @@ def _read(raw: bytes) -> Decision:
 #
 # - the six engine actions are a CLOSED, product-wide set (`tables.ACTIONS`),
 #   so their meaning is written once, as `i18n` text no person ever reads
-#   (`decisor.criteria.action.desc.*`) — the same shelf the instructions
+#   (`assist.criteria.action.desc.*`) — the same shelf the instructions
 #   already sit on;
 # - a table's meaning is ALREADY written, in `desc` (`data/schema/<table>
 #   .json`) — the architecture's own prose, which `schema.py`'s docstring
@@ -206,9 +206,9 @@ def _action_criteria(language: str) -> dict[str, str]:
     return _criteria(
         tables.ACTIONS,
         (permissions.action_label(action) for action in tables.ACTIONS),
-        (_text(f"decisor.criteria.action.desc.{action}", language) for action in tables.ACTIONS),
+        (_text(f"assist.criteria.action.desc.{action}", language) for action in tables.ACTIONS),
         language,
-        "decisor.criteria.none.action",
+        "assist.criteria.none.action",
     )
 
 
@@ -220,7 +220,7 @@ def _table_criteria(language: str) -> dict[str, str]:
         (tables.table_name(name) for name in names),
         (declared[name].get("desc") for name in names),
         language,
-        "decisor.criteria.none.table",
+        "assist.criteria.none.table",
     )
 
 
@@ -246,7 +246,7 @@ def _option(
     said = f"{label}: {description}" if description else label
     if not examples:
         return said
-    return _text("decisor.criteria.option", language, said=said, examples=", ".join(examples))
+    return _text("assist.criteria.option", language, said=said, examples=", ".join(examples))
 
 
 def _text(key: str, language: str, **kw: str) -> str:
@@ -265,7 +265,7 @@ def _text(key: str, language: str, **kw: str) -> str:
 def spoken(canonical: str, language: str) -> str | None:
     """The first word THIS language already reads as `canonical`, or `None`.
 
-    It is what `at.core.decisor` plants back into a sentence when it rewrites
+    It is what `at.core.assist` plants back into a sentence when it rewrites
     one: the word is already in the deterministic vocabulary, so the matcher
     reads it with no help from this module the second time around.
     """

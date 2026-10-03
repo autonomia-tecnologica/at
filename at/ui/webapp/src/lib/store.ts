@@ -67,6 +67,13 @@ export const store = reactive({
   types: {} as Record<string, string>, // a DECLARED type → the table declaring it
   fields: [] as FieldSpec[], // the schema of the table ON SCREEN
   interpreter: true, // the CORE's switch: off, there is no box, balloon or chat
+  // TASK-180, fatia 3/3: the assist's own two knobs — whether Jev is asked at
+  // all once the matcher gives up (`assist`), and what a non-`refuse` tier
+  // does once Jev has answered (`assist_mode`, `"cautious"` born default). The
+  // second field keeps the server's own spelling (`FieldSpec.max_length`'s own
+  // precedent) rather than a camelCase this file would have to translate.
+  assist: true,
+  assist_mode: "cautious",
   risk: { threshold: 0.5, marks: [] } as Risk, // the ruler's numbers
   // WHAT THE FOLDER IS, VERSIONING-WISE (§4, item 30), already written out in
   // every language: a sentence when AT does not version the folder, and `null`
@@ -86,6 +93,8 @@ export function applyState(state: Partial<typeof store>): void {
   // The switch is BORN ON and the server is the one that says so: an answer that
   // does not carry it leaves the interpreter where it was.
   if (typeof state.interpreter === "boolean") store.interpreter = state.interpreter;
+  if (typeof state.assist === "boolean") store.assist = state.assist;
+  if (typeof state.assist_mode === "string") store.assist_mode = state.assist_mode;
   if (state.risk) store.risk = state.risk as Risk;
   store.versioning = (state.versioning as Labels | null) ?? null;
 }

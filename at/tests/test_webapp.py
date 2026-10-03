@@ -28,9 +28,11 @@ from unittest import mock
 from at import i18n
 from at.core import (
     actors,
+    assist,
     audit,
     boot,
     cofre,
+    jev,
     notifier,
     paths,
     permissions,
@@ -1033,6 +1035,154 @@ class TheAskDoor(ServerCase):
         self.assertEqual(answer["kind"], "refused")
         self.assertEqual(answer["text"], i18n.tr("nlu.error.interpreter_off"))
         self.assertEqual(len(tables.rows("task")), 1)  # and nothing was written
+
+    def test_a_trigger_refusal_hints_the_assist_with_no_key(self):
+        # "banana" refuses with `nlu.error.no_action`, one of the two triggers —
+        # and with nothing to open a credential with, the hint is the one thing
+        # that changes (TASK-180, fatia 3/3).
+        status, answer = self.post("/api/ask", {"text": "banana"})
+        self.assertEqual(status, 200)
+        self.assertTrue(answer["assist"])
+
+    def test_a_non_trigger_refusal_never_hints_the_assist(self):
+        status, answer = self.post("/api/ask", {"text": "cria e lista uma tarefa"})
+        self.assertEqual(status, 200)
+        self.assertEqual(answer["kind"], "refused")
+        self.assertFalse(answer["assist"])
+
+    def test_an_answer_never_hints_the_assist(self):
+        status, answer = self.post("/api/ask", {"text": "cria uma tarefa pra hoje"})
+        self.assertEqual(status, 200)
+        self.assertFalse(answer["assist"])
+
+    def test_the_switch_off_never_hints_the_assist(self):
+        settings.save({**settings.load(), assist.SWITCH: False})
+        status, answer = self.post("/api/ask", {"text": "banana"})
+        self.assertEqual(status, 200)
+        self.assertFalse(answer["assist"])
+
+
+class TheAssistThroughAsk(ServerCase):
+    """`POST /api/ask` with a `main_key` — the REAL path reaching Jev for real
+    (TASK-180, fatia 3/3), proven with a FAKE Jev client and never a real one.
+    """
+
+    MAIN_KEY = "uma-frase-bem-longa-de-exemplo-mesmo"
+
+    def sealed(self, value: str = "a-chave-de-exemplo-do-jev") -> dict:
+        return secrets.seal("jev", jev.SERVICE, value, self.MAIN_KEY)
+
+    def fake(self, action: str, table: str, confidence: float):
+        def post(url, body, headers, timeout):
+            return json.dumps({
+                "answers": {
+                    "action": {"type": "choice", "choice": action,
+                               "probabilities": {}, "confidence": confidence},
+                    "table": {"type": "choice", "choice": table,
+                              "probabilities": {}, "confidence": confidence},
+                },
+            }).encode("utf-8")
+        return post
+
+    def test_automatic_mode_applies_the_rewrite_for_real(self):
+        self.sealed()
+        settings.save({**settings.load(), assist.MODE: assist.AUTOMATIC})
+        with mock.patch.object(jev, "_post", self.fake("create", "task", 0.95)):
+            status, answer = self.post(
+                "/api/ask", {"text": "bota uma penca aqui", "main_key": self.MAIN_KEY},
+            )
+        self.assertEqual(status, 200)
+        self.assertEqual(answer["kind"], "answer")
+        self.assertEqual(len(tables.rows("task")), 2)
+
+    def test_cautious_mode_asks_instead_of_applying(self):
+        self.sealed()
+        # `MODE` is left at its default — `CAUTIOUS` — on purpose.
+        with mock.patch.object(jev, "_post", self.fake("create", "task", 0.95)):
+            status, answer = self.post(
+                "/api/ask", {"text": "bota uma penca aqui", "main_key": self.MAIN_KEY},
+            )
+        self.assertEqual(status, 200)
+        self.assertEqual(answer["kind"], "question")
+        self.assertEqual(len(tables.rows("task")), 1)  # nothing written
+
+    def test_a_wrong_main_key_opens_nothing_and_stands_by_the_refusal(self):
+        self.sealed()
+        with mock.patch.object(jev, "_post", self.fake("create", "task", 0.95)):
+            status, answer = self.post(
+                "/api/ask",
+                {"text": "bota uma penca aqui", "main_key": "outra-frase-tambem-longa"},
+            )
+        self.assertEqual(status, 200)
+        self.assertEqual(answer["kind"], "refused")
+
+    def test_the_key_is_dropped_without_the_assist_permission(self):
+        # A role carrying `nlu:ask` but not `assist:ask` gets the sentence's
+        # ORDINARY refusal — never a 403 over a field the request did not have
+        # to send (the same "a key handed in without the permission is dropped"
+        # the route's own docstring promises).
+        self.sealed()
+        actors.create_admin("Rafael", "uma-frase-bem-longa-de-admin")
+        role = tables.create("role", {"name": "sem-assist", "permissions": "nlu:ask"})
+        tables.create(
+            "actor",
+            {"name": "Leitor", "type": "person",
+             "role": str(store.number_of(role)), "credential": "outra-frase-bem-longa"},
+        )
+        status, headers, _ = self.post_full(
+            "/api/session", {"name": "Leitor", "credential": "outra-frase-bem-longa"},
+        )
+        self.assertEqual(status, 200)
+        cookie = {"Cookie": headers["Set-Cookie"].split(";")[0]}
+        with mock.patch.object(jev, "_post", self.fake("create", "task", 0.95)):
+            status, answer = self.post(
+                "/api/ask", {"text": "bota uma penca aqui", "main_key": self.MAIN_KEY},
+                headers=cookie,
+            )
+        self.assertEqual(status, 200)
+        self.assertEqual(answer["kind"], "refused")
+        self.assertFalse(answer["assist"])
+        self.assertEqual(len(tables.rows("task")), 1)  # nothing written
+
+
+class TheAssistKnobs(ServerCase):
+    """`POST /api/assist` — the Control Panel's write into the two settings
+    (TASK-180, fatia 3/3), and `/api/state`'s read of the same pair."""
+
+    def test_the_state_carries_the_switch_and_the_mode(self):
+        status, _, body = self.get("/api/state")
+        payload = json.loads(body)
+        self.assertEqual(status, 200)
+        self.assertTrue(payload["assist"])
+        self.assertEqual(payload["assist_mode"], assist.CAUTIOUS)
+
+    def test_it_turns_the_switch_off_and_back_on(self):
+        status, answer = self.post("/api/assist", {"enabled": False})
+        self.assertEqual(status, 200)
+        self.assertFalse(answer["enabled"])
+        self.assertFalse(assist.enabled())
+        status, answer = self.post("/api/assist", {"enabled": True})
+        self.assertEqual(status, 200)
+        self.assertTrue(answer["enabled"])
+        self.assertTrue(assist.enabled())
+
+    def test_it_writes_the_mode(self):
+        status, answer = self.post("/api/assist", {"mode": assist.AUTOMATIC})
+        self.assertEqual(status, 200)
+        self.assertEqual(answer["mode"], assist.AUTOMATIC)
+        self.assertEqual(assist.mode(), assist.AUTOMATIC)
+
+    def test_an_unknown_mode_is_rejected(self):
+        status, _ = self.post("/api/assist", {"mode": "qualquer-coisa"})
+        self.assertEqual(status, 400)
+        self.assertEqual(assist.mode(), assist.CAUTIOUS)
+
+    def test_it_leaves_a_line_and_a_version_like_any_other_setting(self):
+        self.post("/api/assist", {"enabled": False})
+        lines = store.load("audit")
+        self.assertTrue(lines)
+        self.assertEqual(lines[-1]["table"], permissions.SETTING)
+        self.assertEqual(lines[-1]["via"], audit.WEBAPP)
 
 
 class TheEntrance(ServerCase):

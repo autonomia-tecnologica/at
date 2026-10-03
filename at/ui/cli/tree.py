@@ -63,9 +63,9 @@ WORDS: tuple[Node, ...] = (
     # propose for a phrase, never applied. No child of its own — a child
     # named `ask` would be the very word `ASK` below already is, and the
     # help's `·` line would show two doors under one spelling. Its own switch
-    # (`decisor.SWITCH`) is a setting, not a condition on this word — unlike
+    # (`assist.SWITCH`) is a setting, not a condition on this word — unlike
     # `ASK`, which the INTERPRETER's switch does take out of the tree.
-    Node("decisor", "cli.decisor.about"),
+    Node("assist", "cli.assist.about"),
     SETTING,
     # The pair that puts the file where commands are found (§3, item 28). They
     # are words like the others here and unlike the others in `cli/main`, which

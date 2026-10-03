@@ -21,15 +21,26 @@ export interface Turn {
   kind: Kind; // which of the three came back
   proposal: string | null; // the proposal, in the engine's words — when there was one
   text: string; // the answer, the question, or the refusal
+  // TASK-180, fatia 3/3: whether the assist could still answer THIS refusal for
+  // a Main Key typed now — `false` for every `answer` and `question`, and for a
+  // `refused` the retry already tried or the role may not spend.
+  assist: boolean;
 }
 
-export async function ask(sentence: string): Promise<Turn> {
-  const data = await post<{ kind: Kind; proposal: string | null; text: string }>(
-    "/api/ask", { text: sentence },
-  );
+export async function ask(sentence: string, mainKey?: string): Promise<Turn> {
+  const body: { text: string; main_key?: string } = { text: sentence };
+  // Sent once, with THIS request, and kept nowhere on the page: a retry types
+  // it again, the same way `at-cli assist` reads it fresh every time.
+  if (mainKey) body.main_key = mainKey;
+  const data = await post<
+    { kind: Kind; proposal: string | null; text: string; assist?: boolean }
+  >("/api/ask", body);
   // A proposal may have WRITTEN: the same page is redrawn where it stands, exactly
   // as the pick of a field does. A question and a refusal wrote nothing, and
   // redrawing for them would be work nobody asked for.
   if (data.kind === "answer") poke();
-  return { sentence, kind: data.kind, proposal: data.proposal ?? null, text: data.text };
+  return {
+    sentence, kind: data.kind, proposal: data.proposal ?? null, text: data.text,
+    assist: !!data.assist,
+  };
 }

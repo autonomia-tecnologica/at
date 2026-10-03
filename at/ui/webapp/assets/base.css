@@ -210,7 +210,11 @@ nav h1 .brand {
   flex: none; width: 34px; height: 34px; border-radius: var(--r-sm);
   background: var(--nav-brand-bg); color: var(--nav-brand-ink);
   font-family: var(--font-display);
-  font-weight: var(--weight-bold); font-size: var(--text-md);
+  /* PINNED, NOT `var(--text-md)` (2026-10-02): the UI scale went down a point
+     and the logo did not follow it — 18px is `--text-md`'s value from before
+     that move, kept here in the raw so the mark reads the same size regardless
+     of where the body scale sits. */
+  font-weight: var(--weight-bold); font-size: 18px;
 }
 /* O NOME INTEIRO AO LADO DA SIGLA. Ele cabe na largura do painel em um caso só
    — a `--text-sm` — e é por isso que ele não cresce: "Autonomia Tecnológica"
@@ -892,6 +896,16 @@ a.ref:hover, a.url:hover { border-bottom-color: currentColor; background: var(--
   border: 1px solid var(--border-strong); border-radius: var(--r-sm); font: inherit;
 }
 .chat-say:focus-visible, .balloon-say:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* TASK-180, fatia 3/3: the one retry a refusal can still offer — the Main Key
+   the first attempt did not carry, typed inline and never kept past the
+   request it travels with. */
+.assist-retry { display: flex; align-items: center; gap: var(--space-2); }
+.assist-retry input {
+  flex: 1; min-width: 0; padding: var(--space-2) var(--space-3);
+  background: var(--surface-0); color: var(--ink-1);
+  border: 1px solid var(--border-strong); border-radius: var(--r-sm); font: inherit;
+}
+.assist-retry input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* ===== ruler (risk gate) ================================================= */
 

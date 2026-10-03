@@ -141,6 +141,7 @@ from urllib.parse import parse_qs, urlparse
 from at import __version__, convert, i18n, nlu
 from at.core import (
     actors,
+    assist,
     audit,
     clock,
     cofre,
@@ -490,6 +491,11 @@ PAGE_WORDS = (
     # the demand filter (§4).
     "chat", "ask", "ask_hint", "proposal", "interpreter", "balloon",
     "risk", "risk_runs", "risk_waits", "risk_threshold", "risk_none",
+    # The assist's own Control Panel section, and its one retry (TASK-180,
+    # fatia 3/3): the switch, the mode's two names, and the inline form a
+    # refusal offers when a Main Key could still turn it into an answer.
+    "assist", "assist_hint", "assist_mode", "assist_cautious", "assist_automatic",
+    "assist_key", "assist_retry",
     # The screens that move a role and a machine's credential — the two system
     # tables whose records are more than a form (§4, item 11).
     "people", "create", "new_role", "new_machine", "mint", "revoke", "token_once",
@@ -607,6 +613,12 @@ def state_payload() -> dict:
         # the page reads it to know what to draw: off, there is no box, no balloon
         # and no chat — the whole function is gone, and nothing else is.
         "interpreter": nlu.enabled(),
+        # THE ASSIST'S OWN TWO KNOBS (TASK-180, fatia 3/3): the switch (whether
+        # Jev is asked at all, once the matcher gives up) and the mode (what a
+        # non-`refuse` tier does once Jev has answered). The Control Panel draws
+        # both from here and writes them back through `/api/assist`.
+        "assist": assist.enabled(),
+        "assist_mode": assist.mode(),
         # THE RULER'S NUMBERS. The threshold is the one the demand filter honours
         # (§4); the marks are one per catalogue entry, each carrying the number
         # the demand is measured at — the catalogue's, adjusted by what this
@@ -1440,6 +1452,11 @@ class Handler(BaseHTTPRequestHandler):
                 return
             self._post_ask()
             return
+        if segments == ["api", "assist"]:
+            if not self._may("setting:edit"):
+                return
+            self._post_assist()
+            return
         if segments == ["api", "agent"]:
             self._post_agent()
             return
@@ -1737,6 +1754,20 @@ class Handler(BaseHTTPRequestHandler):
         read at all. A refusal is an ANSWER here and not a failure of the request:
         it is a sentence the conversation keeps, and the page prints it as it
         stands.
+
+        **`main_key` is the one thing this route adds past fatia 1/2** (TASK-180,
+        fatia 3/3): the real path through the assist, from the ONE place that can
+        type a Main Key without it ever landing in a file or a log — the person's
+        own browser, for the one request that carries it. It is never cached here
+        and never on the page: a retry sends it again, exactly the way `at-cli
+        assist` reads it fresh every time.
+
+        **Asking Jev is its own ceiling, separate from `nlu:ask`'s** (already
+        asked at the dispatch above): a role may read the deterministic box
+        without being free to spend a call to an external service, so a key that
+        arrived without `assist:ask` is dropped here — the sentence gets the
+        same answer it would have gotten with no key at all, and never a 403 over
+        a field the request did not have to send.
         """
         payload = self._body()
         if payload is None:
@@ -1745,13 +1776,66 @@ class Handler(BaseHTTPRequestHandler):
         if not isinstance(sentence, str) or not sentence.strip():
             self._json({"error": "bad request"}, 400)
             return
+        raw_key = payload.get("main_key")
+        main_key = raw_key if isinstance(raw_key, str) and raw_key else None
+        if main_key is not None and not self._legal("assist:ask"):
+            main_key = None
         # The ACTOR comes along: the door owns the ceiling (§5, "o que ela pode
         # propor é o que ela já pode fazer"), and it is the same door the balloon,
         # the chat and `at-cli ask` read — so the refusal lands on every surface at
         # once and none of them keeps a ceiling of its own. `None` is a folder
         # asking nobody, and there the door answers as it always did.
-        result = door.ask(sentence, actor=self._actor())
-        self._json({"kind": result.kind, "proposal": result.proposal, "text": result.text})
+        result = door.ask(sentence, actor=self._actor(), main_key=main_key)
+        self._json({
+            "kind": result.kind,
+            "proposal": result.proposal,
+            "text": result.text,
+            # Whether the assist could still answer THIS refusal for a Main Key
+            # typed now — `False` once one already travelled (nothing left to
+            # retry) and for an actor the role does not let spend the call at
+            # all, so the browser never offers a retry that can only be denied.
+            "assist": result.assist and self._legal("assist:ask"),
+        })
+
+    def _post_assist(self) -> None:
+        """The assist's own two knobs, from the Control Panel (TASK-180, fatia
+        3/3): the switch and the mode, each an adjustment of the folder (§4)
+        and not a datum of the page, so each is written through `door.setting`
+        — the same line and the same version a `setting edit` at a terminal
+        already leaves, and not a second road into `settings.json`.
+
+        Either field alone is a legal request — the switch flips without
+        touching the mode, and the mode changes without touching the switch —
+        so the two are read and written independently, and the answer is the
+        pair as the folder now holds it, read back rather than echoed, the
+        same reason `door.setting` itself answers from the file and not from
+        what was typed.
+        """
+        payload = self._body()
+        if payload is None:
+            return
+        on = payload.get("enabled")
+        wanted_mode = payload.get("mode")
+        actor = self._actor()
+        if isinstance(on, bool):
+            code, answer = door.setting(
+                "edit", [assist.SWITCH, "true" if on else "false"],
+                actor=actor, via=audit.WEBAPP,
+            )
+            if code != door.OK:
+                self._json({"error": answer}, 400)
+                return
+        if isinstance(wanted_mode, str):
+            if wanted_mode not in (assist.CAUTIOUS, assist.AUTOMATIC):
+                self._json({"error": f"unknown mode: {wanted_mode}"}, 400)
+                return
+            code, answer = door.setting(
+                "edit", [assist.MODE, wanted_mode], actor=actor, via=audit.WEBAPP,
+            )
+            if code != door.OK:
+                self._json({"error": answer}, 400)
+                return
+        self._json({"enabled": assist.enabled(), "mode": assist.mode()})
 
     def _post_agent(self) -> None:
         """The machine credential's door: mint it, give it again, take it away.

@@ -1,4 +1,4 @@
-"""The decisor: what a sentence Jev read becomes, when the deterministic
+"""The assist: what a sentence Jev read becomes, when the deterministic
 matcher found no action, no table, or neither (§4's own rule for the layer —
 "what does not resolve is residue, never a guess" — read from the OUTSIDE of
 it; TASK-180, fatia 1/3).
@@ -38,7 +38,7 @@ so saying yes is saying that sentence again and walking the ordinary road.
 **The switch is this module's own, separate from the interpreter's, and born
 ON.** `nlu.SWITCH` ("interpreter") governs the deterministic layer, which
 calls no service and so has nothing to weigh against being on by default; this
-one (`SWITCH`, "decisor") governs a call OUT, and still starts on — a folder
+one (`SWITCH`, "assist") governs a call OUT, and still starts on — a folder
 that never chose gets the feature, and `settings.json` is where it is turned
 back off. The two switches share nothing: turning the interpreter off already
 takes `propose` out of the core API before this module is ever reached, and
@@ -62,10 +62,33 @@ fatia's own decision, not a gap in this one.
 **Fatia 2/3 wires the first surface, and it is a DRY RUN.** `preview` is
 `decide`'s own call to Jev and `_tier`'s own reading of it, with no
 `Refused` to carry in and no rewrite, no confirm and no match ever attempted
-— `at-cli decisor "<frase>"` prints the action, the table, both confidences
+— `at-cli assist "<frase>"` prints the action, the table, both confidences
 and the tier a real sentence would land in, and nothing about the folder
 changes for having asked. It is the surface `main_key` was always missing:
 read without echo, the same way `backup` and `admin` already read theirs.
+`preview` reads `_tier` RAW, on purpose: it is the engine's own judgment,
+off the scale `jev-test/slang_dispatch.py` proved, and it does not move with
+a folder's `MODE` — the dry run answers the same question in every folder,
+and what the folder chose is `at-cli setting view` to read.
+
+**Fatia 3/3 gives the REAL path a second knob, beside the switch.** The
+switch answers whether Jev is asked at all; `MODE` answers what a tier
+that is not `REFUSE` does once Jev has answered — and it is the only place
+the two tiers `AUTO` and `CONFIRM` still disagree, because a demand either
+asks or does not. `CAUTIOUS` (the default a folder that never chose gets,
+the same "born safe" `nlu.SWITCH` is not — a service call is not free to
+assume) turns every non-`REFUSE` tier into `CONFIRM`: nothing this module
+ever proposes applies without a person reading it back first, no matter how
+sure Jev was. `AUTOMATIC` is the other way: every non-`REFUSE` tier becomes
+`AUTO`, and a person who chose it has said a guess this product is not
+flatly wrong about is a guess worth acting on. `REFUSE` is neither tier's
+to touch — a guess naming `jev.NONE`, or below the floor, is not a
+confidence problem the folder's taste can fix (the module's own §4 reading,
+carried unchanged from fatia 1/3). `_tier` computes the RAW tier off the
+read/write thresholds exactly as it always did; `decide` is the one caller
+that asks `_mode` to fold `AUTO` and `CONFIRM` together before acting on it,
+which is why `preview` — a question about the engine, not about what this
+folder would DO — never calls it.
 """
 
 from __future__ import annotations
@@ -84,7 +107,7 @@ from at.nlu.reading import Question, Refused
 # two names the glossary already forbids touching. Born ON (see the module
 # docstring): a folder that never chose still gets the fallback, and turning
 # it off is what `settings.json` is for.
-SWITCH = "decisor"
+SWITCH = "assist"
 
 # The two, and only two, reasons `propose` hands a refusal here instead of
 # re-raising it outright — read off the exact keys `at.nlu.matcher` raises
@@ -114,10 +137,30 @@ CONFIRM_FLOOR = 0.5
 # prints one already knows how to print the other.
 ASK_KEY = "nlu.ask.slang"
 
+# The key of the folder's OTHER choice about this module (TASK-180, fatia
+# 3/3) — separate from `SWITCH`, which answers whether Jev is asked at all.
+# `MODE` answers what `decide` does once Jev HAS answered: `CAUTIOUS` is the
+# default (the module docstring's "born safe"), and `AUTOMATIC` is the one a
+# folder opts into.
+MODE = "assist_mode"
+CAUTIOUS = "cautious"
+AUTOMATIC = "automatic"
+
 
 def enabled() -> bool:
     """Whether this module's own fallback is on. Born on (see the docstring)."""
     return bool(settings.get(SWITCH, True))
+
+
+def mode() -> str:
+    """The folder's choice between `CAUTIOUS` and `AUTOMATIC` — `CAUTIOUS` for
+    every value that is not exactly `AUTOMATIC`, the same "a strange
+    declaration fails closed" reading `at.ui.ask.present` already gives a
+    hand-edited `type` — a folder that never chose, and a folder a hand
+    mistyped, both get the side that never applies without being read back
+    first.
+    """
+    return AUTOMATIC if settings.get(MODE) == AUTOMATIC else CAUTIOUS
 
 
 def decide(
@@ -151,7 +194,7 @@ def decide(
         guess = jev.decide(text, language=language, api_key=api_key, transport=transport)
     except jev.JevError:
         return None
-    tier = _tier(guess)
+    tier = _folded(_tier(guess))
     if tier == REFUSE:
         return None
     rewritten = _rewrite(text, guess, language)
@@ -164,7 +207,7 @@ def decide(
 class Preview:
     """What `decide` would see about one phrase, for a person to CHECK before
     anything is wired to run it (TASK-180, fatia 2/3 — the dry run `at-cli
-    decisor ask`).
+    assist ask`).
 
     The four numbers are `jev.Decision`'s own, carried through unchanged, and
     `tier` is `_tier`'s own answer about them — this module computes the tier
@@ -215,7 +258,13 @@ def preview(
 def _tier(guess: jev.Decision) -> str:
     """Which of the three tiers this guess lands in (the module docstring's
     own scale) — `jev.NONE` on either half is the floor itself and nothing
-    below it, because a guess that names nothing is not a confidence problem."""
+    below it, because a guess that names nothing is not a confidence problem.
+
+    This is the RAW tier, off the read/write thresholds alone — `preview`
+    reads it exactly as it stands, and `decide` is the one caller that folds
+    it through `_folded` before acting on it (the module docstring's fatia
+    3/3 note).
+    """
     if guess.action == jev.NONE or guess.table == jev.NONE:
         return REFUSE
     threshold = WRITE_THRESHOLD if guess.action in tables.WRITES else READ_THRESHOLD
@@ -224,6 +273,23 @@ def _tier(guess: jev.Decision) -> str:
     if guess.confidence >= CONFIRM_FLOOR:
         return CONFIRM
     return REFUSE
+
+
+def _folded(tier: str) -> str:
+    """Where the folder's `MODE` folds `AUTO` and `CONFIRM` together —
+    `REFUSE` is handed back untouched, because neither mode is free to act on
+    a guess that named nothing or fell under the floor (module docstring).
+
+    `CAUTIOUS` folds a `tier` that is not `REFUSE` into `CONFIRM`: even a
+    guess the raw scale would have applied outright is read back first.
+    `AUTOMATIC` folds it the other way, into `AUTO`: even a guess the raw
+    scale would only have confirmed is applied outright. Which of the two
+    `tier` started as stops mattering the moment it is not `REFUSE` — that is
+    the whole of what "the folder's taste" means here.
+    """
+    if tier == REFUSE:
+        return REFUSE
+    return AUTO if mode() == AUTOMATIC else CONFIRM
 
 
 def _rewrite(text: str, guess: jev.Decision, language: str) -> str:

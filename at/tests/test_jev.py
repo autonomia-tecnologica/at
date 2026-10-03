@@ -3,7 +3,7 @@ fatia 1/3) — the criteria it builds, the request it sends, and the answer it
 reads back into a `Decision`.
 
 Nothing here touches a socket: every test either injects `transport` (the
-seam `at.core.decisor` swaps too) or patches `urllib.request.urlopen` the
+seam `at.core.assist` swaps too) or patches `urllib.request.urlopen` the
 way `test_notifier.py` already does for the one module that talks to a
 service the same way. A test at the bottom says the whole file needs no
 network, the same promise `test_nlu.py`'s own ruler makes for itself.
@@ -51,7 +51,7 @@ class JevCase(unittest.TestCase):
 
     def fake(self, action: str, table: str, action_confidence: float, table_confidence: float):
         """A transport that answers the shape the real API answers, with no
-        socket opened — the seam both this file and `test_decisor.py` use."""
+        socket opened — the seam both this file and `test_assist.py` use."""
 
         def post(url: str, body: bytes, headers: dict[str, str], timeout: float) -> bytes:
             self.last_url = url
@@ -140,12 +140,12 @@ class TheGrounding(JevCase):
 
     def test_the_criteria_keys_are_in_the_catalogue_of_both_languages(self):
         for key in (
-            "decisor.criteria.action.instructions",
-            "decisor.criteria.table.instructions",
-            "decisor.criteria.option",
-            "decisor.criteria.none.action",
-            "decisor.criteria.none.table",
-            *(f"decisor.criteria.action.desc.{action}" for action in tables.ACTIONS),
+            "assist.criteria.action.instructions",
+            "assist.criteria.table.instructions",
+            "assist.criteria.option",
+            "assist.criteria.none.action",
+            "assist.criteria.none.table",
+            *(f"assist.criteria.action.desc.{action}" for action in tables.ACTIONS),
         ):
             for language in i18n.SUPPORTED:
                 with self.subTest(key=key, language=language):

@@ -27,19 +27,19 @@
   --font-sans: "Nunito Sans", system-ui, -apple-system, "Segoe UI", Roboto,
                "Helvetica Neue", Arial, sans-serif;
   --font-display: "Quicksand", "Nunito Sans", system-ui, sans-serif;
-  /* THE SCALE WENT UP TWO POINTS, STEP BY STEP (2026-09-28). The report was
-     "the fonts feel small across the whole system, and I wanted two points more
-     on each one" — and step by step is what keeps the scale ONE scale: the `xs`
-     grows two and the `2xl` grows two, so the RATIO between them shifts a
-     little, but nothing on the ladder jumps in size, which is what raising only
-     the body would have done. The line heights are multiples
-     (`--leading-normal`), so they come along on their own. */
-  --text-xs: 14.5px;
-  --text-sm: 15.5px;
-  --text-base: 17px;
-  --text-md: 18px;
-  --text-lg: 21px;
-  --text-2xl: 32px;
+  /* THE SCALE WENT UP TWO POINTS, STEP BY STEP (2026-09-28), and came back ONE
+     (2026-10-02): the whole ladder down a point, the same step-by-step way it
+     went up, so the ratio between the rungs barely moves. The logo mark
+     (`.brand`) is pinned to its own pixel value in `base.css` and does not
+     follow the scale down — a wordmark does not shrink with body text. The
+     line heights are multiples (`--leading-normal`), so they come along on
+     their own. */
+  --text-xs: 13.5px;
+  --text-sm: 14.5px;
+  --text-base: 16px;
+  --text-md: 17px;
+  --text-lg: 20px;
+  --text-2xl: 31px;
   --leading-normal: 1.55;
   --leading-tight: 1.25;
   --weight-medium: 500;

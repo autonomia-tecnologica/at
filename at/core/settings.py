@@ -83,11 +83,16 @@ VERSIONING = "versioning_interval"
 # folder with a secret.
 KNOWN = (
     "interpreter",
-    # TASK-180: o switch próprio do decisor (`at.core.decisor.SWITCH`) —
+    # TASK-180: o switch próprio do assist (`at.core.assist.SWITCH`) —
     # separado de `interpreter` porque um não chama serviço nenhum e o outro
     # chama o Jev, e os dois não podem ser o mesmo nome (a regra do glossário:
     # dois nomes que se tocariam não coexistem).
-    "decisor",
+    "assist",
+    # TASK-180, fatia 3/3: o OUTRO ajuste do assist (`at.core.assist.MODE`) —
+    # ao lado do switch, e não dentro dele, porque um diz SE o Jev é chamado e
+    # o outro diz o que fazer da resposta. "cautious" é o padrão de uma pasta
+    # que nunca escolheu.
+    "assist_mode",
     "basic_auth",
     "webapp_host",
     THRESHOLD,

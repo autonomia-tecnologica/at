@@ -40,7 +40,30 @@ async function send(): Promise<void> {
     await nextTick();
     if (log.value) log.value.scrollTop = log.value.scrollHeight;
   } catch (err) {
-    remember({ sentence: text, kind: "refused", proposal: null, text: (err as Error).message });
+    remember({
+      sentence: text, kind: "refused", proposal: null,
+      text: (err as Error).message, assist: false,
+    });
+  } finally {
+    busy.value = false;
+  }
+}
+
+// TASK-180, fatia 3/3: the SAME sentence, asked again with a Main Key — kept
+// as a NEW turn, the same way the chat keeps every round rather than editing
+// one that already happened.
+async function retry(sentence: string, mainKey: string): Promise<void> {
+  if (busy.value) return;
+  busy.value = true;
+  try {
+    remember(await ask(sentence, mainKey));
+    await nextTick();
+    if (log.value) log.value.scrollTop = log.value.scrollHeight;
+  } catch (err) {
+    remember({
+      sentence, kind: "refused", proposal: null,
+      text: (err as Error).message, assist: false,
+    });
   } finally {
     busy.value = false;
   }
@@ -51,7 +74,8 @@ async function send(): Promise<void> {
   <div class="chat">
     <div ref="log" class="chat-log">
       <p v-if="!chatState.turns.length" class="empty">{{ word("no_records") }}</p>
-      <AskTurn v-for="(turn, index) in chatState.turns" :key="index" :turn="turn" />
+      <AskTurn v-for="(turn, index) in chatState.turns" :key="index" :turn="turn"
+               @retry="(key) => retry(turn.sentence, key)" />
     </div>
     <form class="chat-form" @submit.prevent="send">
       <input v-model="sentence" type="text" class="chat-say" autocomplete="off"
