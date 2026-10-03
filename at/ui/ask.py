@@ -162,6 +162,15 @@ class Result:
     # already tried. A surface reads this to offer the retry — never to show
     # one that cannot possibly change the answer.
     assist: bool = False
+    # The REWRITTEN sentence a "Confirmar" would resubmit — the one Jev's own
+    # `CONFIRM` tier asks the person to repeat (TASK-183) — or `None` for every
+    # other `question`: the ordinary ambiguity `nlu`'s own grammar raises
+    # (`ask.which_hour`, `ask.which_field`) names the SAME phrase that was
+    # already refused, and resubmitting it verbatim would only ask the same
+    # question again. A surface tells the two apart by this field alone, never
+    # by the question's `key`, which is this module's to read and not the
+    # page's to compare against.
+    confirm: str | None = None
 
 
 def ask(
@@ -206,7 +215,19 @@ def ask(
     if isinstance(proposed, nlu.Question):
         # The question carries the phrase it is about, so the surface asks in the
         # active language without knowing which one the phrase was written in.
-        return Result("question", None, tr(proposed.key, text=proposed.text), REFUSED)
+        #
+        # The assist's OWN question (`assist.ASK_KEY`) is the one a "Confirmar"
+        # may resubmit as it stands — `_rewrite` already planted the guessed
+        # action and table in it, so repeating it walks straight into `match`
+        # (TASK-183). Every other question is the grammar's own ambiguity, about
+        # the SAME phrase that was already refused, and `confirm` stays `None`
+        # for it: a button that resubmitted it would only ask the same question
+        # back.
+        confirmable = proposed.text if proposed.key == assist.ASK_KEY else None
+        return Result(
+            "question", None, tr(proposed.key, text=proposed.text), REFUSED,
+            confirm=confirmable,
+        )
 
     # The ceiling, before the proposal is shown and before anything runs: what the
     # actor may propose is what it may already do (§5). A refusal is an ANSWER and

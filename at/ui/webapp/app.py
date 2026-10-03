@@ -496,6 +496,9 @@ PAGE_WORDS = (
     # refusal offers when a Main Key could still turn it into an answer.
     "assist", "assist_hint", "assist_mode", "assist_cautious", "assist_automatic",
     "assist_key", "assist_retry",
+    # The CONFIRM tier's own two buttons (TASK-183): what a cautious assist's
+    # question offers instead of the sentence it used to ask to be retyped.
+    "assist_confirm", "assist_deny",
     # The screens that move a role and a machine's credential — the two system
     # tables whose records are more than a form (§4, item 11).
     "people", "create", "new_role", "new_machine", "mint", "revoke", "token_once",
@@ -1795,6 +1798,12 @@ class Handler(BaseHTTPRequestHandler):
             # retry) and for an actor the role does not let spend the call at
             # all, so the browser never offers a retry that can only be denied.
             "assist": result.assist and self._legal("assist:ask"),
+            # The rewritten sentence a "Confirmar" resubmits (TASK-183) — `None`
+            # for every answer and every ordinary ambiguity question. It needs
+            # no ceiling of its own: `door.ask` only fills it once the assist
+            # has already run, which only happened because the Main Key that
+            # reached it already cleared `assist:ask` above.
+            "confirm": result.confirm,
         })
 
     def _post_assist(self) -> None:

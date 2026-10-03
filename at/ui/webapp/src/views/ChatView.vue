@@ -6,10 +6,10 @@
 // sentence, the proposal it became, the answer, and the question when the sentence
 // was ambiguous — always the engine's words, because the page invents none.
 //
-// The conversation is `chat.ts`, which is what the chat has and the balloon does
-// not: a module and not this component, because a view is unmounted the moment
-// another one opens, and a conversation that ended when the person looked at
-// something else would not be one.
+// The conversation is `chat.ts`'s, shared with the balloon (TASK-183): a module
+// and not this component, because a view is unmounted the moment another one
+// opens, and a conversation that ended when the person looked at something
+// else — or opened the balloon instead — would not be one.
 //
 // When there is nothing to say, the box says it in the catalog's own words rather
 // than in a sentence of its own.
@@ -42,7 +42,7 @@ async function send(): Promise<void> {
   } catch (err) {
     remember({
       sentence: text, kind: "refused", proposal: null,
-      text: (err as Error).message, assist: false,
+      text: (err as Error).message, assist: false, confirm: null,
     });
   } finally {
     busy.value = false;
@@ -62,7 +62,27 @@ async function retry(sentence: string, mainKey: string): Promise<void> {
   } catch (err) {
     remember({
       sentence, kind: "refused", proposal: null,
-      text: (err as Error).message, assist: false,
+      text: (err as Error).message, assist: false, confirm: null,
+    });
+  } finally {
+    busy.value = false;
+  }
+}
+
+// TASK-183: "Confirmar" on a cautious assist's question — the REWRITTEN
+// sentence `AskTurn` already carries, asked again with no Main Key at all:
+// it resolves on its own through the ordinary matcher.
+async function confirm(sentence: string): Promise<void> {
+  if (busy.value) return;
+  busy.value = true;
+  try {
+    remember(await ask(sentence));
+    await nextTick();
+    if (log.value) log.value.scrollTop = log.value.scrollHeight;
+  } catch (err) {
+    remember({
+      sentence, kind: "refused", proposal: null,
+      text: (err as Error).message, assist: false, confirm: null,
     });
   } finally {
     busy.value = false;
@@ -75,7 +95,7 @@ async function retry(sentence: string, mainKey: string): Promise<void> {
     <div ref="log" class="chat-log">
       <p v-if="!chatState.turns.length" class="empty">{{ word("no_records") }}</p>
       <AskTurn v-for="(turn, index) in chatState.turns" :key="index" :turn="turn"
-               @retry="(key) => retry(turn.sentence, key)" />
+               @retry="(key) => retry(turn.sentence, key)" @confirm="confirm" />
     </div>
     <form class="chat-form" @submit.prevent="send">
       <input v-model="sentence" type="text" class="chat-say" autocomplete="off"

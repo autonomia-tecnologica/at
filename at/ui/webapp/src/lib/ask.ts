@@ -25,6 +25,10 @@ export interface Turn {
   // a Main Key typed now — `false` for every `answer` and `question`, and for a
   // `refused` the retry already tried or the role may not spend.
   assist: boolean;
+  // TASK-183: the rewritten sentence a "Confirmar" resubmits, when this turn is
+  // the assist's own CONFIRM question — `null` for every `answer` and for the
+  // grammar's ordinary ambiguity questions, which have none to offer.
+  confirm: string | null;
 }
 
 export async function ask(sentence: string, mainKey?: string): Promise<Turn> {
@@ -33,7 +37,10 @@ export async function ask(sentence: string, mainKey?: string): Promise<Turn> {
   // it again, the same way `at-cli assist` reads it fresh every time.
   if (mainKey) body.main_key = mainKey;
   const data = await post<
-    { kind: Kind; proposal: string | null; text: string; assist?: boolean }
+    {
+      kind: Kind; proposal: string | null; text: string; assist?: boolean;
+      confirm?: string | null;
+    }
   >("/api/ask", body);
   // A proposal may have WRITTEN: the same page is redrawn where it stands, exactly
   // as the pick of a field does. A question and a refusal wrote nothing, and
@@ -41,6 +48,6 @@ export async function ask(sentence: string, mainKey?: string): Promise<Turn> {
   if (data.kind === "answer") poke();
   return {
     sentence, kind: data.kind, proposal: data.proposal ?? null, text: data.text,
-    assist: !!data.assist,
+    assist: !!data.assist, confirm: data.confirm ?? null,
   };
 }

@@ -1004,6 +1004,9 @@ class TheAskDoor(ServerCase):
         self.assertEqual(answer["kind"], "question")
         self.assertEqual(answer["text"], i18n.tr("nlu.ask.which_field", text="sexta"))
         self.assertEqual(tables.rows("project"), [])  # a question writes nothing
+        # The grammar's OWN ambiguity carries no rewritten sentence to confirm —
+        # confirming it would only ask the very same question again (TASK-183).
+        self.assertIsNone(answer["confirm"])
 
     def test_the_engine_is_the_one_that_validates_and_it_says_so(self):
         # The proposal is made and the DECLARATION refuses it: what a person reads
@@ -1105,6 +1108,25 @@ class TheAssistThroughAsk(ServerCase):
         self.assertEqual(status, 200)
         self.assertEqual(answer["kind"], "question")
         self.assertEqual(len(tables.rows("task")), 1)  # nothing written
+        # The REWRITTEN sentence travels too — it is what "Confirmar" resubmits
+        # (TASK-183), and it is not the phrase that was typed.
+        self.assertIsNotNone(answer["confirm"])
+        self.assertNotEqual(answer["confirm"], "bota uma penca aqui")
+
+    def test_confirming_resubmits_the_rewrite_with_no_key_at_all(self):
+        # "Confirmar" is the SAME road a Main Key retry already walks — ask()
+        # again — except the rewritten sentence resolves on the ordinary
+        # matcher alone, with no Main Key and no second trip to Jev.
+        self.sealed()
+        with mock.patch.object(jev, "_post", self.fake("create", "task", 0.95)):
+            status, first = self.post(
+                "/api/ask", {"text": "bota uma penca aqui", "main_key": self.MAIN_KEY},
+            )
+        self.assertEqual(first["kind"], "question")
+        status, answer = self.post("/api/ask", {"text": first["confirm"]})
+        self.assertEqual(status, 200)
+        self.assertEqual(answer["kind"], "answer")
+        self.assertEqual(len(tables.rows("task")), 2)
 
     def test_a_wrong_main_key_opens_nothing_and_stands_by_the_refusal(self):
         self.sealed()

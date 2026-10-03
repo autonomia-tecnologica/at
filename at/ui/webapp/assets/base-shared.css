@@ -1663,6 +1663,11 @@
   .chat-say:focus-visible, .balloon-say:focus-visible {
     outline: 2px solid var(--accent); outline-offset: 1px; }
 
+  /* TASK-183: the cautious assist's own question, turned into two buttons
+     instead of a sentence to retype — "Confirmar" resubmits the rewritten
+     sentence, "Negar" asks nothing and only hides the pair. */
+  .assist-confirm { display: flex; align-items: center; gap: var(--set-gap); }
+
   /* THE BALLOON — the third SHAPE, and the third ANCHOR: `pop.ts`'s two hang on
      the control that asked for it or open at the pointer, and this one hangs on
      NOTHING and stays over whatever view is open. It is a LAYER OF ITS OWN and
@@ -1671,14 +1676,15 @@
      cannot do. It sits over the view and over a pop, and UNDER the veil — what
      stops the page is what covers it.
      What it carries is the EFFECT: the answer is read here and the view underneath
-     is redrawn in place, which is why it takes the sentence about what is on the
-     screen and keeps no conversation. */
+     is redrawn in place. The CONVERSATION (TASK-183) is the chat's own history,
+     shared rather than kept twice — `.balloon-log` below is the same turns the
+     chat draws, only inside this window instead of a view of their own. */
   .balloon { position: fixed; z-index: 20;
              right: var(--cell-pad); bottom: var(--cell-pad);
              width: min(var(--measure), calc(100vw - 2 * var(--cell-pad)));
              /* IT STAYS ON THE WINDOW: an answer may be a listing, and a box that
                 grew upward past the top edge would put the box out of reach. */
-             max-height: calc(100vh - 2 * var(--cell-pad)); overflow: auto;
+             max-height: calc(100vh - 2 * var(--cell-pad));
              display: flex; flex-direction: column; gap: var(--set-gap);
              padding: var(--pop-pad); background: var(--pop-bg);
              border: var(--pop-border); border-radius: var(--radius);
@@ -1691,6 +1697,10 @@
   .balloon-close { padding: 0; background: none; border: 0; color: var(--dim);
                    font: inherit; line-height: 1; cursor: pointer; }
   .balloon-close:hover { color: var(--accent); }
+  /* The window's history scrolls on its own, so the form stays put at the
+     foot instead of sliding away with a long conversation. */
+  .balloon-log { flex: 1; min-height: 0; overflow-y: auto;
+                 display: flex; flex-direction: column; gap: var(--set-gap); }
 
   /* THE CLOSED SHAPE (padrão Claude): the same corner, a PILL instead of a
      panel. It carries no form and no answer — those are the window's — only
