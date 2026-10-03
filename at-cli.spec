@@ -109,7 +109,18 @@ a = Analysis(
     # `import nacl.bindings` — `No module named '_cffi_backend'` — which is the
     # product's one runtime dependency failing to travel. Named here by hand, like
     # every other payload no import graph can see.
-    hiddenimports=["_cffi_backend"],
+    #
+    # A GRAMMAR DE CADA IDIOMA, pelo mesmo motivo: `at.nlu.grammar.of` carrega o
+    # idioma por `importlib.import_module` DINÂMICO, e o grafo do PyInstaller não
+    # segue import dinâmico — sem esta linha o binário sobe, a tabela abre, e uma
+    # frase com data ou número (`hoje`, `3`) estoura com `No module named
+    # 'at.nlu.grammar.pt_BR'` no meio da rota: o 502 que não diz de onde veio.
+    # Um por idioma que `at/i18n.SUPPORTED` nomeia.
+    hiddenimports=[
+        "_cffi_backend",
+        "at.nlu.grammar.pt_BR",
+        "at.nlu.grammar.en_US",
+    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
