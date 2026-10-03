@@ -31,11 +31,16 @@ export interface Turn {
   confirm: string | null;
 }
 
-export async function ask(sentence: string, mainKey?: string): Promise<Turn> {
-  const body: { text: string; main_key?: string } = { text: sentence };
+export async function ask(
+  sentence: string, mainKey?: string, confirmed?: boolean,
+): Promise<Turn> {
+  const body: { text: string; main_key?: string; confirmed?: boolean } = { text: sentence };
   // Sent once, with THIS request, and kept nowhere on the page: a retry types
   // it again, the same way `at-cli assist` reads it fresh every time.
   if (mainKey) body.main_key = mainKey;
+  // A frase canônica que o "Confirmar" reenvia: com a marca, o servidor a lê
+  // SÓ com o matcher — o Jev não é re-consultado, e o confirm não entra em loop.
+  if (confirmed) body.confirmed = true;
   const data = await post<
     {
       kind: Kind; proposal: string | null; text: string; assist?: boolean;

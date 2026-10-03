@@ -279,19 +279,14 @@ def decide(
     if tier == REFUSE:
         return None
 
-    # O matcher lendo a PRÓPRIA frase e concordando com o Jev: não é palpite, e
-    # a leitura é a dele — sem confirmação, e sem o loop de "Confirmar" (a frase
-    # canônica que a confirmação reenvia cai aqui e fecha).
-    try:
-        own = matcher.match(text, language=language, now=now)
-        if own.action == guess.action and own.table == guess.table:
-            return own
-    except Refused:
-        pass
-
-    # Os argumentos saem da frase SEM os trechos que o Jev apontou (a gíria da
-    # ação não vira `text`), e a ação/tabela vêm EXPLÍCITAS — nada de rewrite
-    # colidindo.
+    # **O JEV DECIDE.** Sem atalho: os argumentos saem da frase SEM os trechos que
+    # ele apontou (a gíria da ação não vira `text`), e a ação/tabela vêm
+    # EXPLÍCITAS — nada de rewrite colidindo, e nada de devolver a leitura do
+    # matcher quando os dois concordam (era o que fazia o Jev sumir).
+    #
+    # O "Confirmar" reenvia a frase canônica com uma MARCA (`confirmed`), e o
+    # `propose` a lê SÓ com o matcher — é o que impede o loop de re-perguntar ao
+    # Jev para sempre.
     reduced = _reduce(text, guess)
     if tier == CONFIRM:
         return Question(ASK_KEY, _rewrite(reduced, guess, language))

@@ -180,6 +180,7 @@ def ask(
     now: datetime | None = None,
     actor: dict | None = None,
     main_key: str | None = None,
+    confirmed: bool = False,
 ) -> Result:
     """One sentence, read and — when it is a write — run.
 
@@ -196,7 +197,8 @@ def ask(
     with nothing typed already do.
     """
     try:
-        proposed = nlu.propose(text, language=language, now=now, main_key=main_key)
+        proposed = nlu.propose(text, language=language, now=now, main_key=main_key,
+                               confirmed=confirmed)
     except nlu.Refused as refused:
         # The refusal already speaks the active language — the reason's key is
         # i18n's — so it is read as it stands.

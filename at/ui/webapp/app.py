@@ -1825,7 +1825,8 @@ class Handler(BaseHTTPRequestHandler):
         # the chat and `at-cli ask` read — so the refusal lands on every surface at
         # once and none of them keeps a ceiling of its own. `None` is a folder
         # asking nobody, and there the door answers as it always did.
-        result = door.ask(sentence, actor=self._actor(), main_key=main_key)
+        result = door.ask(sentence, actor=self._actor(), main_key=main_key,
+                          confirmed=bool(payload.get("confirmed")))
         self._json({
             "kind": result.kind,
             "proposal": result.proposal,

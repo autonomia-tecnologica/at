@@ -71,9 +71,16 @@ class SpanCase(unittest.TestCase):
 
 
 class TheAgreement(SpanCase):
-    def test_a_readable_sentence_the_matcher_agrees_with_is_a_proposal(self):
-        # Nada de confirmação para uma frase que o matcher já lê — o Jev
-        # concordando não é palpite.
+    def test_a_readable_sentence_still_goes_through_jev(self):
+        # SEM atalho: mesmo uma frase que o matcher lê passa pelo Jev, e no modo
+        # Cauteloso ela PERGUNTA — o Jev decidiu, e isso é visível.
+        found = self.read("lista as tarefas", "list", "task", "lista", "tarefas")
+        self.assertIsInstance(found, Question)
+        self.assertEqual(found.key, assist.ASK_KEY)
+
+    def test_in_automatic_mode_the_jev_decision_applies(self):
+        from at.core import settings
+        settings.save({**settings.load(), assist.MODE: assist.AUTOMATIC})
         found = self.read("lista as tarefas", "list", "task", "lista", "tarefas")
         self.assertIsInstance(found, Proposal)
         self.assertEqual((found.action, found.table), ("list", "task"))
@@ -92,10 +99,12 @@ class TheSlang(SpanCase):
         self.assertNotIn("joga", found.text)
         self.assertNotIn("pendencia", found.text)
 
-    def test_the_canonical_sentence_reads_on_its_own_and_does_not_loop(self):
-        # O que o "Confirmar" reenvia: a frase canônica. Ela NÃO pode voltar a
-        # ser uma pergunta, senão confirmar nunca fecha.
-        found = self.read("listar tarefa as", "list", "task")
+    def test_the_confirmed_canonical_sentence_reads_without_jev(self):
+        # O que o "Confirmar" reenvia é a frase canônica MARCADA (`confirmed`):
+        # `propose` a lê SÓ com o matcher, então não volta a ser pergunta — e o
+        # confirm fecha em vez de re-perguntar ao Jev para sempre.
+        from at.nlu import propose
+        found = propose("listar tarefa", language="pt_BR", confirmed=True)
         self.assertIsInstance(found, Proposal)
 
     def test_the_slang_action_does_not_leak_into_the_text(self):

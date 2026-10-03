@@ -53,6 +53,7 @@ def propose(
     language: str | None = None,
     now: datetime | None = None,
     main_key: str | None = None,
+    confirmed: bool = False,
 ) -> Proposal | Question:
     """What a sentence proposes, or the question it comes back as.
 
@@ -72,19 +73,24 @@ def propose(
     do assist — a leitura determinística inteira continua aqui. `main_key` é
     aceito de quem chama; sem ele, o Jev não é consultado e o matcher responde
     como sempre respondeu.
+
+    **`confirmed` é a frase canônica que o "Confirmar" reenvia**: com a marca,
+    o Jev NÃO é consultado de novo — a frase é lida pelo matcher, direto. É o
+    que fecha o "Confirmar" sem um loop de re-perguntar ao Jev para sempre.
     """
     if not enabled():
         raise Refused("nlu.error.interpreter_off")
 
-    from at.core import assist
+    if not confirmed:
+        from at.core import assist
 
-    decided = assist.decide(
-        text,
-        language=language or i18n.active_code(),
-        now=now,
-        main_key=main_key,
-    )
-    if decided is not None:
-        return decided
+        decided = assist.decide(
+            text,
+            language=language or i18n.active_code(),
+            now=now,
+            main_key=main_key,
+        )
+        if decided is not None:
+            return decided
 
     return match(text, language=language, now=now)

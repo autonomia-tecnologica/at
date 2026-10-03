@@ -76,7 +76,7 @@ async function confirm(sentence: string): Promise<void> {
   if (busy.value) return;
   busy.value = true;
   try {
-    remember(await ask(sentence));
+    remember(await ask(sentence, undefined, true));
     await nextTick();
     if (log.value) log.value.scrollTop = log.value.scrollHeight;
   } catch (err) {
