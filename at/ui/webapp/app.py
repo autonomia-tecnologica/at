@@ -2201,8 +2201,8 @@ def _report_taken(where: str, port: int) -> None:
             print(i18n.tr("webapp.instance_behind_no_deploy", deploy=deploy))
 
 
-def run(port: int = DEFAULT_PORT, host: str | None = None,
-        include_caddy: bool = True) -> int:
+def run(port: int = DEFAULT_PORT, public_port: int | None = None,
+        host: str | None = None, include_caddy: bool = True) -> int:
     """Put AT on a port — in HTTP, or behind the Caddy's TLS.
 
     **One refusal lives here, and it is not a rule about exposure: it is the
@@ -2213,6 +2213,16 @@ def run(port: int = DEFAULT_PORT, host: str | None = None,
     about and where it is not is the module docstring's. The raw server is what
     the route tests build, and it is not a hole: it is the folder that asks
     nothing, and `_asks` is where that is decided.
+
+    **`public_port` is the bind port, unless something out there bends that**
+    (TASK-187's follow-up): the Caddy right here is not always the one the
+    browser's TLS lands on — `tailscale serve` terminates its own and proxies
+    to this one, on a LOCAL port picked only to stay out of that front door's
+    way. Left as `None`, the two are the same port, which is every run without
+    one of those in front, this very repository's own `at-cli webapp --port
+    12399` included. Said explicitly, it is what Authelia's portal and ntfy's
+    own address carry to the browser and the phone — the port they actually
+    reach, and never the bind the front door already swallowed.
 
     **And the clock starts with it** (§4, item 24): a daemon thread that rounds
     the jobs which have come round, born here and gone with the process. It is
@@ -2229,6 +2239,10 @@ def run(port: int = DEFAULT_PORT, host: str | None = None,
     from at.i18n import tr
 
     keys.boot()
+
+    # The port that reaches the browser, and `port` itself whenever nobody
+    # says otherwise — see the docstring on `public_port`.
+    public = public_port if public_port is not None else port
 
     # WHETHER THIS RUN ASKS. A run from the source tree does not: it serves
     # whoever is testing it, on the loop, and the install-time coin of "no actor
@@ -2325,7 +2339,7 @@ def run(port: int = DEFAULT_PORT, host: str | None = None,
         # Authelia first: the Caddyfile below names its loopback address, so
         # it has to exist before that file is written.
         authelia_port = authelia.free_port()
-        authelia_config = authelia.write(where, authelia_port, port)
+        authelia_config = authelia.write(where, authelia_port, public)
         authelia_process = authelia.start(authelia_config)
         if not authelia.started(authelia_process):
             server.server_close()
@@ -2338,9 +2352,16 @@ def run(port: int = DEFAULT_PORT, host: str | None = None,
         # Provisioning needs the server already running (measured against
         # the real binary, `ntfy.py`'s own docstring), so the account is made
         # here and not in the Caddyfile that is about to name it.
+        #
+        # The address it is PROVISIONED with is the PUBLIC one — `public + 1`,
+        # never `notify_port` itself: that is the Caddy's own bind, and the
+        # phone that reads this address back off the account is on the other
+        # side of whatever sits in front of it, same as the browser is.
         notify_port = port + 1
         ntfy_internal_port = ntfy.free_port()
-        ntfy_config = ntfy.write(ntfy_internal_port, caddy.address(where, notify_port))
+        ntfy_config = ntfy.write(
+            ntfy_internal_port, caddy.address(where, public + 1)
+        )
         ntfy_process = ntfy.start(ntfy_config)
         if not ntfy.started(ntfy_process):
             authelia.stop(authelia_process)

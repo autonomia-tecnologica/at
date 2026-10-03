@@ -150,6 +150,16 @@ def _webapp(rest: list[str]) -> int:
     address it accepts — anything else is refused, because exposure without TLS
     is what §3 forbids.
 
+    `--public-port` is the ONE escape hatch for a front door this process does
+    not run: something else out there — `tailscale serve`, typically — already
+    terminates TLS on a port of its own and proxies here, to a LOCAL port this
+    process picked to dodge that front door's OWN bind on the same port. Left
+    unsaid, it is `--port` itself, which is the right answer whenever nothing
+    sits in front — the standard way this very repository is checked, `at-cli
+    webapp --port 12399`, included. Said, it is what Authelia's portal and
+    ntfy's own address tell the browser and the phone — never the local bind,
+    which the one in front already hid.
+
     The WebApp's own authenticator is up (item 10): Forms asks for the
     credential at the entrance, Basic carries the same one in an
     `Authorization` header while `settings.json` permits it, and the machine
@@ -161,15 +171,19 @@ def _webapp(rest: list[str]) -> int:
 
     args = rest[1:] if rest[:1] == ["run"] else rest
     port = webapp.DEFAULT_PORT
+    public_port = None
     host = None
     include_caddy = True
+
+    PORT_FLAGS = ("--port", "--porta")
+    PUBLIC_PORT_FLAGS = ("--public-port", "--porta-publica")
 
     while args:
         flag, args = args[0], args[1:]
         if flag == "--no-caddy":
             include_caddy = False
             continue
-        if flag not in ("--port", "--porta", "--host") or not args:
+        if flag not in (*PORT_FLAGS, *PUBLIC_PORT_FLAGS, "--host") or not args:
             return _reject("webapp")
         value, args = args[0], args[1:]
         if flag == "--host":
@@ -179,11 +193,16 @@ def _webapp(rest: list[str]) -> int:
             continue
         if not value.isdigit():
             return _reject("webapp")
-        port = int(value)
-        if not 0 < port < 65536:
+        chosen = int(value)
+        if not 0 < chosen < 65536:
             return _reject("webapp")
+        if flag in PUBLIC_PORT_FLAGS:
+            public_port = chosen
+        else:
+            port = chosen
 
-    return webapp.run(port, host=host, include_caddy=include_caddy)
+    return webapp.run(port, public_port=public_port, host=host,
+                      include_caddy=include_caddy)
 
 
 # ----------------------------------------------------------------- the backup ---

@@ -657,6 +657,29 @@ class TheExposedRun(FolderCase):
                       output.getvalue())
         self.assertFalse(caddy.caddyfile_path().exists())
 
+    def test_the_public_port_reaches_the_browser_and_not_the_bind(self):
+        # TASK-187's follow-up: something in front of this Caddy — `tailscale
+        # serve`, in practice — proxies its own 443 to the bind port this
+        # process picked to dodge that front door's own hold on it. The
+        # Caddyfile still binds at the port the folder was told to; what the
+        # browser's redirect and the phone's own address carry is the public
+        # one instead, or Authelia sends a person straight at an invalid
+        # certificate the moment it tries to log in.
+        self.probe(include_caddy=True, public_port=443)
+        caddyfile = caddy.caddyfile_path().read_text(encoding="utf-8")
+        self.assertIn("https://at.localhost:12399 {", caddyfile)
+        self.assertIn("https://at.localhost:12400 {", caddyfile)
+
+        authelia_config = (
+            authelia.directory() / authelia.CONFIG
+        ).read_text(encoding="utf-8")
+        self.assertIn("https://at.localhost/authelia", authelia_config)
+        self.assertNotIn(":12399", authelia_config)
+
+        ntfy_config = (ntfy.directory() / ntfy.CONFIG).read_text(encoding="utf-8")
+        self.assertIn("https://at.localhost:444", ntfy_config)
+        self.assertNotIn(":12400", ntfy_config)
+
 
 class TheAddress(FolderCase):
     """The address AT answers on: the folder's choice, and the loop as default.
