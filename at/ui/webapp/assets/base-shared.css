@@ -1685,6 +1685,27 @@
              box-shadow: var(--shadow-pop);
              backdrop-filter: var(--pop-blur, var(--panel-blur));
              animation: balloon-in var(--speed) var(--ease); }
+  .balloon-head { display: flex; align-items: center; justify-content: space-between;
+                  gap: var(--set-gap); }
+  .balloon-head strong { color: var(--ink); font-weight: var(--weight-medium); }
+  .balloon-close { padding: 0; background: none; border: 0; color: var(--dim);
+                   font: inherit; line-height: 1; cursor: pointer; }
+  .balloon-close:hover { color: var(--accent); }
+
+  /* THE CLOSED SHAPE (padrão Claude): the same corner, a PILL instead of a
+     panel. It carries no form and no answer — those are the window's — only
+     the one click that grows it. */
+  .balloon-bubble { position: fixed; z-index: 20;
+                    right: var(--cell-pad); bottom: var(--cell-pad);
+                    padding: var(--set-pad) calc(var(--set-pad) * 2);
+                    background: var(--pop-bg); border: var(--pop-border);
+                    border-radius: 999px; color: var(--accent);
+                    font: inherit; font-weight: var(--weight-medium); cursor: pointer;
+                    box-shadow: var(--shadow-pop);
+                    backdrop-filter: var(--pop-blur, var(--panel-blur));
+                    transition: background-color var(--speed) var(--ease);
+                    animation: balloon-in var(--speed) var(--ease); }
+  .balloon-bubble:hover { background: var(--hi); }
 
   /* THE RULER of the demand filter (§4) — the scale a risk lives on, the line of
      the threshold, and one mark per DECLARED risk. It draws and decides nothing:

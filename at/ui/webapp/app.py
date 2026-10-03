@@ -489,7 +489,7 @@ PAGE_WORDS = (
     "bucket_code", "bucket_text", "bucket_data", "bucket_image", "bucket_other",
     # The interpreter's box, the switch that hides the balloon, and the ruler of
     # the demand filter (§4).
-    "chat", "ask", "ask_hint", "proposal", "interpreter", "balloon",
+    "chat", "ask", "ask_hint", "proposal", "interpreter", "balloon", "balloon_close",
     "risk", "risk_runs", "risk_waits", "risk_threshold", "risk_none",
     # The assist's own Control Panel section, and its one retry (TASK-180,
     # fatia 3/3): the switch, the mode's two names, and the inline form a

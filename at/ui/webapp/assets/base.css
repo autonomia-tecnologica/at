@@ -558,6 +558,27 @@ button.opt { background: none; border: 0; font: inherit; width: 100%; text-align
   border-radius: var(--r-lg); box-shadow: var(--shadow-lg);
   animation: balloon-in var(--dur-base) var(--ease-out);
 }
+.balloon-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.balloon-head strong { font-size: var(--text-sm); font-weight: var(--weight-medium); color: var(--ink-2); }
+.balloon-close {
+  padding: 0; background: none; border: 0; color: var(--ink-3);
+  font: inherit; font-size: var(--text-md); line-height: 1; cursor: pointer;
+}
+.balloon-close:hover { color: var(--accent); }
+
+/* THE CLOSED SHAPE (padrão Claude): the same corner, a PILL instead of a
+   panel. It carries no form and no answer — those are the window's — only the
+   one click that grows it. */
+.balloon-bubble {
+  position: fixed; z-index: 20; right: var(--space-5); bottom: var(--space-5);
+  padding: var(--space-3) var(--space-5); background: var(--surface-1);
+  color: var(--accent); border: 0; border-radius: var(--r-full);
+  font: inherit; font-weight: var(--weight-semibold); cursor: pointer;
+  box-shadow: var(--shadow-lg);
+  transition: box-shadow var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+  animation: balloon-in var(--dur-base) var(--ease-out);
+}
+.balloon-bubble:hover { transform: translateY(-1px); }
 
 /* THE TOASTER (TASK-165, fatia 3/4): a generic, reusable slot — `Toast.vue`
    names no caller, and the LEFT corner is deliberate, the balloon's own

@@ -26,6 +26,13 @@ const sentence = ref("");
 const turn = ref<Turn | null>(null);
 const busy = ref(false);
 
+// CLOSED, ALWAYS, ON BIRTH (padrão Claude) — a bubble in the corner that opens
+// into the window on a click, and never the other way: a balloon that opened
+// by itself would compete with whatever page the person just reached. The
+// state is this component's own and answers no navigation: it is read nowhere
+// else, so a page change neither opens nor closes it on its own.
+const open = ref(false);
+
 async function send(): Promise<void> {
   const text = sentence.value.trim();
   if (!text || busy.value) return;
@@ -66,7 +73,14 @@ async function retry(mainKey: string): Promise<void> {
 </script>
 
 <template>
-  <aside class="balloon" role="region" :aria-label="word('balloon')">
+  <button v-if="!open" type="button" class="balloon-bubble" @click="open = true">
+    {{ word("interpreter") }}
+  </button>
+  <aside v-else class="balloon" role="region" :aria-label="word('balloon')">
+    <div class="balloon-head">
+      <strong>{{ word("balloon") }}</strong>
+      <button type="button" class="balloon-close" :aria-label="word('balloon_close')" @click="open = false">✕</button>
+    </div>
     <form class="balloon-form" @submit.prevent="send">
       <input v-model="sentence" type="text" class="balloon-say" autocomplete="off"
              :placeholder="word('ask_hint')" :aria-label="word('interpreter')">
