@@ -1,6 +1,6 @@
 {
   "note": "What the two artifacts carry from outside, and under which terms. This is the ONE place that declares it (§3, External dependency): the repository's own rule is that a third party only travels inside an artifact if its licence permits, and that whatever the licence demands travels WITH it. The artifact is a single file with no folder beside it, so the texts live inside it and come out through `at-cli license`. The SBOM (item 46) generates its licence lines from here and is never written by hand.",
-  "license_texts": "Each value of `text` is a repository-relative path to a file that exists. `license` is the SPDX identifier, and each text carries a marker that proves the identifier — verified by at/tests/test_licenses.py. The five typefaces keep their files where the WebApp's own vendor manifest pins them (at/ui/webapp/vendor/), and the Caddy's and the gitleaks' are copies of the member inside each vendor's own tarball, held equal to it by the same test.",
+  "license_texts": "Each value of `text` is a repository-relative path to a file that exists. `license` is the SPDX identifier, and each text carries a marker that proves the identifier — verified by at/tests/test_licenses.py. The four typefaces keep their files where the WebApp's own vendor manifest pins them (at/ui/webapp/vendor/), and the Caddy's and the gitleaks' are copies of the member inside each vendor's own tarball, held equal to it by the same test.",
   "components": {
     "authelia": {
       "name": "Authelia",
@@ -26,20 +26,6 @@
       "text": "at/vendor/licenses/cffi/LICENSE",
       "note": "It is MIT No Attribution, and not MIT: the text names that licence and omits the attribution clause."
     },
-    "font-eb-garamond": {
-      "name": "EB Garamond",
-      "version": "5.3.0",
-      "license": "OFL-1.1",
-      "artifacts": ["at-cli"],
-      "text": "at/ui/webapp/vendor/licenses/eb-garamond-LICENSE"
-    },
-    "font-inter": {
-      "name": "Inter",
-      "version": "5.3.0",
-      "license": "OFL-1.1",
-      "artifacts": ["at-cli"],
-      "text": "at/ui/webapp/vendor/licenses/inter-LICENSE"
-    },
     "iconoir": {
       "name": "Iconoir",
       "version": "7.12.1",
@@ -54,13 +40,6 @@
       "license": "OFL-1.1",
       "artifacts": ["at-cli"],
       "text": "at/ui/webapp/vendor/licenses/nunito-sans-LICENSE"
-    },
-    "font-open-sans": {
-      "name": "Open Sans",
-      "version": "5.3.0",
-      "license": "OFL-1.1",
-      "artifacts": ["at-cli"],
-      "text": "at/ui/webapp/vendor/licenses/open-sans-LICENSE"
     },
     "font-quicksand": {
       "name": "Quicksand",

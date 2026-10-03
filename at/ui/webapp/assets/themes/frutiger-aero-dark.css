@@ -1,329 +1,118 @@
-/* frutiger-aero dark — the same future of the 2000s, at night: sky in gradient,
-   translucent glass and sheen at the top of the strips. It is the dark variant of
-   `frutiger-aero.css`, and the two wear the SAME names (2026-09-15).
-
-   A THEME ONLY CHANGES VARIABLES (rule, 2026-09-13): this file is part 1 of the
-   look — the TOKENS, every value that gets customised, named by ROLE. Part 2 is
-   the RULES (layout and shape), which live in `at/webapp/base.css` and are
-   served ALWAYS, after the theme (`index.html`). A new variant of a theme is this
-   file — a handful of values — and nothing more. Named by role, never by value:
-   `--ink` survives the colour swap.
-
-   What this theme uses and the paper ones do not: the gradient in `--bg` (which
-   the `body` and the `main` draw), the GLASS of the sidebar (`--panel-blur`,
-   which the base applies on `nav`), the SHEEN of the two title strips
-   (`--sheen`), the translucent table header (`--table-head-bg`), the panel row
-   rounded (`--item-radius`) and the slower
-   motion (`--speed`, `--ease`). Every hook it uses already existed in the base
-   or was born with it — the value lives here, the selector lives there.
-
-   AT NIGHT the glass stays glass, and that is why the dark variant exists
-   instead of a black theme: the sky only changes hour, the white hairline only
-   drops in alpha, and what was a blue sky becomes a deep late-afternoon sky. The
-   lines stop being WHITE and become light and faint (`.14`) — a white line at
-   `.75` over the night turns into a lit grid. */
+/* frutiger-aero, after the sun — the light side's own notes
+   (`frutiger-aero.css`) hold here too. */
 
 :root {
-  /* --- colour: the raw palette --- */
-  /* THE sky after the sun: deep blue at the top, indigo in the middle, dark teal
-     at-cli the bottom — the same journey as the light `--bg`, with the light low. */
-  --bg: linear-gradient(168deg, #071426 0%, #0b2140 34%, #10304e 62%, #0b2c3c 100%);
-  --panel: rgba(255, 255, 255, .10);   /* the surface: glass, not ink */
-  --line: rgba(255, 255, 255, .16);    /* EVERY inner line: a light hairline */
-  --ink: #e8f2fb;              /* the main text: blueish white */
-  --dim: #a3bdd4;              /* the support text: label, header, count */
-  --accent: #6fc8ff;           /* the accent: the Aero blue, lit for the night */
-  --danger: #ff8a80;           /* the danger: what DESTROYS, lit for the night
-                                  (5.9:1 on the glass) */
-  --hi: rgba(255, 255, 255, .13);      /* the highlight: hover of the row and the item */
+  /* ===== type ============================================================ */
+  --font-sans: "Frutiger", "Frutiger Next", "Open Sans", "Segoe UI", system-ui,
+               -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Frutiger", "Frutiger Next", "Open Sans", "Segoe UI", system-ui,
+               -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 13.5px;
+  --text-md: 14.5px;
+  --text-lg: 17px;
+  --text-2xl: 20px;
+  --leading-normal: 1.55;
+  --leading-tight: 1.25;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --letter-tight: -0.01em;
 
-  /* --- colour by role: what the rules read --- */
-  --color-link: var(--accent);
-  --color-selected: var(--accent);       /* the active item of the sidebar */
+  /* ===== spacing scale ==================================================== */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 32px;
+  --space-7: 40px;
+  --space-8: 64px;
 
-  /* --- typography: humanist, the family Aero wore --- */
-  /* The same substitution as the light side: Frutiger and Segoe UI are
-     proprietary and were never here, so the day takes Open Sans from the base's
-     `@font-face` (section 1b), keeping the era's names ahead of it. */
-  --font-ui: "Frutiger", "Frutiger Next", "Open Sans", "Segoe UI", system-ui,
-             -apple-system, "Helvetica Neue", Arial, sans-serif;
-  --font-size: 15px;
-  --line-height: 1.55;
-  --weight-normal: 400;
-  --weight-medium: 600;       /* column header, sidebar folder */
-  --weight-bold: 700;         /* what the title emphasises */
-  --caps-spacing: .1em;       /* the all-caps spacing */
-  --caps-transform: uppercase;
+  /* ===== radius scale ====================================================== */
+  --r-sm: 10px;
+  --r-md: 16px;
+  --r-lg: 22px;
+  --r-full: 999px;
 
-  /* --- sidebar (the left column) --- */
-  --sidebar-width: 276px;
-  --sidebar-rail: 48px;             /* the width of the COLLAPSED panel (the rail) */
-  --sidebar-bg: var(--panel);                 /* the glass: the sky passes behind */
-  --sidebar-border: 1px solid var(--line);
-  --sidebar-indent: 14px;                     /* one nesting step */
-  --sidebar-title-color: var(--ink);
-  --sidebar-title-strong: var(--sidebar-title-color);   /* the brand at the top, the pair of `--header-strong` */
-  --sidebar-title-size: 16px;
-  --locale-size: 12px;            /* the corner language: support, not a title */
-  --sidebar-title-family: var(--font-ui);
-  --sidebar-title-weight: var(--weight-bold);
-  --sidebar-title-style: normal;
-  /* LATERAL ONLY: the vertical comes from the height, and the `-x` suffix
-     says so — a two-number value here is the defect back again. It is
-     the left value of `--sidebar-item-pad`, so the title lines up with the
-     TEXT of the items: `calc` does not do, because `+` demands a space
-     and a two-number value (the space) is exactly the defect back again. */
-  --sidebar-title-pad-x: 20px;                           /* the "AT" at the top */
-  --nav-toggle-size: 21px;         /* the collapse glyph: strip target, not a label */
-  --sidebar-title-border: 1px solid var(--line);
-  /* THE DRAWN NAME (2026-09-20): the same word after the sun: the deep sky's gradient, the shine kept low.
-     The drawing is a FILE (`icons/at-frutiger-aero-dark.svg`), painted by the base; the BOX
-     is stated because a drawing has no advance width of its own, and the word gives way
-     by INK (`--brand-word-ink: transparent`, which keeps the accessible name of the
-     `h1`). */
-  --brand-mark: url("icons/at-frutiger-aero-dark.svg");
-  --brand-mark-w: 1.88em;
-  --brand-mark-h: 1.5em;
-  --brand-word-ink: transparent;
-  /* THE SHAPE OF THE LANGUAGE at the top of the panel (2026-09-14): the page builds
-     all three — the raw identifier, the language in full and the flag — and the
-     the theme chooses ONE; the other two stay at `none`. Aero is a flag: a coloured
-     emoji at the top goes with the sky, and neither the stamp nor the word would fit. */
+  /* ===== motion ============================================================ */
+  --dur-fast: 140ms;
+  --dur-base: 240ms;
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+
+  /* ===== surfaces ========================================================== */
+  --surface-0: #0b2140;
+  --surface-1: #132a4a;
+  --surface-2: #1f3553;
+  --ink-1: #e8f2fb;
+  --ink-2: #a3bdd4;
+  --ink-3: #6f8aa1;
+  --border-soft: #1c3c5c;
+  --border-strong: #556d85;
+  --row-hover: #193456;
+  --control-track: #1c3c5c;
+
+  /* ===== the brand, as a ramp ============================================= */
+  --accent-50: #f6fbfe;
+  --accent-100: #eaf6fd;
+  --accent-200: #d0ecfd;
+  --accent-300: #b3e1fd;
+  --accent-600: #6fc8ff;
+  --accent-700: #26acff;
+  --accent-800: #0088dc;
+  --accent: var(--accent-600);
+  --accent-hover: var(--accent-700);
+  --accent-active: var(--accent-800);
+  --accent-ink: #000000;
+  --accent-soft: var(--accent-50);
+  --accent-ring: rgb(111 200 255 / 35%);
+
+  /* ===== semantics ========================================================= */
+  --success: #34d399;
+  --success-soft: #0f2a20;
+  --warning: #fbbf24;
+  --warning-soft: #2e2410;
+  --danger: #ff8a80;
+  --danger-soft: #402220;
+  --info: #60a5fa;
+  --info-soft: #10233e;
+
+  /* ===== elevation ========================================================= */
+  --shadow-xs: 0 1px 2px rgb(0 0 0 / 40%);
+  --shadow-sm: 0 4px 14px rgb(0 0 0 / 45%);
+  --shadow-card: 0 14px 36px rgb(0 0 0 / 50%), 0 2px 8px rgb(0 0 0 / 35%);
+  --shadow-lg: 0 32px 80px rgb(0 0 0 / 60%), 0 10px 24px rgb(0 0 0 / 40%);
+
+  /* ===== scrollbars ========================================================= */
+  --scrollbar-thumb: rgba(111, 200, 255, .35);
+  --scrollbar-thumb-hover: rgba(111, 200, 255, .62);
+
+  /* ===== the chrome ========================================================= */
+  --nav-w: 272px;
+  --nav-rail-w: 44px;
+  --nav-toggle-size: 18px;
+  --header-h: 64px;
+  --page-pad-x: var(--space-5);
+  --nav-bg: var(--surface-1);
+  --nav-border: var(--border-soft);
+  --nav-edge: 4px 0 28px rgb(0 0 0 / 50%);
+  --nav-ink-1: var(--ink-1);
+  --nav-ink-2: var(--ink-2);
+  --nav-ink-3: var(--ink-3);
+  --nav-item-hover: var(--row-hover);
+  --nav-item-on-bg: rgb(111 200 255 / 20%);
+  --nav-item-on-ink: var(--ink-1);
+  --nav-item-on-edge: var(--accent);
+  --accent-ink-on-nav: var(--accent);
+  --nav-brand-bg: var(--accent);
+  --nav-brand-ink: #000000;
   --locale-raw: none;
   --locale-name: none;
   --locale-flag: inline;
-  --sidebar-folder-color: var(--dim);
-  --sidebar-folder-size: 11px;
-  --sidebar-folder-family: var(--font-ui);
-  --sidebar-folder-weight: var(--weight-medium);
-  --sidebar-folder-style: normal;
-  /* The same side breathing room as the items: folder and item start at one point. */
-  --sidebar-folder-pad: 10px 12px 6px;
-  --sidebar-folder-hover: var(--ink);
-  --sidebar-gap: 8px;
-  --sidebar-item-color: var(--ink);
-  --sidebar-item-family: var(--font-ui);
-  --sidebar-item-weight: var(--weight-normal);
-  --sidebar-item-style: normal;
-  --sidebar-item-pad: 8px 20px;
-  --sidebar-item-bg-hover: var(--hi);
-  --sidebar-item-mark: 3px solid transparent; /* the bar on the left */
-  /* The CHOSEN row is a LIT glass: in the light it was the lightest of the panel, and
-     at-cli night it is the lightest too — a glass that caught the light, not a stroke. */
-  --sidebar-item-bg-on: rgba(255, 255, 255, .20);
-  --sidebar-count-color: var(--dim);
-  --sidebar-sep-border: 1px solid var(--line);
-  --sidebar-sep-margin: 12px 20px;   /* the inset of the top line to the end */
-  /* The triangle that says whether the folder is open. It is BIGGER
-     than the folder label on purpose: the label is an 11px upper-case,
-     and a triangle that size cannot be read — nor seen to turn
-     (2026-09-13). Colour by state: closed, open, under the pointer. */
-  --caret-size: 17px;
-  --caret-color: var(--dim);
-  --caret-open: var(--accent);
-  --caret-hover: var(--ink);
-  /* The file ICON in the tree (2026-09-14), BEFORE the name: one glyph per
-     BUCKET — code, text, data, other —, and the bucket belongs to the server,
-     which is who enumerates. `--icon-show: none` would hide them all.
-     AERO WEARS DRAWINGS OF ITS OWN (2026-09-20) — the chunky, filled objects of
-     the era, not the hairlines the other themes wear and not the emoji this
-     theme used to. The set is `/icons/aero-*.svg`, served by NAME like every
-     other file, and the night wears the SAME drawings: the sky behind them
-     changes, the icons do not — a glossy blue droplet is a glossy blue droplet at
-     midnight, and dimming it to match the ink would have thrown away the colour
-     this set exists for. */
-  --icon-show: inline;
-  --icon-size: 1.15em;
-  --icon-full-code: url("icons/aero-code.svg");
-  --icon-full-text: url("icons/aero-text.svg");
-  --icon-full-data: url("icons/aero-data.svg");
-  --icon-full-other: url("icons/aero-other.svg");
 
-  /* --- main window --- */
-  --main-bg: var(--bg);                       /* the sky, whole, behind the table */
-  --main-border: 1px solid var(--line);   /* the line under the header */
-  --header-color: var(--dim);
-  --header-strong: var(--ink);
-  /* LATERAL ONLY, for the same reason as the sidebar — the height of the
-     strip is a CALCULATION of the base (twice the side breathing room
-     plus the strip's tallest thing), and not a value this theme chooses. */
-  --header-pad-x: 22px;
-  /* NO breathing room at the top: `#body` is the AREA THAT SCROLLS, and the
-     table header sticks to its edge (`th { position: sticky; top: 0 }`). With a
-     single pixel of padding here, the scrolled row shows up in THAT pixel — above
-     the bar, which sits slightly loose from it (2026-09-13). Whoever needs air
-     at-cli the top brings their own (the `dl`, the `pre`, the `.back`: each one's). */
-  --body-pad: 0;
-  /* THE BREATHING ROOM OF THE BOTTOM EDGE (2026-09-15): neither the main area nor
-     the sidebar touches the last row of the window. It is what lifts the lying
-     scrollbar off the strip that reveals the auto-hiding taskbar — and it is the
-     SAME breathing room that unsticks the foot of the panel, where Settings sit:
-     one rule, two ends. Who reads it are `main` and `nav`, as bottom padding —
-     never `#body`: the padding inside the box would land BELOW the bar, and the
-     bar would stay on the edge (`base.css`). */
-  --bottom-gap: 12px;
-  --back-color: var(--accent);
-  --back-pad: 10px 18px;
-  --empty-color: var(--dim);
-  --empty-pad: 18px;
-  --subs-border: 1px solid var(--line);
-  --sub-pad: 8px 18px;
-  --sub-gap: 10px;
-  --sub-color: var(--ink);
-  --sub-strong: var(--accent);            /* the subproject id */
-  --sub-dim: var(--dim);                  /* the status and the count */
-  --sub-bg-hover: var(--hi);
-
-  /* --- table --- */
-  --table-head-color: var(--dim);
-  --table-head-weight: var(--weight-medium);
-  --table-head-hover: var(--ink);
-  /* The header STICKS to the top and scrolls over the rows: it cannot be
-     transparent, or the row would pass under the text. A DARK glass separates it
-     without drawing a band — in the light the glass was light. */
-  --table-head-bg: rgba(9, 22, 40, .9);
-  --table-line: 1px solid var(--line);   /* the line under each cell */
-  --table-row-hover: var(--hi);
-  --cell-pad: 12px;       /* the side breathing room (the PAGE reads this too) */
+  /* ===== table/measure ====================================================== */
+  --cell-pad: 12px;
   --cell-pad-y: 7px;
-  --measure: 70ch;        /* the cap of a COLUMN — the PAGE caps columns with it, the dialog takes its width */
-  --id-color: var(--accent);
-  --drag-opacity: .35;                /* the column in the air, being dragged */
-  --drop-mark: var(--accent);         /* the line where it will land */
-  --drop-mark-width: 2px;
-  --pill-color: var(--dim);           /* the "+N" pill of the hidden columns */
-  --pill-hover: var(--ink);
-
-  /* --- links and detail lists --- */
-  --link-underline: 1px dotted var(--color-link);
-  --link-underline-hover: 1px solid var(--color-link);
-  --dl-pad: 10px 18px;
-  --dt-color: var(--dim);
-  --dt-gap: 10px;
-  --dd-indent: 2px;
-
-  /* --- popover: the filter, the columns, the row menu and the value picker --- */
-  /* The popover floats over the TABLE, and does not have the blur the sidebar
-     has (`backdrop-filter` belongs to `nav`): that is why it is more opaque than
-     it — a glass that does not dissolve what is behind still has to hide it. */
-  --pop-bg: rgba(11, 26, 46, .94);
-  --pop-border: 1px solid var(--line);
-  --pop-pad: 6px 4px;
-  --pop-min-w: 140px;
-  --pop-max-h: 320px;
-  --pop-item-pad: 3px 10px;
-  --pop-item-bg-hover: rgba(111, 200, 255, .18);   /* tints: here the white does not show */
-  --funnel: 11px;                     /* the size of the filter funnel */
-  --funnel-color: var(--dim);
-  --funnel-hover: var(--ink);
-  --funnel-on: var(--accent);
-
-  /* THE VALUE PICKER (2026-09-15) — the popover's dweller in the OPEN record: the
-     value of a field the entity declares `editable`, with the field's own
-     vocabulary as the panel. The panel is the filter's (`--pop-*` above, rows
-     included); what is new is the TRIGGER, and the mark it carries is DRAWN by
-     the base (`.pick::after`) — so what lives here is the size of the mark, the
-     room between it and the value, and the two inks: the mark at rest and the
-     mark while the value is being handled (the pointer, and the panel open). */
-  --pick-gap: 6px;                   /* between the value and its caret */
-  --pick-caret: 10px;                 /* the size of the drawn caret */
-  --pick-caret-color: var(--dim);
-  --pick-caret-hover: var(--ink);
-
-  /* --- settings: the page configuring itself --- */
-  --set-gap: 10px;
-  --set-pad: 6px 10px;
-  --set-border: 1px solid var(--line);
-  --set-mark: 3px solid var(--color-selected);   /* the theme in use */
-  /* THE SWITCH — the on/off of the motion, in Settings: a TRACK and a BUTTON
-     BUTTON that slides, and the state is the POSITION. Here it is a
-     PILL (the theme's large `--radius` rounds track and button) and
-     slides slowly, on the Aero curve: off, the track is the light glass
-     the blue button; on, the accent blue with the DEEP button — at night
-     the accent is light, and a white button over it would not be read. */
-  --switch-w: 42px;
-  --switch-h: 22px;
-  --switch-knob: 16px;
-  --switch-inset: 2px;               /* the button inset: equal on both axes */
-  --switch-radius: var(--radius);    /* the theme pill, as in the cards */
-  --switch-border: 1px solid var(--line);
-  --switch-track: var(--hi);         /* off: the light glass */
-  --switch-track-on: var(--accent);  /* on: the Aero blue */
-  --switch-knob-color: var(--accent);
-  --switch-knob-on: #071426;
-  /* THE RADIO (2026-09-15) — the SINGLE choice: three options, one marked. The
-     outer ring is `--radio-border` at rest and `--radio-checked` when chosen, and
-     the dot is `--radio-mark`, clipped at the `content-box` by the base. The SHAPE
-     is round by definition — a square radio is not a radio —, and what the theme
-     decides is the SIZE, the ring and the ink. */
-  --radio-size: 16px;
-  --radio-border: 1px solid var(--line);
-  --radio-checked: 1px solid var(--accent);
-  --radio-mark: var(--accent);
-  --radio-gap: 9px;
-
-  /* THE SETTINGS GROUP (2026-09-14): the section that FOLDS — the SAME fold of
-     the sidebar folder (the triangle reuses `--caret-*`), in the clothes of the
-     PAGE: a header with the group name and the body it opens. The RULE lives in
-     the base; the value lives here. Aero: the box is GLASS — the sky passes
-     behind it — and the corner is the pill of the theme. */
-  --group-gap: 10px;
-  --group-bg: rgba(255, 255, 255, .07);          /* the group box: glass */
-  --group-border: 1px solid var(--line);
-  --group-radius: var(--radius);                 /* the pill of the theme */
-  --group-head-pad: 11px 18px;                   /* lines up with the `dl` breathing room */
-  --group-head-color: var(--dim);                /* the group name, at rest */
-  --group-head-hover: var(--ink);                /* under the pointer */
-  --group-head-size: 13px;
-  --group-head-family: var(--font-ui);
-  --group-head-weight: var(--weight-medium);
-
-  /* --- scrollbars — the containers that scroll:
-     the sidebar, the table, the filter popover, the theme list ---
-     The drawing has TWO vocabularies, one per engine: the WebKit branch reads
-     thickness as a LENGTH and can draw radius, inset and hover; the standard
-     branch only accepts `auto | thin | none` and two colours. That is why the
-     thickness is TWO tokens — one role (AT's bar), said in both tongues.
-     The COLOURS are the same role in two weights: at rest the thumb is FAINT,
-     and turns solid with the pointer over IT. Who hears the pointer is the
-     WebKit branch, and only over the thumb — the rest of the gutter does not
-     branch never hovers: the thumb rests. Here the thumb is DARK in alpha: it is
-     Here the thumb is the ACCENT blue, lit: in the light it was deep so it
-     could be read over the sky; at night it is the light that is read over it. */
-  --scrollbar-size: 16px;              /* the thickness of BOTH bars (WebKit branch) */
-  --scrollbar-width: auto;             /* the thickness in standard (auto|thin|none) */
-  --scrollbar-inset: 2px;              /* the thumb inset in the gutter (WebKit only) */
-  /* The thumb you AIM at is the box minus the inset of BOTH sides (16 − 2·2 =
-     12px, twice what it was, 2026-09-15) — and in the standard branch, where
-     the thickness takes no number, who answers for it is the `auto` (the
-     `thin` is the thin one). The two numbers are independent, and who charges
-     the RELATION between them is `test_the_thumb_is_thick_enough_to_aim_at`. */
-  --scrollbar-radius: 999px;           /* the thumb is a pill, never a hard corner */
-  --scrollbar-track: transparent;      /* the gutter is not painted: only the thumb */
-  /* The thumb has TWO weights, and is never invisible:
-     the bar you cannot see is also not found to drag. */
-  --scrollbar-thumb-rest: rgba(111, 200, 255, .35);   /* at rest: faint */
-  --scrollbar-thumb: rgba(111, 200, 255, .62);        /* with the pointer over it */
-  --scrollbar-corner: transparent;     /* the corner where the two bars cross */
-
-  /* --- shape and motion --- */
-  --radius: 14px;                      /* the corner of the cards: popover, settings */
-  --shadow-pop: 0 18px 44px rgba(0, 0, 0, .55);
-  /* THE MOTION: slower than the paper themes, and with a curve that arrives fast
-     and lands slowly — it is what makes the folder OPEN instead of jump. */
-  --speed: .26s;
-  /* HOW MUCH THE PANEL RISES ON ARRIVAL (the page entrance,
-     `base.css` section 4): zero is the ink arriving still, which is
-     what a paper theme wants — the glass rises from further away. */
-  --enter-shift: 10px;
-  --ease: cubic-bezier(.22, 1, .36, 1);
-  /* The SHEEN: the veil that crosses the two title strips, strong at the top edge
-     and dissolved before the middle — the glass reflection. At night it is
-     fainter: the same reflection, with less light to reflect. */
-  --sheen: linear-gradient(rgba(255, 255, 255, .26) 0%, rgba(255, 255, 255, .07) 48%,
-                           rgba(255, 255, 255, 0) 62%);
-  /* The GLASS of the sidebar: what dissolves the sky passing behind it. */
-  --panel-blur: blur(14px) saturate(1.6);
-  /* The panel row: inset from the edge and with a corner — the item becomes a card. */
-  --item-radius: 10px;
+  --measure: 70ch;
 }

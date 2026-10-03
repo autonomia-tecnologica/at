@@ -2,62 +2,6 @@
   "note": "The dependencies the WebApp HOSTS: code and typefaces that come from outside and are served byte for byte through /vendor/<key>. The key IS the file name here, minus the extension the URL never carries, so the route is a name lookup and never a path — the file's own extension comes from `upstream`, which is the vendor's path.",
   "install": "npm ci --ignore-scripts, in a project pinning these exact versions",
   "files": {
-    "font-eb-garamond-400": {
-      "package": "@fontsource/eb-garamond",
-      "version": "5.3.0",
-      "upstream": "files/eb-garamond-latin-400-normal.woff2",
-      "bytes": 23820,
-      "sha256": "912929dba0faab5e151849ea5e988adba3080ad6d2bcc4dbff27aa427896498d"
-    },
-    "font-eb-garamond-500": {
-      "package": "@fontsource/eb-garamond",
-      "version": "5.3.0",
-      "upstream": "files/eb-garamond-latin-500-normal.woff2",
-      "bytes": 25264,
-      "sha256": "7b252686ba2797f0a376a4ce7e56534dfc2007fba8b50546bb11b24f9279b5c7"
-    },
-    "font-eb-garamond-600": {
-      "package": "@fontsource/eb-garamond",
-      "version": "5.3.0",
-      "upstream": "files/eb-garamond-latin-600-normal.woff2",
-      "bytes": 25348,
-      "sha256": "6a195b7e4f518d53813581f415d7956e02049dd2762b4b9a3af80d56b4257e28"
-    },
-    "font-eb-garamond-700": {
-      "package": "@fontsource/eb-garamond",
-      "version": "5.3.0",
-      "upstream": "files/eb-garamond-latin-700-normal.woff2",
-      "bytes": 25292,
-      "sha256": "ae7cef029eea959654a474fbcaa2c202f205abfca29caaef62e9a0019c3c8370"
-    },
-    "font-inter-400": {
-      "package": "@fontsource/inter",
-      "version": "5.3.0",
-      "upstream": "files/inter-latin-400-normal.woff2",
-      "bytes": 23664,
-      "sha256": "8909904ab6c872eb994093482a88a28eca2cd95912d7b6fecd72103b0dc07edc"
-    },
-    "font-inter-500": {
-      "package": "@fontsource/inter",
-      "version": "5.3.0",
-      "upstream": "files/inter-latin-500-normal.woff2",
-      "bytes": 24272,
-      "sha256": "f3779f1efccc4bdcdf9c0a02ab95bf6bd092ed09c48c08cedc725889edd1d19f"
-    },
-    "font-inter-600": {
-      "package": "@fontsource/inter",
-      "version": "5.3.0",
-      "upstream": "files/inter-latin-600-normal.woff2",
-      "bytes": 24452,
-      "sha256": "f9a06e79cd3a2a20951c0f0e28f66dd0e6d3fda73911d640a2125c8fcb78f21a"
-    },
-    "font-inter-700": {
-      "package": "@fontsource/inter",
-      "version": "5.3.0",
-      "upstream": "files/inter-latin-700-normal.woff2",
-      "bytes": 24356,
-      "sha256": "6f56409fd3d64bb85f7d070bce20749db2d66b6d63cec586cc22d1c761be2491"
-    },
     "font-nunito-sans-400": {
       "package": "@fontsource/nunito-sans",
       "version": "5.3.0",
@@ -85,34 +29,6 @@
       "upstream": "files/nunito-sans-latin-800-normal.woff2",
       "bytes": 13876,
       "sha256": "4c839e56cbef1bbdfd509670f523730e24298aaf9a7791e0151031b023c12e4c"
-    },
-    "font-open-sans-400": {
-      "package": "@fontsource/open-sans",
-      "version": "5.3.0",
-      "upstream": "files/open-sans-latin-400-normal.woff2",
-      "bytes": 18640,
-      "sha256": "0e44026ad31376af1b56593cd4acb4f353f8e8789c51759e18f64578e4ef296a"
-    },
-    "font-open-sans-500": {
-      "package": "@fontsource/open-sans",
-      "version": "5.3.0",
-      "upstream": "files/open-sans-latin-500-normal.woff2",
-      "bytes": 18728,
-      "sha256": "fcb3290e95d43c9427acb996e3c1243c44f003eae5104707b3f5ed65fba7d452"
-    },
-    "font-open-sans-600": {
-      "package": "@fontsource/open-sans",
-      "version": "5.3.0",
-      "upstream": "files/open-sans-latin-600-normal.woff2",
-      "bytes": 18620,
-      "sha256": "a97a6ed7ef9f75c495e9224f5c59b2271d826e4a4345b738b390b0c76cc9f412"
-    },
-    "font-open-sans-700": {
-      "package": "@fontsource/open-sans",
-      "version": "5.3.0",
-      "upstream": "files/open-sans-latin-700-normal.woff2",
-      "bytes": 18204,
-      "sha256": "594a622208d1dad5d1dd58aef74f212ce7132d8f0aa5bacea6cfeb86d308c17a"
     },
     "font-quicksand-500": {
       "package": "@fontsource/quicksand",

@@ -99,13 +99,12 @@ class TheTokenContract(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # `base.css` IS `at`'s OWN BASE, and the fallback: any theme that names
-        # none of its own reads it, which is `cls.read`. Almost every OTHER
-        # theme walks its own door instead (`"base"` in the registry row, which
-        # for ten of the eleven points at `base-shared.css`), and its token
-        # contract is checked against THAT file, not this one: `base-shared.css`
-        # does not read `--sidebar-item-bg-on` any more than `base.css` reads
-        # `--nav-bg`, and holding every theme to the same file's vocabulary
-        # would fail the from-scratch system by construction.
+        # none of its own reads it, which is `cls.read`. Since 2026-10-03 that
+        # is every theme in the registry — `base-shared.css`, the vocabulary
+        # the other ten used to walk, was retired alongside the three themes
+        # that did not survive the cut. The `"base"` door (`_reads_for`
+        # below) stays open for a future theme that names a second
+        # vocabulary; nothing in the registry walks it today.
         cls._base_cache: dict[str, dict[str, bool]] = {}
         cls.base = (ASSETS / "base.css").read_text(encoding="utf-8")
         cls.read = read_of(cls.base)
@@ -216,11 +215,12 @@ class TheTypefaces(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        # EVERY BASE THAT DECLARES FACES, and not only the default one: the ten
-        # themes that walk `base-shared.css` bring its typefaces with them, and
-        # the @font-face is an at-rule — a theme may never hold one — so the
-        # faces live in the base beside it. The door is the same one
-        # `TheTokenContract` walks; the pin is over the files.
+        # EVERY BASE THAT DECLARES FACES, and not only the default one — the
+        # door stays open for a theme that names a second `base`, even though
+        # every theme in the registry walks `base.css` today. The @font-face
+        # is an at-rule — a theme may never hold one — so the faces live in
+        # the base beside it. The door is the same one `TheTokenContract`
+        # walks; the pin is over the files.
         names = {"base.css"}
         for row in webapp.theme_rows():
             if isinstance(row.get("base"), str):

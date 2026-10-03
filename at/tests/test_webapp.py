@@ -499,13 +499,13 @@ class TheDoors(ServerCase):
         self.assertEqual(headers["Content-Type"], "image/svg+xml")
 
     def test_a_hosted_font_is_served_with_its_revision(self):
-        status, headers, body = self.get("/vendor/font-inter-400")
+        status, headers, body = self.get("/vendor/font-nunito-sans-400")
         self.assertEqual(status, 200)
         self.assertEqual(headers["Content-Type"], "font/woff2")
         self.assertEqual(headers["X-Hosted"], "5.3.0")
         manifest = json.loads((webapp.VENDOR / "manifest.json").read_text(encoding="utf-8"))
         self.assertEqual(hashlib.sha256(body).hexdigest(),
-                         manifest["files"]["font-inter-400"]["sha256"])
+                         manifest["files"]["font-nunito-sans-400"]["sha256"])
 
     def test_a_hosted_renderer_is_served_as_code_with_its_revision(self):
         # The markdown renderer travels the same door as the typefaces, and its

@@ -1,8 +1,13 @@
-/* base — a from-scratch design system for AT, built independently of
-   base-shared.css. It is the DEFAULT: a theme that declares no `base` of its
-   own reads this file, and `at` is the one theme that declares none — every
-   other theme names `base-shared.css` instead (`"base": "base-shared.css"`
-   in themes.jsonl), which is why it is untouched by anything below.
+/* base — a from-scratch design system for AT. It is the DEFAULT, and since
+   2026-10-03 the ONLY one: every theme in the registry declares no `base` of
+   its own and reads this file. `base-shared.css`, the vocabulary the other
+   ten themes used to walk, is gone — the seven that survived the cut
+   (comunidade, console, frutiger-aero, gothic, hotel, paper, tipography)
+   were rewritten against THIS file's 86-token contract, and the other three
+   (liquid-glass, natal, old-internet) were retired instead of rewritten. The
+   `"base"` field in a registry row still works — the door stays open for a
+   future theme that wants a second vocabulary — it is just that nothing
+   walks it today.
 
    THE SELECTORS BELOW ARE A CONTRACT WITH THE COMPILED VUE APP, not a choice:
    the class names, the two breakpoints (960/640), the `nav-rail`/`nav-open`/
@@ -16,14 +21,17 @@
 
    A THEME DECLARES ONLY `:root`. This file declares every selector. */
 
-/* ===== the typefaces (2026-09-28) =======================================
-   Two families, both OFL-1.1, served through the same `/vendor/` door
-   `base-shared.css` already uses for its own five — Nunito Sans for the body
-   (`--font-sans`), Quicksand for anything that has to carry weight on the
-   page (`--font-display`: the brand mark, a page's own title, a stat's big
-   number). A theme that walks this file always names both, so the two rules
-   below are this system's own and not a copy of base-shared.css's block —
-   same DOOR, independent declaration. */
+/* ===== the typefaces (2026-09-28, +2 on 2026-10-03) =====================
+   Nunito Sans for the body (`--font-sans`) and Quicksand for anything that
+   has to carry weight on the page (`--font-display`: the brand mark, a
+   page's own title, a stat's big number) — `at`'s own two.
+
+   UnifrakturMaguntia and Silkscreen joined on 2026-10-03, when `gothic` and
+   `hotel` moved onto this file: both narrow the SAME way `at`'s two do —
+   `--font-display` only, never the body — so they ride the door as a third
+   and fourth NAME, not a new slot. Both were already vendored (pinned,
+   installed) for `base-shared.css`'s five; migrating the two themes that
+   actually used them cost nothing but the two rules below. */
 @font-face { font-family: "Nunito Sans"; font-style: normal; font-weight: 400;
              font-display: swap; src: url("/vendor/font-nunito-sans-400") format("woff2"); }
 @font-face { font-family: "Nunito Sans"; font-style: normal; font-weight: 600;
@@ -38,6 +46,12 @@
              font-display: swap; src: url("/vendor/font-quicksand-600") format("woff2"); }
 @font-face { font-family: "Quicksand"; font-style: normal; font-weight: 700;
              font-display: swap; src: url("/vendor/font-quicksand-700") format("woff2"); }
+@font-face { font-family: "UnifrakturMaguntia"; font-style: normal; font-weight: 400;
+             font-display: swap; src: url("/vendor/font-unifrakturmaguntia") format("woff2"); }
+@font-face { font-family: "Silkscreen"; font-style: normal; font-weight: 400;
+             font-display: swap; src: url("/vendor/font-silkscreen-400") format("woff2"); }
+@font-face { font-family: "Silkscreen"; font-style: normal; font-weight: 700;
+             font-display: swap; src: url("/vendor/font-silkscreen-700") format("woff2"); }
 
 * { box-sizing: border-box; }
 /* THE HAND, EVERYWHERE SOMETHING IS CLICKABLE — a DESIGN SYSTEM rule and not a

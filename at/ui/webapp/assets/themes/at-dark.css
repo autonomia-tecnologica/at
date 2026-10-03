@@ -121,6 +121,7 @@
   --nav-rail-w: 44px; /* the day side's own reasoning (`at.css`) */
   --nav-toggle-size: 18px;
   --header-h: 64px;
+  --page-pad-x: var(--space-5);
   /* THE EDGE WAS A SHADOW, AND A SHADOW ON BLACK IS NOTHING (2026-09-28): the
      day side's `--nav-edge` reads because it darkens a LIGHT canvas — cast the
      same shadow over a canvas already this dark and there is no darker left to

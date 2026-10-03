@@ -309,11 +309,11 @@ def theme_css(requested: str | None, dark: bool) -> str | None:
 
 def base_css_path(requested: str | None) -> Path:
     """Which base the active theme wears. A theme MAY declare one by name
-    (`"base"` in the registry row) — the door every theme but `at` walks, to
-    the one file they all still share (`base-shared.css`) — and a theme that
-    declares none gets the bare `base.css`, which is `at`'s own from-scratch
-    design system and the server's default. The name is a bare filename or
-    the door is refused: no separator survives to become a path."""
+    (`"base"` in the registry row) — a door every row in the registry leaves
+    unused today, since `base-shared.css` was retired on 2026-10-03 and every
+    theme now walks `base.css`, `at`'s own from-scratch design system and the
+    server's default. The name is a bare filename or the door is refused: no
+    separator survives to become a path."""
     row = active_theme(requested)
     name = row.get("base") if row and isinstance(row.get("base"), str) else None
     if name and "/" not in name and "\\" not in name and name.endswith(".css"):

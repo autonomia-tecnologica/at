@@ -183,6 +183,19 @@ EXTRA: dict[str, tuple[str, ...]] = {
     # quem publica é o relógio (`at.core.notifier.publish`), e ele não pede
     # licença a esta lista para falar com o serviço que o próprio ambiente subiu.
     "notifier": ("read",),
+    # TASK-186, fatia 1/4: as palavras não-tabela que `tree.WORDS` já expõe e
+    # que o catálogo, até aqui, ficava em silêncio sobre (o motor de Actions
+    # centralizado). `webapp` e `backup` são objeto+verbo de fato — a página
+    # sobe (`run`) e a cópia se faz ou se restaura (`make`, `restore`) —, e
+    # `cli` é o terceiro: os verbos SOLTOS, sem objeto próprio, que ainda assim
+    # mudam a pasta — `admin` nasce o primeiro administrador, `lang` escolhe o
+    # idioma, `convert` escreve em `Convertidos/`. `help`, `version`,
+    # `license`, `install` e `uninstall` ficam de fora: são a própria
+    # interface, não um ato sobre a pasta, e `at/tests/test_permissions.py`
+    # escreve o porquê de cada um.
+    "webapp": ("run",),
+    "backup": ("make", "restore"),
+    "cli": ("admin", "lang", "convert"),
 }
 
 # ------------------------------------------------------------------- risk ---
@@ -222,6 +235,23 @@ RISK_BY_ACTION: dict[str, float] = {
     # `due` READS the store: it says which reminders a day is about and writes
     # no row, the same reason `scan` is a read and not a write.
     "due": RISK_READ,
+    # `backup make` CIFRA a pasta inteira e manda a cópia ao destino — nada
+    # que já existia é sobrescrito, o mesmo porquê de um `create`.
+    "make": RISK_WRITE,
+    # `backup restore` SUBSTITUI a pasta vigente pelo que o backup guardava —
+    # é a frase da própria régua, "overwriting... what existed", e não o
+    # `create` de quem apenas junta algo novo.
+    "restore": RISK_REMOVE,
+    # `cli admin` nasce o primeiro administrador: a pasta não tinha governança
+    # até este ato, e é exatamente "o que o sistema permite" que ele muda — a
+    # mesma razão de `role:create` e `actor:create` nesta régua (§4, item 15).
+    "admin": RISK_ALLOW,
+    # `cli lang` escolhe o idioma: muda um arquivo da pasta, e não o teto do
+    # que ela permite.
+    "lang": RISK_WRITE,
+    # `cli convert` escreve um arquivo novo em `Convertidos/`, a partir de um
+    # que já existia em `Arquivos/` — o mesmo porquê de um `create`.
+    "convert": RISK_WRITE,
     "cancel": RISK_REMOVE,
     "delete": RISK_REMOVE,
     # The two halves of the approval are ONE act with two outcomes, and they are

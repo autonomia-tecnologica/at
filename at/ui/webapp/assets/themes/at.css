@@ -135,6 +135,10 @@
   --nav-rail-w: 44px;
   --nav-toggle-size: 18px;
   --header-h: 64px;
+  /* READ BY NAME (TableView.vue), not by any rule here — the JS falls back to
+     20px when a theme leaves it out, which every theme but `hotel` always did
+     until now. `--space-5` is that same 20px, named instead of repeated. */
+  --page-pad-x: var(--space-5);
   --nav-bg: #1f1033;
   --nav-border: rgb(255 255 255 / 8%);
   --nav-edge: 4px 0 24px rgb(31 16 51 / 18%);
