@@ -934,6 +934,23 @@ a.ref:hover, a.url:hover { border-bottom-color: currentColor; background: var(--
   border: 1px solid var(--border-strong); border-radius: var(--r-sm); font: inherit;
 }
 .assist-retry input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* A CHAVE DO JEV (Configurações): os dois campos e o botão, com o MESMO estilo
+   dos inputs do chat/retry — o campo do Jev não é um input de forma de tabela,
+   mas é um campo de texto como qualquer outro. */
+.jev-form { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.jev-form input {
+  flex: 1; min-width: 16ch; padding: var(--space-2) var(--space-3);
+  background: var(--surface-0); color: var(--ink-1);
+  border: 1px solid var(--border-strong); border-radius: var(--r-sm); font: inherit;
+}
+.jev-form input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* OS BOTÕES DE UM BLOCO DE CONFIGURAÇÕES: o `--set-pad` do `.btn` é o respiro
+   de um cartão, e num controle dentro de um bloco ele fica grande demais. O
+   `.block-body` só existe na tela de Configurações, então o ajuste é dela. */
+.block-body .btn { padding: var(--space-1) var(--space-3); }
+/* O AVISO DO CHAT ("Jev não configurado"): a mesma margem lateral do log e do
+   formulário — não é uma fala da conversa, e não pode colar na borda. */
+.chat-notice { margin: 0; padding: 0 var(--space-4); color: var(--ink-3); font-size: var(--text-xs); }
 /* TASK-183: the cautious assist's own question, turned into two buttons
    instead of a sentence to retype — "Confirmar" resubmits the rewritten
    sentence, "Negar" asks nothing and only hides the pair. */

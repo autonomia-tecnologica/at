@@ -39,7 +39,17 @@ COFRE_KEY_ENV = "AT_COFRE_KEY"
 
 _ENV_VARS = (WEBAPP_KEY_ENV, NOTIFIER_KEY_ENV, COFRE_KEY_ENV)
 
+# A CHAVE PRINCIPAL que o WebApp guarda EM MEMÓRIA para a vida do processo.
+#
+# O caminho container nunca a tem (só as derivadas acima). O caminho HOSPEDADO a
+# recebe no `boot`, do ambiente (`AT_MAIN_KEY`) — a mesma grade S de §4: quem a
+# digita quando o AT começa não a vê voltar, e nada em disco a guarda. O que fica
+# é esta cópia, que morre com o processo; é ela que abre o Cofre (a credencial
+# do Jev incluída) para todo pedido, sem pedir a Chave de novo a cada mensagem.
+MAIN_KEY_ENV = "AT_MAIN_KEY"
+
 _keys: dict[str, bytes] = {}
+_main: str | None = None
 
 
 def boot() -> None:
@@ -50,6 +60,7 @@ def boot() -> None:
     raised over: a boot is not the place to fail on a key nothing will miss
     until something asks for it (`get`).
     """
+    keep_main_key(os.environ.pop(MAIN_KEY_ENV, None))
     for variable in _ENV_VARS:
         raw = os.environ.pop(variable, None)
         if not raw:
@@ -58,6 +69,23 @@ def boot() -> None:
             _keys[variable] = base64.urlsafe_b64decode(raw.encode("ascii"))
         except (ValueError, UnicodeError):
             continue
+
+
+def keep_main_key(value: str | None) -> None:
+    """Guarda a Chave Principal desta subida — em memória, e só aqui.
+
+    O valor vem do ambiente no `boot` e é POPSADO de lá (uma variável de
+    ambiente é herdada por todo filho; deixá-la de pé seria espalhar a Chave).
+    Ela não é escrita em lugar nenhum, e um processo que nunca a recebeu
+    responde `None` (`main_key`).
+    """
+    global _main
+    _main = value or None
+
+
+def main_key() -> str | None:
+    """A Chave Principal desta subida, ou `None` — e nenhuma cópia em disco."""
+    return _main
 
 
 def webapp_key() -> bytes | None:

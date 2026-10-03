@@ -504,8 +504,7 @@ PAGE_WORDS = (
     # do navegador e inscreve o PWA — sem ntfy.
     "notifications", "notifications_hint", "notifications_on", "notifications_off",
     # A CREDENCIAL DO JEV, em Configurações, e o aviso do chat quando falta.
-    "jev", "jev_hint", "jev_key", "jev_main_key", "jev_save", "jev_saved",
-    "jev_not_configured",
+    "jev", "jev_hint", "jev_key", "jev_save", "jev_saved", "jev_not_configured",
     # The screens that move a role and a machine's credential — the two system
     # tables whose records are more than a form (§4, item 11).
     "people", "create", "new_role", "new_machine", "mint", "revoke", "token_once",
@@ -1817,6 +1816,10 @@ class Handler(BaseHTTPRequestHandler):
         main_key = raw_key if isinstance(raw_key, str) and raw_key else None
         if main_key is not None and not self._legal("assist:ask"):
             main_key = None
+        # A Chave Principal da SUBIDA, guardada em memória no `boot` (§4): o
+        # pedido não precisa trazê-la de novo a cada mensagem.
+        if main_key is None:
+            main_key = keys.main_key()
         # The ACTOR comes along: the door owns the ceiling (§5, "o que ela pode
         # propor é o que ela já pode fazer"), and it is the same door the balloon,
         # the chat and `at-cli ask` read — so the refusal lands on every surface at
@@ -1851,11 +1854,16 @@ class Handler(BaseHTTPRequestHandler):
         payload = self._body()
         if payload is None:
             return
-        value, main_key = payload.get("key"), payload.get("main_key")
-        if not (isinstance(value, str) and value.strip()) or not (
-            isinstance(main_key, str) and main_key
-        ):
+        value = payload.get("key")
+        if not (isinstance(value, str) and value.strip()):
             self._json({"error": i18n.tr("webapp.jev_missing")}, 400)
+            return
+        # A Chave Principal é a da SUBIDA, em memória (`keys.main_key`) — a
+        # pessoa NÃO a digita de novo aqui: ela já foi digitada quando o AT
+        # subiu, e é a mesma que sela o valor (§4).
+        main_key = keys.main_key()
+        if not main_key:
+            self._json({"error": i18n.tr("webapp.jev_no_main_key")}, 409)
             return
         if not assist.configure(value.strip(), main_key):
             self._json({"error": i18n.tr("webapp.jev_bad_key")}, 400)

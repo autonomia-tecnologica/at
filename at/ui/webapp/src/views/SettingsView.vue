@@ -95,24 +95,22 @@ async function askPush(): Promise<void> {
   pushState.value = ok ? "on" : pushNow();
 }
 
-// A CREDENCIAL DO JEV: a chave da API e a Chave Principal que a SELA. A Chave
-// Principal não é guardada — ela só sela a chave do Jev nesta chamada, e a
-// linha que nasce (`secret` de escopo `jev`) é o que faz o chat parar de dizer
-// "Jev não configurado".
+// A CREDENCIAL DO JEV: só a chave da API (TypeSafe). A Chave Principal NÃO é
+// digitada aqui — ela é a da SUBIDA, guardada em memória pelo host, e é ela que
+// sela a chave do Jev. A linha que nasce (`secret` de escopo `jev`) é o que faz
+// o chat parar de dizer "Jev não configurado".
 const jevKey = ref("");
-const jevMain = ref("");
 const jevBusy = ref(false);
 const jevError = ref("");
 
 async function saveJev(): Promise<void> {
-  if (jevBusy.value || !jevKey.value || !jevMain.value) return;
+  if (jevBusy.value || !jevKey.value) return;
   jevBusy.value = true;
   jevError.value = "";
   try {
-    await post("/api/jev", { key: jevKey.value, main_key: jevMain.value });
+    await post("/api/jev", { key: jevKey.value });
     store.jev_ready = true;
     jevKey.value = "";
-    jevMain.value = "";
   } catch (err) {
     jevError.value = (err as Error).message;
   } finally {
@@ -221,11 +219,8 @@ watchEffect(() => setTrail(word("settings")));
             <input v-model="jevKey" type="password" autocomplete="off"
                    class="jev-input" :placeholder="word('jev_key')"
                    :aria-label="word('jev_key')">
-            <input v-model="jevMain" type="password" autocomplete="off"
-                   class="jev-input" :placeholder="word('jev_main_key')"
-                   :aria-label="word('jev_main_key')">
             <button type="button" class="btn"
-                    :disabled="jevBusy || !jevKey || !jevMain" @click="saveJev">
+                    :disabled="jevBusy || !jevKey" @click="saveJev">
               {{ word("jev_save") }}
             </button>
           </div>

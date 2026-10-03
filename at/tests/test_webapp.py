@@ -3102,6 +3102,10 @@ class TheJevRoute(ServerCase):
     def setUp(self):
         super().setUp()
         actors.create_admin(self.NAME, self.CREDENTIAL)
+        # A Chave Principal da SUBIDA, em memória — o mesmo que o `boot` deixaria
+        # quando o host sobe com ela (`keys.MAIN_KEY_ENV`).
+        webapp_keys.keep_main_key(self.CREDENTIAL)
+        self.addCleanup(webapp_keys.keep_main_key, None)
 
     def session(self) -> dict:
         status, headers, _ = self.post_full(
@@ -3112,8 +3116,7 @@ class TheJevRoute(ServerCase):
 
     def test_setting_the_key_stores_it_and_the_state_says_ready(self):
         status, _, raw = self.post_full(
-            "/api/jev", {"key": "chave-do-jev", "main_key": self.CREDENTIAL},
-            headers=self.session(),
+            "/api/jev", {"key": "chave-do-jev"}, headers=self.session(),
         )
         self.assertEqual(status, 200)
         self.assertTrue(raw["ok"])
@@ -3121,10 +3124,17 @@ class TheJevRoute(ServerCase):
         self.assertTrue(json.loads(state)["jev_ready"])
 
     def test_without_a_key_it_is_a_400(self):
-        status, _, _ = self.post_full(
-            "/api/jev", {"main_key": self.CREDENTIAL}, headers=self.session()
-        )
+        status, _, _ = self.post_full("/api/jev", {}, headers=self.session())
         self.assertEqual(status, 400)
+
+    def test_without_the_main_key_in_memory_it_is_refused(self):
+        # Sem a Chave Principal da subida não há com que SELAR — e a rota diz
+        # isso, em vez de gravar em claro.
+        webapp_keys.keep_main_key(None)
+        status, _, _ = self.post_full(
+            "/api/jev", {"key": "chave-do-jev"}, headers=self.session()
+        )
+        self.assertEqual(status, 409)
 
     def test_without_a_session_it_is_refused(self):
         self.assertEqual(self.status("/api/jev", method="POST"), 401)
