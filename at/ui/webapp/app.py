@@ -2346,6 +2346,16 @@ def run(port: int = DEFAULT_PORT, public_port: int | None = None,
             print(tr("authelia.start_failed"))
             return 1
 
+        # `gate.standing`'s own self-check (`_gate`, §6) reads this exactly as
+        # the container path's environment hands it over — a bare
+        # `host:port`, no scheme — and a folder once committed to the gate on
+        # THAT path carries the commitment into this one too, since the two
+        # share the same `settings.json`. Left unset, `gate.portal` reads
+        # nothing, `standing` is never true, and every request this bundle's
+        # own Authelia just proved closes anyway on a 503 that blames a
+        # portal which is, in fact, up.
+        os.environ[gate.GATE_ENV] = f"{caddy.LOOPBACK}:{authelia_port}"
+
         # Then ntfy, published by the Caddy on `notify_port` — the site's own
         # port plus one, the bundle's answer to the container path's DNS
         # subdomain (`caddy.caddyfile`'s own docstring on `notify_port`).
