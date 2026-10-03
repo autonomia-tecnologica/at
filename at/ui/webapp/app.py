@@ -503,6 +503,9 @@ PAGE_WORDS = (
     # NOTIFICAÇÕES (Web Push): o bloco das Configurações que pede a permissão
     # do navegador e inscreve o PWA — sem ntfy.
     "notifications", "notifications_hint", "notifications_on", "notifications_off",
+    # A CREDENCIAL DO JEV, em Configurações, e o aviso do chat quando falta.
+    "jev", "jev_hint", "jev_key", "jev_main_key", "jev_save", "jev_saved",
+    "jev_not_configured",
     # The screens that move a role and a machine's credential — the two system
     # tables whose records are more than a form (§4, item 11).
     "people", "create", "new_role", "new_machine", "mint", "revoke", "token_once",
@@ -626,6 +629,10 @@ def state_payload() -> dict:
         # both from here and writes them back through `/api/assist`.
         "assist": assist.enabled(),
         "assist_mode": assist.mode(),
+        # SE A CREDENCIAL DO JEV ESTÁ CONFIGURADA: sem ela o Jev não é
+        # consultado, e a página diz "Jev não configurado" no chat em vez de
+        # fingir que leu.
+        "jev_ready": assist.configured(),
         # THE RULER'S NUMBERS. The threshold is the one the demand filter honours
         # (§4); the marks are one per catalogue entry, each carrying the number
         # the demand is measured at — the catalogue's, adjusted by what this
@@ -1464,6 +1471,11 @@ class Handler(BaseHTTPRequestHandler):
                 return
             self._post_assist()
             return
+        if segments == ["api", "jev"]:
+            if not self._may("setting:edit"):
+                return
+            self._post_jev()
+            return
         if segments == ["api", "agent"]:
             self._post_agent()
             return
@@ -1827,6 +1839,28 @@ class Handler(BaseHTTPRequestHandler):
             # reached it already cleared `assist:ask` above.
             "confirm": result.confirm,
         })
+
+    def _post_jev(self) -> None:
+        """Configura a credencial do Jev — o `secret` de escopo `jev` (§4).
+
+        O corpo traz a chave do Jev e a Chave Principal: a segunda é o que SELA
+        a primeira (`assist.configure`), e não é guardada em lugar nenhum. A
+        rota não abre nada e não chama o Jev — só escreve a linha; a página
+        passa a ver `jev_ready` no estado.
+        """
+        payload = self._body()
+        if payload is None:
+            return
+        value, main_key = payload.get("key"), payload.get("main_key")
+        if not (isinstance(value, str) and value.strip()) or not (
+            isinstance(main_key, str) and main_key
+        ):
+            self._json({"error": i18n.tr("webapp.jev_missing")}, 400)
+            return
+        if not assist.configure(value.strip(), main_key):
+            self._json({"error": i18n.tr("webapp.jev_bad_key")}, 400)
+            return
+        self._json({"ok": True, "jev_ready": True})
 
     def _post_assist(self) -> None:
         """The assist's own two knobs, from the Control Panel (TASK-180, fatia

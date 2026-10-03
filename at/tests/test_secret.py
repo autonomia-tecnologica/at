@@ -458,6 +458,11 @@ class TheEntry(SecretCase):
         # usar. A notificação é o Web Push do PWA (`core/push.py`), que cifra
         # contra a chave do NAVEGADOR e não toca o Cofre.
         #
+        # **E `core/assist.py` entrou** (o Jev primário, 03/10/2026): configurar
+        # a credencial do Jev (o `secret` de escopo `jev`) SELA o valor com a
+        # chave derivada, pela mesma porta do Cofre — é a oitava entrada.
+        # contra a chave do NAVEGADOR e não toca o Cofre.
+        #
         # Sorted, because the filesystem hands the files over in an order of its
         # own and the list below is the declaration, not a directory listing.
         callers = sorted(
@@ -467,8 +472,8 @@ class TheEntry(SecretCase):
             if "tests" not in path.parts and reaches_vault(path)
         )
         self.assertEqual(callers, [
-            "at/core/actors.py", "at/core/backup.py", "at/core/cofre.py",
-            "at/core/secrets.py", "at/core/tables.py",
+            "at/core/actors.py", "at/core/assist.py", "at/core/backup.py",
+            "at/core/cofre.py", "at/core/secrets.py", "at/core/tables.py",
             "at/services/caddy.py", "at_deploy/environment.py",
         ])
 

@@ -105,6 +105,7 @@ from datetime import datetime
 
 from at.core import files, jev, paths, permissions, secrets, settings, tables
 from at.data import schema, store
+from at.encryption import vault
 from at.nlu import matcher
 from at.nlu.proposal import Proposal
 from at.nlu.reading import Question, Refused
@@ -438,3 +439,36 @@ def _row(service: str) -> dict | None:
         if row.get(secrets.SCOPE) == service:
             return row
     return None
+
+
+def configured() -> bool:
+    """Se a pasta tem a credencial do Jev selada — um `secret` de escopo `jev`.
+
+    É a pergunta da superfície: sem a linha, o Jev não é consultado (a leitura
+    cai no matcher), e é isso que a página diz em "Jev não configurado".
+    """
+    return _row(jev.SERVICE) is not None
+
+
+def configure(value: str, main_key: str) -> bool:
+    """Sela a credencial do Jev nesta pasta — cria a linha, ou reescreve a dela.
+
+    **Uma linha só por serviço.** Um segundo `secret` scoped `jev` deixaria a
+    pasta com dois valores e só o primeiro seria lido (`_row`), então a segunda
+    configuração REESCREVE a mesma linha — uma rotação, não uma cópia.
+
+    `False` é a Chave Principal que o Cofre recusa (a frase curta demais, o
+    escopo inválido); a mensagem é a do próprio Cofre, e quem a lê é a
+    superfície. O valor em claro não sai daqui (§4).
+    """
+    try:
+        envelope = vault.seal(value, secrets.key_of(jev.SERVICE, main_key))
+    except secrets.SecretsError:
+        return False
+    row = _row(jev.SERVICE)
+    if row is None:
+        tables.create("secret", {"name": jev.SERVICE, "service": jev.SERVICE,
+                                 secrets.SEALED: envelope})
+    else:
+        tables.edit("secret", store.number_of(row), {secrets.SEALED: envelope})
+    return True

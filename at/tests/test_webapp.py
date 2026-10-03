@@ -3087,5 +3087,48 @@ class TheDerivedKeys(unittest.TestCase):
         self.assertIsNone(webapp_keys.webapp_key())
 
 
+class TheJevRoute(ServerCase):
+    """`POST /api/jev` — a chave do Jev, selada na pasta.
+
+    A rota não chama o Jev nem guarda a Chave Principal: ela sela a credencial
+    (o `secret` de escopo `jev`, `assist.configure`) e o estado passa a dizer
+    `jev_ready` — que é o que o chat lê para parar de dizer "Jev não
+    configurado".
+    """
+
+    CREDENTIAL = "uma-frase-bem-longa"
+    NAME = "Rafael"
+
+    def setUp(self):
+        super().setUp()
+        actors.create_admin(self.NAME, self.CREDENTIAL)
+
+    def session(self) -> dict:
+        status, headers, _ = self.post_full(
+            "/api/session", {"name": self.NAME, "credential": self.CREDENTIAL}
+        )
+        self.assertEqual(status, 200)
+        return {"Cookie": headers["Set-Cookie"].split(";")[0]}
+
+    def test_setting_the_key_stores_it_and_the_state_says_ready(self):
+        status, _, raw = self.post_full(
+            "/api/jev", {"key": "chave-do-jev", "main_key": self.CREDENTIAL},
+            headers=self.session(),
+        )
+        self.assertEqual(status, 200)
+        self.assertTrue(raw["ok"])
+        _, _, state = self.get("/api/state", headers=self.session())
+        self.assertTrue(json.loads(state)["jev_ready"])
+
+    def test_without_a_key_it_is_a_400(self):
+        status, _, _ = self.post_full(
+            "/api/jev", {"main_key": self.CREDENTIAL}, headers=self.session()
+        )
+        self.assertEqual(status, 400)
+
+    def test_without_a_session_it_is_refused(self):
+        self.assertEqual(self.status("/api/jev", method="POST"), 401)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -74,6 +74,9 @@ export const store = reactive({
   // precedent) rather than a camelCase this file would have to translate.
   assist: true,
   assist_mode: "cautious",
+  // SE A CREDENCIAL DO JEV ESTÁ CONFIGURADA (um `secret` de escopo `jev`). Sem
+  // ela o Jev não é consultado, e o chat diz "Jev não configurado".
+  jev_ready: false,
   risk: { threshold: 0.5, marks: [] } as Risk, // the ruler's numbers
   // WHAT THE FOLDER IS, VERSIONING-WISE (§4, item 30), already written out in
   // every language: a sentence when AT does not version the folder, and `null`
@@ -95,6 +98,7 @@ export function applyState(state: Partial<typeof store>): void {
   if (typeof state.interpreter === "boolean") store.interpreter = state.interpreter;
   if (typeof state.assist === "boolean") store.assist = state.assist;
   if (typeof state.assist_mode === "string") store.assist_mode = state.assist_mode;
+  if (typeof state.jev_ready === "boolean") store.jev_ready = state.jev_ready;
   if (state.risk) store.risk = state.risk as Risk;
   store.versioning = (state.versioning as Labels | null) ?? null;
 }

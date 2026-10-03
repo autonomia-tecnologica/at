@@ -95,6 +95,31 @@ async function askPush(): Promise<void> {
   pushState.value = ok ? "on" : pushNow();
 }
 
+// A CREDENCIAL DO JEV: a chave da API e a Chave Principal que a SELA. A Chave
+// Principal não é guardada — ela só sela a chave do Jev nesta chamada, e a
+// linha que nasce (`secret` de escopo `jev`) é o que faz o chat parar de dizer
+// "Jev não configurado".
+const jevKey = ref("");
+const jevMain = ref("");
+const jevBusy = ref(false);
+const jevError = ref("");
+
+async function saveJev(): Promise<void> {
+  if (jevBusy.value || !jevKey.value || !jevMain.value) return;
+  jevBusy.value = true;
+  jevError.value = "";
+  try {
+    await post("/api/jev", { key: jevKey.value, main_key: jevMain.value });
+    store.jev_ready = true;
+    jevKey.value = "";
+    jevMain.value = "";
+  } catch (err) {
+    jevError.value = (err as Error).message;
+  } finally {
+    jevBusy.value = false;
+  }
+}
+
 // The theme's description is PER SIDE: the same theme describes itself
 // differently in light and dark, and what is read is the side being worn —
 // `themeState.dark` is the signal that follows the swap, so changing sides
@@ -182,6 +207,30 @@ watchEffect(() => setTrail(word("settings")));
                   @click="askPush">
             {{ pushState === "on" ? word("notifications_on") : word("notifications_off") }}
           </button>
+        </div>
+      </section>
+
+      <!-- A CREDENCIAL DO JEV: a chave da API e a Chave Principal que a sela.
+           É ajuste da pasta (o `secret` de escopo `jev`), e sem ela o chat diz
+           "Jev não configurado". -->
+      <section v-if="tab === 'general'" class="block">
+        <h2>{{ word("jev") }}</h2>
+        <div class="block-body">
+          <p class="pop-note">{{ word("jev_hint") }}</p>
+          <div class="jev-form">
+            <input v-model="jevKey" type="password" autocomplete="off"
+                   class="jev-input" :placeholder="word('jev_key')"
+                   :aria-label="word('jev_key')">
+            <input v-model="jevMain" type="password" autocomplete="off"
+                   class="jev-input" :placeholder="word('jev_main_key')"
+                   :aria-label="word('jev_main_key')">
+            <button type="button" class="btn"
+                    :disabled="jevBusy || !jevKey || !jevMain" @click="saveJev">
+              {{ word("jev_save") }}
+            </button>
+          </div>
+          <p v-if="jevError" class="pop-note">{{ jevError }}</p>
+          <p v-else-if="store.jev_ready" class="pop-note">{{ word("jev_saved") }}</p>
         </div>
       </section>
 

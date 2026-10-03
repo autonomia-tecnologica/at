@@ -17,7 +17,7 @@
 import { ref, nextTick, watchEffect } from "vue";
 import { ask } from "../lib/ask";
 import { chatState, remember } from "../lib/chat";
-import { word } from "../lib/store";
+import { store, word } from "../lib/store";
 import { setTrail } from "../lib/views";
 import AskTurn from "../components/AskTurn.vue";
 
@@ -97,6 +97,9 @@ async function confirm(sentence: string): Promise<void> {
       <AskTurn v-for="(turn, index) in chatState.turns" :key="index" :turn="turn"
                @retry="(key) => retry(turn.sentence, key)" @confirm="confirm" />
     </div>
+    <p v-if="store.assist && !store.jev_ready" class="chat-notice">
+      {{ word("jev_not_configured") }}
+    </p>
     <form class="chat-form" @submit.prevent="send">
       <input v-model="sentence" type="text" class="chat-say" autocomplete="off"
              :placeholder="word('ask_hint')" :aria-label="word('chat')">
