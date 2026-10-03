@@ -138,8 +138,8 @@ def _webapp(rest: list[str]) -> int:
 
     The bundle is the hosted path's own gate, and it is the DEFAULT (since
     TASK-177's follow-up, 02/10/2026): the Caddy that came inside the binary
-    terminates the TLS and publishes AT, fronted the same way by Authelia and
-    ntfy, vendorized the same way the Caddy is — no container, no isolamento
+    terminates the TLS and publishes AT, fronted the same way by Authelia,
+    vendorized the same way the Caddy is — no container, no isolamento
     por raio de explosão (nota `A` and not `S`, `rules.md` §3). `--no-caddy` is
     the one way out of it, back to loopback-only HTTP with nothing leaving it
     until a person authenticates (§3, Acesso e exposição) — the shape a quick
@@ -160,9 +160,8 @@ def _webapp(rest: list[str]) -> int:
     process picked to dodge that front door's OWN bind on the same port. Left
     unsaid, it is `--port` itself, which is the right answer whenever nothing
     sits in front — the standard way this very repository is checked, `at-cli
-    webapp --port 12399`, included. Said, it is what Authelia's portal and
-    ntfy's own address tell the browser and the phone — never the local bind,
-    which the one in front already hid.
+    webapp --port 12399`, included. Said, it is what Authelia's portal tells
+    the browser — never the local bind, which the one in front already hid.
 
     The WebApp's own authenticator is up (item 10): Forms asks for the
     credential at the entrance, Basic carries the same one in an

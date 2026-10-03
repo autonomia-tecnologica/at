@@ -37,7 +37,7 @@ from unittest import mock
 from at import i18n
 from at.core import actors, boot, paths, settings
 from at.encryption import vault
-from at.services import authelia, caddy, ntfy
+from at.services import authelia, caddy
 from at.tests import POLL, drawn_gate
 from at.ui.webapp import app as webapp
 
@@ -492,53 +492,15 @@ class TheAdaptedGate(FolderCase):
         self.assertEqual(len(routes), 1)
         self.assertIsNone(routes[0].get("match"))
 
-    def test_the_second_site_is_one_the_caddy_takes_and_asks_too(self):
-        # **O arquivo com dois nomes é um arquivo que o Caddy ACEITA**, e o que
-        # se lê aqui é o que ele ENTENDEU: os dois no mesmo servidor, na mesma
-        # porta, separados por casador de HOST — e o do notificador PERGUNTA
-        # também agora, com o MESMO `forward_auth`, mas troca o `Authorization`
-        # pelo M2M antes de encaminhar direto ao notificador (nunca ao WebApp).
-        text = caddy.caddyfile(
-            "at.local", 443, 41234, gate="segredo-sorteado", auth="127.0.0.1:9091",
-            bind="0.0.0.0", upstream="at-webapp",
-            notify=("ntfy.at.local", "at-notifier:2586", "dXNlcjpzZW5oYQ=="),
-        )
-        servers = self.adapted(text)
-        # Um servidor só: os dois blocos dividem a porta e o `bind`, e é o
-        # casador de host que diz qual nome responde o quê.
-        self.assertEqual(len(servers), 1)
-        server = next(iter(servers.values()))
-        self.assertEqual(server["listen"], ["0.0.0.0:443"])
-        hosts = {tuple(route["match"][0]["host"]): route for route in server["routes"]}
-        self.assertEqual(sorted(hosts), [("at.local",), ("ntfy.at.local",)])
-        notify = json.dumps(hosts[("ntfy.at.local",)])
-        self.assertIn(caddy.AUTH_URI, notify)
-        self.assertIn("127.0.0.1:9091", notify)
-        self.assertIn("at-notifier:2586", notify)
-        self.assertIn("dXNlcjpzZW5oYQ==", notify)
-        # O segredo do portão é do WebApp: o notificador nunca o vê, e não
-        # alcança o WebApp de jeito nenhum.
-        self.assertNotIn("segredo-sorteado", notify)
-        self.assertNotIn("at-webapp", notify)
-        # E o site continua com a pergunta e com o segredo — os dois nomes não
-        # se confundem.
-        asked = json.dumps(hosts[("at.local",)])
-        self.assertIn(caddy.AUTH_URI, asked)
-        self.assertIn("127.0.0.1:9091", asked)
-        self.assertIn("segredo-sorteado", asked)
-        self.assertIn("at-webapp:41234", asked)
-
     def test_the_file_site_is_one_the_caddy_takes_and_serves_one_file(self):
-        # **O terceiro nome não tem serviço atrás: tem um ARQUIVO** — a CA do
+        # **O segundo nome não tem serviço atrás: tem um ARQUIVO** — a CA do
         # AT —, e o que se lê aqui é o que o Caddy ENTENDEU: um site com
         # certificado próprio, o pedido reescrito sobre o caminho do arquivo e o
-        # `file_server` que o devolve. Sem pergunta e sem o segredo, ao
-        # contrário do notificador: quem precisa da CA ainda não confia no
-        # certificado que responderia à pergunta.
+        # `file_server` que o devolve. Sem pergunta e sem o segredo: quem precisa
+        # da CA ainda não confia no certificado que responderia à pergunta.
         text = caddy.caddyfile(
             "at.local", 443, 41234, gate="segredo-sorteado", auth="127.0.0.1:9091",
             bind="0.0.0.0", upstream="at-webapp",
-            notify=("ntfy.at.local", "at-notifier:2586", "dXNlcjpzZW5oYQ=="),
             files=(("cert.at.local", "/data/pki/authorities/local/root.crt"),),
         )
         everything = self.everything(text)
@@ -546,14 +508,13 @@ class TheAdaptedGate(FolderCase):
         self.assertEqual(len(servers), 1)
         server = next(iter(servers.values()))
         hosts = {tuple(route["match"][0]["host"]): route for route in server["routes"]}
-        self.assertEqual(sorted(hosts),
-                         [("at.local",), ("cert.at.local",), ("ntfy.at.local",)])
-        # **E o certificado é emitido POR NOME, os três**: a política do `tls
+        self.assertEqual(sorted(hosts), [("at.local",), ("cert.at.local",)])
+        # **E o certificado é emitido POR NOME, os dois**: a política do `tls
         # internal` nomeia cada um deles, que é o que faz o handshake do
         # `cert.at.local` responder com um certificado dele.
         policies = everything["apps"]["tls"]["automation"]["policies"]
         self.assertEqual(sorted(policies[0]["subjects"]),
-                         ["at.local", "cert.at.local", "ntfy.at.local"])
+                         ["at.local", "cert.at.local"])
         served = json.dumps(hosts[("cert.at.local",)])
         self.assertIn("/data/pki/authorities/local/root.crt", served)
         self.assertIn("file_server", served)
@@ -569,12 +530,12 @@ class TheAdaptedGate(FolderCase):
 class TheExposedRun(FolderCase):
     """`run` with the flag: the Caddy's port in front, the WebApp behind.
 
-    TASK-177: the flag now also brings up Authelia and ntfy, so every probe
-    here patches their subprocess edges (`start`, `started`, and ntfy's own
-    `wait_auth_db`/`provision`) the same way it already patches the Caddy's —
-    their real `ensure()` still runs, against the real vendored payload,
-    which is what keeps the unpacking honest without paying a live process
-    per test. `TheBundle`, further down, is where the real processes run.
+    TASK-177: the flag now also brings up Authelia, so every probe
+    here patches its subprocess edges (`start`, `started`) the same way it
+    already patches the Caddy's — its real `ensure()` still runs, against the
+    real vendored payload, which is what keeps the unpacking honest without
+    paying a live process per test. `TheBundle`, further down, is where the
+    real processes run.
     """
 
     def setUp(self):
@@ -584,10 +545,6 @@ class TheExposedRun(FolderCase):
     def _patch_bundle(self, stack: ExitStack) -> None:
         stack.enter_context(mock.patch.object(authelia, "start", mock.Mock()))
         stack.enter_context(mock.patch.object(authelia, "started", return_value=True))
-        stack.enter_context(mock.patch.object(ntfy, "start", mock.Mock()))
-        stack.enter_context(mock.patch.object(ntfy, "started", return_value=True))
-        stack.enter_context(mock.patch.object(ntfy, "wait_auth_db", return_value=True))
-        stack.enter_context(mock.patch.object(ntfy, "provision", return_value="tk_x"))
 
     def probe(self, **kw) -> tuple[str, mock.Mock, mock.Mock]:
         output = io.StringIO()
@@ -668,17 +625,12 @@ class TheExposedRun(FolderCase):
         self.probe(include_caddy=True, public_port=443)
         caddyfile = caddy.caddyfile_path().read_text(encoding="utf-8")
         self.assertIn("https://at.localhost:12399 {", caddyfile)
-        self.assertIn("https://at.localhost:12400 {", caddyfile)
 
         authelia_config = (
             authelia.directory() / authelia.CONFIG
         ).read_text(encoding="utf-8")
         self.assertIn("https://at.localhost/authelia", authelia_config)
         self.assertNotIn(":12399", authelia_config)
-
-        ntfy_config = (ntfy.directory() / ntfy.CONFIG).read_text(encoding="utf-8")
-        self.assertIn("https://at.localhost:444", ntfy_config)
-        self.assertNotIn(":12400", ntfy_config)
 
 
 class TheAddress(FolderCase):
@@ -885,14 +837,12 @@ class TheRealTls(FolderCase):
 class TheBundle(FolderCase):
     """TASK-177: the real gate, in front of the real WebApp, with no container.
 
-    The three binaries this repository vendors — Caddy, Authelia, ntfy — are
+    The two binaries this repository vendors — Caddy and Authelia — are
     unpacked and started for real, exactly as `webapp.run(include_caddy=True)`
     starts them: this class is that sequence, inlined instead of run through
     `serve_forever`, so the test controls when it ends. What is asserted is
-    what a person and a phone would see: a request with no credential is sent
-    to the portal, one with the right `Authorization: Basic` reaches the
-    WebApp, and a message posted through the notifier's own site arrives in
-    ntfy with the M2M credential swapped in — never the person's own.
+    what a person sees: a request with no credential is sent to the portal,
+    and one with the right `Authorization: Basic` reaches the WebApp.
     """
 
     PASSWORD = "uma-frase-bem-longa"
@@ -903,7 +853,6 @@ class TheBundle(FolderCase):
         actors.create_admin("Rafael", self.PASSWORD)
 
         self.port = free_port()
-        self.notify_port = self.port + 1
         self.server = webapp.make_server(0)
         self.thread = threading.Thread(
             target=self.server.serve_forever,
@@ -913,42 +862,23 @@ class TheBundle(FolderCase):
 
         self.assertTrue(caddy.ensure(), "the Caddy payload of this platform is not here")
         self.assertTrue(authelia.ensure(), "the Authelia payload of this platform is not here")
-        self.assertTrue(ntfy.ensure(), "the ntfy payload of this platform is not here")
 
         caddy.draw_gate()
-        self.notify_secret = caddy.draw_notify_secret()
 
         self.authelia_port = authelia.free_port()
         authelia_config = authelia.write(self.HOST_NAME, self.authelia_port, self.port)
         self.authelia_process = authelia.start(authelia_config, log=False)
         self.wait_for(self.authelia_port, self.authelia_process)
 
-        self.ntfy_internal_port = ntfy.free_port()
-        ntfy_config = ntfy.write(
-            self.ntfy_internal_port, caddy.address(self.HOST_NAME, self.notify_port)
-        )
-        self.ntfy_process = ntfy.start(ntfy_config, log=False)
-        self.wait_for(self.ntfy_internal_port, self.ntfy_process)
-        self.assertTrue(ntfy.wait_auth_db(ntfy_config))
-        self.assertIsNotNone(ntfy.provision(ntfy_config, self.notify_secret))
-
-        import base64
-        notify_b64 = base64.b64encode(
-            f"{ntfy.ACCOUNT}:{self.notify_secret}".encode("ascii")
-        ).decode("ascii")
         config = caddy.write_caddyfile(
             self.HOST_NAME, self.port, self.server.server_address[1],
             auth=f"{caddy.LOOPBACK}:{self.authelia_port}",
-            notify=(self.HOST_NAME, f"{caddy.LOOPBACK}:{self.ntfy_internal_port}",
-                    notify_b64),
-            notify_port=self.notify_port,
         )
         self.process = caddy.start(config, log=False)
         self.wait_for_tls()
 
     def tearDown(self):
         caddy.stop(self.process)
-        ntfy.stop(self.ntfy_process)
         authelia.stop(self.authelia_process)
         self.server.shutdown()
         self.server.server_close()
@@ -983,8 +913,7 @@ class TheBundle(FolderCase):
               method: str = "GET", headers: dict[str, str] | None = None,
               body: bytes = b"") -> bytes:
         """One TLS request to the bundle's edge, by name — `TheRealTls.asked`'s
-        own shape, with a method, extra headers and a body for the notifier's
-        own site, which only ever takes a `POST`."""
+        own shape, with a method and extra headers."""
         context = ssl.create_default_context()
         context.check_hostname = False
         context.verify_mode = ssl.CERT_NONE
@@ -1030,35 +959,6 @@ class TheBundle(FolderCase):
         answer = self.asked(self.HOST_NAME, self.port, "/",
                             headers={"Authorization": f"Basic {credential}"})
         self.assertFalse(answer.startswith(b"HTTP/1.1 200"), answer[:200])
-
-    def test_the_notifier_site_swaps_the_credential_and_delivers(self):
-        # The person's OWN credential gets this request past the ask — the
-        # same Basic the site itself takes — and past it the edge swaps it
-        # for the M2M value before ntfy ever sees the request (§7f).
-        credential = self.basic("Rafael", self.PASSWORD)
-        answer = self.asked(self.HOST_NAME, self.notify_port, "/at",
-                            method="POST",
-                            headers={"Authorization": f"Basic {credential}"},
-                            body=b"ola do bundle")
-        self.assertTrue(answer.startswith(b"HTTP/1.1 200"), answer[:200])
-
-        # Read it back DIRECTLY off ntfy's own loopback port, with the
-        # account `provision` made — never through the edge, and never with
-        # the person's credential, which proves the swap and not just the
-        # ask.
-        request = (
-            f"GET /at/json?poll=1 HTTP/1.1\r\n"
-            f"Host: 127.0.0.1\r\n"
-            f"Authorization: Basic {self.basic(ntfy.ACCOUNT, self.notify_secret)}\r\n"
-            f"Connection: close\r\n\r\n"
-        ).encode()
-        with socket.create_connection(("127.0.0.1", self.ntfy_internal_port),
-                                      timeout=10) as raw:
-            raw.sendall(request)
-            received = b""
-            while chunk := raw.recv(65536):
-                received += chunk
-        self.assertIn(b"ola do bundle", received)
 
 
 if __name__ == "__main__":

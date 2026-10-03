@@ -22,7 +22,7 @@
 // would be a write the fila never saw, and a write it swallowed silently
 // would be an edit that looked saved and was not.
 
-const CACHE = "at-shell-v1";
+const CACHE = "at-shell-v2";
 
 function cacheable(pathname) {
   if (pathname.startsWith("/src/")) return true;
@@ -82,6 +82,49 @@ self.addEventListener("fetch", event => {
         const cached = await caches.match(key);
         if (cached) return cached;
         throw new Error("offline, sem cache ainda para " + url.pathname);
+      }),
+  );
+});
+
+// O PUSH — a notificação do PRÓPRIO PWA, e o que substituiu o ntfy. O AT manda
+// um payload `{title, body}` cifrado (Web Push, `at/core/push.py`); o push
+// service entrega ao navegador, e é AQUI que a notificação do sistema nasce.
+// Sem este listener o navegador não mostra nada, e a inscrição seria muda.
+self.addEventListener("push", event => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch (error) {
+    payload = {}; // um payload ilegível ainda vale um aviso, e nunca um estouro
+  }
+  const title = typeof payload.title === "string" && payload.title ? payload.title : "AT";
+  const body = typeof payload.body === "string" ? payload.body : "";
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      tag: "at-notification",
+      renotify: true,
+      data: { url: "/" },
+    }),
+  );
+});
+
+// CLICAR na notificação traz o app para a frente — a janela que já existe é
+// focada, e só quando não há nenhuma é que uma nova se abre.
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || "/";
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then(clients => {
+        for (const client of clients) {
+          if (client.url.indexOf(self.location.origin) === 0 && "focus" in client) {
+            return client.focus();
+          }
+        }
+        if (self.clients.openWindow) return self.clients.openWindow(url);
+        return undefined;
       }),
   );
 });

@@ -34,6 +34,9 @@ import { DARK_STATES, chooseDark, chooseTheme, darkState, themeState } from "../
 import { motionOn, setMotion } from "../lib/motion";
 import { byName } from "../lib/order";
 import { setTrail } from "../lib/views";
+// NOTIFICAÇÕES (Web Push): o botão pede a permissão do navegador e inscreve o
+// PWA — sem ntfy, sem app à parte. `state()` diz o que a tela desenha.
+import { enable as enablePush, state as pushNow } from "../lib/push";
 import Foldable from "../components/Foldable.vue";
 import PeopleView from "../components/PeopleView.vue";
 import RiskRuler from "../components/RiskRuler.vue";
@@ -82,6 +85,15 @@ const TABS = ["general", "appearance", "people", "risk"] as const;
 const tab = ref<(typeof TABS)[number]>("general");
 const motion = ref(motionOn());
 const side = ref(darkState());
+
+// O estado do push, o que a tela mostra: o navegador pergunta uma vez, e depois
+// disso é a permissão que responde (`push.state`).
+const pushState = ref(pushNow());
+
+async function askPush(): Promise<void> {
+  const ok = await enablePush();
+  pushState.value = ok ? "on" : pushNow();
+}
 
 // The theme's description is PER SIDE: the same theme describes itself
 // differently in light and dark, and what is read is the side being worn —
@@ -155,6 +167,21 @@ watchEffect(() => setTrail(word("settings")));
               <span>{{ word(`assist_${mode}`) }}</span>
             </label>
           </div>
+        </div>
+      </section>
+
+      <!-- NOTIFICAÇÕES (Web Push): o botão PEDE a permissão do navegador e
+           inscreve o PWA — sem ntfy, sem app à parte. Um navegador que não sabe
+           fazer push não mostra o bloco. -->
+      <section v-if="tab === 'general' && pushState !== 'unsupported'" class="block">
+        <h2>{{ word("notifications") }}</h2>
+        <div class="block-body">
+          <p class="pop-note">{{ word("notifications_hint") }}</p>
+          <button type="button" class="btn"
+                  :disabled="pushState === 'on' || pushState === 'denied'"
+                  @click="askPush">
+            {{ pushState === "on" ? word("notifications_on") : word("notifications_off") }}
+          </button>
         </div>
       </section>
 

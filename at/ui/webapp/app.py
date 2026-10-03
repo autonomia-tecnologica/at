@@ -152,6 +152,7 @@ from at.core import (
     paths,
     permissions,
     projects,
+    push,
     risk,
     settings,
     tables,
@@ -159,7 +160,7 @@ from at.core import (
 )
 from at.data import schema, store
 from at.prose import listing as prose
-from at.services import authelia, caddy, ntfy
+from at.services import authelia, caddy
 from at.ui import ask as door
 from at.ui.webapp import keys, session
 
@@ -499,6 +500,9 @@ PAGE_WORDS = (
     # The CONFIRM tier's own two buttons (TASK-183): what a cautious assist's
     # question offers instead of the sentence it used to ask to be retyped.
     "assist_confirm", "assist_deny",
+    # NOTIFICAÇÕES (Web Push): o bloco das Configurações que pede a permissão
+    # do navegador e inscreve o PWA — sem ntfy.
+    "notifications", "notifications_hint", "notifications_on", "notifications_off",
     # The screens that move a role and a machine's credential — the two system
     # tables whose records are more than a form (§4, item 11).
     "people", "create", "new_role", "new_machine", "mint", "revoke", "token_once",
@@ -1469,6 +1473,11 @@ class Handler(BaseHTTPRequestHandler):
         if segments == ["api", "offline", "sync"]:
             self._post_offline_sync()
             return
+        if segments == ["api", "push", "subscribe"]:
+            if not self._may("notifier:read"):
+                return
+            self._post_push_subscribe()
+            return
         self._not_found()
 
     # HEAD is GET without the body, which `_send` already handles. The other
@@ -1578,13 +1587,22 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         if rest == ["notifications"]:
-            # TASK-176, fatia 3/3: o WebApp consome o tópico do notificador por
-            # dentro e entrega à página o que ele está segurando. A demanda
+            # TASK-176, fatia 3/3: o WebApp entrega à página o que o AT já
+            # avisou (o `INBOX` do Web Push, desde que o ntfy saiu). A demanda
             # está AQUI, na rota, como em todas as outras — e é o `read` do
-            # objeto `notifier`, que é o teto de quem consome o tópico.
+            # objeto `notifier`, que é o teto de quem lê os avisos.
             if not self._may("notifier:read"):
                 return
             self._get_notifications()
+            return
+
+        if rest == ["push", "key"]:
+            # A chave PÚBLICA do VAPID, que a página passa ao
+            # `pushManager.subscribe`. Pública por construção: o par privado
+            # nunca sai da pasta (`core.push`).
+            if not self._may("notifier:read"):
+                return
+            self._json({"key": push.public_key()})
             return
 
         if len(rest) == 2 and rest[0] == "table":
@@ -1644,33 +1662,37 @@ class Handler(BaseHTTPRequestHandler):
         }
 
     def _get_notifications(self) -> None:
-        """O tópico do notificador, lido por dentro (TASK-176, fatia 3/3).
+        """O que o AT já avisou, lido da pasta (TASK-176, fatia 3/3).
 
-        **A credencial vem do ambiente e nunca da página.** O que este processo
-        segura desde o `boot` é a chave derivada do escopo do notificador
-        (`keys.notifier_key`), e é ela que abre o envelope do arquivo — o MESMO
-        arquivo que `at_deploy.notifier` grava, no mesmo escopo (§4, item 50).
-        A conta é `read-write` (`notifier.token`): o mesmo valor que publica
-        também lê, e é a única credencial que o produto inteiro usa para falar
-        com o notificador.
+        **Não há mais um tópico remoto.** O ntfy guardava a mensagem do outro
+        lado; agora quem guarda é o próprio AT, no `INBOX` do Web Push
+        (`core.notifier.read`), e o que a página recebe são as últimas
+        notificações que SAÍRAM — reduzidas aos campos que ela desenha, e
+        nunca nada de credencial, que não existe mais aqui.
 
-        **E a página não encosta em nada disso.** O que sai daqui são as
-        mensagens, reduzidas aos campos que a página desenha, e nunca o valor
-        que abriu o envelope: a credencial do ntfy não viaja para o navegador,
-        nem como senha, nem como token, nem em lugar nenhum (§4).
-
-        **Um notificador que não responde é uma resposta e não um estouro** —
-        é a mesma regra de melhor esforço que a entrega já segue (§7f) —, e o
-        502 diz que o que falhou foi a porta atrás desta, com o motivo que o
-        AT tem para dizer (`no_token`, `no_address`) ou o que o próprio
-        notificador/transporte respondeu.
+        **Uma leitura não pode falhar por rede.** O ntfy respondia por uma
+        porta, e um notificador fora do ar era um 502; o que há agora é um
+        arquivo da pasta, e uma pasta sem avisos é uma lista vazia, não um
+        erro.
         """
-        messages, refusal = notifier.read(keys.notifier_key())
-        if refusal:
-            self._json({"error": i18n.tr("webapp.notify_down", detail=refusal)},
-                       502)
-            return
+        messages, _ = notifier.read()
         self._json({"messages": messages})
+
+    def _post_push_subscribe(self) -> None:
+        """Guarda a inscrição do navegador — o `PushSubscription.toJSON()`.
+
+        O corpo traz `endpoint` e as duas chaves (`p256dh`, `auth`); é contra
+        elas que o AT cifra cada aviso (`core.push`). O `Host` da requisição
+        entra no contato do VAPID — é o único momento em que o AT sabe o nome
+        que o push service vê.
+        """
+        payload = self._body()
+        if not push.subscribe(payload):
+            self._json({"error": i18n.tr("webapp.push_subscribe")}, 400)
+            return
+        host = (self.headers.get("Host") or "").split(":")[0]
+        push.contact(host or None)
+        self._json({"ok": True})
 
     def _get_file(self, path: str) -> None:
         answer = prose.read(path)
@@ -2313,9 +2335,9 @@ def run(port: int = DEFAULT_PORT, public_port: int | None = None,
     to this one, on a LOCAL port picked only to stay out of that front door's
     way. Left as `None`, the two are the same port, which is every run without
     one of those in front, this very repository's own `at-cli webapp --port
-    12399` included. Said explicitly, it is what Authelia's portal and ntfy's
-    own address carry to the browser and the phone — the port they actually
-    reach, and never the bind the front door already swallowed.
+    12399` included. Said explicitly, it is what Authelia's portal tells the
+    browser — the port it actually reaches, and never the bind the front door
+    already swallowed.
 
     **And the clock starts with it** (§4, item 24): a daemon thread that rounds
     the jobs which have come round, born here and gone with the process. It is
@@ -2397,7 +2419,6 @@ def run(port: int = DEFAULT_PORT, public_port: int | None = None,
 
     process = None
     authelia_process = None
-    ntfy_process = None
     if include_caddy:
         if not caddy.unpacked():
             print(tr("caddy.unpacking", where=caddy.directory()))
@@ -2406,28 +2427,21 @@ def run(port: int = DEFAULT_PORT, public_port: int | None = None,
             print(tr("caddy.no_payload", platform=caddy.label()))
             return 1
 
-        # TASK-177: the bundle's two other vendored binaries, unpacked the
-        # same way and with the same refusal — said, not guessed, before any
-        # of the three is asked to run.
+        # TASK-177: the bundle's other vendored binary, unpacked the
+        # same way and with the same refusal — said, not guessed, before
+        # either of the two is asked to run.
         if not authelia.unpacked():
             print(tr("authelia.unpacking", where=authelia.directory()))
         if authelia.ensure() is None:
             server.server_close()
             print(tr("authelia.no_payload", platform=authelia.label()))
             return 1
-        if not ntfy.unpacked():
-            print(tr("ntfy.unpacking", where=ntfy.directory()))
-        if ntfy.ensure() is None:
-            server.server_close()
-            print(tr("ntfy.no_payload", platform=ntfy.label()))
-            return 1
 
-        # The two M2M secrets the Caddyfile below carries — drawn once, kept
-        # in the clear beside the Caddy's own folder (`caddy.draw_gate`'s own
-        # docstring says why), and read again on every later start instead of
-        # redrawn.
+        # O segredo do portão que o Caddyfile abaixo carrega — sorteado uma
+        # vez, mantido em claro ao lado da pasta do Caddy (`caddy.draw_gate`'s
+        # own docstring diz por quê), e lido de novo em toda subida seguinte
+        # em vez de sorteado outra vez.
         caddy.draw_gate()
-        notify_secret = caddy.draw_notify_secret()
 
         # Authelia first: the Caddyfile below names its loopback address, so
         # it has to exist before that file is written.
@@ -2449,60 +2463,19 @@ def run(port: int = DEFAULT_PORT, public_port: int | None = None,
         # portal which is, in fact, up.
         os.environ[gate.GATE_ENV] = f"{caddy.LOOPBACK}:{authelia_port}"
 
-        # Then ntfy, published by the Caddy on `notify_port` — the site's own
-        # port plus one, the bundle's answer to the container path's DNS
-        # subdomain (`caddy.caddyfile`'s own docstring on `notify_port`).
-        # Provisioning needs the server already running (measured against
-        # the real binary, `ntfy.py`'s own docstring), so the account is made
-        # here and not in the Caddyfile that is about to name it.
-        #
-        # The address it is PROVISIONED with is the PUBLIC one — `public + 1`,
-        # never `notify_port` itself: that is the Caddy's own bind, and the
-        # phone that reads this address back off the account is on the other
-        # side of whatever sits in front of it, same as the browser is.
-        notify_port = port + 1
-        ntfy_internal_port = ntfy.free_port()
-        ntfy_config = ntfy.write(
-            ntfy_internal_port, caddy.address(where, public + 1)
-        )
-        ntfy_process = ntfy.start(ntfy_config)
-        if not ntfy.started(ntfy_process):
-            authelia.stop(authelia_process)
-            server.server_close()
-            print(tr("ntfy.start_failed"))
-            return 1
-        if not ntfy.wait_auth_db(ntfy_config):
-            ntfy.stop(ntfy_process)
-            authelia.stop(authelia_process)
-            server.server_close()
-            print(tr("ntfy.start_failed"))
-            return 1
-        if ntfy.provision(ntfy_config, notify_secret) is None:
-            ntfy.stop(ntfy_process)
-            authelia.stop(authelia_process)
-            server.server_close()
-            print(tr("ntfy.provision_failed"))
-            return 1
-
-        # The Caddyfile's own line is `Authorization: Basic <user:password>`,
-        # base64 — never the raw password `ntfy.provision` already took above
-        # (`notifier.encode_m2m`'s own shape, mirrored: the drawn value is
-        # the password, and this is the ONE place it is wrapped for Caddy).
-        notify_b64 = base64.b64encode(
-            f"{ntfy.ACCOUNT}:{notify_secret}".encode("ascii")
-        ).decode("ascii")
+        # O ntfy saiu: a notificação é o Web Push do próprio PWA
+        # (`core.push`), e o Caddy não publica um segundo site. O Caddyfile
+        # que sobe tem UM site — o AT —, e a porta que a pessoa alcança é a
+        # dele só.
         config = caddy.write_caddyfile(
             where, port, server.server_address[1],
             auth=f"{caddy.LOOPBACK}:{authelia_port}",
-            notify=(where, f"{caddy.LOOPBACK}:{ntfy_internal_port}", notify_b64),
-            notify_port=notify_port,
         )
         process = caddy.start(config)
         if not caddy.started(process):
             # The Caddy holds the port the person reaches, so its failure is the
             # command's: an AT that answered with a URL here would be announcing
             # an address nothing is on.
-            ntfy.stop(ntfy_process)
             authelia.stop(authelia_process)
             server.server_close()
             print(tr("webapp.port_taken", port=port))
@@ -2527,7 +2500,6 @@ def run(port: int = DEFAULT_PORT, public_port: int | None = None,
         pass
     finally:
         caddy.stop(process)
-        ntfy.stop(ntfy_process)
         authelia.stop(authelia_process)
         server.server_close()
     return 0

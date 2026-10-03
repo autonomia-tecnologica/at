@@ -14,6 +14,8 @@ import "./styles/app.css";
 // file runs, which is the earliest a queued edit from a past session can
 // leave.
 import "./lib/offline";
+// A INSCRIÇÃO NO PUSH (Web Push) — a notificação do PWA, que substituiu o ntfy.
+import { register as registerPush } from "./lib/push";
 import { registerView, registerType, TASKS_KEY, FILES_KEY, COFRE_KEY, TABLES_KEY, BOARD_KEY } from "./lib/views";
 import TasksView from "./views/TasksView.vue";
 import FilesView from "./views/FilesView.vue";
@@ -84,4 +86,9 @@ createApp(App).mount("#app");
 // it always did.
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/sw.js");
+  // A inscrição no push, REAFIRMADA aqui quando a permissão já foi dada numa
+  // visita anterior. Uma permissão que ainda não existe NÃO é pedida no load:
+  // a pergunta do navegador exige um gesto, e quem o tem é o botão das
+  // Configurações (`SettingsView.vue`).
+  registerPush();
 }

@@ -14,10 +14,14 @@ requires-python = ">=3.14.7"
 # `at/vendor/licenses/manifest.json`.
 license = "MIT"
 license-files = ["LICENSE.md"]
-# The product's one runtime dependency: the binding of `libsodium`, which the
-# hashed field's derivation needs (§4, item 8). The version is named here and in
-# `requirements.txt`, with the hashing; a test fails when the two drift.
-dependencies = ["PyNaCl==1.6.2"]
+# The product's runtime dependencies, and each is here for a reason libsodium
+# cannot answer. `PyNaCl` is the binding of `libsodium`, which the hashed
+# field's derivation needs (§4, item 8). `cryptography` carries NIST P-256,
+# which the browser's own push (Web Push: VAPID's ES256 and the `aes128gcm`
+# content encoding) is specified on and libsodium deliberately lacks. Each
+# version is named here and in `requirements.txt`, with the hashing; a test
+# fails when the two drift.
+dependencies = ["PyNaCl==1.6.2", "cryptography==50.0.2"]
 
 # Two artifacts and two entry points (§3, item 27): `at` is the folder and the
 # app, and `at-deploy` is §7 whole — the environment, the switch and the only

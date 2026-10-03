@@ -157,9 +157,13 @@ class TheComparison(unittest.TestCase):
 
 class ThePin(unittest.TestCase):
     def test_the_pin_and_the_metadata_name_the_same_version(self):
-        self.assertIn("PyNaCl", pinned())
-        self.assertIn("PyNaCl", named())
-        self.assertEqual(pinned()["PyNaCl"], named()["PyNaCl"])
+        # The two runtime dependencies: the libsodium binding the derivation
+        # needs, and `cryptography`, whose P-256 the browser push needs.
+        for name in ("PyNaCl", "cryptography"):
+            with self.subTest(package=name):
+                self.assertIn(name, pinned())
+                self.assertIn(name, named())
+                self.assertEqual(pinned()[name], named()[name])
 
     def test_every_package_in_the_pin_carries_a_hash(self):
         # `--require-hashes` refuses a file without one, and this file is what

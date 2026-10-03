@@ -342,17 +342,15 @@ def gate_file() -> Path:
 def _drawn_in_the_clear(where: Path) -> str:
     """O valor que um arquivo já guarda, ou um sorteado agora e mantido dali
     em diante — em CLARO, e de propósito (`draw_gate`'s own docstring diz
-    por quê). `draw_gate` e `draw_notify_secret` são as duas faces disto.
+    por quê). `draw_gate` é a face disto.
 
     **O nome do arquivo é o mesmo que o caminho container usa**
-    (`at_deploy.environment.gate_file`/`notify_gate_file`, na mesma
-    `caddy.directory()`), porque os dois são a mesma pasta `App/caddy/` do
-    mesmo Caddy — só que o caminho container SELA o que escreve ali (item
-    50), e o que está selado não é o valor em claro que este caminho lê. Uma
-    pasta que trocou de caminho carrega o envelope do outro, e lê-lo como se
-    fosse a senha é o bug: o `ntfy user add` recebe o texto cifrado inteiro, e
-    recusa. Um envelope encontrado aqui não é um valor já sorteado — é o OUTRO
-    caminho, e o sorteio é o mesmo de um arquivo ausente.
+    (`at_deploy.environment.gate_file`, na mesma `caddy.directory()`), porque
+    os dois são a mesma pasta `App/caddy/` do mesmo Caddy — só que o caminho
+    container SELA o que escreve ali (item 50), e o que está selado não é o
+    valor em claro que este caminho lê. Um envelope encontrado aqui não é um
+    valor já sorteado — é o OUTRO caminho, e o sorteio é o mesmo de um arquivo
+    ausente.
     """
     try:
         held = where.read_text(encoding="utf-8").strip()
@@ -378,29 +376,6 @@ def draw_gate() -> str:
     derrubaria toda sessão que o WebApp já aceitou pelo mesmo Caddy.
     """
     return _drawn_in_the_clear(gate_file())
-
-
-def notify_file() -> Path:
-    """`App/caddy/notify` — a credencial M2M do notificador, do bundle.
-
-    O mesmo papel que `at_deploy.environment.notify_gate_file()` dá ao
-    container path, dentro da mesma pasta — `caddy.directory()` — pela mesma
-    razão que `gate_file` já é dela: o Caddyfile é o único escritor e o único
-    leitor fora deste módulo.
-    """
-    return directory() / "notify"
-
-
-def draw_notify_secret() -> str:
-    """A credencial M2M do notificador do bundle, sorteada uma vez, em CLARO.
-
-    O par do `draw_gate` acima, para o SEGUNDO segredo que o Caddyfile do
-    bundle carrega: o valor que `ntfy.provision` usa como senha da conta, e
-    que o Caddy troca no lugar do `Authorization` que o celular mandou
-    (`caddyfile`'s `notify=`). Os dois lados têm de concordar no mesmo valor,
-    e é por isso que ele é sorteado ANTES de o ntfy sequer ter uma conta.
-    """
-    return _drawn_in_the_clear(notify_file())
 
 
 def gate_handed() -> Path | None:
@@ -469,8 +444,6 @@ def address(host: str, port: int) -> str:
 def caddyfile(host: str, port: int, backend: int, gate: str | None = None,
               storage: str | Path | None = None, auth: str | None = None,
               bind: str | None = None, upstream: str | None = None,
-              notify: tuple[str, str, str] | None = None,
-              notify_port: int | None = None,
               files: tuple[tuple[str, str], ...] = ()) -> str:
     """The Caddyfile AT generates: TLS in front, the WebApp behind.
 
@@ -482,37 +455,10 @@ def caddyfile(host: str, port: int, backend: int, gate: str | None = None,
     be a local port that rewrites the running configuration with no credential
     at all.
 
-    **`notify` is §7f's notifier, fronted by the SAME `forward_auth` and a
-    different upstream** — `(host, upstream, credential)`, and each becomes a
-    site of its own, with its own certificate (`tls internal` issues per name).
-    **`notify_port` is what tells the notifier's block apart when the `host` is
-    the site's own** — since TASK-187 BOTH paths do this: neither the bundle
-    (§6) nor the container environment (§7a) has a DNS of its own to give the
-    notifier a second name, so `host` names the SAME name as the site and this
-    port is what disambiguates instead — `None` keeps `port` unchanged, which
-    is the shape a caller with a genuinely separate name would pass.
-    It took a second measurement to get here: the gate authenticates by
-    redirect and session cookie, and a headless phone app used to take the 302
-    and never connect (`subscribers=0` behind Authelia, `101` without it) — but
-    Authelia's forward-auth reads an `Authorization: Basic` header on the
-    request itself and skips the redirect when one is there, which is exactly
-    the shape a client that always sends its credential has. So this site asks
-    too, with no portal to route around (nothing here is a browser), and past
-    the ask it reverse-proxies straight to `upstream` — never to the WebApp —
-    swapping whatever `Authorization` the client sent for `credential`, the
-    M2M value AT drew for this ONE account. The notifier never sees the
-    person's own credential.
-
-    **A site of its own and not a host matcher inside the one above**, and the
-    reason is the certificate and the `handle`s: two names in one block share
-    the ordering that keeps the portal out of the ask, and a name added there
-    would be one more thing between the person and the door. Two blocks cannot
-    interfere, and the site's block stays exactly what it was.
-
     **`files` is what the edge serves out of a FILE — and it is a file and not a
     folder.** Each pair is a `(name, path)` and each becomes a site of its own,
-    with its own certificate and nothing of the gate, outside the ask for the
-    same reason `notify` is not: whoever needs such a file is a device that
+    with its own certificate and nothing of the gate, outside the ask: whoever
+    needs such a file is a device that
     does not trust AT yet, and a `forward_auth` in front of it is a question
     asked by the certificate that would have to answer. **Nothing in the
     product passes it today** — the CA file it served (`cert.at.local`) left
@@ -627,27 +573,6 @@ def caddyfile(host: str, port: int, backend: int, gate: str | None = None,
         lines.append("\t}")
     lines.append("}")
 
-    # The notifier's own site: the SAME ask, a DIFFERENT upstream, and the M2M
-    # credential that replaces whatever `Authorization` the client sent. No
-    # portal here — nothing on this road is a browser to route around the ask
-    # for — and no gate header either: the notifier does not read it, only
-    # Basic.
-    if notify is not None and auth:
-        notify_host, notify_upstream, notify_credential = notify
-        lines += [
-            "",
-            f"{address(notify_host, notify_port or port)} {{",
-            *([f"\tbind {bind}"] if bind else []),
-            "\ttls internal",
-            f"\tforward_auth {auth} {{",
-            f"\t\turi {AUTH_URI}",
-            "\t}",
-            f"\treverse_proxy {notify_upstream} {{",
-            f'\t\theader_up Authorization "Basic {notify_credential}"',
-            "\t}",
-            "}",
-        ]
-
     # E os que ela serve de um ARQUIVO: a mesma forma, e o `rewrite` que faz de
     # qualquer pedido o ÚNICO arquivo — a pasta em volta nunca é servida, e é
     # ali que a chave privada da CA mora ao lado do certificado.
@@ -666,16 +591,13 @@ def caddyfile(host: str, port: int, backend: int, gate: str | None = None,
 
 
 def write_caddyfile(host: str, port: int, backend: int,
-                    auth: str | None = None,
-                    notify: tuple[str, str, str] | None = None,
-                    notify_port: int | None = None) -> Path:
+                    auth: str | None = None) -> Path:
     """Write the Caddyfile the Caddy is started with, and answer where it is."""
     where = caddyfile_path()
     where.parent.mkdir(parents=True, exist_ok=True)
     files.atomic_write_text(
         where,
-        caddyfile(host, port, backend, gate_secret(), auth=auth,
-                  notify=notify, notify_port=notify_port),
+        caddyfile(host, port, backend, gate_secret(), auth=auth),
     )
     return where
 

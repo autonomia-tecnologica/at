@@ -2777,42 +2777,30 @@ class TheReadOnlySwitch(ServerCase):
 
 
 class TheNotificationRoute(ServerCase):
-    """A rota que consome o tópico do notificador por dentro (TASK-176, 3/3).
+    """A rota que lê o que o AT já avisou (TASK-176, 3/3; Web Push desde que o
+    ntfy saiu).
 
-    **A credencial com que ela lê é a mesma que publica** — a conta é
-    `read-write` desde que a borda passou a autenticar quem chega de fora
-    (§7f) —, aberta pela chave derivada do escopo do notificador que o
-    processo segurou no `boot`. O que os testes medem é que o cabeçalho leva
-    o valor do arquivo e que a PÁGINA não recebe o valor de volta.
-
-    **O seam é o próprio `notifier.read`** e não o `urlopen`: `notifier.urllib
-    .request` É o `urllib.request` do processo inteiro, e trocar o `urlopen` ali
-    trocaria também o que o cliente DESTE teste usa para falar com o servidor —
-    o que o teste mede é a ROTA, e o que ela pergunta ao motor é o que ele
-    responde aqui. O que o `urlopen` leva (a URL do `poll` e o `Bearer`) é do
-    `test_notifier`.
+    **Não há mais tópico remoto nem credencial.** Quem guarda o que saiu é o
+    próprio AT, no `INBOX` do Web Push (`core.notifier.read`), e a rota só o
+    entrega à página. O seam é o próprio `notifier.read`: o que o teste mede é
+    o que a rota devolve — e que nada de credencial volta, porque não existe
+    credencial nenhuma aqui.
     """
 
     CREDENTIAL = "uma-frase-bem-longa"
     NAME = "Rafael"
-    KEY = b"n" * 32
 
     def setUp(self):
         super().setUp()
         actors.create_admin(self.NAME, self.CREDENTIAL)
-        self.sent: list = []
-        self.messages: list = []
-        self.refusal = ""
         self.answer()
 
-    def answer(self, messages: list | None = None, refusal: str = "") -> None:
-        """O que o motor responde à rota — e a chave com que ele foi chamado."""
-        self.messages = messages if messages is not None else []
-        self.refusal = refusal
+    def answer(self, messages: list | None = None) -> None:
+        """O que o motor responde à rota."""
+        held = messages if messages is not None else []
 
-        def read(key):
-            self.sent.append(key)
-            return self.messages, self.refusal
+        def read(key=None):
+            return held, ""
 
         patch = mock.patch.object(notifier, "read", read)
         patch.start()
@@ -2825,29 +2813,20 @@ class TheNotificationRoute(ServerCase):
         self.assertEqual(status, 200)
         return {"Cookie": headers["Set-Cookie"].split(";")[0]}
 
-    def test_the_read_is_handed_the_key_the_boot_held(self):
-        # A chave é a do ESCOPO DO NOTIFICADOR, a que o `up` derivou e que este
-        # processo guardou em memória — não a Chave Principal, que nunca entra
-        # aqui, e não uma segunda chave que a página tivesse trazido.
-        self._held = dict(webapp_keys._keys)
-        webapp_keys._keys.clear()
-        self.addCleanup(webapp_keys._keys.clear)
-        self.addCleanup(webapp_keys._keys.update, self._held)
-        webapp_keys._keys[webapp_keys.NOTIFIER_KEY_ENV] = self.KEY
-        status, _, raw = self.get("/api/notifications", headers=self.session())
-        self.assertEqual(status, 200)
-        self.assertEqual(json.loads(raw), {"messages": []})
-        self.assertEqual(self.sent, [self.KEY])
+    def test_the_read_is_called_with_no_key(self):
+        # A leitura não tem chave: o Web Push não sela nada com a chave
+        # derivada, então a rota chama `read()` sem argumento nenhum.
+        calls: list = []
 
-    def test_a_boot_with_no_key_still_asks_and_answers_what_came_back(self):
-        # Uma subida que não abriu a credencial não estoura: a rota pergunta e
-        # responde o que o motor disser, que é `no_token` — o mesmo melhor
-        # esforço da entrega (§7f).
-        self.answer(refusal="no_token")
-        status, _, raw = self.get("/api/notifications", headers=self.session())
-        self.assertEqual(status, 502)
-        self.assertEqual(self.sent, [None])
-        self.assertIn("no_token", json.loads(raw)["error"])
+        def read(*args, **kwargs):
+            calls.append((args, kwargs))
+            return [], ""
+
+        with mock.patch.object(notifier, "read", read):
+            status, _, raw = self.get("/api/notifications", headers=self.session())
+        self.assertEqual(status, 200)
+        self.assertEqual(calls, [((), {})])
+        self.assertEqual(json.loads(raw), {"messages": []})
 
     def test_the_messages_are_what_the_route_answers(self):
         self.answer(messages=[{"id": "a", "time": 7, "title": "AT",
@@ -2859,29 +2838,18 @@ class TheNotificationRoute(ServerCase):
         ]})
 
     def test_the_credential_never_reaches_the_page(self):
-        # O que a rota devolve são as MENSAGENS. O valor que abriu o envelope
-        # não sai daqui — nem como senha, nem como token (§4).
-        self.answer(messages=[])
+        # O que a rota devolve são as MENSAGENS, e nada de segredo junto.
         status, _, raw = self.get("/api/notifications", headers=self.session())
         self.assertEqual(status, 200)
         self.assertNotIn(b"tk_", raw)
         self.assertNotIn(b"Bearer", raw)
-
-    def test_a_notifier_that_does_not_answer_is_a_502_with_the_reason(self):
-        # A entrega é de melhor esforço (§7f), e a leitura é a mesma coisa do
-        # outro lado: um notificador que não responde é um fato, dito na palavra
-        # do AT, e nunca um estouro no meio de um pedido da página.
-        self.answer(refusal="403")
-        status, _, raw = self.get("/api/notifications", headers=self.session())
-        self.assertEqual(status, 502)
-        self.assertIn("403", json.loads(raw)["error"])
 
     def test_without_a_session_it_is_refused_like_every_other_read(self):
         self.assertEqual(self.status("/api/notifications"), 401)
 
     def test_the_role_that_does_not_carry_it_is_refused(self):
         # A demanda é a da ROTA (`notifier:read`), como em toda rota daqui: um
-        # papel sem ela não lê o tópico, e a recusa é a da casa (403).
+        # papel sem ela não lê os avisos, e a recusa é a da casa (403).
         role = tables.create("role", {"name": "leitor", "permissions": ["task:list"]})
         tables.create("actor", {"name": "outro", "type": "person",
                                 "role": str(store.number_of(role)),
@@ -2896,6 +2864,60 @@ class TheNotificationRoute(ServerCase):
     def test_the_catalogue_names_the_object_and_the_read(self):
         self.assertTrue(permissions.is_known("notifier:read"))
         self.assertNotIn("notifier:write", permissions.all_permissions())
+
+
+class ThePushRoutes(ServerCase):
+    """As duas rotas do Web Push: a chave pública do VAPID e a inscrição.
+
+    O que o navegador precisa para se inscrever é a chave PÚBLICA — o par
+    privado nunca sai da pasta —, e o que ele devolve depois é a inscrição, que
+    o AT guarda para cifrar cada aviso contra ela.
+    """
+
+    CREDENTIAL = "uma-frase-bem-longa"
+    NAME = "Rafael"
+
+    def setUp(self):
+        super().setUp()
+        actors.create_admin(self.NAME, self.CREDENTIAL)
+
+    def session(self) -> dict:
+        status, headers, _ = self.post_full(
+            "/api/session", {"name": self.NAME, "credential": self.CREDENTIAL}
+        )
+        self.assertEqual(status, 200)
+        return {"Cookie": headers["Set-Cookie"].split(";")[0]}
+
+    def subscription(self) -> dict:
+        # A rota só GUARDA a inscrição — quem valida a curva é o envio —, então
+        # as duas chaves só precisam estar lá.
+        return {"endpoint": "https://push.example/xyz",
+                "keys": {"p256dh": "AAAA", "auth": "BBBB"}}
+
+    def test_the_public_key_is_served(self):
+        from at.core import push
+        status, _, raw = self.get("/api/push/key", headers=self.session())
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(raw), {"key": push.public_key()})
+
+    def test_a_subscription_is_stored(self):
+        from at.core import push
+        status, _, raw = self.post_full(
+            "/api/push/subscribe", self.subscription(), headers=self.session()
+        )
+        self.assertEqual(status, 200)
+        self.assertTrue(raw["ok"])
+        self.assertEqual([entry["endpoint"] for entry in push.subscriptions()],
+                         ["https://push.example/xyz"])
+
+    def test_a_body_that_is_not_a_subscription_is_refused(self):
+        status, _, raw = self.post_full(
+            "/api/push/subscribe", {"endpoint": "x"}, headers=self.session()
+        )
+        self.assertEqual(status, 400)
+
+    def test_without_a_session_the_key_is_refused(self):
+        self.assertEqual(self.status("/api/push/key"), 401)
 
 
 class TheFirstRun(ServerCase):

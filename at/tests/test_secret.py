@@ -412,7 +412,7 @@ class ThePermissions(SecretCase):
 class TheEntry(SecretCase):
     """A credential is proved with the vault locked (§4, item 8; item 176)."""
 
-    def test_the_vault_is_reached_by_nine_files_and_by_them_alone(self):
+    def test_the_vault_is_reached_by_eight_files_and_by_them_alone(self):
         # Item 14a landed the vault with no caller anywhere and said so in a
         # test; the slice that landed the table gave it the first two. They are
         # the door that SEALS (`core/secrets`) and the engine that knows the
@@ -433,31 +433,32 @@ class TheEntry(SecretCase):
         # derivada e o par `seal_bytes`/`unseal_bytes` entram por ele, e não pela
         # porta que sela linhas.
         #
-        # **O sexto é `core/notifier.py`** (item 29's second slice, item 50): o
-        # WebApp abre o mesmo arquivo `at_deploy/notifier.py` já abre, com a
-        # Chave B que chega em memória (`at.ui.webapp.keys`) — nenhum envelope
-        # novo, só uma segunda porta para o que já existe.
-        #
-        # **O sétimo é `core/cofre.py`** (TASK-154): a pasta que sela sozinha
+        # **O sexto é `core/cofre.py`** (TASK-154): a pasta que sela sozinha
         # não guarda uma linha de tabela nem um arquivo do container — é um
         # arquivo qualquer que a pessoa largou —, e por isso o par
         # `seal_bytes`/`unseal_bytes` entra por ele também, com a chave do
-        # escopo `cofre` chegando pela mesma porta do sexto (`at.ui.webapp.keys`).
+        # escopo `cofre` chegando pela porta de `at.ui.webapp.keys`.
         #
-        # **O oitavo é `core/actors.py`** (item 176): a credencial do primeiro
+        # **O sétimo é `core/actors.py`** (item 176): a credencial do primeiro
         # administrador É a Chave Principal, então o piso dela é o piso do cofre
         # e a entrada o lê DAQUI em vez de nomear um segundo número. É o único
         # motivo pelo qual a entrada alcança o cofre — e ele não é uma chave:
         # quem PROVA alguém continua comparando um hash, com o cofre fechado
         # (`test_vault.py::TheEntry`, e o teste abaixo).
         #
-        # **O nono é `services/caddy.py`** (TASK-177, 02/10/2026): o caminho
-        # hospedado e o caminho container escrevem no MESMO `App/caddy/gate` e
-        # `App/caddy/notify`, e o container sela o que escreve ali. Este arquivo
-        # não sela nem abre nada — ele só RECONHECE o envelope do outro caminho
-        # (`vault.envelopes`), para não ler o texto cifrado como se fosse a sua
-        # própria senha em claro. Reconhecer a forma não é a mesma porta que
-        # lê o conteúdo, e é por isso que ele entra aqui sem ganhar uma chave.
+        # **O oitavo é `services/caddy.py`** (TASK-177, 02/10/2026): o caminho
+        # hospedado e o caminho container escrevem no MESMO `App/caddy/gate`, e o
+        # container sela o que escreve ali. Este arquivo não sela nem abre nada —
+        # ele só RECONHECE o envelope do outro caminho (`vault.envelopes`), para
+        # não ler o texto cifrado como se fosse a sua própria senha em claro.
+        # Reconhecer a forma não é a mesma porta que lê o conteúdo, e é por isso
+        # que ele entra aqui sem ganhar uma chave.
+        #
+        # **O ntfy saiu, e com ele uma nona porta** (a fatia do Web Push,
+        # 03/10/2026): `core/notifier.py` não abre mais o envelope do token do
+        # notificador — não há token, não há envelope, não há chave derivada a
+        # usar. A notificação é o Web Push do PWA (`core/push.py`), que cifra
+        # contra a chave do NAVEGADOR e não toca o Cofre.
         #
         # Sorted, because the filesystem hands the files over in an order of its
         # own and the list below is the declaration, not a directory listing.
@@ -469,7 +470,7 @@ class TheEntry(SecretCase):
         )
         self.assertEqual(callers, [
             "at/core/actors.py", "at/core/backup.py", "at/core/cofre.py",
-            "at/core/notifier.py", "at/core/secrets.py", "at/core/tables.py",
+            "at/core/secrets.py", "at/core/tables.py",
             "at/services/caddy.py", "at_deploy/environment.py",
             "at_deploy/notifier.py",
         ])

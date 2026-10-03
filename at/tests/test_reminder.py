@@ -409,15 +409,14 @@ class TheRound(ReminderCase):
         self.assertEqual(calls, [])
 
     def test_with_no_send_it_reaches_the_real_publish_door(self):
-        # No network in the suite: with no address configured `notifier
-        # .publish` answers `no_address` on its own, without a seam.
+        # No network in the suite: with no subscriber the real `notifier
+        # .publish` answers `no_subscribers` on its own, without a seam and
+        # without touching the wire.
         tables.create(
             "reminder",
             row(text="Regar a planta", freq="daily", at=["09:00"]),
         )
-        with mock.patch.dict(os.environ, {}, clear=False):
-            os.environ.pop(notifier.NETWORK_ENV, None)
-            fired = door.remind(date(2026, 9, 28))
+        fired = door.remind(date(2026, 9, 28))
         self.assertEqual(fired, [])
 
 

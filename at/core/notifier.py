@@ -1,238 +1,51 @@
-"""at's own door into the notifier's topic — the push the clock fires on its
-own, and the read the page asks for, with no `at_deploy` between the WebApp and
-ntfy (§4, item 29's second slice, item 50; TASK-176, fatia 3/3).
+"""A porta do AT para a notificação — que é o Web Push do navegador.
 
-**Reading TASK-146 answered the question this module opens with.** The WebApp's
-container mounts the Working Folder itself (`Mirror`, `at_deploy/environment
-.py`), so `App/services/notifier/token` is already there to read — nothing new
-has to be mounted, and nothing new has to be sealed. What travels is the
-DERIVED key alone (§4, item 50), read once at boot and kept in memory
-(`at.ui.webapp.keys.notifier_key`) — the very key `at_deploy.notifier` already
-derives to seal the same file (`notifier.VAULT_SCOPE`), so opening the envelope
-here re-derives nothing and reseals nothing.
+**O ntfy saiu, e com ele a conta, o tópico e a segunda porta.** O que a
+notificação do AT é, desde então, é a do PRÓPRIO PWA: o service worker inscrito
+no push service do navegador, e o aviso que o sistema operacional desenha. Quem
+fala os dois protocolos é `at.core.push`; este módulo é só o nome que o resto do
+produto já conhece — o relógio chama `publish`, a página chama `read`, e nada
+aqui guarda credencial nem endereço de rede.
 
-**`at` does not import `at_deploy`, so the file's PATH is built from the same
-piece both sides already share (`at.core.paths.services_dir`) and not read off
-the other package.** The constants below — the scope's name, the file's name,
-the topic — are the same words `at_deploy/notifier.py` spells, kept apart the
-way `GATE_ENV` is kept apart on both sides of that same line: two definitions
-of one small fact cost less than a dependency the layering forbids.
-
-**The ADDRESS is the one thing this module cannot know on its own.** A
-container's `127.0.0.1` is itself and nobody else (`gate.portal`'s own
-argument), so the notifier's address on the network the two containers share is
-handed over by the environment, in `NETWORK_ENV` — and a process that never got
-the variable has no address to publish to, which is the CLOSED answer and not a
-guess at the host's loop.
-
-**Delivery is best-effort, exactly as `at_deploy.notifier.push` already is.** A
-network that does not answer, a key this boot does not hold, a token the
-folder has not drawn yet — every one of them is a push that does not go out,
-and none of them is an exception the clock's round has to survive by name
-(`at.ui.ask.remind` catches broadly, the way `tick` does).
-
-**The READ uses the SAME credential the push does** (since the notifier's edge
-fronting: `at_deploy/notifier.py`'s own account is `read-write`, and it is the
-one account the whole product talks to the service with — AT from inside this
-module, and the person's own admin login from outside it, through the edge's
-M2M swap). Nothing here reseals, redraws or prints anything; the value goes
-into the `Authorization` header of one GET and nowhere else.
-
-**The read is PAGED, and never a stream**: ntfy answers `poll=1` with what its
-memory holds and closes the connection, which is what keeps a page refresh
-from being a subscription.
+**A assinatura antiga ficou de pé para não arrastar o resto.** `publish(title,
+body, key)` e `read(key)` existem com o `key` de antes — o `boot` do WebApp
+ainda lê a chave derivada do escopo do notificador (`keys.notifier_key`), e um
+processo que nunca a recebeu continua podendo publicar: o Web Push não sela
+nada com ela, porque não há envelope entre o AT e o navegador. O parâmetro é
+aceito e ignorado, e um dia sai junto com a última chamada que o passe.
 """
 
 from __future__ import annotations
 
-import json
-import os
-import urllib.error
-import urllib.request
+from at.core import push
 
-from pathlib import Path
-
-from at.core import paths
-from at.encryption import vault
-
-# The scope the Main Key derives this key under, and the file it opens — the
-# same words `at_deploy/notifier.py` spells (`VAULT_SCOPE`, `TOKEN_FILE`), kept
-# apart rather than imported across the line `at` does not cross.
-NOTIFIER = "notifier"
-TOKEN_FILE = "token"
-
-# The topic AT's credential is scoped to read-write — `at_deploy.notifier
-# .TOPIC`, spelled again for the same reason as the one above.
-TOPIC = "at"
-
-# A leitura, no vocabulário do PRÓPRIO ntfy: um `poll` do tópico devolve o que
-# está na memória dele e fecha (`at_deploy.notifier.POLL`, the same string the
-# phone's app asks with).
-POLL = "json?poll=1"
-
-# O que uma mensagem É, do lado de fora: os campos que a página desenha, e só
-# eles. O ntfy responde mais do que isto (`event`, `click`, `actions`, o
-# `raw` do corpo) — e o que não é desenhado não viaja, porque uma página que
-# recebesse o objeto inteiro estaria lendo um vocabulário que não é do AT.
-FIELDS = ("id", "time", "title", "message", "priority", "tags")
-
-# The variable the environment hands the WebApp: the notifier's address on the
-# network the two containers share (`container(NOTIFIER)`, `NOTIFIER_PORT`, on
-# the `at_deploy` side). Named here because this is the module that READS it —
-# the same rule `webapp.keys` and `core.gate`'s `GATE_ENV` are named by.
-NETWORK_ENV = "AT_NOTIFIER"
-
-# What every alert announces itself with — `at_deploy.notifier`'s own three,
-# repeated for the reason above: silence at the default priority is a push
-# nobody notices, and the tag gives it an icon.
+# O que todo aviso do AT diz de si — o mesmo vocabulário de antes, agora na
+# fatia que o navegador desenha.
 TITLE = "AT"
 PRIORITY = "high"
 TAGS = "bell"
 
-# How long a POST waits for the notifier before the round moves on.
-TIMEOUT = 10.0
+# Os campos que a página desenha de uma notificação (`push.inbox`).
+FIELDS = push.FIELDS
 
 
-def token_file() -> Path:
-    """`App/services/notifier/token` — the same file `at_deploy.notifier
-    .token_file` names, built from the one piece both sides share."""
-    return paths.services_dir() / NOTIFIER / TOKEN_FILE
+def publish(title: str, body: str, key: bytes | None = None) -> tuple[bool, str]:
+    """Manda um aviso a toda inscrição. `(ok, detalhe)`.
 
-
-def _held(where: Path) -> str | None:
-    try:
-        kept = where.read_text(encoding="utf-8").strip()
-    except FileNotFoundError:
-        return None
-    return kept or None
-
-
-def _value(text: str | None, key: bytes | None) -> str | None:
-    """O VALOR claro que um arquivo guarda, aberto com a chave derivada (§4).
-
-    The file may still carry the value in clear (a folder from before the
-    seal, migrated by `at_deploy.notifier.provision` the next time the
-    environment comes up) — a text with no envelope in it IS the value, the
-    same reading `at_deploy/notifier.py:_value` gives it.
+    `key` é aceito por compatibilidade e não usado: a cifra do Web Push é
+    contra a chave do NAVEGADOR, e não há nada que o AT sele com a chave
+    derivada aqui. `(False, "no_subscribers")` é um aviso que não saiu porque
+    ninguém se inscreveu — o lembrete tenta de novo, como sempre.
     """
-    if not text:
-        return None
-    if not vault.envelopes(text):
-        return text
-    if key is None:
-        return None
-    return vault.unseal(text, key) or None
+    return push.send(title, body, urgency="high")
 
 
-def token(key: bytes | None) -> str | None:
-    """The credential's clear value, opened with the DERIVED key this boot
-    holds — or `None` when there is nothing to open it with. The one account
-    both publishes and reads (`read-write`), so this same value serves both."""
-    return _value(_held(token_file()), key)
+def read(key: bytes | None = None) -> tuple[list[dict], str]:
+    """O que a página lista: as últimas notificações que SAÍRAM.
 
-
-def target() -> str | None:
-    """Where the topic is, on the network this container shares with the
-    notifier's — or `None` when the environment handed over no address.
-
-    **No fallback to the host's loop.** A WebApp running loose, or a folder
-    that came up without the notifier's container beside it, has no such
-    variable — and answering with a guess would be `gate.portal`'s own mistake,
-    named there: a port is a port, and reading one that happens to be open as
-    the notifier would be worse than a push that does not go out.
+    **Uma leitura não é um tópico remoto e não pode falhar por rede** — o ntfy
+    guardava a mensagem do outro lado, e agora quem guarda é o próprio AT, num
+    arquivo da pasta. Por isso `recusa` é sempre vazia: o que existe é o que
+    saiu, e não há terceiro a quem perguntar.
     """
-    held = os.environ.get(NETWORK_ENV, "").strip()
-    return f"http://{held}/{TOPIC}" if held else None
-
-
-def publish(title: str, body: str, key: bytes | None) -> tuple[bool, str]:
-    """POST one alert to the topic. `(ok, detail)` — and the detail is never
-    the token.
-
-    Two ways of having nothing to send with, and both answer the same shape
-    as a refusal the notifier itself gave: no address means the environment
-    never told this process where the notifier is, and no token means the
-    folder has not drawn one yet or this boot cannot open the one it has.
-    Neither is raised — the caller decides what a push that did not go out
-    is worth (`at.ui.ask.remind`).
-    """
-    where = target()
-    if where is None:
-        return False, "no_address"
-    held = token(key)
-    if held is None:
-        return False, "no_token"
-    request = urllib.request.Request(where, data=body.encode("utf-8"), method="POST")
-    request.add_header("Title", title)
-    request.add_header("Priority", PRIORITY)
-    request.add_header("Tags", TAGS)
-    request.add_header("Authorization", f"Bearer {held}")
-    try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
-            return 200 <= response.status < 300, str(response.status)
-    except urllib.error.HTTPError as error:
-        code = str(error.code)
-        error.close()
-        return False, code
-    except (urllib.error.URLError, OSError) as error:
-        return False, str(getattr(error, "reason", error))
-
-
-def _messages(body: object) -> list[dict]:
-    """O que o tópico respondeu, reduzido aos campos que a página desenha.
-
-    An answer that is not the list ntfy promises is an EMPTY topic here and
-    never a raise: what the notifier says is its business, and a page asking
-    what arrived is not the place to fail over a shape. An entry that is not
-    an object is dropped for the same reason, and a field the message does not
-    carry is simply absent — `None` would be the page drawing an empty title
-    it did not receive.
-    """
-    if not isinstance(body, list):
-        return []
-    return [
-        {name: entry[name] for name in FIELDS if name in entry}
-        for entry in body
-        if isinstance(entry, dict)
-    ]
-
-
-def read(key: bytes | None) -> tuple[list[dict], str]:
-    """O que o tópico está segurando AGORA: `(mensagens, recusa)`.
-
-    It is the `poll` the notifier answers on demand (the module's docstring),
-    read with the SAME credential the push uses — the account is `read-write`,
-    and this is one process opening one file it already could.
-
-    **A read that did not happen is not an empty topic**, so the two come back
-    told apart: `recusa` is the empty string when the notifier answered, and
-    otherwise it is AT's own word for what stopped it (`no_address`,
-    `no_token`) or the notifier's/network's own answer. The caller decides what
-    to draw — this door raises nothing, exactly as `publish` does, because a
-    notifier that is down is a fact about the environment and not a bug here.
-    """
-    where = target()
-    if where is None:
-        return [], "no_address"
-    held = token(key)
-    if held is None:
-        return [], "no_token"
-    request = urllib.request.Request(f"{where}/{POLL}")
-    request.add_header("Authorization", f"Bearer {held}")
-    try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
-            raw = response.read()
-    except urllib.error.HTTPError as error:
-        code = str(error.code)
-        error.close()
-        return [], code
-    except (urllib.error.URLError, OSError) as error:
-        return [], str(getattr(error, "reason", error))
-    try:
-        body = json.loads(raw.decode("utf-8"))
-    except (ValueError, UnicodeError):
-        # A resposta que não é o JSON que o ntfy promete é uma resposta que não
-        # se sabe ler — o mesmo "não deu para saber" que um endereço ausente, e
-        # nunca um estouro no meio de um pedido da página.
-        return [], "unreadable"
-    return _messages(body), ""
+    return push.inbox(), ""

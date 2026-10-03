@@ -1,14 +1,18 @@
-"""at's own push to the notifier — no `at_deploy` between the WebApp and ntfy
-(§4, item 29's second slice, item 50).
+"""A notificação do AT — o Web Push do próprio PWA, que substituiu o ntfy.
 
-Nothing here touches the network: the one call that would (`urlopen`) is
-patched, and what a test reads is the REQUEST. The key handed to `token` and
-`publish` is a fake 32-byte value, the same shape `test_webapp.py`'s
-`TheDerivedKeys` uses — never the real Main Key, and never a real Chave Principal.
+Nada aqui toca a rede: a única chamada que tocaria (`urlopen`) é trocada por um
+duble, e o que um teste lê é a REQUISIÇÃO. A cripto é provada por IDA E VOLTA —
+o que o AT cifra, o teste abre com a chave privada do "navegador" —, que é o que
+prende a implementação à RFC 8291 sem precisar de um push service de verdade.
+
+A chave derivada que `publish`/`read` aceitam é um valor falso de 32 bytes: o
+Web Push não sela nada com ela, e o parâmetro só existe pelo que a chamada já
+era.
 """
 
 from __future__ import annotations
 
+import base64
 import io
 import json
 import os
@@ -19,30 +23,22 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
 
-from at import i18n
-from at.core import boot, files, notifier, paths
-from at.data import schema, store
-from at.encryption import vault
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
-# A fake derived key — the shape `webapp.keys.notifier_key()` hands over: 32
-# bytes, never the real Main Key and never a real Chave Principal (§4, item 50).
+from at import i18n
+from at.core import boot, notifier, push
+
 KEY = b"n" * 32
-OTHER_KEY = b"x" * 32
 
 
 class Answer:
-    """`urlopen`'s answer: a status, a body, and the context manager it needs.
+    """`urlopen`'s answer: a status, and the context manager it needs."""
 
-    The body is what the READ path takes (`notifier.read`); the POST never asks
-    for one, and an answer built with none answers empty.
-    """
-
-    def __init__(self, status: int, body: bytes = b"") -> None:
+    def __init__(self, status: int = 201) -> None:
         self.status = status
-        self._body = body
-
-    def read(self) -> bytes:
-        return self._body
 
     def __enter__(self):
         return self
@@ -51,26 +47,7 @@ class Answer:
         return None
 
 
-class TheAddress(unittest.TestCase):
-    """`target()`: the topic, at the address the environment handed over."""
-
-    def test_no_variable_is_no_address(self):
-        with mock.patch.dict(os.environ, {}, clear=False):
-            os.environ.pop(notifier.NETWORK_ENV, None)
-            self.assertIsNone(notifier.target())
-
-    def test_the_variable_names_the_topic_at_that_address(self):
-        with mock.patch.dict(os.environ, {notifier.NETWORK_ENV: "at-notifier:2586"}):
-            self.assertEqual(notifier.target(), "http://at-notifier:2586/at")
-
-    def test_an_empty_variable_is_no_address_either(self):
-        with mock.patch.dict(os.environ, {notifier.NETWORK_ENV: "   "}):
-            self.assertIsNone(notifier.target())
-
-
-class NotifierCase(unittest.TestCase):
-    """A Working Folder of its own, so `token_file()` reads a real path."""
-
+class FolderCase(unittest.TestCase):
     def setUp(self):
         self.scratch = tempfile.TemporaryDirectory()
         self.root = Path(self.scratch.name)
@@ -79,249 +56,185 @@ class NotifierCase(unittest.TestCase):
         )
         self.env.start()
         i18n.reset()
-        schema.reset()
         with redirect_stdout(io.StringIO()):
             boot.create_working_folder()
 
     def tearDown(self):
         self.env.stop()
         i18n.reset()
-        schema.reset()
-        store.reset()
         self.scratch.cleanup()
 
-    def seal(self, value: str, key: bytes = KEY) -> None:
-        files.atomic_write_text(
-            notifier.token_file(), f"{vault.seal(value, key)}\n", mode=0o600
+    # --- o "navegador": um par P-256 e o `auth` que ele daria ----------------
+
+    def browser(self) -> tuple[dict, ec.EllipticCurvePrivateKey, bytes]:
+        """A subscription the page would send, and the private side of its key."""
+        private = ec.generate_private_key(ec.SECP256R1())
+        public = private.public_key().public_bytes(
+            serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint
         )
+        auth = os.urandom(16)
+        return {
+            "endpoint": "https://push.example/xyz",
+            "keys": {
+                "p256dh": base64.urlsafe_b64encode(public).rstrip(b"=").decode(),
+                "auth": base64.urlsafe_b64encode(auth).rstrip(b"=").decode(),
+            },
+        }, private, auth
 
-    def plain(self, value: str) -> None:
-        files.atomic_write_text(notifier.token_file(), f"{value}\n", mode=0o600)
-
-
-class TheTokenFile(NotifierCase):
-    def test_it_is_the_same_path_at_deploy_names(self):
-        self.assertEqual(
-            notifier.token_file(),
-            paths.services_dir() / "notifier" / "token",
+    def decrypt(self, body: bytes, private, auth: bytes) -> bytes:
+        """RFC 8291: abrir o que `push._encrypt` produziu, do lado do navegador."""
+        salt, name_len = body[:16], body[20]
+        as_public = body[21:21 + name_len]
+        ciphertext = body[21 + name_len:]
+        ua_public = private.public_key().public_bytes(
+            serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint
         )
-
-    def test_no_file_is_no_token(self):
-        self.assertIsNone(notifier.token(KEY))
-
-    def test_a_file_with_no_envelope_is_the_value_itself(self):
-        # A folder from before the seal (§4, item 50's migration) — the value
-        # is in clear, and reading it needs no key at all.
-        self.plain("tk_claro")
-        self.assertEqual(notifier.token(None), "tk_claro")
-
-    def test_a_sealed_value_opens_with_the_derived_key(self):
-        self.seal("tk_selado")
-        self.assertEqual(notifier.token(KEY), "tk_selado")
-
-    def test_a_sealed_value_with_no_key_answers_none(self):
-        self.seal("tk_selado")
-        self.assertIsNone(notifier.token(None))
-
-    def test_a_sealed_value_the_wrong_key_does_not_open(self):
-        self.seal("tk_selado")
-        self.assertIsNone(notifier.token(OTHER_KEY))
+        shared = private.exchange(
+            ec.ECDH(), ec.EllipticCurvePublicKey.from_encoded_point(push.CURVE, as_public)
+        )
+        ikm = HKDF(
+            algorithm=hashes.SHA256(), length=32, salt=auth,
+            info=b"WebPush: info\x00" + ua_public + as_public,
+        ).derive(shared)
+        cek = HKDF(
+            algorithm=hashes.SHA256(), length=16, salt=salt,
+            info=b"Content-Encoding: aes128gcm\x00",
+        ).derive(ikm)
+        nonce = HKDF(
+            algorithm=hashes.SHA256(), length=12, salt=salt,
+            info=b"Content-Encoding: nonce\x00",
+        ).derive(ikm)
+        padded = AESGCM(cek).decrypt(nonce, ciphertext, None)
+        return padded.rstrip(b"\x00").rstrip(b"\x02")
 
 
-class ThePush(NotifierCase):
-    """`publish`: the POST, and what it carries."""
+class TheKey(FolderCase):
+    def test_the_key_is_drawn_once_and_kept(self):
+        first = push.public_key()
+        second = push.public_key()
+        self.assertEqual(first, second)
+        self.assertTrue((push.directory() / push.VAPID_FILE).is_file())
 
-    def post(self, status: int = 200, boom: Exception | None = None):
-        sent: list = []
+    def test_the_public_key_is_a_point_on_the_curve(self):
+        raw = base64.urlsafe_b64decode(push.public_key() + "==")
+        self.assertEqual(len(raw), 65)
+        self.assertEqual(raw[0], 4)
+        parsed = ec.EllipticCurvePublicKey.from_encoded_point(push.CURVE, raw)
+        self.assertEqual(parsed.curve.name, "secp256r1")
 
-        def urlopen(request, timeout=None):
-            sent.append(request)
-            if boom is not None:
-                raise boom
-            if status >= 400:
-                raise urllib.error.HTTPError(request.full_url, status, "recusado", {}, None)
-            return Answer(status)
+    def test_the_contact_follows_the_site_name(self):
+        push.contact("at.example")
+        push.contact("at.example")  # idempotente
+        stored = json.loads((push.directory() / push.VAPID_FILE).read_text())
+        self.assertEqual(stored["contact"], "mailto:at@at.example")
 
-        patch = mock.patch.object(notifier.urllib.request, "urlopen", urlopen)
-        patch.start()
-        self.addCleanup(patch.stop)
-        return sent
 
-    def address(self):
-        return mock.patch.dict(os.environ, {notifier.NETWORK_ENV: "at-notifier:2586"})
+class TheEncryption(FolderCase):
+    def test_what_is_encrypted_is_what_the_browser_opens(self):
+        subscription, private, auth = self.browser()
+        message = json.dumps({"title": "AT", "body": "Vence hoje"}).encode()
+        body = push._encrypt(subscription, message)
+        self.assertEqual(self.decrypt(body, private, auth), message)
 
-    def test_with_no_address_it_does_not_reach_for_the_network(self):
-        with mock.patch.dict(os.environ, {}, clear=False):
-            os.environ.pop(notifier.NETWORK_ENV, None)
-            self.seal("tk_selado")
-            ok, detail = notifier.publish("AT", "corpo", KEY)
-        self.assertFalse(ok)
-        self.assertEqual(detail, "no_address")
+    def test_the_header_carries_the_salt_the_size_and_the_ephemeral_key(self):
+        subscription, _, _ = self.browser()
+        body = push._encrypt(subscription, b"oi")
+        self.assertEqual(len(body[:16]), 16)          # salt
+        self.assertEqual(int.from_bytes(body[16:20], "big"), push.RECORD)
+        self.assertEqual(body[20], 65)                # a chave efêmera é de 65 bytes
 
-    def test_with_no_token_it_does_not_reach_for_the_network_either(self):
-        with self.address():
-            ok, detail = notifier.publish("AT", "corpo", KEY)
-        self.assertFalse(ok)
-        self.assertEqual(detail, "no_token")
 
-    def test_the_post_carries_the_topic_the_body_and_the_bearer_token(self):
-        sent = self.post()
-        self.seal("tk_selado")
-        with self.address():
-            ok, detail = notifier.publish("AT", "corpo", KEY)
+class TheSubscriptions(FolderCase):
+    def test_a_subscription_the_browser_would_send_is_stored(self):
+        subscription, _, _ = self.browser()
+        self.assertTrue(push.subscribe(subscription))
+        self.assertEqual([entry["endpoint"] for entry in push.subscriptions()],
+                         ["https://push.example/xyz"])
+
+    def test_the_same_endpoint_is_one_subscription_not_two(self):
+        subscription, _, _ = self.browser()
+        push.subscribe(subscription)
+        push.subscribe(subscription)
+        self.assertEqual(len(push.subscriptions()), 1)
+
+    def test_a_body_that_is_not_a_subscription_is_refused(self):
+        for bad in (None, {}, {"endpoint": "x"}, {"endpoint": "x", "keys": {}},
+                    {"keys": {"p256dh": "a", "auth": "b"}}, "nao-e-um-objeto"):
+            with self.subTest(bad=bad):
+                self.assertFalse(push.subscribe(bad))
+
+    def test_forget_drops_the_endpoint(self):
+        subscription, _, _ = self.browser()
+        push.subscribe(subscription)
+        push.forget(subscription["endpoint"])
+        self.assertEqual(push.subscriptions(), [])
+
+
+class TheSend(FolderCase):
+    def test_with_no_subscribers_there_is_nothing_to_send(self):
+        self.assertEqual(push.send("AT", "oi"), (False, "no_subscribers"))
+
+    def test_every_subscriber_gets_the_ciphered_alert(self):
+        subscription, private, auth = self.browser()
+        push.subscribe(subscription)
+        seen: list = []
+
+        def fake(request, timeout=None):
+            seen.append(request)
+            return Answer(201)
+
+        with mock.patch("urllib.request.urlopen", side_effect=fake):
+            ok, detail = push.send("AT", "Vence hoje")
         self.assertTrue(ok)
-        self.assertEqual(detail, "200")
-        request = sent[0]
-        self.assertEqual(request.method, "POST")
-        self.assertEqual(request.full_url, "http://at-notifier:2586/at")
-        self.assertEqual(request.data, b"corpo")
-        self.assertEqual(request.get_header("Authorization"), "Bearer tk_selado")
+        self.assertEqual(detail, "201")
+        self.assertEqual(len(seen), 1)
+        sent = seen[0]
+        self.assertEqual(sent.get_full_url(), "https://push.example/xyz")
+        self.assertEqual(sent.get_header("Content-encoding"), "aes128gcm")
+        self.assertTrue(sent.get_header("Authorization").startswith("vapid t="))
+        payload = self.decrypt(sent.data, private, auth)
+        self.assertEqual(json.loads(payload)["body"], "Vence hoje")
 
-    def test_the_alert_announces_itself(self):
-        sent = self.post()
-        self.seal("tk_selado")
-        with self.address():
-            notifier.publish("AT", "corpo", KEY)
-        request = sent[0]
-        self.assertEqual(request.get_header("Title"), "AT")
-        self.assertEqual(request.get_header("Priority"), notifier.PRIORITY)
-        self.assertEqual(request.get_header("Tags"), notifier.TAGS)
+    def test_the_inbox_keeps_what_went_out(self):
+        subscription, _, _ = self.browser()
+        push.subscribe(subscription)
+        with mock.patch("urllib.request.urlopen", return_value=Answer(201)):
+            push.send("AT", "Vence hoje")
+        rows = push.inbox()
+        self.assertEqual(rows[0]["title"], "AT")
+        self.assertEqual(rows[0]["message"], "Vence hoje")
 
-    def test_a_refusal_is_the_status_and_never_a_crash(self):
-        self.post(status=403)
-        self.seal("tk_selado")
-        with self.address():
-            ok, detail = notifier.publish("AT", "corpo", KEY)
+    def test_a_dead_subscription_is_dropped_not_retried(self):
+        subscription, _, _ = self.browser()
+        push.subscribe(subscription)
+        dead = urllib.error.HTTPError("https://push.example/xyz", 410, "gone", {}, None)
+        with mock.patch("urllib.request.urlopen", side_effect=dead):
+            ok, _ = push.send("AT", "oi")
         self.assertFalse(ok)
-        self.assertEqual(detail, "403")
+        self.assertEqual(push.subscriptions(), [])
 
-    def test_a_network_that_does_not_answer_is_the_same_kind_of_answer(self):
-        self.post(boom=urllib.error.URLError("recusado"))
-        self.seal("tk_selado")
-        with self.address():
-            ok, detail = notifier.publish("AT", "corpo", KEY)
+    def test_a_network_that_does_not_answer_is_not_a_crash(self):
+        subscription, _, _ = self.browser()
+        push.subscribe(subscription)
+        with mock.patch("urllib.request.urlopen", side_effect=OSError("sem rede")):
+            ok, detail = push.send("AT", "oi")
         self.assertFalse(ok)
-        self.assertIn("recusado", detail)
+        self.assertEqual(detail, "undelivered")
 
 
-class TheRead(NotifierCase):
-    """`read`: the topic read from inside, with the one credential the whole
-    product talks to the notifier with.
+class TheDoor(FolderCase):
+    def test_publish_delegates_to_the_push_and_ignores_the_key(self):
+        subscription, _, _ = self.browser()
+        push.subscribe(subscription)
+        with mock.patch.object(push, "send", return_value=(True, "201")) as send:
+            self.assertEqual(notifier.publish("AT", "oi", KEY), (True, "201"))
+        send.assert_called_once_with("AT", "oi", urgency="high")
 
-    The account is `read-write`, so the same token this module publishes with
-    is the one it reads with — no second account, no second file, and no
-    Chave Principal a WebApp would have to ask for one.
-    """
-
-    def get(self, status: int = 200, body: bytes = b"[]",
-            boom: Exception | None = None):
-        sent: list = []
-
-        def urlopen(request, timeout=None):
-            sent.append(request)
-            if boom is not None:
-                raise boom
-            if status >= 400:
-                raise urllib.error.HTTPError(request.full_url, status, "recusado", {}, None)
-            return Answer(status, body)
-
-        patch = mock.patch.object(notifier.urllib.request, "urlopen", urlopen)
-        patch.start()
-        self.addCleanup(patch.stop)
-        return sent
-
-    def address(self):
-        return mock.patch.dict(os.environ, {notifier.NETWORK_ENV: "at-notifier:2586"})
-
-    def test_with_no_address_it_does_not_reach_for_the_network(self):
-        with mock.patch.dict(os.environ, {}, clear=False):
-            os.environ.pop(notifier.NETWORK_ENV, None)
-            self.seal("tk_do_at")
-            messages, refusal = notifier.read(KEY)
-        self.assertEqual(messages, [])
-        self.assertEqual(refusal, "no_address")
-
-    def test_with_no_token_it_does_not_reach_for_the_network_either(self):
-        with self.address():
-            messages, refusal = notifier.read(KEY)
-        self.assertEqual(messages, [])
-        self.assertEqual(refusal, "no_token")
-
-    def test_it_polls_the_topic_with_the_accounts_bearer(self):
-        sent = self.get()
-        self.seal("tk_do_at")
-        with self.address():
-            messages, refusal = notifier.read(KEY)
+    def test_read_is_the_inbox_and_can_never_refuse(self):
+        push.record("AT", "um aviso")
+        messages, refusal = notifier.read(KEY)
         self.assertEqual(refusal, "")
-        request = sent[0]
-        self.assertEqual(request.get_method(), "GET")
-        self.assertEqual(
-            request.full_url, "http://at-notifier:2586/at/json?poll=1"
-        )
-        self.assertEqual(
-            request.get_header("Authorization"), "Bearer tk_do_at"
-        )
-
-    def test_the_messages_come_back_as_what_the_page_draws(self):
-        body = json.dumps([
-            {"id": "a", "time": 1, "title": "AT", "message": "oi",
-             "priority": 4, "tags": ["bell"], "event": "message",
-             "click": "https://x", "actions": [{"action": "view"}]},
-        ]).encode("utf-8")
-        self.get(body=body)
-        self.seal("tk_do_at")
-        with self.address():
-            messages, refusal = notifier.read(KEY)
-        self.assertEqual(refusal, "")
-        # O que não é desenhado não viaja: a página recebe os campos dela, e
-        # não o vocabulário inteiro do ntfy.
-        self.assertEqual(
-            messages,
-            [{"id": "a", "time": 1, "title": "AT", "message": "oi",
-              "priority": 4, "tags": ["bell"]}],
-        )
-
-    def test_an_entry_that_is_not_an_object_is_dropped(self):
-        self.get(body=b'["nada", {"message": "oi"}]')
-        self.seal("tk_do_at")
-        with self.address():
-            messages, _ = notifier.read(KEY)
-        self.assertEqual(messages, [{"message": "oi"}])
-
-    def test_a_refusal_is_the_status_and_never_a_crash(self):
-        self.get(status=403)
-        self.seal("tk_do_at")
-        with self.address():
-            messages, refusal = notifier.read(KEY)
-        self.assertEqual(messages, [])
-        self.assertEqual(refusal, "403")
-
-    def test_a_network_that_does_not_answer_is_the_same_kind_of_answer(self):
-        self.get(boom=urllib.error.URLError("recusado"))
-        self.seal("tk_do_at")
-        with self.address():
-            messages, refusal = notifier.read(KEY)
-        self.assertEqual(messages, [])
-        self.assertIn("recusado", refusal)
-
-    def test_an_answer_that_is_not_a_list_is_an_empty_topic(self):
-        self.get(body=b'{"unexpected": true}')
-        self.seal("tk_do_at")
-        with self.address():
-            messages, refusal = notifier.read(KEY)
-        self.assertEqual(messages, [])
-        self.assertEqual(refusal, "")
-
-    def test_a_body_that_is_not_json_is_unreadable(self):
-        # "Não deu para saber" e "nada chegou" são a mesma coisa para quem lê a
-        # página, mas não são a mesma resposta — e é por isso que o segundo
-        # campo existe.
-        self.get(body=b"<html>nao e json</html>")
-        self.seal("tk_do_at")
-        with self.address():
-            messages, refusal = notifier.read(KEY)
-        self.assertEqual(messages, [])
-        self.assertEqual(refusal, "unreadable")
+        self.assertEqual(messages[0]["message"], "um aviso")
 
 
 if __name__ == "__main__":

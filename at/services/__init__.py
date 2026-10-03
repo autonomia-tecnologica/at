@@ -16,16 +16,17 @@ TLS (§6). `--no-caddy` is the one way out of it. The container path's Caddy is 
 belongs to the deploy — while the Caddyfile both of them run is written once, in
 `caddy.py`, because it is the same Caddy answering the same questions.
 
-**TASK-177 (2026-10-02) added the third and fourth: Authelia and ntfy, the
-bundle's own gate and notifier.** They come up with the SAME trigger as the
-Caddy — no new flag, no container, no second artifact — and front the WebApp
-and the topic exactly the way their container-path counterparts do
-(`at_deploy/environment.py`), minus the isolamento por raio de explosão a
-container buys (§6: nota `A`, not `S`). `authelia.py` and `ntfy.py` are each
-the Caddy's own arithmetic once more: a vendored tarball, unpacked on demand,
-run as a subprocess of this process tree.
+**TASK-177 (2026-10-02) added the third: Authelia, the bundle's own gate.**
+It comes up with the SAME trigger as the Caddy — no new flag, no container, no
+second artifact — and fronts the WebApp exactly the way its container-path
+counterpart does (`at_deploy/environment.py`), minus the isolamento por raio de
+explosão a container buys (§6: nota `A`, not `S`). `authelia.py` is the
+Caddy's own arithmetic once more: a vendored tarball, unpacked on demand, run
+as a subprocess of this process tree. (The bundle's notifier was the ntfy, at
+its side; it is gone — the notification is the PWA's own Web Push now, and
+`core/push.py` is where it lives.)
 
-The fifth is `gitleaks`, the scanner `at-cli secret scan` walks the folder with
+The fourth is `gitleaks`, the scanner `at-cli secret scan` walks the folder with
 (item 51). It travels in `at-cli` only: the deploy has no scanning word, and
 embedding it there would pay the megabytes for a door nobody knocks on. The walk
 and the answer are `at/core/scanner.py`'s; what lives here is the payload and the
