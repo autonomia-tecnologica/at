@@ -1049,5 +1049,39 @@ class TheFolderPresentsItself(FolderCase):
         self.assertNotIn(i18n.tr("boot.migration.note.written"), output)
 
 
+class TheProjectDescriptionGainsATeto(FolderCase):
+    """Migration vinte e quatro: o projeto não é a task — o resumo é dele, a
+    prosa mora na task. Uma pasta antiga, sem o teto, ganha o `max_length`."""
+
+    def old_project(self) -> dict:
+        declared = json.loads(self.declaration("project").read_text(encoding="utf-8"))
+        declared["fields"]["desc"].pop("max_length", None)
+        return declared
+
+    def old_folder(self) -> None:
+        self.born()
+        self.rewrite(self.declaration("project"), self.old_project())
+        self.forgotten()
+
+    def test_an_old_folder_gains_the_ceiling(self):
+        self.old_folder()
+        self.caught_up()
+        declared = json.loads(self.declaration("project").read_text(encoding="utf-8"))
+        self.assertEqual(declared["fields"]["desc"]["max_length"], 200)
+
+    def test_without_the_ceiling_a_biblia_is_accepted_which_is_the_bug(self):
+        self.born()
+        self.rewrite(self.declaration("project"), self.old_project())
+        made = tables.create("project", {"name": "AT", "status": "active"})
+        tables.edit("project", made["id"], {"desc": "x" * 500})
+
+    def test_once_the_ceiling_arrives_a_biblia_is_refused(self):
+        self.old_folder()
+        self.caught_up()
+        made = tables.create("project", {"name": "AT", "status": "active"})
+        with self.assertRaises(tables.TableError):
+            tables.edit("project", made["id"], {"desc": "x" * 500})
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -15,8 +15,7 @@
 // than in a sentence of its own.
 
 import { ref, nextTick, watchEffect } from "vue";
-import { ask } from "../lib/ask";
-import { chatState, remember } from "../lib/chat";
+import { chatState, send as sendTurn } from "../lib/chat";
 import { store, word } from "../lib/store";
 import { setTrail } from "../lib/views";
 import AskTurn from "../components/AskTurn.vue";
@@ -27,23 +26,22 @@ const log = ref<HTMLElement | null>(null);
 
 watchEffect(() => setTrail(word("chat")));
 
+// THE NEWEST IS THE ONE READ: the conversation grows downward, and what was
+// just asked is what the person is looking for. A scroll, never a reflow of
+// the page.
+async function scrolled(): Promise<void> {
+  await nextTick();
+  if (log.value) log.value.scrollTop = log.value.scrollHeight;
+}
+
 async function send(): Promise<void> {
   const text = sentence.value.trim();
   if (!text || busy.value) return;
   busy.value = true;
   try {
-    remember(await ask(text));
+    await sendTurn(text);
     sentence.value = "";
-    // THE NEWEST IS THE ONE READ: the conversation grows downward, and what was
-    // just asked is what the person is looking for. A scroll, never a reflow of
-    // the page.
-    await nextTick();
-    if (log.value) log.value.scrollTop = log.value.scrollHeight;
-  } catch (err) {
-    remember({
-      sentence: text, kind: "refused", proposal: null,
-      text: (err as Error).message, assist: false, confirm: null,
-    });
+    await scrolled();
   } finally {
     busy.value = false;
   }
@@ -56,38 +54,15 @@ async function retry(sentence: string, mainKey: string): Promise<void> {
   if (busy.value) return;
   busy.value = true;
   try {
-    remember(await ask(sentence, mainKey));
-    await nextTick();
-    if (log.value) log.value.scrollTop = log.value.scrollHeight;
-  } catch (err) {
-    remember({
-      sentence, kind: "refused", proposal: null,
-      text: (err as Error).message, assist: false, confirm: null,
-    });
+    await sendTurn(sentence, mainKey);
+    await scrolled();
   } finally {
     busy.value = false;
   }
 }
 
-// TASK-183: "Confirmar" on a cautious assist's question — the REWRITTEN
-// sentence `AskTurn` already carries, asked again with no Main Key at all:
-// it resolves on its own through the ordinary matcher.
-async function confirm(sentence: string): Promise<void> {
-  if (busy.value) return;
-  busy.value = true;
-  try {
-    remember(await ask(sentence, undefined, true));
-    await nextTick();
-    if (log.value) log.value.scrollTop = log.value.scrollHeight;
-  } catch (err) {
-    remember({
-      sentence, kind: "refused", proposal: null,
-      text: (err as Error).message, assist: false, confirm: null,
-    });
-  } finally {
-    busy.value = false;
-  }
-}
+// TASK-183: "Confirmar"/"Negar" resolve the question IN PLACE — `AskTurn`'s
+// own, with no sentence to send back up and no new turn to scroll to.
 </script>
 
 <template>
@@ -95,7 +70,7 @@ async function confirm(sentence: string): Promise<void> {
     <div ref="log" class="chat-log">
       <p v-if="!chatState.turns.length" class="empty">{{ word("no_records") }}</p>
       <AskTurn v-for="(turn, index) in chatState.turns" :key="index" :turn="turn"
-               @retry="(key) => retry(turn.sentence, key)" @confirm="confirm" />
+               @retry="(key) => retry(turn.sentence, key)" />
     </div>
     <p v-if="store.assist && !store.jev_ready" class="chat-notice">
       {{ word("jev_not_configured") }}

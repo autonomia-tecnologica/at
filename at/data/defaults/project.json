@@ -74,6 +74,7 @@
     "desc": {
       "label": "table.project.field.desc",
       "type": "markdown",
+      "max_length": 200,
       "searchable": true
     },
     "since": {

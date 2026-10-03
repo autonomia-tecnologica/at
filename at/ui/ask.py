@@ -101,6 +101,7 @@ from datetime import date, datetime
 from typing import Callable
 
 from at import i18n, nlu
+from at.nlu import matcher
 from at.core import (
     actors,
     assist,
@@ -171,6 +172,22 @@ class Result:
     # by the question's `key`, which is this module's to read and not the
     # page's to compare against.
     confirm: str | None = None
+    # A `list`'s own header and cells, when the proposal was one and it found
+    # rows — `None` for every other action, and for a `list` that found none.
+    # A surface that draws an actual table reads this; one that only prints
+    # reads `text`, which carries the same rows as the `cli`'s own ASCII.
+    table: tuple[list[str], list[list[str]]] | None = None
+    # A `list`'s own bullets — one line per row, its TITLE and nothing else —
+    # when the sentence did NOT say "tabela"/"table" (the person's own default,
+    # 03/10/2026). Mutually exclusive with `table`: a `list` fills exactly one
+    # of the two, never both and never neither when it found rows.
+    bullets: list[str] | None = None
+    # The ACTION a bare verb named with nothing to act on — "listar", alone —
+    # so a surface can complete it from whatever is typed NEXT, the way a
+    # person finishing their own sentence a beat late still gets read
+    # (`nlu.error.no_table_bare`, `lib/chat.ts`). `None` for every other
+    # refusal and for every answer and question.
+    awaiting: str | None = None
 
 
 def ask(
@@ -208,7 +225,11 @@ def ask(
         # trouxe uma Chave Principal para abrir a credencial. `hinted` é esse
         # fato e nada mais: uma superfície o lê para oferecer o retry, ou não.
         hinted = assist.enabled() and main_key is None
-        return Result("refused", None, str(refused), REFUSED, assist=hinted)
+        # A BARE VERB carries the action it named forward — the one thing a
+        # surface needs to complete it from whatever arrives next, the way
+        # `lib/chat.ts` reads "sim"/"não" against an open CONFIRM question.
+        awaiting = refused.kw.get("canonical") if refused.key == "nlu.error.no_table_bare" else None
+        return Result("refused", None, str(refused), REFUSED, assist=hinted, awaiting=awaiting)
     if isinstance(proposed, nlu.Question):
         # The question carries the phrase it is about, so the surface asks in the
         # active language without knowing which one the phrase was written in.
@@ -247,12 +268,12 @@ def ask(
 
     written = proposed_text(proposed)
     try:
-        code, answer, _ = execute(proposed, actor=actor)
+        code, answer, _, table_rows, bullets = execute(proposed, actor=actor)
     except tables.TableError as error:
         return Result("answer", written, str(error), REFUSED)
     except files.ReadOnly as error:
         return Result("answer", written, tr("cli.error.read_only", where=error.where), REFUSED)
-    return Result("answer", written, answer, code)
+    return Result("answer", written, answer, code, table=table_rows, bullets=bullets)
 
 
 def ceiling(actor: dict | None, proposal: nlu.Proposal) -> str | None:
@@ -281,17 +302,34 @@ def ceiling(actor: dict | None, proposal: nlu.Proposal) -> str | None:
     return None if actors.may(actor, needed) else needed
 
 
+def _sign(op: str) -> str:
+    """A operação como um SINAL, para a proposta: `até` é `≤`, `desde` é `≥`, e
+    o valor exato é `=`. É o que a pessoa lê para saber se o filtro é um ponto ou
+    um intervalo."""
+    return {"<=": "≤", ">=": "≥", "<": "<", ">": ">"}.get(op, "=")
+
+
 def proposed_text(proposal: nlu.Proposal) -> str:
     """The proposal, written with the engine's own words.
 
     The action and the table are named the way the engine names them and every
     value is written the way the listing would write it, because a proposal is
     something a person checks before trusting it.
+
+    **A `list`'s own residue is left out** — `_kept` never filters by the
+    primary field either (its own docstring: "listar tarefas comprar pão" is
+    not "the tasks whose text is exactly comprar pão"), and a proposal that
+    showed it as `Texto = comprar pão` would be claiming a filter that never
+    runs. `create`/`edit` keep it: there the primary IS the value being
+    written, not residue a list could not place anywhere else.
     """
+    primary = schema.primary(proposal.table) if proposal.action == "list" else None
     fields = ", ".join(
-        f"{tables.label(proposal.table, name)} = "
+        f"{tables.label(proposal.table, name)} "
+        f"{_sign(proposal.ranges.get(name, '='))} "
         f"{tables.text_of(proposal.table, name, value)}"
         for name, value in proposal.values.items()
+        if name != primary
     )
     return tr(
         "nlu.proposal",
@@ -303,7 +341,7 @@ def proposed_text(proposal: nlu.Proposal) -> str:
 
 def execute(
     proposal: nlu.Proposal, *, actor: dict | None = None
-) -> tuple[int, str, dict | None]:
+) -> tuple[int, str, dict | None, tuple[list[str], list[list[str]]] | None, list[str] | None]:
     """Run the proposal through the table engine, and answer with its words.
 
     The row a person named is spelled the way `run` already reads one: `list` and
@@ -317,8 +355,10 @@ def execute(
         proposal.action,
         args,
         (proposal.values, args),
+        ranges=proposal.ranges,
         actor=actor,
         via=audit.NLU,
+        full_table=proposal.full_table,
     )
 
 
@@ -365,11 +405,13 @@ def run(
     action: str,
     args: list[str],
     given: tuple[dict, list[str]] | None = None,
+    ranges: dict[str, str] | None = None,
     *,
     actor: dict | None = None,
     via: str = audit.ENGINE,
     released: bool = False,
-) -> tuple[int, str, dict | None]:
+    full_table: bool = True,
+) -> tuple[int, str, dict | None, tuple[list[str], list[list[str]]] | None, list[str] | None]:
     """One table action, from the words of a surface or from a proposal.
 
     **Every action that changes the folder ends in a version** (§4, item 30), and
@@ -424,9 +466,9 @@ def run(
         measured = risk.demand(table, action, values)
         if holds(measured, actor=actor, via=via):
             held = jobs.hold(table, action, leftovers, values, actor=actor)
-            return OK, tr("job.waits", id=tables.format_id(jobs.JOB, held["id"])), None
+            return OK, tr("job.waits", id=tables.format_id(jobs.JOB, held["id"])), None, None, None
     try:
-        code, answer, row = _acted(table, action, args, given)
+        code, answer, row, table_rows, bullets = _acted(table, action, args, given, ranges, full_table)
     except tables.TableError as error:
         _line(
             table, action, actor, via, audit.REFUSED,
@@ -449,7 +491,7 @@ def run(
                 table, action, actor, via, audit.REFUSED,
                 "cli.error.rejected_arguments", answer, threshold=bar,
             )
-    return code, answer, row
+    return code, answer, row, table_rows, bullets
 
 
 def denied(
@@ -544,7 +586,8 @@ def job(
     read (`jobs.JobError.key`), never the words and never a value.
     """
     if action == "list":
-        return _listing(jobs.JOB, args)
+        code, text, _, _ = _listing(jobs.JOB, args)
+        return code, text
     if action == "view":
         return _viewing(jobs.JOB, args)
     if action not in jobs.ACTS or len(args) != 1:
@@ -634,7 +677,7 @@ def _ran(row: dict) -> tuple[int, str]:
         )
         return REFUSED, str(refused)
     table, action = jobs.release(row)
-    code, answer, _ = run(
+    code, answer, _, _, _ = run(
         table,
         action,
         jobs.stored(row),
@@ -1122,29 +1165,36 @@ def _acted(
     action: str,
     args: list[str],
     given: tuple[dict, list[str]] | None = None,
-) -> tuple[int, str, dict | None]:
+    ranges: dict[str, str] | None = None,
+    full_table: bool = True,
+) -> tuple[int, str, dict | None, tuple[list[str], list[list[str]]] | None, list[str] | None]:
     """The action itself — what `run` does before it records and versions.
 
     Private on purpose: `run` is the door, and a caller that reached the engine
     around it would be a second road that leaves no line and no version. The
     third element is the ROW the act wrote, which the page's route answers with;
-    a read, and a word whose arguments were rejected, answer `None`.
+    a read, and a word whose arguments were rejected, answer `None`. The fourth
+    and fifth are a `list`'s own two shapes — the grid (header and cells) and
+    the one-line-per-row bullets — a surface that draws either reads it instead
+    of parsing the second element's ASCII back apart; every other action
+    answers `None` for both, and a `list` only ever fills ONE of the two.
     """
     if action == "list":
-        code, answer = _listing(table, args)
-        return code, answer, None
+        values = given[0] if given is not None else {}
+        code, answer, table_rows, bullets = _listing(table, args, values, ranges or {}, full_table)
+        return code, answer, None, table_rows, bullets
     if action == "view":
         code, answer = _viewing(table, args)
-        return code, answer, None
+        return code, answer, None, None, None
     values, leftovers = given if given is not None else _sets(args)
     if action == "create":
         if leftovers:
-            return USAGE, rejected(action), None
+            return USAGE, rejected(action), None, None, None
         row = tables.create(table, values)
-        return OK, tr("table.created", id=tables.format_id(table, row["id"])), row
+        return OK, tr("table.created", id=tables.format_id(table, row["id"])), row, None, None
     if action == "cancel":
         if len(leftovers) != 1:
-            return USAGE, rejected(action), None
+            return USAGE, rejected(action), None, None, None
         # The reason is the argument the CLOSING owns, and it is read outside the
         # field coercion: a table does not have to declare a field for it. When
         # one does declare a field of that name, the field wins — the engine sets
@@ -1153,20 +1203,23 @@ def _acted(
         if not schema.field(table, "reason"):
             values.pop("reason", None)
         row = tables.cancel(table, leftovers[0], reason, values)
-        return OK, tr("table.cancelled", id=tables.format_id(table, row["id"])), row
+        return OK, tr("table.cancelled", id=tables.format_id(table, row["id"])), row, None, None
     if action == "delete":
         if len(leftovers) != 1 or values:
-            return USAGE, rejected(action), None
+            return USAGE, rejected(action), None, None, None
         row = tables.delete(table, leftovers[0])
-        return OK, tr("table.deleted", id=tables.format_id(table, row["id"])), row
+        return OK, tr("table.deleted", id=tables.format_id(table, row["id"])), row, None, None
     # edit
     if len(leftovers) != 1:
-        return USAGE, rejected(action), None
+        return USAGE, rejected(action), None, None, None
     row = tables.edit(table, leftovers[0], values)
-    return OK, tr("table.edited", id=tables.format_id(table, row["id"])), row
+    return OK, tr("table.edited", id=tables.format_id(table, row["id"])), row, None, None
 
 
-def _listing(table: str, args: list[str]) -> tuple[int, str]:
+def _listing(
+    table: str, args: list[str], values: dict | None = None,
+    ranges: dict[str, str] | None = None, full_table: bool = True,
+) -> tuple[int, str, tuple[list[str], list[list[str]]] | None, list[str] | None]:
     """A table's listing, and the one narrowing the `cli` adds to it: `--all`
     puts back what the declaration hides, and `--project` keeps what one item
     claims.
@@ -1176,6 +1229,13 @@ def _listing(table: str, args: list[str]) -> tuple[int, str]:
     listing's own is the status filter the table declares — `task list` hides
     what is finished, `--all` puts it back — so the scope is shared with the
     page and the narrowing is the listing's, each in its own place.
+
+    **`full_table` is the person's own convention (03/10/2026):** the GRID,
+    every declared column, only when the sentence said "tabela"/"table"
+    (`nlu.matcher`'s own reading) — the `cli`, which never carries that word at
+    all, keeps asking for it by never passing `False` here. Everything else —
+    a bare "listar tarefas" — is a bullet, one line per row, the row's own
+    TITLE and nothing beside it.
     """
     show_all = "--all" in args
     rest = [arg for arg in args if arg != "--all"]
@@ -1183,9 +1243,9 @@ def _listing(table: str, args: list[str]) -> tuple[int, str]:
     if rest[:1] == ["--project"] and len(rest) == 2:
         wanted, rest = rest[1], []
     if rest:
-        return USAGE, rejected("list")
+        return USAGE, rejected("list"), None, None
     if wanted is not None and not _claims(table):
-        return USAGE, rejected("list")
+        return USAGE, rejected("list"), None, None
     rows = tables.rows(table, show_all=show_all)
     if wanted is not None:
         # A project nobody has is refused the way a row nobody has is, and by
@@ -1193,9 +1253,138 @@ def _listing(table: str, args: list[str]) -> tuple[int, str]:
         owner = tables.find(PROJECT, wanted)
         scope = set(projects.subtree(owner["id"]))
         rows = [row for row in rows if projects.project_of(row) in scope]
+    values = dict(values or {})
+    ranges = dict(ranges or {})
+    on_day = _bare_day(table, values, ranges)
+    rows = _kept(table, rows, values, ranges)
+    if on_day is not None:
+        rows = [row for row in rows if reminder.occurs(row, on_day)]
     if not rows:
-        return OK, tr("table.word.empty")
-    return OK, rendered(table, rows)
+        if on_day is not None:
+            # Named the way the person asked it: the DAY, not a field nobody
+            # said — "nenhum lembrete em 03/10/2026", not "nada aqui ainda".
+            when = tables.text_of(reminder.REMINDER, matcher.open_day_field(table), on_day.isoformat())
+            return OK, tr("table.reminder.list.empty_on_day", date=when), None, None
+        described = _described(table, values, ranges)
+        if described:
+            return OK, tr(
+                "table.list.empty_filtered",
+                table=tables.table_name(table, many=True).lower(), filter=described,
+            ), None, None
+        return OK, tr("table.word.empty"), None, None
+    if full_table:
+        header, cells = _table_rows(table, rows)
+        return OK, words.table([header, *cells]), (header, cells), None
+    bullets = [tables.title(table, row) for row in rows]
+    return OK, "\n".join(f"- {line}" for line in bullets), None, bullets
+
+
+def _bare_day(table: str, values: dict, ranges: dict[str, str]) -> date | None:
+    """A day said ALONE, for the `reminder` table — popped out of `values` so
+    `_kept` never compares it, and handed back for `occurs` to read instead.
+
+    "Lembretes de hoje" names no field: the day lands on `on_date`, the one
+    `nlu.matcher.open_day_field` leaves open for this table (the comment beside
+    `reminder.NOTIFIED` is where that wiring is declared). Read as a literal
+    field match, `on_date` only holds for a `once` reminder — every `daily`,
+    `weekly`, `monthly` and `yearly` row carries no `on_date` at all, so "hoje"
+    found NOTHING for the reminder a person has every day. A day is a set of
+    INSTANCES, not a stored value (the person's own words for the defect): what
+    "hoje" means for this table is `reminder.occurs`, which already reads the
+    very recurrence `on_date`'s literal match could only ever cover a slice of.
+
+    Only the EXACT day is read this way — `ranges` empty for the field, which is
+    what a bare "hoje"/"amanhã" produces. "lembretes até sexta" keeps the literal
+    field comparison: folding a RANGE through the recurrence is a future day's
+    work, and falling back to what already existed is not a regression.
+    """
+    if table != reminder.REMINDER:
+        return None
+    field = matcher.open_day_field(table)
+    if field is None or field not in values or ranges.get(field, "=") != "=":
+        return None
+    raw = values.pop(field)
+    ranges.pop(field, None)
+    try:
+        return date.fromisoformat(raw) if isinstance(raw, str) else None
+    except ValueError:
+        return None
+
+
+def _described(table: str, values: dict, ranges: dict[str, str]) -> str:
+    """The filter, in words — "prazo até 03/10/2026", "status ativo" — joined
+    the way a person would say more than one at once. The primary field never
+    describes (the same reason `_kept` never filters by it): residue is
+    content, never a clause an empty listing explains itself with. `""` is a
+    bare "listar tarefas", with nothing to describe at all.
+    """
+    primary = schema.primary(table)
+    parts = []
+    for name, value in values.items():
+        if name == primary or not schema.field(table, name):
+            continue
+        label = tables.label(table, name).lower()
+        text = tables.text_of(table, name, value)
+        op = ranges.get(name, "=")
+        if op == "<=":
+            parts.append(f"{label} {tr('table.list.until')} {text}")
+        elif op == ">=":
+            parts.append(f"{label} {tr('table.list.since')} {text}")
+        elif op in ("<", ">"):
+            parts.append(f"{label} {_sign(op)} {text}")
+        elif schema.field(table, name).get("type") == "day":
+            # A bare day reads as "due by" in how the person already says it
+            # ("tarefas para hoje") even though the engine's own match on it
+            # is exact — the same leniency `_bare_day` gives `reminder`.
+            parts.append(f"{label} {tr('table.list.until')} {text}")
+        else:
+            parts.append(f"{label} {text}")
+    return " e ".join(parts)
+
+
+def _kept(table: str, rows: list[dict], values: dict, ranges: dict[str, str]) -> list[dict]:
+    """O que a FRASE filtrou: cada campo que ela citou mantém só as linhas cujo
+    valor casa.
+
+    **O campo de texto livre não filtra** (`schema.primary`): "listar tarefas
+    comprar pão" não é "as tarefas cujo texto é exatamente 'comprar pão'" — o
+    resíduo de um `list` não é um filtro, e tratá-lo como um esvaziaria a
+    listagem que a pessoa esperava ver. O que filtra são os campos que um leitor
+    TIPADO preencheu (data, número, valor de enum) — e cada um com a sua
+    operação: `=` quando não há palavra de intervalo, `<=`/`>=` quando há.
+    """
+    primary = schema.primary(table)
+    declared = (schema.of(table) or {}).get("fields", {})
+    for name, value in values.items():
+        if name == primary or name not in declared:
+            continue
+        op = ranges.get(name, "=")
+        rows = [row for row in rows if _matches(row.get(name), value, op)]
+    return rows
+
+
+def _matches(cell: Any, value: Any, op: str) -> bool:
+    """Se o valor de uma linha casa com o que a frase pediu, sob `op`.
+
+    Sem operação é igualdade. Com `até`/`desde` é a comparação — e uma célula
+    VAZIA (`None`) nunca casa um intervalo: uma tarefa sem prazo não é "até
+    sexta". Uma comparação que os tipos não deixam fazer (um texto contra uma
+    data) não estoura: não casa.
+    """
+    if op == "=" or cell is None:
+        return cell == value
+    try:
+        if op == "<=":
+            return cell <= value
+        if op == ">=":
+            return cell >= value
+        if op == "<":
+            return cell < value
+        if op == ">":
+            return cell > value
+    except TypeError:
+        return False
+    return cell == value
 
 
 def _claims(table: str) -> bool:
@@ -1230,6 +1419,19 @@ def _viewing(table: str, args: list[str]) -> tuple[int, str]:
     return OK, "\n".join(lines)
 
 
+def _table_rows(table: str, rows: list[dict]) -> tuple[list[str], list[list[str]]]:
+    """The header and the cells, the id then the columns the table declares —
+    the shape both `rendered` (the `cli`'s ASCII) and a surface that draws an
+    actual table (the WebApp's chat, TASK-?) read, each in its own words."""
+    header = [tr("table.field.id")] + [tables.label(table, name) for name in tables.columns(table)]
+    cells = [
+        [tables.format_id(table, row["id"])]
+        + [tables.text_of(table, name, row.get(name)) for name in tables.columns(table)]
+        for row in rows
+    ]
+    return header, cells
+
+
 def rendered(table: str, rows: list[dict]) -> str:
     """The listing: the id, then the columns the table declares.
 
@@ -1237,12 +1439,7 @@ def rendered(table: str, rows: list[dict]) -> str:
     is the same kind of thing — a header and cells — and two renderers would be
     two sets of widths that part company the first time a title grows.
     """
-    header = [tr("table.field.id")] + [tables.label(table, name) for name in tables.columns(table)]
-    cells = [
-        [tables.format_id(table, row["id"])]
-        + [tables.text_of(table, name, row.get(name)) for name in tables.columns(table)]
-        for row in rows
-    ]
+    header, cells = _table_rows(table, rows)
     return words.table([header, *cells])
 
 

@@ -1048,6 +1048,20 @@ def _silent_additions(ask: Ask | None) -> list[Report]:
     return _extend(SILENT_ADDITIONS)
 
 
+PROJECT_DESC_LIMIT = {
+    "project": {
+        "fields": {"desc": {"max_length": 200}},
+    },
+}
+
+
+def _project_desc_limit(ask: Ask | None) -> list[Report]:
+    """Migração vinte e quatro: a descrição do projeto ganha o teto que a
+    task não tem — o resumo é dela, a prosa é da task (§3).
+    """
+    return _extend(PROJECT_DESC_LIMIT)
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, _legacy_instance),
     Migration(2, _capitalized_instance),
@@ -1072,6 +1086,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(21, _edited_at),
     Migration(22, _convert_folder),
     Migration(23, _silent_additions),
+    Migration(24, _project_desc_limit),
 )
 
 

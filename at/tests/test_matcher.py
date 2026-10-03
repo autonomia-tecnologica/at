@@ -170,10 +170,19 @@ class TheRefusal(MatcherCase):
         self.assertIn("banana", str(refused.exception))
 
     def test_a_sentence_with_an_action_and_no_table_is_refused_by_name(self):
+        # "sexta" is residue, but it reads as a DAY with nowhere to land — the
+        # same incompleteness a bare "cria" has, and not a guess at an
+        # object's name (`no_such_table` is the OTHER test, below).
         with self.assertRaises(nlu.Refused) as refused:
             self.propose("cria pra sexta")
-        self.assertEqual(refused.exception.key, "nlu.error.no_table")
-        self.assertIn("cria pra sexta", str(refused.exception))
+        self.assertEqual(refused.exception.key, "nlu.error.no_table_bare")
+        self.assertIn(tables.table_name("task"), str(refused.exception))
+
+    def test_a_sentence_naming_an_unknown_object_points_at_the_word(self):
+        with self.assertRaises(nlu.Refused) as refused:
+            self.propose("lista teste")
+        self.assertEqual(refused.exception.key, "nlu.error.no_such_table")
+        self.assertIn("teste", str(refused.exception))
 
     def test_two_actions_are_refused_and_not_disambiguated(self):
         with self.assertRaises(nlu.Refused) as refused:
@@ -312,10 +321,11 @@ class TheDoor(MatcherCase):
         )
 
     def test_a_sentence_that_lists_reaches_the_listing(self):
+        # No "tabela" in the sentence: the person's own default (03/10/2026)
+        # is a bullet, the row's TITLE and no id — the grid is "tabela"'s own.
         tables.create("task", {"text": "write the README"})
         code, text = self.run_words("ask", "lista as tarefas")
         self.assertEqual(code, 0)
-        self.assertIn("TASK-1", text)
         self.assertIn("write the README", text)
 
     def test_the_row_is_named_the_way_a_person_names_one(self):

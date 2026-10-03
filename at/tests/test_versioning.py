@@ -205,7 +205,7 @@ class TheRepository(ScratchCase):
         self.born()
         self.every_write()
         with redirect_stdout(io.StringIO()):
-            _, answer, _ = door.run(
+            _, answer, _, _, _ = door.run(
                 "task", "create", ["--set", "text=comprar pão"], **AS_A_PERSON
             )
         # The very sentence the surface printed, and not a second wording of it:

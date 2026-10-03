@@ -34,3 +34,12 @@ class Proposal:
     table: str
     values: dict[str, Any] = field(default_factory=dict)
     row: Any = None
+    # COMO cada valor de `values` se compara ao que a linha guarda — o `op` que o
+    # grammar leu junto do valor (`até` é `<=`, `desde` é `>=`). Vazio é tudo
+    # exato, que é o caso comum e o de toda ESCRITA: escrever um intervalo não
+    # quer dizer nada. Quem lê isto é o `list`, para filtrar.
+    ranges: dict[str, str] = field(default_factory=dict)
+    # A palavra "tabela"/"table" na frase (a pessoa, 03/10/2026): um `list`
+    # sem ela é uma linha por registro; com ela, a grade inteira, com toda
+    # coluna que a tabela declara. Quem lê isto é `ui/ask.py`'s `_listing`.
+    full_table: bool = False

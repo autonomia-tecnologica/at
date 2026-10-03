@@ -4,13 +4,15 @@
     "error.no_such_clock": "Não existe a hora {value}.",
     "error.no_action": "Nenhuma ação na frase: {text}.",
     "error.no_table": "Nenhuma tabela na frase: {text}.",
+    "error.no_such_table": "Não encontrei um objeto \"{word}\" para {action}.",
+    "error.no_table_bare": "Não disse o que {action}. Tenho: {names}.",
     "error.two_actions": "Uma ação por pedido: a frase nomeia {first} e {second}.",
     "error.two_tables": "Uma tabela por pedido: a frase nomeia {first} e {second}.",
     "error.no_row": "A ação precisa de um registro de {table}, e a frase não diz qual.",
     "error.interpreter_off": "O interpretador está desligado.",
     "ask.which_hour": "Meia de qual hora? Diga a hora junto, como em `duas e meia`.",
     "ask.which_field": "Em que campo fica {text}? Esta tabela não declara um campo de dia em aberto.",
-    "ask.slang": "Você quis dizer «{text}»? Repita exatamente esta frase para confirmar.",
+    "ask.slang": "Entendi \"{text}\". Confirma?",
     "proposal": "{action} {table}: {fields}"
   },
   "en_US": {
@@ -18,13 +20,15 @@
     "error.no_such_clock": "There is no hour {value}.",
     "error.no_action": "No action in the sentence: {text}.",
     "error.no_table": "No table in the sentence: {text}.",
+    "error.no_such_table": "I could not find a \"{word}\" object to {action}.",
+    "error.no_table_bare": "You didn't say what to {action}. I have: {names}.",
     "error.two_actions": "One action per request: the sentence names {first} and {second}.",
     "error.two_tables": "One table per request: the sentence names {first} and {second}.",
     "error.no_row": "The action needs a record of {table}, and the sentence does not say which.",
     "error.interpreter_off": "The interpreter is off.",
     "ask.which_hour": "Half of which hour? Name the hour with it, as in `half past two`.",
     "ask.which_field": "Which field holds {text}? This table declares no open day field.",
-    "ask.slang": "Did you mean «{text}»? Repeat this exact sentence to confirm.",
+    "ask.slang": "Got it: \"{text}\". Confirm?",
     "proposal": "{action} {table}: {fields}"
   }
 }

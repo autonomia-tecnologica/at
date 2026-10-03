@@ -40,6 +40,14 @@
              font-display: swap; src: url("/vendor/font-quicksand-700") format("woff2"); }
 
 * { box-sizing: border-box; }
+/* THE HAND, EVERYWHERE SOMETHING IS CLICKABLE — a DESIGN SYSTEM rule and not a
+   per-element one: a native `<button>` defaults to `cursor: default` in every
+   engine (the pointer is NOT automatic), so a new button that forgot its own
+   `cursor: pointer` silently drew the arrow instead. This is the one place
+   that promise is kept, for every button the app has or ever grows — the
+   per-selector `cursor: pointer` rules elsewhere in this file predate it and
+   are harmless now, not load-bearing. */
+button:not(:disabled), [role="button"] { cursor: pointer; }
 
 body {
   margin: 0; height: 100vh; display: flex;
@@ -346,7 +354,8 @@ nav .side-foot > .file::before,
 .caret::before,
 .nav-toggle::before,
 th .fbtn::before,
-.back::before {
+.back::before,
+.balloon-bubble::before {
   content: ""; flex: none; display: inline-block;
   width: 1.15em; height: 1.15em; vertical-align: -.2em;
   background-color: currentColor;
@@ -551,40 +560,21 @@ button.opt { background: none; border: 0; font: inherit; width: 100%; text-align
 }
 .dialog input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
-.balloon {
-  position: fixed; z-index: 20; right: var(--space-5); bottom: var(--space-5);
-  width: min(var(--measure), calc(100vw - 2 * var(--space-5)));
-  max-height: calc(100vh - 2 * var(--space-5));
-  display: flex; flex-direction: column; gap: var(--space-3);
-  padding: var(--space-4); background: var(--surface-1);
-  border-radius: var(--r-lg); box-shadow: var(--shadow-lg);
-  animation: balloon-in var(--dur-base) var(--ease-out);
-}
-.balloon-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
-.balloon-head strong { font-size: var(--text-sm); font-weight: var(--weight-medium); color: var(--ink-2); }
-/* TASK-183: the window's history — the SAME turns the chat keeps — scrolls on
-   its own, so the form that sends stays put at the foot instead of sliding
-   away with a long conversation. */
-.balloon-log { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-3); }
-.balloon-close {
-  padding: 0; background: none; border: 0; color: var(--ink-3);
-  font: inherit; font-size: var(--text-md); line-height: 1; cursor: pointer;
-}
-.balloon-close:hover { color: var(--accent); }
-
-/* THE CLOSED SHAPE (padrão Claude): the same corner, a PILL instead of a
-   panel. It carries no form and no answer — those are the window's — only the
-   one click that grows it. */
+/* THE DOOR INTO `/chat`: one big round icon in the corner, nothing else —
+   there is no window to grow into anymore (the box it would have carried is
+   `/chat`'s own), so the only state left is a click and where it goes. */
 .balloon-bubble {
   position: fixed; z-index: 20; right: var(--space-5); bottom: var(--space-5);
-  padding: var(--space-3) var(--space-5); background: var(--surface-1);
-  color: var(--accent); border: 0; border-radius: var(--r-full);
-  font: inherit; font-weight: var(--weight-semibold); cursor: pointer;
+  width: 56px; height: 56px; padding: 0; font-size: 1.5rem;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent); color: var(--accent-ink);
+  border: 0; border-radius: var(--r-full); cursor: pointer;
   box-shadow: var(--shadow-lg);
   transition: box-shadow var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
   animation: balloon-in var(--dur-base) var(--ease-out);
 }
-.balloon-bubble:hover { transform: translateY(-1px); }
+.balloon-bubble:hover { transform: translateY(-1px); background: var(--accent-hover); }
+.balloon-bubble::before { --i: url("/icons/at2-nav-chat.svg"); width: 1.5em; height: 1.5em; }
 
 /* THE TOASTER (TASK-165, fatia 3/4): a generic, reusable slot — `Toast.vue`
    names no caller, and the LEFT corner is deliberate, the balloon's own
@@ -634,7 +624,7 @@ button.opt { background: none; border: 0; font: inherit; width: 100%; text-align
    dialog and on a form: the fill is what says so, and what is NOT the action
    says so out loud (`.btn-quiet`). */
 .btn {
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-2) var(--space-4);
   background: var(--accent); color: var(--accent-ink);
   border: 1px solid transparent; border-radius: var(--r-sm);
   font: inherit; font-weight: var(--weight-semibold); cursor: pointer;
@@ -910,20 +900,111 @@ a.ref:hover, a.url:hover { border-bottom-color: currentColor; background: var(--
 /* ===== interpreter: chat / balloon / turn ================================ */
 
 .turn { display: flex; flex-direction: column; gap: var(--space-2); }
-.turn .said, .turn .proposal, .turn .answer { margin: 0; }
-.turn .said { color: var(--ink-3); }
-.turn .answer { white-space: pre-wrap; }
+.turn .proposal { margin: 0; }
+/* THE TWO VOICES, by COLOR and the system's own rounding — not a bubble: no
+   tail, no left/right split, the same `--r-lg` every content surface already
+   carries (`.prose`, `.record-body`). What was SAID is the accent, solid,
+   because it is the one thing in the turn that is the person's; what comes
+   back is the quiet surface, because it is the engine's. */
+.turn .said, .turn .answer-msg {
+  margin: 0; padding: var(--space-3) var(--space-4); border-radius: var(--r-lg);
+}
+.turn .said {
+  display: flex; align-items: baseline; gap: var(--space-3); flex-wrap: wrap;
+  background: var(--accent); color: var(--accent-ink);
+}
+.turn .said .stamp { margin-left: auto; opacity: .72; font-size: var(--text-xs); white-space: nowrap; }
+/* THE ANSWER IS A MESSAGE TOO — its own card, its own stamp, whether it is a
+   sentence or a table: the two are read the same way the person's own turn is,
+   and a table sitting bare in the log, with no card and no clock, would be the
+   one answer that did not look like it was said at a time at all. */
+.turn .answer-msg {
+  display: flex; flex-direction: column; gap: var(--space-2);
+  /* NOT `--surface-2`: on the light theme it sits a hair off `--surface-0`,
+     the PAGE's own background, so the card read as no card at all. A mix off
+     `--ink-1` stays a visible grey against the page in every theme, light or
+     dark, without a token of its own to keep in step with either. The SAME
+     mix is spelled again below (the bullets' own fold-fade) rather than named
+     as a custom property: this file's token contract (`test_design.py`) reads
+     every `var(--x)` with no fallback as a THEME token, and this one answers
+     to no theme — it is arithmetic on tokens that already do. */
+  background: color-mix(in srgb, var(--ink-1) 6%, var(--surface-1));
+  color: var(--ink-1);
+}
+/* THE STAMP RIDES THE SAME LINE as the text, the way `.said`'s does — a card
+   that put its clock on a row of its own was a card a line taller for nothing,
+   for the common case of one short sentence back. A TABLE has no such line to
+   share it with, so there it keeps the row below (`turn.table` branch above). */
+.turn .answer-msg .stamp { opacity: .6; font-size: var(--text-xs); white-space: nowrap; }
+.turn .answer-msg > .stamp { align-self: flex-end; }
+.turn .answer {
+  display: flex; align-items: baseline; gap: var(--space-3); flex-wrap: wrap;
+  margin: 0; white-space: pre-wrap;
+}
+.turn .answer .stamp { margin-left: auto; }
+/* THE TABLE IS ITS OWN PANEL inside the grey card — `--surface-1`, the same
+   white every content card sits on (`.prose`, `.record-body`), so a glance
+   tells the card from what it is carrying the way it already does everywhere
+   else in the product. */
+.turn .answer-table-wrap { position: relative; background: var(--surface-1); border-radius: var(--r-sm); overflow: hidden; }
+.turn .answer-table th, .turn .answer-table td { padding: var(--cell-pad-y) var(--cell-pad); }
+/* THE BULLETS SIT RIGHT ON THE CARD — no panel of their own (unlike the
+   table): a one-line-per-row list is already as plain as the card itself, and
+   a second white box around it would be a frame around nothing. */
+.turn .answer-bullets-wrap {
+  position: relative; margin: 0; padding: 0; list-style: none;
+  display: flex; flex-direction: column; gap: var(--space-1);
+}
+.turn .answer-bullets-wrap li { padding-left: 1.1em; position: relative; }
+.turn .answer-bullets-wrap li::before { content: "•"; position: absolute; left: 0; color: var(--ink-3); }
+/* A LONG LISTING STARTS FOLDED — a fixed window of rows, a fade at the edge
+   saying there is more, and a click (anywhere on it) opens the rest. Without
+   this a `list` with a hundred rows would be a chat where one answer pushes
+   every turn that came before it off the screen on every reload. The two
+   wraps fade to DIFFERENT colours because they sit on different surfaces —
+   the table's own white panel, the bullets' grey card (`.answer-msg`'s own
+   mix, repeated below). */
+.turn .answer-table-wrap.folded, .turn .answer-bullets-wrap.folded {
+  max-height: 15.5rem; overflow: hidden; cursor: pointer;
+}
+/* `tbody tr { cursor: default }` below is MORE specific than the wrapper's own
+   `cursor: pointer` (an extra type selector beats a class), so a folded
+   table's rows were drawing the arrow right where the click to expand it
+   actually lands — only the gaps between them inherited the hand. */
+.turn .answer-table-wrap.folded tbody tr { cursor: pointer; }
+.turn .answer-table-wrap.folded::after,
+.turn .answer-bullets-wrap.folded::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3.5rem;
+  pointer-events: none;
+}
+.turn .answer-table-wrap.folded::after { background: linear-gradient(to bottom, transparent, var(--surface-1)); }
+.turn .answer-bullets-wrap.folded::after {
+  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--ink-1) 6%, var(--surface-1)));
+}
+/* `th` STICKS TO ITS SCROLLER'S TOP everywhere else (base.css, above) because a
+   TableView IS its own scroller — the whole view is the rows, and the header
+   rides over them. A chat turn is not: the table is one short block among many
+   in `.chat-log`'s scroll, and a sticky header here pins itself to the LOG's
+   top and rides over every turn that follows instead of its own three rows. */
+.turn .answer-table th { position: static; background: none; }
+.turn .answer-table tbody tr { cursor: default; }
+.turn .answer-table tbody tr:hover td { background: none; }
 .turn .proposal .tag { color: var(--ink-3); margin-right: var(--space-2); }
 .turn[data-kind="question"] .answer, .turn[data-kind="refused"] .answer { color: var(--ink-2); }
 .chat { display: flex; flex-direction: column; height: 100%; gap: var(--space-3); }
-.chat-log { flex: 1; display: flex; flex-direction: column; gap: var(--space-3); overflow-y: auto; padding: var(--space-4); }
-.chat-form, .balloon-form { display: flex; align-items: center; gap: var(--space-3); }
-.chat-form { padding: 0 var(--space-4) var(--space-4); }
-.chat-say, .balloon-say {
+/* WHITE — the page around it is `--surface-0`, close enough in the light
+   theme that a grey turn (`.answer-msg`) read as sitting on the SAME grey as
+   its own log. */
+.chat-log {
+  flex: 1; display: flex; flex-direction: column; gap: var(--space-3); overflow-y: auto;
+  padding: var(--space-4); background: var(--surface-1); border-radius: var(--r-lg);
+}
+.chat-form { display: flex; align-items: center; gap: var(--space-3); padding: 0 var(--space-4) var(--space-4); }
+.chat-say {
   flex: 1; min-width: 0; padding: var(--space-3); background: var(--surface-0); color: var(--ink-1);
   border: 1px solid var(--border-strong); border-radius: var(--r-sm); font: inherit;
 }
-.chat-say:focus-visible, .balloon-say:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.chat-say:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 /* TASK-180, fatia 3/3: the one retry a refusal can still offer — the Main Key
    the first attempt did not carry, typed inline and never kept past the
    request it travels with. */

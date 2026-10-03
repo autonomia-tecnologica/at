@@ -84,6 +84,31 @@ HALF_PAST = re.compile(r"^(.+) e mei[ao]$")
 # thousands are not read.
 DECIMAL = ","
 
+# As palavras de INTERVALO. Elas não nomeiam um valor — dizem COMO o valor que
+# vem depois se compara ao que a linha guarda: `até sexta` é o que for menor ou
+# igual a sexta, `desde segunda` o que for maior ou igual. Sem palavra alguma, o
+# valor é exato. É o que separa "listar as de hoje" de "listar as de até sexta".
+RANGES = folded({
+    "até": "<=",
+    "desde": ">=",
+    "a partir de": ">=",
+})
+
+# A mais LONGA primeiro: `a partir de` não pode virar `a` seguido de sobra.
+_INTERVALS = tuple(sorted(RANGES, key=len, reverse=True))
+
+
+def _interval(text: str) -> tuple[str, str]:
+    """O `(op, resto)` de uma frase: a palavra de intervalo que a abre, e o que
+    sobra — ou `("=", texto)` quando não há nenhuma."""
+    spelled = fold(text)
+    if spelled in RANGES:
+        return RANGES[spelled], ""
+    for word in _INTERVALS:
+        if spelled.startswith(f"{word} "):
+            return RANGES[word], spelled[len(word) + 1:]
+    return "=", spelled
+
 
 def _count(text: str) -> int | float | None:
     """The number a word or a numeral names.
@@ -101,12 +126,15 @@ def _count(text: str) -> int | float | None:
 
 
 def read_day(text: str, now) -> Reading:
-    """`hoje`, `amanhã`, `sexta` and `dia 3`: a day said in Portuguese."""
-    spelled = fold(text)
+    """`hoje`, `amanhã`, `sexta` e `dia 3` — e o intervalo que os abre
+    (`até sexta`, `desde segunda`): a day said in Portuguese."""
+    op, spelled = _interval(text)
+    if not spelled:
+        return Residue(text)
     if spelled in RELATIVE:
-        return Value((now.date() + timedelta(days=RELATIVE[spelled])).isoformat())
+        return Value((now.date() + timedelta(days=RELATIVE[spelled])).isoformat(), op)
     if spelled in WEEKDAYS:
-        return Value(next_weekday(now.date(), WEEKDAYS[spelled]).isoformat())
+        return Value(next_weekday(now.date(), WEEKDAYS[spelled]).isoformat(), op)
     match = DAY_OF_MONTH.match(spelled)
     if match:
         count = _count(match.group(1))
@@ -115,16 +143,18 @@ def read_day(text: str, now) -> Reading:
             return Residue(text)
         if not isinstance(count, int):
             raise Refused("nlu.error.no_such_day", value=match.group(1))
-        return Value(day_of_month(now.date(), count).isoformat())
+        return Value(day_of_month(now.date(), count).isoformat(), op)
     return Residue(text)
 
 
 def read_instant(text: str, now) -> Reading:
     """`14:30`, `14h`, `duas`, `meia-noite`, `duas e meia`: an hour in Portuguese."""
-    spelled = fold(text)
+    op, spelled = _interval(text)
+    if not spelled:
+        return Residue(text)
     if spelled in FIXED:
         hour, minute = FIXED[spelled]
-        return Value(clock(now.date(), hour, minute, text))
+        return Value(clock(now.date(), hour, minute, text), op)
     if spelled == HALF_PAST_WORD:
         # Half an hour of which hour? The question goes back instead of the
         # likeliest reading.
@@ -134,25 +164,27 @@ def read_instant(text: str, now) -> Reading:
         count = _count(match.group(1))
         if not isinstance(count, int):
             return Residue(text)
-        return Value(clock(now.date(), count, 30, text))
+        return Value(clock(now.date(), count, 30, text), op)
     for shape in (CLOCK, CLOCK_H):
         match = shape.match(spelled)
         if match:
             hour = int(match.group(1))
             minute = int(match.group(2) or 0)
-            return Value(clock(now.date(), hour, minute, text))
+            return Value(clock(now.date(), hour, minute, text), op)
     count = _count(spelled)
     if isinstance(count, int) and 0 <= count <= 23:
         # A number alone in an instant field is the hour it says, with no twelve
         # added and no period supposed. Outside the hours that exist it is not an
         # hour: it comes back as a residue, and not as a guessed period of day.
-        return Value(clock(now.date(), count, 0, text))
+        return Value(clock(now.date(), count, 0, text), op)
     return Residue(text)
 
 
 def read_number(text: str, now) -> Reading:
     """`3`, `3,5`, `duas`, `meia`, `duas e meia`: a number in Portuguese."""
-    spelled = fold(text)
+    op, spelled = _interval(text)
+    if not spelled:
+        return Residue(text)
     match = HALF_PAST.match(spelled)
     if match:
         count = _count(match.group(1))
@@ -160,8 +192,8 @@ def read_number(text: str, now) -> Reading:
             return Residue(text)
         # `duas e meia` is 2.5 — the same pair of words that an instant field
         # reads as half past two. The type is what decides.
-        return Value(count + 0.5)
+        return Value(count + 0.5, op)
     count = _count(spelled)
     if count is None:
         return Residue(text)
-    return Value(count)
+    return Value(count, op)

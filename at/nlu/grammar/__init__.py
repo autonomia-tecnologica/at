@@ -61,6 +61,19 @@ def read(language: str, kind: str):
     return getattr(of(language), name)
 
 
+def phrases(language: str) -> tuple[str, ...]:
+    """As FRASES de data que a linguagem reconhece INTEIRAS, da mais longa para a
+    mais curta — o que o matcher precisa para não picá-las palavra a palavra.
+
+    Uma frase composta (`final da semana que vem`) só se lê se chegar inteira ao
+    leitor: separada, `semana` vira a frequência de um lembrete e as partículas
+    (`da`, `que`) a picam. O matcher pergunta aqui os trechos a manter juntos, e
+    `read_day` os lê. Uma linguagem que não declara frase nenhuma responde vazio.
+    """
+    listed = getattr(of(language), "PHRASES", {})
+    return tuple(sorted(listed, key=lambda phrase: len(phrase.split()), reverse=True))
+
+
 # ------------------------------------------------------------- the words ---
 
 # The fold that compares a phrase to the language's own words is the product's

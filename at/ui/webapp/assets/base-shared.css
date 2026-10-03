@@ -141,6 +141,14 @@
 
 /* ===== 2. THE RULES ===================================================== */
   * { box-sizing: border-box; }
+  /* THE HAND, EVERYWHERE SOMETHING IS CLICKABLE — a DESIGN SYSTEM rule and not
+     a per-element one: a native `<button>` defaults to `cursor: default` in
+     every engine (the pointer is NOT automatic), so a new button that forgot
+     its own `cursor: pointer` silently drew the arrow instead. This is the
+     one place that promise is kept, for every button the app has or ever
+     grows — the per-selector `cursor: pointer` rules elsewhere in this file
+     predate it and are harmless now, not load-bearing. */
+  button:not(:disabled), [role="button"] { cursor: pointer; }
   body { margin: 0; height: 100vh; display: flex; background: var(--bg);
          color: var(--ink);
          font: var(--font-size)/var(--line-height) var(--font-ui); }

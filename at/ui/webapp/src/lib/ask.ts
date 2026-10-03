@@ -29,6 +29,28 @@ export interface Turn {
   // the assist's own CONFIRM question — `null` for every `answer` and for the
   // grammar's ordinary ambiguity questions, which have none to offer.
   confirm: string | null;
+  // A `list`'s own header and rows — `null` for every other answer, and for a
+  // `list` that found nothing, and for a `list` that filled `bullets` (below)
+  // instead. When it carries something the turn draws an actual table instead
+  // of `text`'s ASCII, which keeps the same words.
+  table: { header: string[]; rows: string[][] } | null;
+  // A `list`'s OTHER shape — one line per row, its title and nothing beside
+  // it — the default a sentence with no "tabela"/"table" in it gets (the
+  // person's own convention, 03/10/2026). Mutually exclusive with `table`.
+  // Optional/absent (not just `null`) on a turn this module builds itself
+  // (a chatbot action, a refusal with no server round trip).
+  bullets?: string[] | null;
+  // The action a bare verb named with nothing to act on ("listar", alone) —
+  // `null` for every answer that is not that one refusal. `lib/chat.ts` reads
+  // it to complete the sentence from whatever is typed next, the way "sim"
+  // completes an open CONFIRM question.
+  awaiting?: string | null;
+  // When this turn was ADDED to the conversation, stamped by `chat.ts`'s
+  // `remember` and read nowhere else — the engine answers no clock here, and a
+  // chat that showed none would be the one place a person cannot tell two
+  // turns apart. Optional here because `remember` is what fills it; nothing
+  // that BUILDS a turn needs to know the time it is kept at.
+  at?: string;
 }
 
 export async function ask(
@@ -44,7 +66,8 @@ export async function ask(
   const data = await post<
     {
       kind: Kind; proposal: string | null; text: string; assist?: boolean;
-      confirm?: string | null;
+      confirm?: string | null; table?: { header: string[]; rows: string[][] } | null;
+      bullets?: string[] | null; awaiting?: string | null;
     }
   >("/api/ask", body);
   // A proposal may have WRITTEN: the same page is redrawn where it stands, exactly
@@ -53,6 +76,7 @@ export async function ask(
   if (data.kind === "answer") poke();
   return {
     sentence, kind: data.kind, proposal: data.proposal ?? null, text: data.text,
-    assist: !!data.assist, confirm: data.confirm ?? null,
+    assist: !!data.assist, confirm: data.confirm ?? null, table: data.table ?? null,
+    bullets: data.bullets ?? null, awaiting: data.awaiting ?? null,
   };
 }

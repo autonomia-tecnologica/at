@@ -85,13 +85,21 @@ def match(
     if not words:
         raise Refused("nlu.error.no_action", text=text)
 
+    full_table, words = _full_table(words)
+    if not words:
+        raise Refused("nlu.error.no_action", text=text)
+
     marks = _segmented(words, language)
     action = action if action is not None else _action(marks, text)
-    table = table if table is not None else _table(marks, text)
+    table = table if table is not None else _table(marks, text, words, action, language, now)
 
     # A value of a closed vocabulary fills the field that carries it. The word is
     # spent either way: `alta` names a priority, it is not content.
     values: dict[str, Any] = {}
+    # E COMO cada valor se compara ao que a linha guarda (`ranges`): `até` é `<=`,
+    # `desde` é `>=`, e o que não tem palavra de intervalo é exato (`=`, o padrão,
+    # e por isso não entra aqui). É o que um `list` lê para filtrar.
+    ranges: dict[str, str] = {}
     for mark in marks:
         field = _enum_field(table, mark)
         if field is not None:
@@ -119,6 +127,8 @@ def match(
             return reading
         if isinstance(reading, Value):
             values[field] = reading.value
+            if reading.op != "=":
+                ranges[field] = reading.op
         else:
             leftover.extend(words[start:end])
 
@@ -127,7 +137,28 @@ def match(
     if residue and primary:
         values[primary] = residue
 
-    return Proposal(action=action, table=table, values=values, row=row)
+    return Proposal(
+        action=action, table=table, values=values, row=row, ranges=ranges,
+        full_table=full_table,
+    )
+
+
+# The word the person's own convention gives a `list` to ask for the GRID
+# instead of the one-line-per-row default (the person's own words, 03/10/2026):
+# "listar tarefas" reads as a short line each, "listar tabela tarefa" as every
+# declared column. It is neither an action, a table, a field nor a closed
+# value — the four shapes `vocabulary.of` names — so it is read here, by the
+# literal word in both languages this product speaks, the same way a
+# PARTICLE is: spent before anything else looks at the sentence, and never
+# residue.
+FULL_TABLE_WORDS = ("tabela", "table")
+
+
+def _full_table(words: list[str]) -> tuple[bool, list[str]]:
+    found = [word for word in words if fold(word) in FULL_TABLE_WORDS]
+    if not found:
+        return False, words
+    return True, [word for word in words if fold(word) not in FULL_TABLE_WORDS]
 
 
 # ------------------------------------------------------------ segmentation ---
@@ -293,13 +324,39 @@ def _action(marks: list[str | None], text: str) -> str:
     return found[0]
 
 
-def _table(marks: list[str | None], text: str) -> str:
+def _table(
+    marks: list[str | None], text: str, words: list[str], action: str,
+    language: str, now: datetime,
+) -> str:
     found: list[str] = []
     for mark in marks:
         if mark and schema.of(mark) and mark not in found:
             found.append(mark)
     if not found:
-        raise Refused("nlu.error.no_table", text=text)
+        guessed = " ".join(
+            words[index] for index, mark in enumerate(marks) if mark is None
+        )
+        # The word the person most likely MEANT as the object: whatever the
+        # vocabulary did not place at all (not a particle, not the action, not
+        # a closed value) AND is not a day or a number either — "listar teste"
+        # names no table, and "teste" is the one word left with nowhere else to
+        # have gone. "cria pra sexta" is NOT this: "sexta" is residue too, but
+        # it is a day with nowhere to land, the same incompleteness a bare
+        # "cria" has — not a guess at an object's name.
+        if guessed and not _reads_as_a_value(guessed, language, now):
+            raise Refused(
+                "nlu.error.no_such_table", word=guessed, action=tr(f"table.action.{action}").lower(),
+            )
+        # A BARE VERB — "listar", nothing after it (or an argument with
+        # nowhere to land, which names just as little) — and the one useful
+        # answer is what IS there to name: every declared table, the same
+        # catalogue `--help` reads off (`canonical` carries the action through
+        # for `lib/chat.ts`'s own follow-up, below `{action}`'s own label).
+        names = ", ".join(tables.table_name(name) for name in schema.tables())
+        raise Refused(
+            "nlu.error.no_table_bare",
+            action=tr(f"table.action.{action}").lower(), names=names, canonical=action,
+        )
     if len(found) > 1:
         raise Refused(
             "nlu.error.two_tables",
@@ -307,6 +364,20 @@ def _table(marks: list[str | None], text: str) -> str:
             second=tables.table_name(found[1]),
         )
     return found[0]
+
+
+def _reads_as_a_value(chunk: str, language: str, now: datetime) -> bool:
+    """Whether the grammar reads `chunk` as a day or a number ON ITS OWN —
+    "sexta", "amanhã", "3" — regardless of there being any field for it to
+    fill. A residue this reads as is a VALUE with nowhere to land, never a
+    guess at a word the vocabulary does not know."""
+    for kind in ("day", "number"):
+        try:
+            if isinstance(resolve(chunk, kind, language=language, now=now), Value):
+                return True
+        except Refused:
+            continue
+    return False
 
 
 def _named(marks: list[str | None], universe) -> list[str]:

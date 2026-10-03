@@ -35,7 +35,7 @@ import os
 import tempfile
 import unittest
 from contextlib import redirect_stdout
-from datetime import date
+from datetime import date, timedelta
 from io import StringIO
 from pathlib import Path
 from unittest import mock
@@ -447,6 +447,55 @@ class TheWord(ReminderCase):
     def test_the_administrator_carries_it(self):
         role = actors.role_for_admin()
         self.assertIn("reminder:due", permissions.carried(role))
+
+
+class TheListing(ReminderCase):
+    """A bare day in a `list` reads the day's OCCURRENCES, the generalization
+    `ask._bare_day` gives `nlu.matcher.open_day_field` for this table alone —
+    the field it leaves open (`on_date`) only ever covers a `once` reminder read
+    literally, and "lembretes de hoje" names no field at all."""
+
+    def test_a_bare_day_finds_what_occurs_on_it_not_just_on_date(self):
+        today = reminder.today()
+        tomorrow = today + timedelta(days=1)
+        tables.create("reminder", {
+            "text": "beber agua", "freq": "daily", "at": ["09:00"],
+            "status": "active", "since": "2020-01-01",
+        })
+        tables.create("reminder", {
+            "text": "pagar aluguel", "freq": "once", "at": ["09:00"],
+            "status": "active", "since": "2020-01-01", "on_date": today.isoformat(),
+        })
+        tables.create("reminder", {
+            "text": "consulta", "freq": "once", "at": ["09:00"],
+            "status": "active", "since": "2020-01-01", "on_date": tomorrow.isoformat(),
+        })
+        result = door.ask("listar lembretes hoje")
+        self.assertEqual(result.kind, "answer")
+        self.assertIn("beber agua", result.text)
+        self.assertIn("pagar aluguel", result.text)
+        self.assertNotIn("consulta", result.text)
+
+    def test_a_range_keeps_the_literal_field_comparison(self):
+        # "até sexta" is a RANGE, and folding a range through the recurrence is
+        # not this fatia's: the old, literal `on_date` comparison still answers
+        # it, so a `once` reminder dated past the range is correctly left out
+        # and one with no `on_date` at all (a `daily`) matches nothing either —
+        # exactly what the field comparison always did.
+        far = reminder.today() + timedelta(days=30)
+        tables.create("reminder", {
+            "text": "viagem", "freq": "once", "at": ["09:00"],
+            "status": "active", "since": "2020-01-01", "on_date": far.isoformat(),
+        })
+        tables.create("reminder", {
+            "text": "beber agua", "freq": "daily", "at": ["09:00"],
+            "status": "active", "since": "2020-01-01",
+        })
+        result = door.ask("listar lembretes até amanhã")
+        self.assertEqual(result.kind, "answer")
+        # Not the generic "nada aqui ainda": a range still names itself
+        # (`ask._described`), the same way the exact-day case already did.
+        self.assertIn("até", result.text)
 
 
 if __name__ == "__main__":

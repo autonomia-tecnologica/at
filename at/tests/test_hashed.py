@@ -187,12 +187,12 @@ class TheMask(HashedCase):
         self.row = self.born()
 
     def test_the_view_shows_the_mask(self):
-        _, answer, _ = door.run("keeper", "view", [str(self.row["id"])])
+        _, answer, _, _, _ = door.run("keeper", "view", [str(self.row["id"])])
         self.assertIn(tr("table.word.hashed"), answer)
         self.assertNotIn(self.row["credential"], answer)
 
     def test_the_listing_shows_the_mask(self):
-        _, answer, _ = door.run("keeper", "list", [])
+        _, answer, _, _, _ = door.run("keeper", "list", [])
         self.assertIn(tr("table.word.hashed"), answer)
         self.assertNotIn(self.row["credential"], answer)
 

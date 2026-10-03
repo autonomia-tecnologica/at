@@ -30,9 +30,17 @@ class Value:
     `instant` answers as a point in time in UTC with milliseconds, and a number
     answers as the number. Those are the shapes §4 fixes, and the value leaves
     ready to be handed to the field it was read for.
+
+    **`op` é COMO o valor se compara ao que a linha guarda** — a palavra de
+    intervalo que abriu a expressão: `até sexta` é `<=`, `desde segunda` é
+    `>=`, e sem palavra alguma é o valor exato (`=`). É o que faz a diferença
+    entre "listar as de hoje" (só as de hoje) e "listar as de até sexta" (todas
+    até sexta). Um `Value` para ESCRITA carrega `=`: escrever um intervalo não
+    quer dizer nada.
     """
 
     value: object
+    op: str = "="
 
 
 @dataclass(frozen=True)

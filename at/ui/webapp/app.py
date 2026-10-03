@@ -491,6 +491,7 @@ PAGE_WORDS = (
     # The interpreter's box, the switch that hides the balloon, and the ruler of
     # the demand filter (§4).
     "chat", "ask", "ask_hint", "proposal", "interpreter", "balloon", "balloon_close",
+    "chat_cleared",
     "risk", "risk_runs", "risk_waits", "risk_threshold", "risk_none",
     # The assist's own Control Panel section, and its one retry (TASK-180,
     # fatia 3/3): the switch, the mode's two names, and the inline form a
@@ -499,7 +500,7 @@ PAGE_WORDS = (
     "assist_key", "assist_retry",
     # The CONFIRM tier's own two buttons (TASK-183): what a cautious assist's
     # question offers instead of the sentence it used to ask to be retyped.
-    "assist_confirm", "assist_deny",
+    "assist_confirm", "assist_deny", "assist_denied",
     # NOTIFICAÇÕES (Web Push): o bloco das Configurações que pede a permissão
     # do navegador e inscreve o PWA — sem ntfy.
     "notifications", "notifications_hint", "notifications_on", "notifications_off",
@@ -1842,6 +1843,20 @@ class Handler(BaseHTTPRequestHandler):
             # has already run, which only happened because the Main Key that
             # reached it already cleared `assist:ask` above.
             "confirm": result.confirm,
+            # A `list`'s own header and cells, so the chat draws an actual
+            # table instead of parsing `text`'s ASCII back apart — `None` for
+            # every other answer, and for a `list` that found nothing.
+            "table": {"header": result.table[0], "rows": result.table[1]}
+            if result.table is not None else None,
+            # A `list`'s own bullets — the default shape, one line per row —
+            # mutually exclusive with `table` (above): a sentence that said
+            # "tabela" fills one, every other `list` fills the other.
+            "bullets": result.bullets,
+            # The action a bare verb named ("listar", alone) — `null` for
+            # every answer that is not that one refusal — so the chat can
+            # complete it from whatever is typed next instead of asking the
+            # person to repeat themselves with the object already in hand.
+            "awaiting": result.awaiting,
         })
 
     def _post_jev(self) -> None:
@@ -2015,7 +2030,7 @@ class Handler(BaseHTTPRequestHandler):
             # The page walks the SAME door the `cli` and the interpreter walk
             # (`at.ui.ask.run`): one engine, one version and one line per act,
             # and the record it answers with is the page's own wording of it.
-            _, answer, row = door.run(
+            _, answer, row, _, _ = door.run(
                 table,
                 action,
                 rest,
@@ -2488,13 +2503,24 @@ def run(port: int = DEFAULT_PORT, public_port: int | None = None,
 
         # Authelia first: the Caddyfile below names its loopback address, so
         # it has to exist before that file is written.
-        authelia_port = authelia.free_port()
-        authelia_config = authelia.write(where, authelia_port, public)
-        authelia_process = authelia.start(authelia_config)
-        if not authelia.started(authelia_process):
-            server.server_close()
-            print(tr("authelia.start_failed"))
-            return 1
+        # O Authelia FICA DE PÉ entre subidas: se já há um respondendo na porta
+        # lembrada, esta subida o REUSA. A sessão da pessoa vive nele, e
+        # reiniciar o `at-cli` não pode reiniciá-lo — só a primeira subida (ou
+        # uma em que ele caiu) sobe um novo. Quem o reinicia é a pessoa.
+        standing = authelia.standing()
+        if standing is not None:
+            authelia_port, authelia_config = standing
+            authelia_process = None
+            print(tr("authelia.reused", port=authelia_port))
+        else:
+            authelia_port = authelia.free_port()
+            authelia_config = authelia.write(where, authelia_port, public)
+            authelia_process = authelia.start(authelia_config)
+            if not authelia.started(authelia_process):
+                server.server_close()
+                print(tr("authelia.start_failed"))
+                return 1
+            authelia.remember(authelia_port)
 
         # `gate.standing`'s own self-check (`_gate`, §6) reads this exactly as
         # the container path's environment hands it over — a bare
@@ -2518,8 +2544,8 @@ def run(port: int = DEFAULT_PORT, public_port: int | None = None,
         if not caddy.started(process):
             # The Caddy holds the port the person reaches, so its failure is the
             # command's: an AT that answered with a URL here would be announcing
-            # an address nothing is on.
-            authelia.stop(authelia_process)
+            # an address nothing is on. O Authelia NÃO é parado: ele fica de pé
+            # para a próxima subida o reusar (a sessão vive nele).
             server.server_close()
             print(tr("webapp.port_taken", port=port))
             return 1
@@ -2543,6 +2569,8 @@ def run(port: int = DEFAULT_PORT, public_port: int | None = None,
         pass
     finally:
         caddy.stop(process)
-        authelia.stop(authelia_process)
+        # E o Authelia FICA DE PÉ: a sessão da pessoa vive nele, e derrubá-lo
+        # aqui seria perdê-la a cada reinício do `at-cli`. Quem o reinicia é a
+        # pessoa — a subida seguinte o reusa (`authelia.standing`).
         server.server_close()
     return 0

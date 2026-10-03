@@ -74,11 +74,11 @@ class TheDeclarations(ActorCase):
     def test_the_engine_honours_them(self):
         """Asserting the file exists would only agree with the file; a listing is
         what says the engine reads the declaration it was handed."""
-        code, answer, _ = door.run("actor", "list", [])
+        code, answer, _, _, _ = door.run("actor", "list", [])
         self.assertEqual(code, OK)
         self.assertIn("ACTOR-1", answer)
         # A table with no rows still answers as a table, not as a failure.
-        code, answer, _ = door.run("role", "list", [])
+        code, answer, _, _, _ = door.run("role", "list", [])
         self.assertEqual(code, OK)
         self.assertEqual(answer, i18n.tr("table.word.empty"))
 

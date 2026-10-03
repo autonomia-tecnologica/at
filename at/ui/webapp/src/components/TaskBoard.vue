@@ -29,8 +29,13 @@ const props = withDefaults(
     // hides it — every card there already lives inside that page — the same
     // reason the table declares `hide: ["project", "orphans"]` for the column.
     showProject?: boolean;
+    // Whether the quick-add ("nova tarefa") input is offered. A project's OWN
+    // board does NOT: `addCard` below writes no `project`, so a card born
+    // there would land as an orphan while the page it was born on says
+    // otherwise — the input stays only where that mismatch cannot happen.
+    allowCreate?: boolean;
   }>(),
-  { showProject: true },
+  { showProject: true, allowCreate: true },
 );
 
 const emit = defineEmits<{ ref: [ref: RecordRef] }>();
@@ -181,7 +186,7 @@ async function addCard(): Promise<void> {
 </script>
 
 <template>
-  <form v-if="entity === OFFLINE_TABLE" class="board-add" @submit.prevent="addCard">
+  <form v-if="entity === OFFLINE_TABLE && allowCreate" class="board-add" @submit.prevent="addCard">
     <input v-model="draft" type="text" :placeholder="word('new_task')" :aria-label="word('new_task')">
   </form>
   <div class="board">

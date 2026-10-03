@@ -322,7 +322,7 @@ class TheFilter(JobCase):
         machine = self.machine()
         with redirect_stdout(StringIO()):
             tables.create("task", {"text": "do agente"})
-        code, answer, row = door.run(
+        code, answer, row, _, _ = door.run(
             "task", "delete", ["1"], actor=machine, via=audit.WEBAPP
         )
         self.assertEqual(code, 0)
@@ -332,7 +332,7 @@ class TheFilter(JobCase):
 
     def test_below_the_bar_the_machine_s_act_runs(self):
         machine = self.machine()
-        code, answer, row = door.run(
+        code, answer, row, _, _ = door.run(
             "task", "create", ["--set", "text=do agente"], actor=machine, via=audit.WEBAPP
         )
         self.assertEqual(code, 0)
@@ -348,13 +348,13 @@ class TheFilter(JobCase):
         with redirect_stdout(StringIO()):
             tables.create("task", {"text": "para deletar"})
         with redirect_stdout(StringIO()):
-            code, answer, _ = door.run(
+            code, answer, _, _, _ = door.run(
                 "task", "delete", ["1"], actor=person, via=audit.ENGINE
             )
         self.assertEqual(answer, tr("job.waits", id="JOB-1"))
         self.assertEqual(len(self.held()), 1)
         with redirect_stdout(StringIO()):
-            code, answer, _ = door.run(
+            code, answer, _, _, _ = door.run(
                 "task", "delete", ["1"], actor=person, via=audit.CLI
             )
         self.assertEqual(code, 0)
@@ -382,7 +382,7 @@ class TheFilter(JobCase):
         # map lifts it over the bar — and the bar itself never moved.
         machine = self.machine()
         self.adjust({"task:create": 0.9})
-        code, answer, row = door.run(
+        code, answer, row, _, _ = door.run(
             "task", "create", ["--set", "text=do agente"],
             actor=machine, via=audit.WEBAPP,
         )
@@ -402,7 +402,7 @@ class TheFilter(JobCase):
             tables.create("task", {"text": "para deletar"})
         self.adjust({"task:delete": 0.1})
         with redirect_stdout(StringIO()):
-            code, answer, _ = door.run(
+            code, answer, _, _, _ = door.run(
                 "task", "delete", ["1"], actor=machine, via=audit.WEBAPP
             )
         self.assertEqual(code, 0)
@@ -415,7 +415,7 @@ class TheFilter(JobCase):
         # every listing a job.
         machine = self.machine("task:list")
         self.bar(0.0)
-        code, answer, _ = door.run("task", "list", [], actor=machine, via=audit.WEBAPP)
+        code, answer, _, _, _ = door.run("task", "list", [], actor=machine, via=audit.WEBAPP)
         self.assertEqual(code, 0)
         self.assertEqual(self.held(), [])
         self.assertEqual(self.lines(), [])
@@ -456,7 +456,7 @@ class TheFilter(JobCase):
         with redirect_stdout(StringIO()):
             tables.create("task", {"text": "antes"})
         with redirect_stdout(StringIO()):
-            code, answer, _ = door.run(
+            code, answer, _, _, _ = door.run(
                 "task",
                 "edit",
                 ["1", "--set", "text=pão, leite = café"],

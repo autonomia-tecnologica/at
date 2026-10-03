@@ -257,6 +257,46 @@ def free_port() -> int:
     return port
 
 
+# A PORTA lembrada. O Authelia é um serviço que FICA DE PÉ entre subidas — a
+# sessão da pessoa vive nele, e reiniciar o `at-cli` NÃO o reinicia. A porta
+# escolhida na primeira subida é guardada aqui, e a subida seguinte a REUSA em
+# vez de abrir um segundo Authelia (que perderia as sessões abertas). Quem
+# reinicia o Authelia é a pessoa, quando ela quiser.
+PORT = "port"
+
+
+def port_file() -> Path:
+    return directory() / PORT
+
+
+def remember(port: int) -> None:
+    files.atomic_write_text(port_file(), f"{port}\n")
+
+
+def standing() -> tuple[int, Path] | None:
+    """O Authelia que já está DE PÉ — `(porta, config)` — ou `None`.
+
+    Lê a porta lembrada e confirma que alguém responde nela. Um Authelia de uma
+    subida anterior continua vivo (a sessão vive nele), e é ele que esta subida
+    reusa; subir um segundo em outra porta seria perder quem está dentro.
+    """
+    try:
+        port = int(port_file().read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return None
+    if not _listening(port):
+        return None
+    return port, directory() / CONFIG
+
+
+def _listening(port: int) -> bool:
+    try:
+        with socket.create_connection((LOOPBACK, port), timeout=1):
+            return True
+    except OSError:
+        return False
+
+
 def users_yaml() -> str:
     """The people of the folder, in Authelia's own words — `_identity_users`'s
     exact shape, reused and not reinvented: the field is the derivation

@@ -657,7 +657,7 @@ def _table(table: str, rest: list[str]) -> int:
         # terminal's: what the door records is WHO and HOW, and the `cli` is the
         # one surface where both are facts of the folder rather than of a request
         # (§3, item 15).
-        code, answer, _ = door.run(
+        code, answer, _, _, _ = door.run(
             table, action, args, actor=actors.first_admin(), via=audit.CLI
         )
     except tables.TableError as error:

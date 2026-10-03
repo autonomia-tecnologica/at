@@ -170,7 +170,7 @@ class TheSealedValue(SecretCase):
 
     def test_the_view_shows_the_mask(self):
         row = self.sealed()
-        _, answer, _ = door.run("secret", "view", [str(row["id"])])
+        _, answer, _, _, _ = door.run("secret", "view", [str(row["id"])])
         self.assertIn(tr("table.word.sealed"), answer)
         self.assertNotIn(row[secrets.SEALED], answer)
 
@@ -180,7 +180,7 @@ class TheSealedValue(SecretCase):
         # reads is a row without the envelope, and never a row with a mask over
         # it (`test_the_view_shows_the_mask` is the door that says there is one).
         row = self.sealed()
-        _, answer, _ = door.run("secret", "list", [])
+        _, answer, _, _, _ = door.run("secret", "list", [])
         self.assertNotIn(row[secrets.SEALED], answer)
         self.assertNotIn(tr("table.word.sealed"), answer)
         self.assertIn(SERVICE, answer)

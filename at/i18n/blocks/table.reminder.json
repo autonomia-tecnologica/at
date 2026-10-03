@@ -21,7 +21,8 @@
     "field.status.active": "Ativo",
     "field.status.paused": "Pausado",
     "field.since": "Desde",
-    "field.notified": "Notificado em"
+    "field.notified": "Notificado em",
+    "list.empty_on_day": "Nenhum lembrete em {date}."
   },
   "en_US": {
     "name.one": "Reminder",
@@ -45,6 +46,7 @@
     "field.status.active": "Active",
     "field.status.paused": "Paused",
     "field.since": "Since",
-    "field.notified": "Notified on"
+    "field.notified": "Notified on",
+    "list.empty_on_day": "No reminders on {date}."
   }
 }

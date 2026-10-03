@@ -117,22 +117,18 @@ watch(() => props.id, () => {
     <!-- The ITEM's body, drawn as the page's prose: the fields this table
          declares `markdown` — the `desc` where an item keeps its why. -->
     <ProseField v-for="field in prose" :key="field.name" :text="field.value" />
-    <div v-if="payload.children.length" class="subs">
-      <button v-for="child in payload.children" :key="child.id" type="button" class="sub"
-              @click="go(child.id)">
-        <b>{{ child.id }}</b>
-        <span>{{ child.title }}</span>
-        <span class="st">{{ child.status }}</span>
-        <span class="n">{{ child.tasks }} {{ word("tasks") }}</span>
-      </button>
-    </div>
     <!-- THE BOARD BELOW IS THE TASKS' — the table the server said declares the
          TYPE `task`, never the word "task" read as a table's name. It hides
          the project chip a card would otherwise carry (`show-project`
          false): every card here already lives inside this project's own
          page, the same reason the table declares `hide: ["project"]` for the
-         column a plain table would have drawn. -->
+         column a plain table would have drawn. A macro project's subprojects
+         are the TREE's to show, not the task view's — the board here is
+         tasks and only tasks, so the quick-add is off too: it writes no
+         `project`, and a card born on this page landing as an orphan would
+         be the page lying about where it put it. -->
     <TaskBoard v-if="store.types.task" :entity="store.types.task" :records="payload.records"
-               :schema="payload.fields" :page="page" :show-project="false" @ref="openRef" />
+               :schema="payload.fields" :page="page" :show-project="false" :allow-create="false"
+               @ref="openRef" />
   </div>
 </template>
