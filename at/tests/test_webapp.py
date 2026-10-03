@@ -1039,19 +1039,21 @@ class TheAskDoor(ServerCase):
         self.assertEqual(answer["text"], i18n.tr("nlu.error.interpreter_off"))
         self.assertEqual(len(tables.rows("task")), 1)  # and nothing was written
 
-    def test_a_trigger_refusal_hints_the_assist_with_no_key(self):
-        # "banana" refuses with `nlu.error.no_action`, one of the two triggers —
-        # and with nothing to open a credential with, the hint is the one thing
-        # that changes (TASK-180, fatia 3/3).
+    def test_a_refusal_hints_the_assist_with_no_key(self):
+        # "banana" refuses, e com nada para abrir a credencial o hint é a única
+        # coisa que muda: o Jev lê TODA frase, então uma chave pode mudar a
+        # resposta deste pedido.
         status, answer = self.post("/api/ask", {"text": "banana"})
         self.assertEqual(status, 200)
         self.assertTrue(answer["assist"])
 
-    def test_a_non_trigger_refusal_never_hints_the_assist(self):
+    def test_any_refusal_hints_the_assist_with_no_key(self):
+        # Não há mais gatilho: uma recusa que NÃO é de ação/tabela ausente
+        # também passa pelo Jev agora, então ela também dá o hint.
         status, answer = self.post("/api/ask", {"text": "cria e lista uma tarefa"})
         self.assertEqual(status, 200)
         self.assertEqual(answer["kind"], "refused")
-        self.assertFalse(answer["assist"])
+        self.assertTrue(answer["assist"])
 
     def test_an_answer_never_hints_the_assist(self):
         status, answer = self.post("/api/ask", {"text": "cria uma tarefa pra hoje"})

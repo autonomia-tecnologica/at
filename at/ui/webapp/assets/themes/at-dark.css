@@ -17,19 +17,25 @@
   --font-sans: "Nunito Sans", system-ui, -apple-system, "Segoe UI", Roboto,
                "Helvetica Neue", Arial, sans-serif;
   --font-display: "Quicksand", "Nunito Sans", system-ui, sans-serif;
-  /* THE SCALE WENT UP TWO POINTS, STEP BY STEP (2026-09-28), and came back ONE
-     (2026-10-02): the whole ladder down a point, the same step-by-step way it
-     went up, so the ratio between the rungs barely moves. The logo mark
-     (`.brand`) is pinned to its own pixel value in `base.css` and does not
-     follow the scale down — a wordmark does not shrink with body text. The
-     line heights are multiples (`--leading-normal`), so they come along on
-     their own. */
-  --text-xs: 13.5px;
-  --text-sm: 14.5px;
-  --text-base: 16px;
-  --text-md: 17px;
-  --text-lg: 20px;
-  --text-2xl: 31px;
+  /* THE SCALE WENT UP TWO POINTS, STEP BY STEP (2026-09-28), came back ONE
+     (2026-10-02), and was REDRAWN THREE TIMES THE SAME DAY (2026-10-03): the
+     report back was that the ladder read heavy everywhere — `--text-2xl`
+     read like another app entirely (20px to 31px was the one rung with no
+     step in it, a 55% jump where every other rung moved 6-18%). The second
+     pass over-corrected (the sidebar's own labels went with it and came out
+     minúsculo); this third pass puts `--text-xs`/`--text-sm` back where the
+     second redraw had them — the sidebar was never the complaint — and keeps
+     the cut to `--text-base` upward, where the table rows and the Settings
+     cards were still reading big. The logo mark (`.brand`) is pinned to its
+     own pixel value in `base.css` and does not follow the scale — a
+     wordmark does not shrink with body text. The line heights are multiples
+     (`--leading-normal`), so they come along on their own. */
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 13.5px;
+  --text-md: 14.5px;
+  --text-lg: 17px;
+  --text-2xl: 20px;
   --leading-normal: 1.55;
   --leading-tight: 1.25;
   --weight-medium: 500;

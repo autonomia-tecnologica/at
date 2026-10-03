@@ -61,6 +61,8 @@ def match(
     *,
     language: str | None = None,
     now: datetime | None = None,
+    action: str | None = None,
+    table: str | None = None,
 ) -> Proposal | Question:
     """What one sentence proposes, or the question it comes back as.
 
@@ -68,6 +70,13 @@ def match(
     injected for the same reason `resolve` injects it: the ruler is
     deterministic. A phrase of a kind that names a value no calendar or clock has
     raises `Refused`, exactly as it does one layer down.
+
+    **`action` e `table` são a leitura PRIMÁRIA** (o Jev, `at.core.assist`):
+    quando vêm dadas, o matcher NÃO as procura — ele as usa e lê só os
+    ARGUMENTOS (o campo, a data, a linha, o resíduo) do texto. É o que permite
+    ao Jev decidir sem reescrever a frase: uma palavra que o vocabulário já lê
+    continua sendo GASTA pela segmentação (não vira resíduo), e a gíria que ele
+    não lê é o material do campo — o trecho que o Jev apontou já saiu do texto.
     """
     language = language or i18n.active_code()
     now = now if now is not None else datetime.now()
@@ -77,8 +86,8 @@ def match(
         raise Refused("nlu.error.no_action", text=text)
 
     marks = _segmented(words, language)
-    action = _action(marks, text)
-    table = _table(marks, text)
+    action = action if action is not None else _action(marks, text)
+    table = table if table is not None else _table(marks, text)
 
     # A value of a closed vocabulary fills the field that carries it. The word is
     # spent either way: `alta` names a priority, it is not content.

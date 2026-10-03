@@ -1,17 +1,16 @@
-"""`at.core.assist`: the slang layer `nlu.propose` falls back to when the
-deterministic matcher finds no action, no table, or neither (TASK-180, fatia
-1/3 — the engine, proven with a FAKE Jev client and never a real one).
+"""`at.core.assist`: a leitura PRIMÁRIA — o que o Jev lê de uma frase, com o
+matcher determinístico como apoio (TASK-180; invertido a pedido da pessoa,
+03/10/2026 — o motor é provado com um cliente Jev FALSO, nunca um real).
 
-Three things are ruled: the SWITCH, born on and separate from `nlu.SWITCH`;
-the TRIGGER, which fires on exactly the two refusals the matcher raises for a
-missing action or table, and on nothing else real ambiguity or the grammar's
-own question already cover; and the THREE TIERS the prototype
-(`jev-test/slang_dispatch.py`) proved before this module existed — a read
-auto-applies cheaper than a write, both confirm from the same floor, and a
-guess that names nothing is the same as no guess at all.
+Três coisas são regradas: o SWITCH, nascido ligado e separado do `nlu.SWITCH`;
+o JEV PRIMEIRO, consultado para TODA frase (`nlu.propose` pergunta a ele antes
+de tentar o matcher determinístico — não há mais gatilho); e os TRÊS TIERS que
+o protótipo (`jev-test/slang_dispatch.py`) provou antes deste módulo existir —
+uma leitura auto-aplica mais barato que uma escrita, as duas confirmam a partir
+do mesmo piso, e um palpite que não nomeia nada é o mesmo que palpite nenhum.
 
-Nothing here reaches a network: every call to Jev goes through an injected
-`transport`, the same seam `test_jev.py` exercises on its own.
+Nada aqui toca a rede: toda chamada ao Jev passa por um `transport` injetado,
+o mesmo seam que `test_jev.py` exercita sozinho.
 """
 
 from __future__ import annotations
@@ -78,9 +77,6 @@ class AssistCase(unittest.TestCase):
             ).encode("utf-8")
         return post
 
-    def refused(self, key: str = assist.NO_ACTION, **kw) -> nlu.Refused:
-        return nlu.Refused(key, **kw)
-
 
 class TheSwitch(AssistCase):
     """Born on, separate from the interpreter's own."""
@@ -94,11 +90,13 @@ class TheSwitch(AssistCase):
         self.assertTrue(nlu.enabled())
         self.assertFalse(assist.enabled())
 
-    def test_turning_it_off_stands_by_the_refusal_even_with_a_credential(self):
+    def test_turning_it_off_leaves_the_sentence_to_the_matcher(self):
+        # O Jev deixou de ser consultado — `decide` devolve `None` e quem
+        # responde (no `propose`) é o matcher determinístico.
         self.sealed()
         settings.save({**settings.load(), assist.SWITCH: False})
         result = assist.decide(
-            self.refused(text="joga uma tarefa"), "joga uma tarefa",
+            "joga uma tarefa",
             language="pt_BR", now=NOW, main_key=MAIN_KEY,
             transport=self.fake("create", "task", 0.99, 0.99),
         )
@@ -109,36 +107,11 @@ class TheSwitch(AssistCase):
         settings.save({**settings.load(), assist.SWITCH: False})
         settings.save({**settings.load(), assist.SWITCH: True})
         result = assist.decide(
-            self.refused(text="joga uma tarefa"), "joga uma tarefa",
+            "joga uma tarefa",
             language="pt_BR", now=NOW, main_key=MAIN_KEY,
             transport=self.fake("create", "task", 0.99, 0.99),
         )
         self.assertIsNotNone(result)
-
-
-class TheTrigger(AssistCase):
-    """Only the two refusals the matcher raises for a missing action/table."""
-
-    def test_it_fires_on_no_action_and_no_table(self):
-        self.sealed()
-        for key in (assist.NO_ACTION, assist.NO_TABLE):
-            with self.subTest(key=key):
-                result = assist.decide(
-                    self.refused(key, text="x"), "x", language="pt_BR", now=NOW,
-                    main_key=MAIN_KEY, transport=self.fake("create", "task", 0.99, 0.99),
-                )
-                self.assertIsNotNone(result)
-
-    def test_it_never_fires_on_real_ambiguity_or_a_grammar_question(self):
-        self.sealed()
-        for key in ("nlu.error.two_actions", "nlu.error.two_tables", "nlu.error.no_row"):
-            with self.subTest(key=key):
-                result = assist.decide(
-                    self.refused(key, first="a", second="b", table="task"),
-                    "x", language="pt_BR", now=NOW, main_key=MAIN_KEY,
-                    transport=self.fake("create", "task", 0.99, 0.99),
-                )
-                self.assertIsNone(result)
 
 
 class TheCredential(AssistCase):
@@ -147,14 +120,14 @@ class TheCredential(AssistCase):
     def test_no_main_key_is_no_credential(self):
         self.sealed()
         result = assist.decide(
-            self.refused(text="x"), "x", language="pt_BR", now=NOW, main_key=None,
+            "x", language="pt_BR", now=NOW, main_key=None,
             transport=self.fake("create", "task", 0.99, 0.99),
         )
         self.assertIsNone(result)
 
     def test_no_row_sealed_yet_is_no_credential(self):
         result = assist.decide(
-            self.refused(text="x"), "x", language="pt_BR", now=NOW, main_key=MAIN_KEY,
+            "x", language="pt_BR", now=NOW, main_key=MAIN_KEY,
             transport=self.fake("create", "task", 0.99, 0.99),
         )
         self.assertIsNone(result)
@@ -162,7 +135,7 @@ class TheCredential(AssistCase):
     def test_the_wrong_main_key_opens_nothing(self):
         self.sealed()
         result = assist.decide(
-            self.refused(text="x"), "x", language="pt_BR", now=NOW,
+            "x", language="pt_BR", now=NOW,
             main_key="outra-frase-tambem-bem-longa", transport=self.fake("create", "task", 0.99, 0.99),
         )
         self.assertIsNone(result)
@@ -183,7 +156,7 @@ class TheCredential(AssistCase):
             }).encode("utf-8")
 
         result = assist.decide(
-            self.refused(text="joga uma tarefa aqui"), "joga uma tarefa aqui",
+            "joga uma tarefa aqui",
             language="pt_BR", now=NOW, main_key=MAIN_KEY, transport=post,
         )
         # Not `None`: the credential opened and Jev answered. Whether that
@@ -198,7 +171,7 @@ class TheCredential(AssistCase):
             raise jev.JevError("503")
 
         result = assist.decide(
-            self.refused(text="x"), "x", language="pt_BR", now=NOW,
+            "x", language="pt_BR", now=NOW,
             main_key=MAIN_KEY, transport=failing,
         )
         self.assertIsNone(result)
@@ -256,7 +229,7 @@ class TheMode(AssistCase):
 
     def decide(self, text: str, action: str, table: str, confidence: float):
         return assist.decide(
-            self.refused(text=text), text, language="pt_BR", now=NOW,
+            text, language="pt_BR", now=NOW,
             main_key=MAIN_KEY, transport=self.fake(action, table, confidence, confidence),
         )
 
@@ -320,26 +293,27 @@ class TheRewrite(AssistCase):
         # `CONFIRM` before the rewrite ever runs (`TheMode`).
         settings.save({**settings.load(), assist.MODE: assist.AUTOMATIC})
         result = assist.decide(
-            self.refused(text="bota uma penca pra sexta"), "bota uma penca pra sexta",
+            "bota uma penca pra sexta",
             language="pt_BR", now=NOW, main_key=MAIN_KEY,
             transport=self.fake("create", "task", 0.95, 0.95),
         )
         self.assertIsInstance(result, nlu.Proposal)
         self.assertEqual(result.values.get("deadline"), "2026-09-25")
 
-    def test_a_row_number_is_still_needed_for_an_action_that_acts_on_one(self):
+    def test_a_row_number_is_still_needed_before_it_can_apply(self):
+        # O rewrite do Jev (`editar tarefa ...`) ainda precisa do número da
+        # linha: o matcher não resolve, então `decide` devolve `None` — não
+        # aplica, e quem tenta a frase ORIGINAL como apoio é o `propose`.
         settings.save({**settings.load(), assist.MODE: assist.AUTOMATIC})
-        with self.assertRaises(nlu.Refused) as refused:
-            assist.decide(
-                self.refused(key=assist.NO_TABLE, text="resolve essa penca"),
-                "resolve essa penca", language="pt_BR", now=NOW, main_key=MAIN_KEY,
-                transport=self.fake("edit", "task", 0.95, 0.95),
-            )
-        self.assertEqual(refused.exception.key, "nlu.error.no_row")
+        result = assist.decide(
+            "resolve essa penca", language="pt_BR", now=NOW, main_key=MAIN_KEY,
+            transport=self.fake("edit", "task", 0.95, 0.95),
+        )
+        self.assertIsNone(result)
 
     def test_a_confirm_tier_question_carries_the_rewritten_sentence(self):
         result = assist.decide(
-            self.refused(text="bota uma penca aqui"), "bota uma penca aqui",
+            "bota uma penca aqui",
             language="pt_BR", now=NOW, main_key=MAIN_KEY,
             transport=self.fake("create", "task", 0.6, 0.6),
         )
@@ -350,7 +324,7 @@ class TheRewrite(AssistCase):
 
     def test_the_confirmed_sentence_reads_deterministically_on_its_own(self):
         question = assist.decide(
-            self.refused(text="bota uma penca aqui"), "bota uma penca aqui",
+            "bota uma penca aqui",
             language="pt_BR", now=NOW, main_key=MAIN_KEY,
             transport=self.fake("create", "task", 0.6, 0.6),
         )
@@ -363,42 +337,47 @@ class TheRewrite(AssistCase):
 
 
 class ThePropose(AssistCase):
-    """`nlu.propose`'s own delegation — and the fact that it never fires when
-    nothing wires a `main_key` in, which is exactly `cli` and the WebApp today."""
+    """`nlu.propose` pergunta ao Jev PRIMEIRO e cai no matcher quando `decide`
+    devolve `None` — a inversão (03/10/2026)."""
 
-    def test_propose_delegates_to_the_assist_for_the_two_triggers(self):
-        with mock.patch.object(assist, "decide", return_value=None) as mocked:
-            with self.assertRaises(nlu.Refused):
-                nlu.propose("banana", now=NOW)
-            self.assertTrue(mocked.called)
-            refused, text = mocked.call_args.args
-            self.assertEqual(refused.key, "nlu.error.no_action")
-            self.assertEqual(text, "banana")
+    def test_propose_asks_jev_first_for_any_sentence(self):
+        # Toda frase — inclusive uma que o matcher leria sozinho — vai ao Jev
+        # primeiro. `decide` é chamado com o TEXTO (não mais uma recusa).
+        sentinel = nlu.Proposal(action="create", table="task", values={}, row=None)
+        with mock.patch.object(assist, "decide", return_value=sentinel) as mocked:
+            self.assertIs(
+                nlu.propose("lista as tarefas do projeto", now=NOW), sentinel
+            )
+            self.assertEqual(mocked.call_args.args, ("lista as tarefas do projeto",))
             self.assertEqual(mocked.call_args.kwargs["language"], "pt_BR")
             self.assertIsNone(mocked.call_args.kwargs["main_key"])
 
-    def test_propose_returns_what_the_assist_answers(self):
-        sentinel = nlu.Proposal(action="create", table="task", values={}, row=None)
-        with mock.patch.object(assist, "decide", return_value=sentinel):
-            self.assertIs(nlu.propose("banana", now=NOW), sentinel)
+    def test_with_no_decision_the_matcher_answers(self):
+        # `decide` devolve `None`: quem responde é o matcher determinístico,
+        # como sempre respondeu — o apoio.
+        with mock.patch.object(assist, "decide", return_value=None):
+            found = nlu.propose("lista as tarefas", now=NOW)
+        self.assertIsInstance(found, nlu.Proposal)
 
-    def test_with_no_main_key_cli_and_webapp_keep_their_old_refusal(self):
-        # `at.ui.ask.ask` never passes `main_key` — this fatia does not touch it
-        # — so even a sealed credential and a switch left on change nothing of
-        # what `cli`/WebApp already do.
+    def test_with_no_main_key_the_matcher_answers_as_before(self):
+        # Sem chave o Jev não é consultado — nem com credencial selada e switch
+        # ligado —, e uma frase que o matcher não lê segue recusada como antes.
         self.sealed()
         with self.assertRaises(nlu.Refused) as refused:
             nlu.propose("banana", now=NOW)
         self.assertEqual(refused.exception.key, "nlu.error.no_action")
 
-    def test_a_non_trigger_refusal_is_untouched_even_with_a_credential(self):
-        # `decide` is reached (every `Refused` is) but answers `None` for a
-        # reason that is not one of the two triggers — `TheTrigger` already
-        # proves that from the assist's own side; this is the end-to-end one.
+    def test_the_jev_reading_is_what_propose_answers(self):
+        # O ponto da inversão: com chave, o Jev é consultado ANTES do matcher e
+        # a leitura dele é a resposta — aqui uma frase que o matcher sozinho
+        # recusaria. O seam é `jev._post`, o mesmo que a palavra da CLI patcheia.
         self.sealed()
-        with self.assertRaises(nlu.Refused) as refused:
-            nlu.propose("cria e lista uma tarefa", now=NOW, main_key=MAIN_KEY)
-        self.assertEqual(refused.exception.key, "nlu.error.two_actions")
+        settings.save({**settings.load(), assist.MODE: assist.AUTOMATIC})
+        with mock.patch.object(jev, "_post", self.fake("list", "task", 0.99, 0.99)):
+            found = nlu.propose("joga as pendencia", now=NOW, main_key=MAIN_KEY)
+        self.assertIsInstance(found, nlu.Proposal)
+        self.assertEqual(found.action, "list")
+        self.assertEqual(found.table, "task")
 
 
 class TheDeclaredRisk(AssistCase):

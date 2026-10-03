@@ -156,11 +156,11 @@ class Result:
     proposal: str | None
     text: str
     code: int = OK
-    # Whether the assist could still answer THIS exact refusal if a Main Key
-    # arrived with it (TASK-180, fatia 3/3): `True` only for a `refused` whose
-    # reason is one of `assist.TRIGGERS`, with the switch on and no key
-    # already tried. A surface reads this to offer the retry — never to show
-    # one that cannot possibly change the answer.
+    # Whether the assist could still answer THIS sentence if a Main Key
+    # arrived with it: `True` for any `refused` with the switch on and no key
+    # already tried — o Jev lê TODA frase (a leitura primária), então QUALQUER
+    # recusa sem chave pode virar resposta com uma. A surface reads this to
+    # offer the retry.
     assist: bool = False
     # The REWRITTEN sentence a "Confirmar" would resubmit — the one Jev's own
     # `CONFIRM` tier asks the person to repeat (TASK-183) — or `None` for every
@@ -201,16 +201,11 @@ def ask(
         # The refusal already speaks the active language — the reason's key is
         # i18n's — so it is read as it stands.
         #
-        # The assist could still have an answer for EXACTLY this refusal — it is
-        # the one `nlu.propose` already handed every `Refused` to — and the one
-        # thing this call did not carry is a Main Key to open its credential
-        # with. `hinted` is that one fact, never a second judgment about the
-        # sentence: the surface that reads it is free to offer the retry, or not.
-        hinted = (
-            refused.key in assist.TRIGGERS
-            and assist.enabled()
-            and main_key is None
-        )
+        # O assist poderia ter uma resposta para ESTA frase — ele é a leitura
+        # PRIMÁRIA agora, e só não foi consultado porque esta chamada não
+        # trouxe uma Chave Principal para abrir a credencial. `hinted` é esse
+        # fato e nada mais: uma superfície o lê para oferecer o retry, ou não.
+        hinted = assist.enabled() and main_key is None
         return Result("refused", None, str(refused), REFUSED, assist=hinted)
     if isinstance(proposed, nlu.Question):
         # The question carries the phrase it is about, so the surface asks in the

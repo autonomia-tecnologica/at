@@ -62,32 +62,29 @@ def propose(
     the reason's `i18n` key — the surface answers in the active language without
     owning the words.
 
-    **A `Refused` the matcher raised for `nlu.error.no_action` or
-    `nlu.error.no_table` gets one more door before it is re-raised** — the
-    assist (`at.core.assist`, TASK-180): a slang layer that reads the same
-    sentence through Jev and either applies a rewritten one, asks for it to be
-    confirmed, or stands by the very refusal the matcher already raised. It is
-    reached HERE and nowhere inside the matcher, which is why it is imported
-    lazily — `match`, the grammar and the vocabulary carry no word of it, and
-    none of this changes when the assist's own switch does. `main_key` has no
-    caller in `cli` or the WebApp yet; it exists so the assist can open its
-    credential the day a surface hands one in, and it does nothing where none
-    arrives.
+    **O JEV LÊ PRIMEIRO** (TASK-180, invertido a pedido da pessoa,
+    03/10/2026): quando o assist está ligado e uma Chave chega para abrir a
+    credencial, é o Jev quem lê a frase — a leitura primária. O matcher
+    determinístico é o APOIO: responde quando o Jev não tem o que dizer (sem
+    chave, switch desligado, Jev fora do ar, ou um palpite abaixo do piso), e
+    é ele que executa o ato sobre o rewrite que o Jev propôs. O import é
+    preguiçoso porque `match`, a gramática e o vocabulário não carregam palavra
+    do assist — a leitura determinística inteira continua aqui. `main_key` é
+    aceito de quem chama; sem ele, o Jev não é consultado e o matcher responde
+    como sempre respondeu.
     """
     if not enabled():
         raise Refused("nlu.error.interpreter_off")
-    try:
-        return match(text, language=language, now=now)
-    except Refused as refused:
-        from at.core import assist
 
-        decided = assist.decide(
-            refused,
-            text,
-            language=language or i18n.active_code(),
-            now=now,
-            main_key=main_key,
-        )
-        if decided is not None:
-            return decided
-        raise
+    from at.core import assist
+
+    decided = assist.decide(
+        text,
+        language=language or i18n.active_code(),
+        now=now,
+        main_key=main_key,
+    )
+    if decided is not None:
+        return decided
+
+    return match(text, language=language, now=now)

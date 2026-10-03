@@ -661,7 +661,8 @@ button.opt { background: none; border: 0; font: inherit; width: 100%; text-align
 
 .switch {
   position: relative; display: inline-block; vertical-align: middle;
-  width: 36px; height: 20px; padding: 0; background: var(--control-track);
+  width: 36px; height: 20px; padding: 0; margin-bottom: var(--space-3);
+  background: var(--control-track);
   border: 1px solid var(--border-strong); border-radius: var(--r-full); cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
 }

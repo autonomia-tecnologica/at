@@ -48,6 +48,7 @@ from at import i18n
 from at.core import permissions, tables
 from at.data import schema
 from at.nlu import vocabulary
+from at.nlu.normalizer import fold
 
 # The Cofre's scope for this credential (`at.core.secrets.seal`'s `service`) —
 # a name like any other service's (`notifier`, `cofre`, `backup`), and this
@@ -73,6 +74,15 @@ NONE = "none"
 ACTION = "action"
 TABLE = "table"
 
+# Os TRECHOS: qual palavra da frase É a ação e qual É a tabela. O
+# `choice` de `action`/`table` diz o CANÔNICO que a frase quer dizer; estes
+# dizem ONDE, na frase, ele está escrito — que é o que o código precisa para
+# gastar a palavra e não deixá-la vazar para os argumentos (o que o TypeSafe
+# recomenda: o código levanta os trechos, o modelo ESCOLHE o pretendido, e o
+# código copia). Sem isto, a gíria da ação vira `text` da tarefa.
+ACTION_SPAN = "action_span"
+TABLE_SPAN = "table_span"
+
 
 @dataclass(frozen=True)
 class Decision:
@@ -82,12 +92,19 @@ class Decision:
     `confidence` is the WEAKER of the two, because a guess is only as good as
     its least certain half: an action Jev is sure of over a table it is not is
     still a demand this product cannot place anywhere with any confidence.
+
+    **`action_span` e `table_span` são ONDE a frase diz isso** — as palavras
+    que carregam a ação e a tabela, ou `NONE` quando a frase não as escreve (o
+    comando vem do sentido, não de uma palavra). É o que o código gasta antes
+    de ler os argumentos.
     """
 
     action: str
     action_confidence: float
     table: str
     table_confidence: float
+    action_span: str = ""
+    table_span: str = ""
 
     @property
     def confidence(self) -> float:
@@ -136,6 +153,7 @@ def decide(
     What that is WORTH — fall back, ask, or apply — is never decided here.
     """
     post = transport if transport is not None else _post
+    spans = _span_criteria(text, language)
     body = json.dumps(
         {
             "state": text,
@@ -151,12 +169,42 @@ def decide(
                     "instructions": _text("assist.criteria.table.instructions", language),
                     "criteria": _table_criteria(language),
                 },
+                # ONDE a frase diz o que diz. O código levanta os trechos, o
+                # Jev escolhe o pretendido, e o código copia (a recomendação
+                # do TypeSafe para valor que o modelo não pode devolver).
+                ACTION_SPAN: {
+                    "type": "choice",
+                    "instructions": _text("assist.criteria.span.action", language),
+                    "criteria": spans,
+                },
+                TABLE_SPAN: {
+                    "type": "choice",
+                    "instructions": _text("assist.criteria.span.table", language),
+                    "criteria": spans,
+                },
             },
         }
     ).encode("utf-8")
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     raw = post(ENDPOINT, body, headers, TIMEOUT)
     return _read(raw)
+
+
+def _span_criteria(text: str, language: str) -> dict[str, str]:
+    """Os TRECHOS candidatos: uma entrada por palavra da frase, mais o
+    `NONE`. A palavra que o vocabulário conhece vem com o seu canônico; a que
+    ele não conhece — a gíria — vem como está, que é exatamente o que o Jev
+    tem de reconhecer.
+    """
+    pairs = vocabulary.of(language)
+    seen: dict[str, str] = {}
+    for word in text.split():
+        if word in seen:
+            continue
+        known = pairs.get(word) or pairs.get(fold(word))
+        seen[word] = f"«{word}»" + (f" (= {known})" if known else "")
+    seen[NONE] = _text("assist.criteria.span.none", language)
+    return seen
 
 
 def _read(raw: bytes) -> Decision:
@@ -170,6 +218,11 @@ def _read(raw: bytes) -> Decision:
             action_confidence=float(action["confidence"]),
             table=str(table["choice"]),
             table_confidence=float(table["confidence"]),
+            # Um `answers` sem as perguntas de trecho (um transporte antigo, um
+            # servidor que ainda não as conhece) responde `NONE`: a leitura é a
+            # mesma, só sem saber ONDE — e o código não gasta trecho nenhum.
+            action_span=str(answers.get(ACTION_SPAN, {}).get("choice", NONE)),
+            table_span=str(answers.get(TABLE_SPAN, {}).get("choice", NONE)),
         )
     except (ValueError, KeyError, TypeError, UnicodeError) as error:
         raise JevError(f"unreadable answer: {error}") from None

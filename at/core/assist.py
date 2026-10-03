@@ -1,18 +1,22 @@
-"""The assist: what a sentence Jev read becomes, when the deterministic
-matcher found no action, no table, or neither (§4's own rule for the layer —
-"what does not resolve is residue, never a guess" — read from the OUTSIDE of
-it; TASK-180, fatia 1/3).
+"""O assist: o que o Jev lê de uma frase — a leitura PRIMÁRIA, e não mais um
+fallback (TASK-180, invertido a pedido da pessoa, 03/10/2026).
 
-**It is `at.nlu.propose`'s own fallback, and nothing else's.** `nlu` stays
-exactly the layer it always was: `matcher.py`, `normalizer.py`,
-`interpreter.py`, `reading.py` and the vocabulary files carry no word of this
-module, and the suite's own gate over them does not change. What changes is
-`propose`'s one door: a `Refused` the matcher raised for `nlu.error.no_action`
-or `nlu.error.no_table` — and no other reason — is handed here before it is
-re-raised, and this module answers either `None` (stand by the refusal) or the
-same three shapes `propose` always answered (`Proposal`, `Question`, or a
-`Refused` the deterministic path raises on ITS OWN when the rewritten sentence
-still does not read).
+**O Jev lê toda frase, e o matcher determinístico é o apoio.**
+`at.nlu.propose` pergunta ao Jev PRIMEIRO (`decide`); o matcher responde
+quando o Jev não tem o que dizer — sem chave, switch desligado, Jev fora do ar,
+um palpite abaixo do piso, ou um rewrite que o matcher não resolve. Antes era o
+contrário: o matcher era o portão e o Jev só via as frases que o matcher já
+tinha RECUSADO (`no_action`/`no_table`), o que fazia das frases "entendidas"
+uma leitura 100% NLU — que é a queixa que motivou a inversão.
+
+**A escrita continua determinística** (§4, "o que não resolve é resíduo, nunca
+um palpite"): o que o Jev propõe é um REWRITE que o PRÓPRIO matcher resolve, e
+o motor determinístico executa o ato e o audita. O Jev sugere a leitura; quem
+age é o motor, sobre a frase reescrita nas palavras do vocabulário.
+
+**O `nlu` continua inteiro.** `matcher.py`, `normalizer.py`, `interpreter.py`,
+`reading.py` e o vocabulário não carregam palavra deste módulo — a leitura
+determinística não muda; o que mudou é quem é consultado primeiro.
 
 **Three tiers, read off the risk the ACTION already carries on §4's own
 scale.** A read (`list`, `view`) is cheap to get wrong — a person sees a
@@ -93,11 +97,14 @@ folder would DO — never calls it.
 
 from __future__ import annotations
 
+import json
+import unicodedata
+
 from dataclasses import dataclass
 from datetime import datetime
 
-from at.core import jev, permissions, secrets, settings, tables
-from at.data import store
+from at.core import files, jev, paths, permissions, secrets, settings, tables
+from at.data import schema, store
 from at.nlu import matcher
 from at.nlu.proposal import Proposal
 from at.nlu.reading import Question, Refused
@@ -108,16 +115,6 @@ from at.nlu.reading import Question, Refused
 # docstring): a folder that never chose still gets the fallback, and turning
 # it off is what `settings.json` is for.
 SWITCH = "assist"
-
-# The two, and only two, reasons `propose` hands a refusal here instead of
-# re-raising it outright — read off the exact keys `at.nlu.matcher` raises
-# them with, never off a guess at what "ambiguous" might also mean. Real
-# ambiguity (two actions, two tables) and the grammar's own `Question` are
-# NOT here, and `decide` answers `None` for every other key for exactly that
-# reason.
-NO_ACTION = "nlu.error.no_action"
-NO_TABLE = "nlu.error.no_table"
-TRIGGERS = (NO_ACTION, NO_TABLE)
 
 # The three tiers `_tier` answers with, and the only three there are.
 AUTO = "auto"
@@ -163,8 +160,76 @@ def mode() -> str:
     return AUTOMATIC if settings.get(MODE) == AUTOMATIC else CAUTIOUS
 
 
+# ------------------------------------------------------------------- cache ---
+#
+# O cache das leituras do Jev: a frase normalizada (mais o idioma, porque o
+# rewrite é por idioma) vira a decisão que o Jev deu UMA vez. Bate = nenhuma
+# rede e NENHUMA chave — o cache não abre credencial nenhuma, que é o ponto: a
+# frase repetida responde offline. Erra = pergunta ao Jev e guarda.
+#
+# **Uma entrada que o motor não reconhece é MISS.** A decisão guardada nomeia
+# uma ação e uma tabela; se a ação sumiu de `tables.ACTIONS`, ou a tabela não é
+# mais declarada nesta pasta, a entrada não serve — o Jev responde de novo, e o
+# cache se cura sozinho. É a mesma checagem que `_tier`/`_rewrite` fariam
+# depois, feita cedo para não gastar uma rede com lixo.
+CACHE_FILE = "jev-cache.json"
+
+
+def _normalize(text: str) -> str:
+    """A frase reduzida à chave: sem caixa, sem acento, sem pontuação, com os
+    espaços colapsados. Duas grafias da MESMA frase (acento, maiúscula,
+    vírgula) batem na mesma entrada — que é o que um cache quer."""
+    lowered = unicodedata.normalize("NFKD", text.lower())
+    plain = "".join(c for c in lowered if not unicodedata.combining(c))
+    return " ".join("".join(c if c.isalnum() else " " for c in plain).split())
+
+
+def _key(text: str, language: str) -> str:
+    return f"{language}:{_normalize(text)}"
+
+
+def _entries() -> dict:
+    data = files.read_json(paths.app_dir() / CACHE_FILE, default={})
+    return data if isinstance(data, dict) else {}
+
+
+def _cached(key: str) -> jev.Decision | None:
+    entry = _entries().get(key)
+    if not isinstance(entry, dict):
+        return None
+    action, table = entry.get("action"), entry.get("table")
+    if action not in tables.ACTIONS or schema.of(table) is None:
+        return None
+    try:
+        return jev.Decision(
+            action=str(action),
+            action_confidence=float(entry["action_confidence"]),
+            table=str(table),
+            table_confidence=float(entry["table_confidence"]),
+            action_span=str(entry.get("action_span", "")),
+            table_span=str(entry.get("table_span", "")),
+        )
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def _remember(key: str, guess: jev.Decision) -> None:
+    data = _entries()
+    data[key] = {
+        "action": guess.action,
+        "action_confidence": guess.action_confidence,
+        "table": guess.table,
+        "table_confidence": guess.table_confidence,
+        "action_span": guess.action_span,
+        "table_span": guess.table_span,
+    }
+    files.atomic_write_text(
+        paths.app_dir() / CACHE_FILE,
+        json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+    )
+
+
 def decide(
-    refused: Refused,
     text: str,
     *,
     language: str,
@@ -172,35 +237,68 @@ def decide(
     main_key: str | None = None,
     transport: jev.Transport | None = None,
 ) -> Proposal | Question | None:
-    """What `text` becomes once Jev has read it, or `None` to stand by
-    `refused` exactly as it was raised.
+    """A leitura PRIMÁRIA: o que o Jev lê de `text`, ou `None` para deixar a
+    frase ao matcher determinístico — o apoio.
 
-    `None` is the answer for every door this module is not: the refusal is
-    not one of the two triggers, the switch is off, there is no credential to
-    open, or Jev itself did not answer (`jev.JevError` — the network, the key,
-    a shape this reader does not know). None of those is this module's to
-    raise over; `propose` already has a `Refused` ready to re-raise, and a
-    service that could not be reached is not a reason to replace it with a
-    worse one.
+    **Não há mais gatilho.** Antes, `propose` só chegava aqui quando o matcher
+    já tinha RECUSADO a frase (`no_action`/`no_table`), e o Jev era a sobra;
+    agora o Jev lê TODA frase primeiro, e o matcher passa a ser quem responde
+    quando o Jev não tem o que dizer. É a inversão que a pessoa pediu: o Jev
+    deixa de ser um botão depois do fracasso e vira o cérebro.
+
+    `None` é a resposta de toda porta que não é do Jev: o switch desligado
+    (`SWITCH`), a frase que nem o cache nem o Jev responderam (sem credencial
+    para abrir na primeira vez, ou `jev.JevError` — a rede, a chave, uma forma
+    que este leitor não conhece). Nenhuma dessas é deste módulo estourar: o
+    matcher determinístico tem uma leitura pronta para a MESMA frase, e um
+    serviço fora do ar não é motivo para trocar essa leitura por uma pior. O
+    `REFUSE` do tier é o mesmo: um palpite que não merece confiança devolve a
+    frase ao matcher, e não a uma recusa que o Jev não pediu para assinar.
+
+    **O cache vem ANTES da credencial** (§ cache): uma frase já lida responde
+    sem rede e sem chave — é o que faz a leitura repetida funcionar offline.
+
+    E um rewrite que o matcher não resolve deterministicamente TAMBÉM devolve
+    `None` — quem tenta a frase ORIGINAL, como apoio, é quem chamou.
     """
-    if refused.key not in TRIGGERS:
-        return None
     if not enabled():
         return None
-    api_key = _credential(main_key)
-    if api_key is None:
-        return None
-    try:
-        guess = jev.decide(text, language=language, api_key=api_key, transport=transport)
-    except jev.JevError:
-        return None
+    key = _key(text, language)
+    guess = _cached(key)
+    if guess is None:
+        api_key = _credential(main_key)
+        if api_key is None:
+            return None
+        try:
+            guess = jev.decide(text, language=language, api_key=api_key, transport=transport)
+        except jev.JevError:
+            return None
+        _remember(key, guess)
     tier = _folded(_tier(guess))
     if tier == REFUSE:
         return None
-    rewritten = _rewrite(text, guess, language)
+
+    # O matcher lendo a PRÓPRIA frase e concordando com o Jev: não é palpite, e
+    # a leitura é a dele — sem confirmação, e sem o loop de "Confirmar" (a frase
+    # canônica que a confirmação reenvia cai aqui e fecha).
+    try:
+        own = matcher.match(text, language=language, now=now)
+        if own.action == guess.action and own.table == guess.table:
+            return own
+    except Refused:
+        pass
+
+    # Os argumentos saem da frase SEM os trechos que o Jev apontou (a gíria da
+    # ação não vira `text`), e a ação/tabela vêm EXPLÍCITAS — nada de rewrite
+    # colidindo.
+    reduced = _reduce(text, guess)
     if tier == CONFIRM:
-        return Question(ASK_KEY, rewritten)
-    return matcher.match(rewritten, language=language, now=now)
+        return Question(ASK_KEY, _rewrite(reduced, guess, language))
+    try:
+        return matcher.match(reduced, language=language, now=now,
+                             action=guess.action, table=guess.table)
+    except Refused:
+        return None
 
 
 @dataclass(frozen=True)
@@ -290,6 +388,23 @@ def _folded(tier: str) -> str:
     if tier == REFUSE:
         return REFUSE
     return AUTO if mode() == AUTOMATIC else CONFIRM
+
+
+def _reduce(text: str, guess: jev.Decision) -> str:
+    """A frase SEM as palavras que o Jev apontou como a ação e a tabela.
+
+    O que sobra é o material dos argumentos — o texto do campo, a data, o
+    número. É o que impede a gíria da ação (`joga`) de vazar para o `text` da
+    tarefa: o Jev disse ONDE ela está, e o código a tira.
+    """
+    drop = {
+        span
+        for span in (guess.action_span, guess.table_span)
+        if span and span != jev.NONE
+    }
+    if not drop:
+        return text
+    return " ".join(word for word in text.split() if word not in drop)
 
 
 def _rewrite(text: str, guess: jev.Decision, language: str) -> str:
