@@ -90,6 +90,18 @@ class ServerCase(unittest.TestCase):
         )
         self.env.start()
         i18n.reset()
+        # A Chave Principal é global do PROCESSO (`keys._main`), e um teste
+        # anterior que subiu um webapp de verdade a deixa de pé: `keys.boot` lê
+        # a Chave do arquivo da MÁQUINA (`~/.config/at/AT_MAIN_KEY`) quando ele
+        # existe, então o teste que rodou antes do `test_webapp` deixa a Chave
+        # da instância vazando para cá — e o `/api/ask`, que cai em
+        # `keys.main_key()`, passa a achar que o pedido trouxe uma Chave, o que
+        # desliga o hint do assist por um motivo que este teste não escolheu.
+        # Zera na entrada e devolve na saída, para o teste que QUER uma Chave
+        # continuar podendo pôr a sua (a classe que a liga o faz por cima).
+        held_main = webapp_keys.main_key()
+        webapp_keys.keep_main_key(None)
+        self.addCleanup(webapp_keys.keep_main_key, held_main)
         with redirect_stdout(io.StringIO()):
             boot.create_working_folder()
         with redirect_stdout(io.StringIO()):

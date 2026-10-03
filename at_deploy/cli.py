@@ -1,13 +1,13 @@
 """`at-deploy`'s command line: the surface that reaches §7 whole.
 
 It is the same shape as `at-cli`'s `cli` and a smaller list, because this artifact
-owns one subject: the environment. Eight root words are the whole of it (2026-09-28:
-`services` is gone — the eight used to be its children, and the parent bought a
-word to type without changing what any of them DO) — bring the environment up,
-take it down, say what is standing, move the folder between the two paths, and
-prove the delivery — and the Wizard of §7 (item 27's third slice) is the screen
-that walks a person through the same steps, every one of them reachable from
-here, because §5's one-way rule does not bend for a second artifact.
+owns one subject: the environment — now two of them (TASK-190). `container` carries
+the eight words 2026-09-28 flattened to the root (bring the environment up, take
+it down, say what is standing, move the folder between the two paths, and prove
+the delivery), and `host` carries the two words the hosted path's own systemd
+persistence needs. The Wizard of §7 (item 27's third slice) is the screen that
+walks a person through the container path's steps, every one of them reachable
+from here, because §5's one-way rule does not bend for a second artifact.
 
 **The folder comes first, and it is the same folder.** Every invocation confirms
 the Working Folder exactly as `at-cli` does, through the same `boot`: the two
@@ -26,7 +26,7 @@ from at import __version__
 from at.core import actors, boot, files, install, licenses, paths, tables
 from at.i18n import tr
 
-from at_deploy import environment, tree
+from at_deploy import environment, host, tree
 from at_deploy.environment import HOSTED, INSTALL, PROVISIONED, UP, UPDATED
 
 # What a person answers with, injected so a test can answer without a terminal —
@@ -35,10 +35,16 @@ from at_deploy.environment import HOSTED, INSTALL, PROVISIONED, UP, UPDATED
 # `at-cli admin`).
 Ask = Callable[[str], str]
 
-# The environment's eight root words, read off the tree that OFFERS them — the
-# declaration is `tree.py`'s and this is the same list, so a word can never
-# dispatch without being offered nor the other way round (§5's one-way rule).
+# The container environment's seven words, read off the tree that OFFERS them
+# — the declaration is `tree.py`'s and this is the same list, so a word can
+# never dispatch without being offered nor the other way round (§5's one-way
+# rule). They sit under `container` now (TASK-190): a second environment, the
+# host's own systemd, arrived needing the same seven-word shape for a
+# different thing to stand up.
 WORDS = tree.environment_words()
+
+# The host environment's two words, the same guarantee, one level down.
+HOST_WORDS = tree.host_words()
 
 # The one word that takes an argument, and it is a NAME: the gate asserts a name
 # and the `users.yml` it derives is keyed by one (§7b). The tree carries what a
@@ -96,8 +102,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     if word == "license":
         return _license(rest)
 
-    if word in WORDS:
-        return services([word, *rest])
+    if word == "container":
+        if not rest or rest[0] not in WORDS:
+            print(tr("deploy.error.unknown_word", word=rest[0] if rest else word))
+            print(tr("deploy.error.usage"))
+            return USAGE
+        return services(rest)
+
+    if word == "host":
+        if not rest or rest[0] not in HOST_WORDS:
+            print(tr("deploy.error.unknown_word", word=rest[0] if rest else word))
+            print(tr("deploy.error.usage"))
+            return USAGE
+        return _host(rest)
 
     print(tr("deploy.error.unknown_word", word=word))
     print(tr("deploy.error.usage"))
@@ -136,13 +153,14 @@ def services(
     ask: Ask | None = None,
     secret: Ask | None = None,
 ) -> int:
-    """The environment's seven root words (§7a) — one function behind all of them.
+    """The container environment's seven words (§7a) — one function behind all of them.
 
     `main` dispatches every name `WORDS` carries (`up`, `update`, `down`,
-    `status`, `switch`, `forms`, `credential`) into `rest[0]` here
-    (2026-09-28: `services` is gone from in front of them — the eight used to
-    be its children, and the parent bought a word to type without changing what
-    any of them DO). The Wizard is the screen that installs the environment, and
+    `status`, `switch`, `forms`, `credential`) into `rest[0]` here, called
+    with `container`'s own `rest` — the words themselves unchanged since
+    2026-09-28, only reached through one more name now that `host` (TASK-190)
+    needed the same shape for a different environment. The Wizard is the
+    screen that installs the environment, and
     it reads THIS door and no other (`at_deploy/wizard.py` walks it one word at
     a time): §5's rule is that everything of the Wizard is reachable from the
     `cli`, and the way to make that a property instead of a promise is for the
@@ -238,8 +256,51 @@ def services(
     ) else REFUSED
 
 
+def _host(rest: list[str]) -> int:
+    """`at-deploy host up|update` (TASK-190) — the hosted path's own two
+    processes, kept standing across a reboot by `systemd --user`.
+
+    The flags are `at-cli webapp`'s own three (`--host`, `--port`,
+    `--public-port`), because the unit this writes runs that exact word with
+    them — a person who already knows how to start the bundle by hand types
+    the same thing here, in front of `host up` instead of `webapp`.
+    """
+    word, args = rest[0], rest[1:]
+
+    host_name: str | None = None
+    port = host.DEFAULT_PORT
+    public_port: int | None = None
+
+    PORT_FLAGS = ("--port", "--porta")
+    PUBLIC_PORT_FLAGS = ("--public-port", "--porta-publica")
+
+    while args:
+        flag, args = args[0], args[1:]
+        if flag not in (*PORT_FLAGS, *PUBLIC_PORT_FLAGS, "--host") or not args:
+            return _reject(word)
+        value, args = args[0], args[1:]
+        if flag == "--host":
+            if not value or value.startswith("-"):
+                return _reject(word)
+            host_name = value
+            continue
+        if not value.isdigit():
+            return _reject(word)
+        chosen = int(value)
+        if not 0 < chosen < 65536:
+            return _reject(word)
+        if flag in PUBLIC_PORT_FLAGS:
+            public_port = chosen
+        else:
+            port = chosen
+
+    act = host.host_up if word == "up" else host.host_update
+    outcome = act(host_name, port, public_port)
+    return OK if outcome in (host.UP, host.UPDATED, host.PROVISIONED) else REFUSED
+
+
 def _credential(name: str, ask: Ask | None, secret: Ask | None) -> int:
-    """`at-deploy credential <name>` — the operator's act (§7b).
+    """`at-deploy container credential <name>` — the operator's act (§7b).
 
     The credential is read WITHOUT ECHO and twice, exactly as the first
     administrator's is (`at-cli admin`): it does not travel through the command

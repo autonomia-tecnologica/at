@@ -396,7 +396,7 @@ class TheDoor(FolderCase):
     def test_no_terminal_means_no_credential_to_change(self):
         # The suite runs with no tty, which is the state the door refuses in.
         self.person()
-        code, text = self.quiet(main, ["credential", "Rafael"])
+        code, text = self.quiet(main, ["container", "credential", "Rafael"])
         self.assertEqual(code, REFUSED)
         self.assertIn(i18n.tr("services.credential.no_tty"), text)
 

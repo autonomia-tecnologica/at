@@ -2349,10 +2349,10 @@ class TheWords(unittest.TestCase):
 
 
 class TheDoor(FolderCase):
-    """`at-deploy`'s eight root words for the environment (2026-09-28: no more
-    `services` in front of them)."""
+    """`at-deploy`'s seven root words for the container environment, under
+    `container` (TASK-190: `host` needed the same shape for a different one)."""
 
-    def test_the_tree_offers_the_environments_eight_words_at_the_root(self):
+    def test_the_tree_offers_the_environments_seven_words_under_container(self):
         self.assertEqual(
             tree.environment_words(),
             ("up", "update", "down", "status", "switch", "forms", "credential"),
@@ -2365,15 +2365,15 @@ class TheDoor(FolderCase):
 
     def test_status_is_what_the_status_word_answers(self):
         # 2026-09-28: the wordless `services` that used to answer with the
-        # status is gone — the word for it is `at-deploy status`, same as
-        # every other root word.
-        code, text = self.quiet(main, ["status"])
+        # status is gone — the word for it is `at-deploy container status`,
+        # same as every other word of the container environment.
+        code, text = self.quiet(main, ["container", "status"])
         self.assertEqual(code, OK)
         self.assertIn(i18n.tr("services.no_podman.status"), text)
 
     def test_no_terminal_means_no_choice_and_a_refusal(self):
         # The suite runs with no tty, which is the state the offer refuses in.
-        code, text = self.quiet(main, ["up"])
+        code, text = self.quiet(main, ["container", "up"])
         self.assertEqual(code, REFUSED)
         self.assertIn(i18n.tr("services.no_podman.no_tty"), text)
 
@@ -2383,7 +2383,7 @@ class TheDoor(FolderCase):
         self.assertIn(i18n.tr("services.no_podman.hosted"), text)
 
     def test_a_word_it_does_not_take_is_a_usage_error(self):
-        for words in (["up", "extra"], ["down", "extra"]):
+        for words in (["container", "up", "extra"], ["container", "down", "extra"]):
             with self.subTest(words=words):
                 code, _ = self.quiet(main, words)
                 self.assertEqual(code, USAGE)

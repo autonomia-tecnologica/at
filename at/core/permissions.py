@@ -198,6 +198,14 @@ EXTRA: dict[str, tuple[str, ...]] = {
     "webapp": ("run",),
     "backup": ("make", "restore"),
     "cli": ("admin", "lang", "convert"),
+    # TASK-186, fatia 3/4: `help` É um objeto e um verbo (a pessoa, ao decidir
+    # esta fatia) — ao contrário de `admin`/`lang`/`convert`, que são verbos
+    # SOLTOS sem objeto próprio e por isso compartilham `cli`, `help` tem os
+    # dois: o objeto é a própria ajuda, e `show` é o único ato que ela
+    # responde. Deixa de ser um dos cinco nomes de `NAMED_EXCEPTIONS`
+    # (`test_permissions.py`) — `version`, `license`, `install` e `uninstall`
+    # continuam de fora, sem decisão nova sobre eles.
+    "help": ("show",),
 }
 
 # --------------------------------------------------------------- modifiers ---
@@ -335,6 +343,9 @@ RISK_BY_ACTION: dict[str, float] = {
     # `cli convert` escreve um arquivo novo em `Convertidos/`, a partir de um
     # que já existia em `Arquivos/` — o mesmo porquê de um `create`.
     "convert": RISK_WRITE,
+    # `help show` lê o que o binário oferece e não muda nada da pasta — o
+    # mesmo porquê de `list`/`view`/`read`.
+    "show": RISK_READ,
     "cancel": RISK_REMOVE,
     "delete": RISK_REMOVE,
     # The two halves of the approval are ONE act with two outcomes, and they are

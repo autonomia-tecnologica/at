@@ -118,7 +118,7 @@ class TheCoreIsOneSource(unittest.TestCase):
             with self.subTest(module=module):
                 self.assertIn(f"from {module} import", text)
 
-    def test_the_deploy_carries_the_eight_modules_of_one_subject(self):
+    def test_the_deploy_carries_the_ten_modules_of_two_subjects(self):
         # A list, so that a module added here is a decision somebody makes on
         # purpose: the deploy is §7, and everything it owns is named. `wizard`
         # is the front §6 declares for this artifact — the sequence of §7 walked
@@ -127,11 +127,14 @@ class TheCoreIsOneSource(unittest.TestCase):
         # other half of a name (`cert.at.local`) the environment no longer
         # answers for. And `notifier` left it with the ntfy: a notificação é o
         # Web Push do PWA (`at/core/push.py`), que roda dentro do WebApp e não
-        # precisa de um container de entrega.
+        # precisa de um container de entrega. `host` and `systemd` arrived
+        # with TASK-190: the hosted path's own environment, and the seam its
+        # one runtime (`systemctl --user`) goes through — the same pair of
+        # roles `environment` and `podman` already play for the container one.
         self.assertEqual(
             {path.stem for path in sources(DEPLOY) if path.stem != "__init__"},
             {"cli", "tree", "__main__", "environment", "podman", "vpn",
-             "switch", "wizard"},
+             "switch", "wizard", "host", "systemd"},
         )
 
 

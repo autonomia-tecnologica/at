@@ -13,11 +13,14 @@ from at.i18n import tr
 from at.ui.words import Node, completion_words, section, width
 
 
-# The environment's words, at the ROOT (2026-09-28: `services` is gone — the
-# seven used to be its children, and the parent bought a word to type without
-# changing what any of them DO). `up` is the FIRST time, `update` every time
-# after (the release that already replaced the binary), `down` and `status` are
-# the environment's own report and its way down.
+# The container environment's words, nested under `container` (2026-10-03: a
+# second environment — the host's own systemd, below — arrived, and a word
+# typed bare stopped being able to say which one it meant; the eight that
+# used to sit at the root moved under this one name, by the same reasoning
+# that moved them out from under `services` in the first place, one revision
+# ago). `up` is the FIRST time, `update` every time after (the release that
+# already replaced the binary), `down` and `status` are the environment's own
+# report and its way down.
 # `switch` is §6's TRANSACTIONAL change from the hosted path to the container
 # one and `forms` is the way back — both local, which is the whole point of the
 # return existing (`at_deploy/switch.py`).
@@ -25,7 +28,7 @@ from at.ui.words import Node, completion_words, section, width
 # `credential` is the OPERATOR's act (item 27), and it is here for the same
 # reason it was under the parent: the credential §7b's gate proves. It takes an
 # argument — a NAME (`at_deploy/cli.py`).
-_ENVIRONMENT: tuple[Node, ...] = (
+_CONTAINER: tuple[Node, ...] = (
     Node("up", "deploy.up.about"),
     Node("update", "deploy.update.about"),
     Node("down", "deploy.down.about"),
@@ -35,9 +38,21 @@ _ENVIRONMENT: tuple[Node, ...] = (
     Node("credential", "deploy.credential.about"),
 )
 
+# The HOST environment's words (TASK-190): the hosted path's own Authelia,
+# already up as a subprocess of `at-cli webapp` since TASK-177, kept standing
+# across a REBOOT too — which an orphan subprocess never survives on its own.
+# `up` writes the two systemd `--user` units (the WebApp's and Authelia's) the
+# FIRST time; `update` is every time after, the mirror of the container path's
+# own pair.
+_HOST: tuple[Node, ...] = (
+    Node("up", "deploy.host.up.about"),
+    Node("update", "deploy.host.update.about"),
+)
+
 
 WORDS: tuple[Node, ...] = (
-    *_ENVIRONMENT,
+    Node("container", "deploy.container.about", _CONTAINER),
+    Node("host", "deploy.host.about", _HOST),
     # The second artifact puts ITSELF where commands are found, and it does not
     # install the first one: §3's cut is the same sentence here — whoever stays
     # on the hosted path never needs this binary, and whoever installs this one
@@ -60,16 +75,32 @@ def roots() -> tuple[Node, ...]:
 
 
 def find(name: str) -> Node | None:
-    return next((node for node in roots() if node.name == name), None)
+    """A root by name, or — one level down, same reach as `completion_words`
+    — a child's. `up` names two children now (`container`'s and `host`'s);
+    this answers the first `WORDS` carries, which is a lookup's whole job,
+    not a disambiguation the dispatch already does by reading the parent."""
+    for node in roots():
+        if node.name == name:
+            return node
+        for child in node.children:
+            if child.name == name:
+                return child
+    return None
 
 
 def environment_words() -> tuple[str, ...]:
-    """The names of the eight root words the environment offers.
+    """The names of the seven words the container environment offers.
 
-    Read off `_ENVIRONMENT` and not off `WORDS`, so `cli.py`'s dispatch group
-    can never drift from what this declaration actually offers at the root.
+    Read off `_CONTAINER` and not off `WORDS`, so `cli.py`'s dispatch group
+    can never drift from what this declaration actually offers under `container`.
     """
-    return tuple(node.name for node in _ENVIRONMENT)
+    return tuple(node.name for node in _CONTAINER)
+
+
+def host_words() -> tuple[str, ...]:
+    """The names of the two words the host environment offers — the same
+    guarantee `environment_words()` gives the container one."""
+    return tuple(node.name for node in _HOST)
 
 
 def completion() -> tuple[tuple[str, tuple[str, ...]], ...]:
