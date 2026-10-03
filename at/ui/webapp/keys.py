@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import base64
 import os
+from pathlib import Path
 
 # The two variables `at_deploy.environment._webapp_env` may hand this
 # container — named here because this is the module that READS them, the same
@@ -48,6 +49,13 @@ _ENV_VARS = (WEBAPP_KEY_ENV, NOTIFIER_KEY_ENV, COFRE_KEY_ENV)
 # do Jev incluída) para todo pedido, sem pedir a Chave de novo a cada mensagem.
 MAIN_KEY_ENV = "AT_MAIN_KEY"
 
+# O ARQUIVO da máquina onde a pessoa guarda a Chave Principal, fora de qualquer
+# pasta de trabalho: `~/.config/at/AT_MAIN_KEY`. O host lê dele quando a
+# variável não veio no ambiente — é o que faz o AT subir JÁ com a Chave em
+# memória, sem ninguém digitá-la a cada pedido. Não é dado da instância e não
+# entra no backup (não está na Pasta de Trabalho); é da pessoa, para a máquina.
+MAIN_KEY_FILE = (".config", "at", "AT_MAIN_KEY")
+
 _keys: dict[str, bytes] = {}
 _main: str | None = None
 
@@ -59,8 +67,13 @@ def boot() -> None:
     decode — shorter, longer, not base64 at all — is skipped rather than
     raised over: a boot is not the place to fail on a key nothing will miss
     until something asks for it (`get`).
+
+    **A Chave Principal vem do ambiente OU do arquivo da máquina** — o
+    ambiente primeiro, o arquivo depois (`MAIN_KEY_FILE`). Um host que sobe
+    sem nenhum dos dois não tem a Chave, e o que depende dela (o Cofre, o Jev)
+    diz que não tem em vez de estourar.
     """
-    keep_main_key(os.environ.pop(MAIN_KEY_ENV, None))
+    keep_main_key(os.environ.pop(MAIN_KEY_ENV, None) or _main_key_from_file())
     for variable in _ENV_VARS:
         raw = os.environ.pop(variable, None)
         if not raw:
@@ -69,6 +82,20 @@ def boot() -> None:
             _keys[variable] = base64.urlsafe_b64decode(raw.encode("ascii"))
         except (ValueError, UnicodeError):
             continue
+
+
+def _main_key_from_file() -> str | None:
+    """A Chave Principal que `MAIN_KEY_FILE` guarda — ou `None`.
+
+    Uma leitura que falha (o arquivo não existe, não é texto) é `None`, nunca
+    um estouro: não ter a chave é uma resposta, e é a mesma de um host que
+    ninguém a deu.
+    """
+    try:
+        read = Path.home().joinpath(*MAIN_KEY_FILE).read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
+        return None
+    return read.strip() or None
 
 
 def keep_main_key(value: str | None) -> None:
