@@ -58,10 +58,19 @@ refusal" rather than a crash over a credential that was never provisioned.
 either): the engine is complete and proven with an injected key and an
 injected Jev client, and wiring a live Main Key through a surface is a later
 fatia's own decision, not a gap in this one.
+
+**Fatia 2/3 wires the first surface, and it is a DRY RUN.** `preview` is
+`decide`'s own call to Jev and `_tier`'s own reading of it, with no
+`Refused` to carry in and no rewrite, no confirm and no match ever attempted
+— `at-cli decisor "<frase>"` prints the action, the table, both confidences
+and the tier a real sentence would land in, and nothing about the folder
+changes for having asked. It is the surface `main_key` was always missing:
+read without echo, the same way `backup` and `admin` already read theirs.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
 
 from at.core import jev, permissions, secrets, settings, tables
@@ -149,6 +158,58 @@ def decide(
     if tier == CONFIRM:
         return Question(ASK_KEY, rewritten)
     return matcher.match(rewritten, language=language, now=now)
+
+
+@dataclass(frozen=True)
+class Preview:
+    """What `decide` would see about one phrase, for a person to CHECK before
+    anything is wired to run it (TASK-180, fatia 2/3 — the dry run `at-cli
+    decisor ask`).
+
+    The four numbers are `jev.Decision`'s own, carried through unchanged, and
+    `tier` is `_tier`'s own answer about them — this module computes the tier
+    exactly once, and a preview reads it rather than guessing it a second way.
+    """
+
+    action: str
+    action_confidence: float
+    table: str
+    table_confidence: float
+    tier: str
+
+
+def preview(
+    text: str,
+    *,
+    language: str,
+    main_key: str | None = None,
+    transport: jev.Transport | None = None,
+) -> Preview | None:
+    """What Jev answers about `text`, and the tier it lands in — read only,
+    and never applied, rewritten, or handed to the matcher.
+
+    `None` collapses every way there is nothing to show, the same way
+    `decide` already does: the switch is off, there is no credential to
+    open, or Jev itself did not answer. It is reached directly, with no
+    `Refused` to carry in — a dry run is about ANY phrase, not only the ones
+    the deterministic matcher already gave up on.
+    """
+    if not enabled():
+        return None
+    api_key = _credential(main_key)
+    if api_key is None:
+        return None
+    try:
+        guess = jev.decide(text, language=language, api_key=api_key, transport=transport)
+    except jev.JevError:
+        return None
+    return Preview(
+        action=guess.action,
+        action_confidence=guess.action_confidence,
+        table=guess.table,
+        table_confidence=guess.table_confidence,
+        tier=_tier(guess),
+    )
 
 
 def _tier(guess: jev.Decision) -> str:

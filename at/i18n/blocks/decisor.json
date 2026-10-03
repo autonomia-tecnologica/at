@@ -10,7 +10,15 @@
     "criteria.action.desc.create": "Fazer existir um item novo que não existia",
     "criteria.action.desc.edit": "Mudar um valor de um item que já existe",
     "criteria.action.desc.cancel": "Encerrar um item em andamento, fechando com um motivo, sem apagar",
-    "criteria.action.desc.delete": "Remover um item por completo, como se nunca tivesse existido"
+    "criteria.action.desc.delete": "Remover um item por completo, como se nunca tivesse existido",
+    "preview.phrase": "Chave Principal: ",
+    "preview.no_tty": "Sem terminal onde perguntar não há Chave Principal a digitar. Rode `at-cli decisor \"<frase>\"` num terminal.",
+    "preview.off": "O decisor está desligado nesta pasta. `setting edit decisor true` liga.",
+    "preview.none": "O decisor não tem o que mostrar: ou não há credencial selada para o Jev, ou a Chave Principal não a abre, ou o Jev não respondeu.",
+    "preview.line": "{action} ({action_confidence}) · {table} ({table_confidence}) — {tier}.",
+    "preview.tier.auto": "aplicaria direto",
+    "preview.tier.confirm": "perguntaria antes de aplicar",
+    "preview.tier.refuse": "não aplicaria"
   },
   "en_US": {
     "criteria.action.instructions": "The sentence is from someone using a task-management system, written in informal English or slang. Judge which of these actions the person wants to take. Each option already names, in parentheses, the words the system recognizes WITHOUT any help — the question is only about what the sentence says OUTSIDE them: slang, jargon, a way of saying it the system does not know yet. If the sentence asks for none of these actions, answer 'none'.",
@@ -23,6 +31,14 @@
     "criteria.action.desc.create": "Make a new item exist that did not exist before",
     "criteria.action.desc.edit": "Change a value of an item that already exists",
     "criteria.action.desc.cancel": "End an ongoing item, closing it with a reason, without erasing it",
-    "criteria.action.desc.delete": "Remove an item completely, as if it had never existed"
+    "criteria.action.desc.delete": "Remove an item completely, as if it had never existed",
+    "preview.phrase": "Main Key: ",
+    "preview.no_tty": "With no terminal to ask in there is no Main Key to type. Run `at-cli decisor \"<sentence>\"` in a terminal.",
+    "preview.off": "The decisor is off in this folder. `setting edit decisor true` turns it on.",
+    "preview.none": "The decisor has nothing to show: either there is no credential sealed for Jev, the Main Key does not open it, or Jev did not answer.",
+    "preview.line": "{action} ({action_confidence}) · {table} ({table_confidence}) — {tier}.",
+    "preview.tier.auto": "would apply directly",
+    "preview.tier.confirm": "would ask before applying",
+    "preview.tier.refuse": "would not apply"
   }
 }

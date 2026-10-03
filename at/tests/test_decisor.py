@@ -26,8 +26,9 @@ from pathlib import Path
 from unittest import mock
 
 from at import i18n, nlu
-from at.core import boot, decisor, jev, secrets, settings
+from at.core import boot, decisor, jev, secrets, settings, tables
 from at.data import schema, store
+from at.ui.cli import OK, REFUSED, USAGE, _decisor, main
 
 NOW = datetime(2026, 9, 22, 10, 0)
 MAIN_KEY = "uma-frase-bem-longa-de-exemplo-mesmo"
@@ -338,6 +339,165 @@ class TheDeclaredRisk(DecisorCase):
         from at.core import permissions
         self.assertTrue(permissions.is_known("decisor:ask"))
         self.assertEqual(permissions.risk("decisor:ask"), permissions.RISK_WRITE)
+
+
+class ThePreview(DecisorCase):
+    """`decisor.preview` — the raw guess and its tier, never applied,
+    rewritten or handed to the matcher (TASK-180, fatia 2/3)."""
+
+    def setUp(self):
+        super().setUp()
+        self.sealed()
+
+    def test_it_shows_the_action_the_table_and_the_tier(self):
+        found = decisor.preview(
+            "bota uma penca aqui", language="pt_BR", main_key=MAIN_KEY,
+            transport=self.fake("create", "task", 0.95, 0.95),
+        )
+        self.assertEqual(found.action, "create")
+        self.assertEqual(found.table, "task")
+        self.assertEqual(found.action_confidence, 0.95)
+        self.assertEqual(found.table_confidence, 0.95)
+        self.assertEqual(found.tier, decisor.AUTO)
+
+    def test_the_tier_is_the_same_scale_decide_uses(self):
+        found = decisor.preview(
+            "bota uma penca aqui", language="pt_BR", main_key=MAIN_KEY,
+            transport=self.fake("create", "task", 0.6, 0.6),
+        )
+        self.assertEqual(found.tier, decisor.CONFIRM)
+
+    def test_a_guess_that_names_nothing_is_the_refuse_tier(self):
+        found = decisor.preview(
+            "oi", language="pt_BR", main_key=MAIN_KEY,
+            transport=self.fake(jev.NONE, "task", 0.99, 0.99),
+        )
+        self.assertEqual(found.tier, decisor.REFUSE)
+
+    def test_the_switch_off_shows_nothing(self):
+        settings.save({**settings.load(), decisor.SWITCH: False})
+        found = decisor.preview(
+            "bota uma penca aqui", language="pt_BR", main_key=MAIN_KEY,
+            transport=self.fake("create", "task", 0.95, 0.95),
+        )
+        self.assertIsNone(found)
+
+    def test_no_main_key_shows_nothing(self):
+        found = decisor.preview(
+            "bota uma penca aqui", language="pt_BR", main_key=None,
+            transport=self.fake("create", "task", 0.95, 0.95),
+        )
+        self.assertIsNone(found)
+
+    def test_a_service_that_does_not_answer_shows_nothing(self):
+        def failing(url, body, headers, timeout):
+            raise jev.JevError("503")
+
+        found = decisor.preview(
+            "x", language="pt_BR", main_key=MAIN_KEY, transport=failing,
+        )
+        self.assertIsNone(found)
+
+
+class TheCLIWord(DecisorCase):
+    """`at-cli decisor ask "<frase>"` — the dry run, through the real door
+    and the real `cli` dispatch."""
+
+    def run_verb(self, args: list[str], phrase: str = MAIN_KEY, transport=None):
+        """Through `_decisor`, with the Main Key injected like `backup`'s own
+        CLI test injects it, and the network seam patched at `jev._post` —
+        the one place `decide` would otherwise reach a socket."""
+        if transport is None:
+            transport = self.fake("create", "task", 0.95, 0.95)
+        output = io.StringIO()
+        with redirect_stdout(output):
+            with mock.patch.object(jev, "_post", transport):
+                code = _decisor(args, secret=lambda question: phrase)
+        return code, output.getvalue()
+
+    def test_it_shows_the_preview_and_writes_nothing(self):
+        self.sealed()
+        code, text = self.run_verb(["bota uma penca aqui"])
+        self.assertEqual(code, OK)
+        self.assertIn(i18n.tr("table.action.create"), text)
+        self.assertIn(tables.table_name("task"), text)
+        self.assertEqual(store.load("audit"), [])
+
+    def test_the_switch_off_refuses_before_asking_for_the_phrase(self):
+        self.sealed()
+        settings.save({**settings.load(), decisor.SWITCH: False})
+        # The switch is read BEFORE the secret reader is called at all — a
+        # folder with it off never gets as far as asking for the phrase.
+        asked: list[str] = []
+        output = io.StringIO()
+        with redirect_stdout(output):
+            code = _decisor(
+                ["bota uma penca aqui"],
+                secret=lambda question: asked.append(question) or MAIN_KEY,
+            )
+        self.assertEqual(code, REFUSED)
+        self.assertEqual(asked, [])
+        self.assertIn(i18n.tr("decisor.preview.off"), output.getvalue())
+
+    def test_no_credential_answers_in_its_own_words(self):
+        code, text = self.run_verb(["bota uma penca aqui"])
+        self.assertEqual(code, REFUSED)
+        self.assertIn(i18n.tr("decisor.preview.none"), text)
+
+    def test_without_a_terminal_it_refuses_rather_than_assume(self):
+        class _NoTerminal:
+            def isatty(self) -> bool:
+                return False
+
+        self.sealed()
+        output = io.StringIO()
+        with mock.patch("sys.stdin", _NoTerminal()):
+            with redirect_stdout(output):
+                code = _decisor(["bota uma penca aqui"])
+        self.assertEqual(code, REFUSED)
+        self.assertIn(i18n.tr("decisor.preview.no_tty"), output.getvalue())
+
+    def test_the_wrong_shape_is_a_usage_error(self):
+        code, _ = self.run_verb([])
+        self.assertEqual(code, USAGE)
+        code, _ = self.run_verb(["uma", "frase", "em", "pedacos"])
+        self.assertEqual(code, USAGE)
+
+    def test_the_word_is_offered_by_the_help(self):
+        output = io.StringIO()
+        with redirect_stdout(output):
+            code = main(["help"])
+        self.assertEqual(code, OK)
+        self.assertIn("decisor", output.getvalue())
+
+    def test_main_dispatches_the_word_without_a_terminal(self):
+        class _NoTerminal:
+            def isatty(self) -> bool:
+                return False
+
+        self.sealed()
+        with mock.patch("sys.stdin", _NoTerminal()):
+            self.assertEqual(main(["decisor", "x"]), REFUSED)
+
+
+class TheSwitchThroughSetting(DecisorCase):
+    """The generic `setting edit` already reaches the decisor's own switch —
+    proven through the real `cli`, and independent of the interpreter's."""
+
+    def test_setting_edit_turns_it_off_and_on(self):
+        self.assertTrue(decisor.enabled())
+        self.assertEqual(main(["setting", "edit", "decisor", "false"]), OK)
+        self.assertFalse(decisor.enabled())
+        self.assertTrue(nlu.enabled())
+        self.assertEqual(main(["setting", "edit", "decisor", "true"]), OK)
+        self.assertTrue(decisor.enabled())
+
+    def test_it_is_listed_by_setting_list(self):
+        output = io.StringIO()
+        with redirect_stdout(output):
+            code = main(["setting", "list"])
+        self.assertEqual(code, OK)
+        self.assertIn("decisor", output.getvalue())
 
 
 if __name__ == "__main__":

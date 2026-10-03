@@ -19,6 +19,7 @@ from at.core import (
     audit,
     backup,
     boot,
+    decisor,
     files,
     install,
     jobs,
@@ -105,6 +106,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if word == "lang":
         return _lang(rest)
+
+    if word == "decisor":
+        return _decisor(rest)
 
     if word == permissions.SETTING:
         return _setting(rest)
@@ -453,6 +457,37 @@ def _lang(rest: list[str], ask: Ask | None = None) -> int:
     migrations.offer_language(ask if ask is not None else _readers()[0],
                              include_folders=include_folders)
     return OK
+
+
+# -------------------------------------------------------------- the decisor ---
+
+def _decisor(rest: list[str], secret: Ask | None = None) -> int:
+    """`at-cli decisor "<frase>"` — what Jev would propose, without running
+    it (TASK-180, fatia 2/3).
+
+    The sentence is ONE argument, the same rule `ask` already holds to: a
+    phrase the shell split in two is two phrases.
+
+    The Main Key is read WITHOUT ECHO, the same way `backup` and `admin`
+    already read theirs: it does not travel through the command line, so it
+    never lands in the shell's history nor anybody's `ps`. It is read lazily
+    — only once the cheap check already passed — so a folder with the switch
+    off never gets as far as asking a person to type it.
+    """
+    if len(rest) != 1:
+        return _reject("decisor")
+    if not decisor.enabled():
+        print(tr("decisor.preview.off"))
+        return REFUSED
+    if secret is None:
+        secret = _readers()[1]
+    if secret is None:
+        print(tr("decisor.preview.no_tty"))
+        return REFUSED
+    main_key = secret(tr("decisor.preview.phrase"))
+    code, answer = door.decisor_preview(rest[0], main_key=main_key)
+    print(answer)
+    return code
 
 
 # -------------------------------------------------------------- the install ---

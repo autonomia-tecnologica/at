@@ -100,12 +100,14 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Callable
 
-from at import nlu
+from at import i18n, nlu
 from at.core import (
     actors,
     audit,
     clock,
+    decisor,
     files,
+    jev,
     jobs,
     notifier,
     permissions,
@@ -914,6 +916,44 @@ def reminder_due(args: list[str]) -> tuple[int, str]:
         rendered(reminder.REMINDER, found["warn"]) if found["warn"] else tr("table.word.empty")
     )
     return OK, "\n".join(lines)
+
+
+# -------------------------------------------------------------- the decisor ---
+
+
+def decisor_preview(text: str, *, language: str | None = None, main_key: str | None = None) -> tuple[int, str]:
+    """`decisor "<frase>"` — what Jev would propose for `text`, without ever
+    running it (TASK-180, fatia 2/3).
+
+    **The act is a READ, the way `scan` and `reminder_due` already are.**
+    Nothing of the folder changes for having asked, so there is no actor, no
+    via, and no line or version to leave — what this door owns is the
+    SENTENCE, so the `cli` and any surface that comes after it read the same
+    one.
+
+    `main_key` is handed in rather than read here: the Cofre's credential is
+    opened by `at.core.decisor`, and a surface that read the vault itself
+    would be a second door into it.
+    """
+    found = decisor.preview(text, language=language or i18n.active_code(), main_key=main_key)
+    if found is None:
+        return REFUSED, tr("decisor.preview.none")
+    return OK, tr(
+        "decisor.preview.line",
+        action=_jev_label(found.action, is_action=True),
+        action_confidence=f"{found.action_confidence:.2f}",
+        table=_jev_label(found.table, is_action=False),
+        table_confidence=f"{found.table_confidence:.2f}",
+        tier=tr(f"decisor.preview.tier.{found.tier}"),
+    )
+
+
+def _jev_label(canonical: str, *, is_action: bool) -> str:
+    """One of Jev's two answers, in the engine's own words — `jev.NONE` reads
+    the same dash a proposal's empty fields already do."""
+    if canonical == jev.NONE:
+        return tr("table.word.none")
+    return tr(f"table.action.{canonical}") if is_action else tables.table_name(canonical)
 
 
 # ------------------------------------------------------------- the settings ---
