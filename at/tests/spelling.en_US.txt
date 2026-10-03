@@ -55,6 +55,7 @@ esp
 extensões
 faq
 favicon
+fcm
 fique
 foi
 frontend
@@ -75,6 +76,7 @@ instalar
 ip
 iso
 json
+jwt
 lan
 languagetool
 llm
@@ -111,6 +113,7 @@ prowlarr
 prs
 próxima
 pudim
+pwa
 pyinstaller
 radarr
 rawg
@@ -122,6 +125,7 @@ redis
 resends
 restaurar
 retornar
+rfc
 runtime
 seguir
 semver

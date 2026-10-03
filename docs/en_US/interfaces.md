@@ -46,7 +46,7 @@ The panel has the entries:
 | **Arquivos** | the tree of `prose/`, and the page of one file — read, and written in place when the server says it may be. |
 | **Tabelas** | the vocabulary: every declared table, with its count. |
 | **Pessoas** | the actors and the roles: who may act, with which ceiling. Only the admin opens it. |
-| **Serviços** | every configured service, its state and the tokens it needs — including `ntfy`'s. |
+| **Serviços** | every configured service, its state and the tokens it needs. |
 | **Extensões** | the plugins found in the folder, each one's hash, the review mode and the blockers. This is where one installs. |
 | **Postura** | the security grade, function by function, and **which functions are stopping it from rising**. |
 | **Configurações** | the foot of the panel: the language, the theme, the motion, the risk threshold and the adjustments the core API exposes. |

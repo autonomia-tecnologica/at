@@ -46,7 +46,7 @@ O painel tem as entradas:
 | **Arquivos** | a árvore de `prose/` e a página de um arquivo — lida, e escrita no lugar quando o servidor diz que pode. |
 | **Tabelas** | o vocabulário: toda tabela declarada, com a sua contagem. |
 | **Pessoas** | os atores e os papéis: quem pode agir, com que teto. Só o admin abre. |
-| **Serviços** | cada serviço configurado, o estado dele e os tokens que ele precisa — inclusive o do `ntfy`. |
+| **Serviços** | cada serviço configurado, o estado dele e os tokens que ele precisa. |
 | **Extensões** | os plugins encontrados na pasta, a hash de cada um, o modo de review e os bloqueadores. É aqui que se instala. |
 | **Postura** | a nota de segurança, função por função, e **quais funções estão impedindo de subir**. |
 | **Configurações** | o pé do painel: o idioma, o tema, o movimento, o limiar de risco e os ajustes que a API do core expõe. |

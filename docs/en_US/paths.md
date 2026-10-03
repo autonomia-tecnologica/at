@@ -8,17 +8,17 @@
 
 - **There is no isolation**, and AT promises none on this path: a compromise of the WebApp is a process compromise on your machine, with access to what your user has. In exchange, leaving the local loop demands authentication and TLS, and both come by default.
 
-- `at-cli webapp` leaves the local loop by default: the Caddy that came inside the binary terminates the TLS and publishes AT, in front of Authelia and ntfy, from the same vendor and the same way — this path's own gate. `--no-caddy` is the one way out of it: with the flag, the WebApp serves over HTTP and only on `127.0.0.1` — and it refuses to be asked for any other address, because exposure without TLS is what the rule above forbids. Without `--no-caddy`, `--host` names the address AT answers on, and has to be a name a certificate can be issued for: `0.0.0.0` is every address, and a certificate has none.
+- `at-cli webapp` leaves the local loop by default: the Caddy that came inside the binary terminates the TLS and publishes AT, in front of Authelia, from the same vendor and the same way — this path's own gate. `--no-caddy` is the one way out of it: with the flag, the WebApp serves over HTTP and only on `127.0.0.1` — and it refuses to be asked for any other address, because exposure without TLS is what the rule above forbids. Without `--no-caddy`, `--host` names the address AT answers on, and has to be a name a certificate can be issued for: `0.0.0.0` is every address, and a certificate has none.
 
-- The integrations (§7) can exist without a container: whoever installs the service on their own and points AT at it uses the service, knowing that the state of that service is no longer AT's business — and therefore that the folder backup does not cover it. Approving a risky demand, here, happens on the machine itself: the `notifier` service belongs to the container path.
+- The integrations (§7) can exist without a container: whoever installs the service on their own and points AT at it uses the service, knowing that the state of that service is no longer AT's business — and therefore that the folder backup does not cover it. Approving a risky demand, here, happens on the machine itself; notification, for its part, is not a §7 service — it is the PWA's own Web Push (§7f).
 
 - Exposing AT on the hosted path with the container path's Authelia is the **advanced mode**, and it is not supported: whoever wants the gate uses the container path.
 
 ### Container path
 
-- It is **`at-deploy`** building an environment of services in containers from pinned images (§7). Here there is isolation, and it exists for a specific reason: **containing the blast radius of each service**. A compromise of `ntfy` reaches the notification and nothing else; the checker's reaches the checker. What each service exposes is what it sets out to do, and nothing beyond.
+- It is **`at-deploy`** building an environment of services in containers from pinned images (§7). Here there is isolation, and it exists for a specific reason: **containing the blast radius of each service**. A compromise of the identity provider reaches authentication and nothing else; the checker's reaches the checker. What each service exposes is what it sets out to do, and nothing beyond.
 
-- A service that needs to talk to AT — and not AT to the service — has a delimited scope: a credential with a declared role, and only what that role allows. Least privilege, applied. In `ntfy`, that is the per-topic ACL: the one account AT holds publishes and reads, and reaches no other topic. Who reaches it from outside at all is the gate's business now, not the ACL's alone: the notifier sits behind the same Authelia as the site — on the same name, on a different port —, proved by Basic on the request itself, and past that ask the edge is what carries AT's own credential — never the person's.
+- A service that needs to talk to AT — and not AT to the service — has a delimited scope: a credential with a declared role, and only what that role allows. Least privilege, applied — and whoever reaches a service from outside goes through the site's gate first, proved by Basic on the request itself; past that ask the edge is what carries AT's own credential, never the person's.
 
 - The container path is what sustains the authentication gate (§7b), and it is where AT comes in as one more app behind it.
 

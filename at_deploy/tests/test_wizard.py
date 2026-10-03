@@ -29,28 +29,8 @@ from unittest import mock
 from at import i18n
 from at.core import actors, boot, gate
 from at_deploy import environment as env
-from at_deploy import notifier, podman, vpn, wizard
+from at_deploy import podman, vpn, wizard
 from at_deploy.cli import OK, REFUSED, USAGE, main
-
-# The token the fake notifier draws, and it is nobody's: what the tests read is
-# where it WENT.
-DRAWN_TOKEN = "tk_abcdefghijklmnopqrstuvwxyz012"
-TOKEN_LINE = f"token {DRAWN_TOKEN} created for user at, never expires"
-
-
-class Answer:
-    """A stand-in for the notifier's HTTP answer, for the `notify` step's own
-    push — no socket, the way every other suite fakes `urlopen`."""
-
-    def __init__(self, status: int = 200) -> None:
-        self.status = status
-
-    def __enter__(self) -> "Answer":
-        return self
-
-    def __exit__(self, *exc: object) -> bool:
-        return False
-
 
 CREDENTIAL = "uma-frase-bem-longa"
 NEW_CREDENTIAL = "outra-frase-bem-longa"
@@ -192,22 +172,18 @@ class FakeTkinter:
 
 
 class FakeRuntime:
-    """The runtime's seam, as the other deploy suites fake it: the notifier's
-    own CLI answered, and a container that says it is running."""
+    """The runtime's seam, as the other deploy suites fake it: a container that
+    says it is running."""
 
-    def __init__(self, answer: str = TOKEN_LINE) -> None:
+    def __init__(self) -> None:
         self.calls: list[list[str]] = []
-        self.answer = answer
 
     def run(self, args, **kw) -> SimpleNamespace:
         call = [str(part) for part in args]
         self.calls.append(call)
         if call[:2] == ["container", "inspect"]:
             return SimpleNamespace(returncode=0, stdout="true", stderr="")
-        if "test" in call:
-            return SimpleNamespace(returncode=0, stdout="", stderr="")
-        said = self.answer if "ntfy" in call and "token" in call else ""
-        return SimpleNamespace(returncode=0, stdout=said, stderr="")
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
 
 
 class FolderCase(unittest.TestCase):
@@ -290,13 +266,12 @@ class TheStepsAreTheClisWords(unittest.TestCase):
 
     def test_the_sequence_is_the_one_declared(self):
         # A list, so that a step added or moved here is a decision somebody makes
-        # on purpose: §7a's is first because nothing stands before it, §7b's
-        # follows (a witness has to exist before the gate can be proved), and
-        # §7f's closes it.
+        # on purpose: §7a's is first because nothing stands before it, and §7b's
+        # follows (a witness has to exist before the gate can be proved).
         self.assertEqual([step.word for step in wizard.STEPS],
-                         ["up", "credential", "switch", "notify"])
+                         ["up", "credential", "switch"])
         self.assertEqual([step.argv for step in wizard.STEPS],
-                         [(), (), (), ()])
+                         [(), (), ()])
 
     def test_every_step_is_a_word_the_cli_offers(self):
         # `cli.WORDS` is read off the tree that OFFERS the words, so a step that
@@ -497,18 +472,11 @@ class TheWindow(FolderCase):
 
     def test_the_whole_sequence_is_walked_by_pressing_its_buttons(self):
         # The one test that walks §7 end to end through the WINDOW: the first
-        # step runs and closes, the optional ones are passed without running
-        # (they are a person's decision), and the last one runs and prints. The
-        # person never sees anything the words did not print.
+        # step runs and closes, and the optional ones are reached without running
+        # (they are a person's decision). The person never sees anything the
+        # words did not print.
         self.person()
         self.machine()
-
-        def urlopen(request, timeout=None):
-            return Answer(200)
-
-        posted = mock.patch.object(notifier.urllib.request, "urlopen", urlopen)
-        posted.start()
-        self.addCleanup(posted.stop)
 
         fake = FakeTkinter()
         with mock.patch.object(env, "GRACE", 0.0), mock.patch.dict(
@@ -520,12 +488,6 @@ class TheWindow(FolderCase):
             for _ in range(len(wizard.STEPS) - 1):
                 fake.button(i18n.tr("deploy.wizard.next")).press()
             self.assertEqual(walk.index, len(wizard.STEPS) - 1)
-
-            fake.button(i18n.tr("deploy.wizard.run")).press()
-
-        self.assertIn(i18n.tr("services.notifier.delivered", topic=notifier.TOPIC,
-                              detail="200"),
-                      fake.area().content)
 
     def test_the_finish_button_is_the_last_steps_next_and_closes_the_window(self):
         self.machine()
@@ -605,11 +567,10 @@ class TheSentenceOfTheStep(FolderCase):
     """The screen writes none of its own: what it says is what the word said."""
 
     def test_a_step_that_fails_says_what_the_word_said(self):
-        code, said = wizard.run_step("notify")
-        self.assertEqual(code, REFUSED)
-        self.assertIn(i18n.tr("services.notifier.no_token",
-                              where=notifier.token_file(),
-                              topic=notifier.TOPIC), said)
+        # Sem Podman e sem terminal, `up` recusa — e o que a tela diz é o que a
+        # palavra disse, nunca uma segunda frase escrita pela tela.
+        _, said = wizard.run_step("up")
+        self.assertIn(i18n.tr("services.no_podman.no_tty"), said)
 
 
 if __name__ == "__main__":

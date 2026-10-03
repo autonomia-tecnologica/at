@@ -56,7 +56,6 @@ at_deploy/                   o SEGUNDO artefato: o §7 inteiro — o ambiente, a
 ├── environment.py             o manifesto das imagens fixadas, os serviços e a orquestração
 ├── podman.py                  o runtime, atrás de uma costura
 ├── vpn.py                     §7e: de onde o ambiente é alcançado por fora
-├── notifier.py                §7f: a entrega — a credencial, o escopo e o push
 ├── switch.py                  a virada transacional do §6 de um caminho para o outro
 └── tests/                     a suíte dele, rodada pelo mesmo comando que a do app
 
@@ -168,7 +167,6 @@ python3 -m at webapp --no-caddy            # laço local, porta 12345; `--port N
 python3 -m at_deploy services up           # o caminho container: os serviços no pino
 python3 -m at_deploy services status       # o que está de pé, e em que imagem
 python3 -m at_deploy services down         # abaixo; a pasta fica
-python3 -m at_deploy services notify       # um alerta pelo notificador, provando a entrega
 python3 -m at_deploy services credential <nome>   # a credencial que o portão prova, e o provedor reiniciado
 .venv/bin/python -m unittest discover -t .   # as duas suítes (o venv traz o corretor)
 ```

@@ -57,7 +57,6 @@ at_deploy/                   the SECOND artifact: §7 whole — the environment,
 ├── environment.py             the manifest of the pinned images, the services and the orchestration
 ├── podman.py                  the runtime, behind one seam
 ├── vpn.py                     §7e: where the environment is reached from outside
-├── notifier.py                §7f: the delivery — the credential, the scope and the push
 ├── switch.py                  §6's transactional change from one path to the other
 └── tests/                     its suite, run by the same command as the app's
 
@@ -168,7 +167,6 @@ python3 -m at webapp --no-caddy            # local loop, port 12345; `--port N` 
 python3 -m at_deploy services up           # the container path: the services at the pin
 python3 -m at_deploy services status       # what is standing, and on which image
 python3 -m at_deploy services down         # down; the folder stays
-python3 -m at_deploy services notify       # one alert through the notifier, proving the delivery
 python3 -m at_deploy services credential <name>   # the credential the gate proves, and the provider restarted
 .venv/bin/python -m unittest discover -t .   # both suites (the venv carries the checker)
 ```

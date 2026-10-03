@@ -36,13 +36,13 @@ DEPLOY = ROOT / "at_deploy"
 # environment's. The Caddy the BINARY carries is the HOSTED path's TLS — the
 # environment's Caddy is a container of the deploy's manifest — and the
 # `gitleaks` is the scanner `secret scan` walks the folder with (item 32).
-# **`authelia` and `ntfy` joined them on 02/10/2026 (TASK-177)**: the bundle's
-# own gate and notifier, vendorized and run as subprocesses of `at-cli`
-# itself, exactly the Caddy's own arithmetic — and still no container, no
-# orchestration, no elevation, which is the whole of what keeps them on this
-# side of the boundary and not the deploy's. Every one of the five is a third
-# party the artifact embeds, which is §3's way of pinning a package.
-KEPT = {"authelia", "caddy", "gitleaks", "ntfy"}
+# **`authelia` joined them on 02/10/2026 (TASK-177)**: the bundle's own gate,
+# vendorized and run as a subprocess of `at-cli` itself, exactly the Caddy's own
+# arithmetic — and still no container, no orchestration, no elevation, which is
+# the whole of what keeps it on this side of the boundary and not the deploy's.
+# Every one of the four is a third party the artifact embeds, which is §3's way
+# of pinning a package.
+KEPT = {"authelia", "caddy", "gitleaks"}
 
 
 def sources(package: Path) -> list[Path]:
@@ -118,18 +118,20 @@ class TheCoreIsOneSource(unittest.TestCase):
             with self.subTest(module=module):
                 self.assertIn(f"from {module} import", text)
 
-    def test_the_deploy_carries_the_nine_modules_of_one_subject(self):
+    def test_the_deploy_carries_the_eight_modules_of_one_subject(self):
         # A list, so that a module added here is a decision somebody makes on
         # purpose: the deploy is §7, and everything it owns is named. `wizard`
         # is the front §6 declares for this artifact — the sequence of §7 walked
         # over the words the `cli` already has (item 27's third slice). `trust`
         # left this list in TASK-187: it was the CA in the browser's NSS, the
         # other half of a name (`cert.at.local`) the environment no longer
-        # answers for.
+        # answers for. And `notifier` left it with the ntfy: a notificação é o
+        # Web Push do PWA (`at/core/push.py`), que roda dentro do WebApp e não
+        # precisa de um container de entrega.
         self.assertEqual(
             {path.stem for path in sources(DEPLOY) if path.stem != "__init__"},
             {"cli", "tree", "__main__", "environment", "podman", "vpn",
-             "notifier", "switch", "wizard"},
+             "switch", "wizard"},
         )
 
 

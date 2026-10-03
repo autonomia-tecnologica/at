@@ -34,13 +34,6 @@ from at_deploy import environment as env
 from at_deploy import podman, vpn
 from at_deploy.cli import OK, REFUSED, USAGE, services, main
 
-# The token the fake notifier draws: `tk_` and 32 characters, which is ntfy's
-# own rule. The value is nobody's — what the tests read is where it WENT.
-DRAWN_TOKEN = "tk_abcdefghijklmnopqrstuvwxyz012"
-
-# What `ntfy token add` prints on its own line, for the phone's account.
-TOKEN_LINE = f"token {DRAWN_TOKEN} created for user phone, never expires"
-
 # What the person types when the act asks for a credential.
 CREDENTIAL = "uma-frase-bem-longa"
 NEW_CREDENTIAL = "outra-frase-bem-longa"
@@ -53,8 +46,8 @@ PHRASE = "a frase de acesso da suite, e ela nao abre nada de ninguem"
 # Every sentence the two acts say, in either language: the words of both doors,
 # and the messages each act prints on the way out. A key the catalog does not
 # have answers with the KEY itself, which is why this list exists — a message
-# added to `notifier.py`, `environment.py` or `cli.py` without a line here is a
-# message nobody checks.
+# added to `environment.py` or `cli.py` without a line here is a message nobody
+# checks.
 SAID = (
     "deploy.credential.about", "deploy.credential.ask",
     "services.credential.changed", "services.credential.hosted",
@@ -69,21 +62,15 @@ class FakeRuntime:
 
     `fails` names WORDS a call must carry to fail, so ONE step of an act can
     refuse without taking the others with it — which is what makes each step's
-    failure provable as its own thing. The notifier's own CLI is answered here
-    too, for the reason everything else is: the token is a value the act reads
-    off the command's output. And two questions are answered by their own
-    switches instead of by a word: `ready` is the notifier's database (the probe
-    that waits for it), and `running` is what a container says about itself —
-    with `fails=("inspect",)` being a container that was never there at all.
+    failure provable as its own thing. And `running` is what a container says
+    about itself — with `fails=("inspect",)` being a container that was never
+    there at all.
     """
 
-    def __init__(self, fails: tuple[str, ...] = (), running: str = "true",
-                 ready: bool = True, answer: str = TOKEN_LINE) -> None:
+    def __init__(self, fails: tuple[str, ...] = (), running: str = "true") -> None:
         self.calls: list[tuple[list[str], dict]] = []
         self.fails = fails
         self.running = running
-        self.ready = ready
-        self.answer = answer
 
     def run(self, args, **kw) -> SimpleNamespace:
         call = [str(part) for part in args]
@@ -93,14 +80,7 @@ class FakeRuntime:
             return SimpleNamespace(returncode=1 if failed else 0,
                                    stdout="" if failed else self.running,
                                    stderr="")
-        if "test" in call:
-            # The notifier's own database. This answer comes BEFORE the words:
-            # the path it probes ends in `user.db`, and a test refusing the
-            # `user` step must not be read as a notifier that never stood.
-            return SimpleNamespace(returncode=0 if self.ready else 1,
-                                   stdout="", stderr="")
-        said = self.answer if "ntfy" in call and "token" in call else ""
-        return SimpleNamespace(returncode=1 if failed else 0, stdout=said, stderr="")
+        return SimpleNamespace(returncode=1 if failed else 0, stdout="", stderr="")
 
     def argv(self) -> list[list[str]]:
         return [call for call, _ in self.calls]
@@ -144,8 +124,8 @@ class FolderCase(unittest.TestCase):
         self.floor = mock.patch.object(env, "floor", lambda: 0)
         self.floor.start()
         self.addCleanup(self.floor.stop)
-        # And on no private network, so the site and the notifier's URL are the
-        # loop's (§7e has a suite of its own).
+        # And on no private network, so the site is the loop's (§7e has a suite
+        # of its own).
         self.no_vpn = mock.patch.object(vpn, "run", side_effect=FileNotFoundError)
         self.no_vpn.start()
         self.addCleanup(self.no_vpn.stop)
@@ -412,12 +392,6 @@ class TheDoor(FolderCase):
             with self.subTest(words=words):
                 code, _ = self.quiet(main, words)
                 self.assertEqual(code, USAGE)
-
-    def test_notify_takes_no_argument(self):
-        code, text = self.quiet(main, ["notify", "extra"])
-        self.assertEqual(code, USAGE)
-        self.assertIn(i18n.tr("deploy.error.rejected_arguments", word="notify"),
-                      text)
 
     def test_no_terminal_means_no_credential_to_change(self):
         # The suite runs with no tty, which is the state the door refuses in.

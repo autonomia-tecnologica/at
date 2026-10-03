@@ -14,20 +14,17 @@ from at.ui.words import Node, completion_words, section, width
 
 
 # The environment's words, at the ROOT (2026-09-28: `services` is gone — the
-# eight used to be its children, and the parent bought a word to type without
+# seven used to be its children, and the parent bought a word to type without
 # changing what any of them DO). `up` is the FIRST time, `update` every time
 # after (the release that already replaced the binary), `down` and `status` are
 # the environment's own report and its way down.
 # `switch` is §6's TRANSACTIONAL change from the hosted path to the container
 # one and `forms` is the way back — both local, which is the whole point of the
 # return existing (`at_deploy/switch.py`).
-# `notify` is §7f's, and it is the one word that proves the delivery by hand:
-# one alert, through the credential `up` created, to the topic.
 #
-# `notify` and `credential` are the OPERATOR's acts (item 27), and they are
-# here for the same reason they were under the parent: the credential `notify`
-# posts with, and the credential §7b's gate proves. `credential` takes an
-# argument — a NAME; `notify` takes none (`at_deploy/cli.py`).
+# `credential` is the OPERATOR's act (item 27), and it is here for the same
+# reason it was under the parent: the credential §7b's gate proves. It takes an
+# argument — a NAME (`at_deploy/cli.py`).
 _ENVIRONMENT: tuple[Node, ...] = (
     Node("up", "deploy.up.about"),
     Node("update", "deploy.update.about"),
@@ -35,7 +32,6 @@ _ENVIRONMENT: tuple[Node, ...] = (
     Node("status", "deploy.status.about"),
     Node("switch", "deploy.switch.about"),
     Node("forms", "deploy.forms.about"),
-    Node("notify", "deploy.notify.about"),
     Node("credential", "deploy.credential.about"),
 )
 

@@ -4,7 +4,7 @@
 natural front, because deploying is a SEQUENCE and not a sentence: it checks the
 requirements, brings one thing up, moves on to the next. This file is that
 sequence, and it is made of the `cli`'s own words — `up`, `credential`,
-`switch`, `notify` — walked one screen at a time.
+`switch` — walked one screen at a time.
 
 **A step is a word (and, since 2026-09-28, an optional fixed tail after it), and
 nothing else.** `run_step` spells the argv a person would type and hands it to
@@ -31,11 +31,9 @@ machine without a display is a legitimate place to run the deploy — §5's one-
 rule is what makes that not a loss — and what it is owed is to be told so and
 handed the words (`cli.main` prints the help after it).
 
-**No credential appears here any more** (this fatia): the phone no longer
-needs one of its own — the edge fronts the notifier now, and the SAME Chave
-Principal the person already types for the site proves it at the notifier's
-own port too (TASK-187: one name, two ports). The `notify` step keeps proving
-the delivery by hand, the way it always did.
+**A credential of the phone's own does not appear here** (TASK-187): the edge
+fronts the site, and the SAME Chave Principal the person already types for it
+proves them everywhere — one name, no second credential to hold.
 """
 
 from __future__ import annotations
@@ -118,7 +116,7 @@ class Step:
 # and it is the one required step, because nothing else has anything to stand on
 # before it. `credential` and `switch` are §7b: who the gate proves, and the gate
 # proved in front of AT before the folder records that its authenticator is the
-# gate. `notify` is §7f's delivery, proved by hand.
+# gate.
 #
 # `switch` is optional and not a step that forces itself: §6 makes the switch the
 # person's act, and a folder with the environment up and the Forms still on is a
@@ -129,7 +127,6 @@ STEPS: tuple[Step, ...] = (
     Step("up", "deploy.up.about", True, _up_settled),
     Step("credential", "deploy.credential.about", False),
     Step("switch", "deploy.switch.about", False, _switch_settled),
-    Step("notify", "deploy.notify.about", False),
 )
 
 

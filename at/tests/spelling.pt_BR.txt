@@ -62,6 +62,7 @@ canônico
 chain
 chat
 checkout
+chrome
 chromium
 cli
 code
@@ -111,6 +112,7 @@ estadunidense
 f
 faq
 favicon
+fcm
 flag
 forms
 forward
@@ -155,6 +157,7 @@ issue
 javascript
 job
 json
+jwt
 kernel
 lan
 languagetool
@@ -184,6 +187,7 @@ obsidian
 oidc
 one
 oneself
+p
 party
 paths
 pin
@@ -205,6 +209,7 @@ prowlarr
 prs
 pull
 push
+pwa
 pyinstaller
 python
 query
@@ -227,6 +232,7 @@ rename
 renderizador
 rest
 review
+rfc
 root
 rotaciona
 rotacionar
@@ -239,6 +245,7 @@ schema
 scratch
 script
 semver
+service
 seção
 seções
 sha
@@ -276,6 +283,7 @@ typescript
 up
 urls
 utc
+vapid
 vault
 versiona
 versionada
@@ -293,6 +301,7 @@ watchdog
 webapp
 wheel
 wizard
+worker
 workflows
 world
 zerados

@@ -136,10 +136,10 @@ def services(
     ask: Ask | None = None,
     secret: Ask | None = None,
 ) -> int:
-    """The environment's eight root words (§7a) — one function behind all of them.
+    """The environment's seven root words (§7a) — one function behind all of them.
 
     `main` dispatches every name `WORDS` carries (`up`, `update`, `down`,
-    `status`, `switch`, `forms`, `notify`, `credential`) into `rest[0]` here
+    `status`, `switch`, `forms`, `credential`) into `rest[0]` here
     (2026-09-28: `services` is gone from in front of them — the eight used to
     be its children, and the parent bought a word to type without changing what
     any of them DO). The Wizard is the screen that installs the environment, and
@@ -156,12 +156,6 @@ def services(
     is the way back — both local, which is the whole point of the return existing
     (`at_deploy/switch.py`).
 
-    `notify` is §7f's: it proves the delivery by hand — one alert, through the
-    credential `up` created, to the topic. It takes no argument any more
-    (2026-09-28): the phone no longer needs a credential of its own to print —
-    the edge fronts the notifier now, and the SAME Chave Principal that logs
-    into `at.local` is what proves it at `ntfy.at.local` too.
-
     **The last one is the OPERATOR's act** (item 27), and it is here because the
     environment is what it is about. `credential` is §7b's: it gives a person
     the credential the gate proves, and it is the one word of this surface that
@@ -176,7 +170,7 @@ def services(
     `ask` and `secret` are injectable the way `boot` takes its own: a test walks
     the whole offer, and the whole credential conversation, without a terminal.
     """
-    from at_deploy import notifier, switch
+    from at_deploy import switch
 
     word = rest[0]
     args = rest[1:]
@@ -199,20 +193,6 @@ def services(
     if word == "down":
         environment.down()
         return OK
-    if word == "notify":
-        # §7f's delivery, proved from the outside: the alert goes out the same
-        # way a real one does — the credential on the file and the POST to the
-        # topic — and a delivery that did not happen is a refusal (§7f's own
-        # "the alert is the best-effort part"; the thing itself is not lost).
-        #
-        # **E ele pede a Chave Principal** (item 50): o que a pasta guarda é o
-        # envelope, e quem o abre é a Chave desta entrega — a mesma porta da
-        # subida (`environment.unlock`). Sem terminal não se pergunta, e sem a
-        # Chave Principal o alerta não sai; é o preço declarado, e ele é o de §7f.
-        outcome = notifier.push(tr("services.notifier.test.title"),
-                                tr("services.notifier.test.body"),
-                                secret if secret is not None else _secret())
-        return OK if outcome == notifier.SENT else REFUSED
     if word == ARGUMENT:
         return _credential(args[0], ask, secret)
     try:

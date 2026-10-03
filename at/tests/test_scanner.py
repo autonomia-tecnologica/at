@@ -346,7 +346,7 @@ class TheExclusion(ScannerCase):
     def test_a_finding_under_a_services_own_state_is_not_accused(self):
         self.state(versioning.BARE)
         self.tool(
-            [leak("generic-api-key", "App/services/notifier/token", 1)], code=1
+            [leak("generic-api-key", "App/services/exemplo/token", 1)], code=1
         )
         code, text = self.scan()
         self.assertEqual(code, 0)

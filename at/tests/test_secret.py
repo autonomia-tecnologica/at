@@ -420,12 +420,10 @@ class TheEntry(SecretCase):
         # is a decision and not an accident, the same way the pin in
         # `test_encryption.py` names the files that speak to `libsodium`.
         #
-        # **Os outros dois são o `at-deploy`** (item 50), e cada um entrou com um
-        # motivo próprio: o que a pasta guarda dos valores que o AT SORTEIA é o
+        # **O outro é o `at-deploy`** (item 50), e ele entrou com um motivo
+        # próprio: o que a pasta guarda dos valores que o AT SORTEIA é o
         # envelope, e quem sela e abre não é uma linha de tabela e sim o arquivo
-        # — o `at_deploy/environment.py` para o portão e os três do provedor, e o
-        # `at_deploy/notifier.py` para as duas pontas da ACL do §7f, que são
-        # lidas de FORA do container e por isso não passam pela materialização.
+        # — o `at_deploy/environment.py` para o portão e os três do provedor.
         #
         # **O quinto é `core/backup.py`** (item 51): o arquivo que o backup manda
         # para fora não é uma linha de tabela nem um valor que o container encheu
@@ -472,7 +470,6 @@ class TheEntry(SecretCase):
             "at/core/actors.py", "at/core/backup.py", "at/core/cofre.py",
             "at/core/secrets.py", "at/core/tables.py",
             "at/services/caddy.py", "at_deploy/environment.py",
-            "at_deploy/notifier.py",
         ])
 
     def test_the_surface_that_reaches_the_vault_is_the_deploy_and_no_screen(self):
@@ -486,22 +483,17 @@ class TheEntry(SecretCase):
         # superfície que DIGITA a Chave Principal é UMA — o `at-deploy` —, e a outra, a
         # tela, continua de fora: nenhum arquivo de `at/ui` pergunta a Chave Principal, e
         # o WebApp não digita nenhuma. **O que mudou (item 50, corte g) é que a
-        # tela deixou de precisar da cópia clara para o notificador**: o que ela
-        # lê agora é o mesmo envelope, aberto com a Chave B derivada que chega
-        # em memória — e é por isso que o sexto arquivo do teste acima
-        # (`core/notifier.py`) está sob `at/core` e não sob `at/ui`: a tela
-        # continua sem tocar o Cofre, quem toca é o núcleo que ela chama.
-        # **E são dois arquivos do mesmo artefato**: o `environment`, que sela o
-        # que a subida sorteia e abre o que ela monta, e o `notifier`, que sela e
-        # abre as duas pontas do §7f — as duas lidas pelo próprio `at-deploy`, de
-        # fora do container, a cada entrega.
+        # tela continua de fora: nenhum arquivo de `at/ui` pergunta a Chave
+        # Principal, e o WebApp não digita nenhuma — o núcleo que toca o Cofre
+        # está sob `at/core`, não sob `at/ui`.
+        # **E é um arquivo só do artefato**: o `environment`, que sela o que a
+        # subida sorteia e abre o que ela monta.
         reached = sorted(
             path.relative_to(ROOT).as_posix()
             for path in (ROOT / "at_deploy").rglob("*.py")
             if "tests" not in path.parts and reaches_vault(path)
         )
-        self.assertEqual(reached, ["at_deploy/environment.py",
-                                   "at_deploy/notifier.py"])
+        self.assertEqual(reached, ["at_deploy/environment.py"])
         for path in (ROOT / "at" / "ui").rglob("*.py"):
             if "tests" in path.parts:
                 continue

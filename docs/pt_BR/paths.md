@@ -8,17 +8,17 @@
 
 - **Não há isolamento**, e o AT não promete nenhum neste caminho: um comprometimento do WebApp é um comprometimento de processo na sua máquina, com acesso ao que o seu usuário tem. Em troca, sair do laço local exige autenticação e TLS, e os dois vêm por padrão.
 
-- `at-cli webapp` sai do laço local por padrão: o Caddy que veio dentro do binário termina o TLS e publica o AT, na frente do Authelia e do ntfy, do mesmo fornecedor e do mesmo jeito — o portão próprio deste caminho. `--no-caddy` é a única saída disso: com a bandeira, o WebApp serve em HTTP e só em `127.0.0.1` — e ele recusa que lhe peçam qualquer outro endereço, porque expor sem TLS é o que a regra acima proíbe. Sem `--no-caddy`, o `--host` nomeia o endereço em que o AT atende, e precisa ser um nome para o qual um certificado se emite: `0.0.0.0` é todos os endereços, e certificado não tem nenhum.
+- `at-cli webapp` sai do laço local por padrão: o Caddy que veio dentro do binário termina o TLS e publica o AT, na frente do Authelia, do mesmo fornecedor e do mesmo jeito — o portão próprio deste caminho. `--no-caddy` é a única saída disso: com a bandeira, o WebApp serve em HTTP e só em `127.0.0.1` — e ele recusa que lhe peçam qualquer outro endereço, porque expor sem TLS é o que a regra acima proíbe. Sem `--no-caddy`, o `--host` nomeia o endereço em que o AT atende, e precisa ser um nome para o qual um certificado se emite: `0.0.0.0` é todos os endereços, e certificado não tem nenhum.
 
-- As integrações (§7) podem existir sem container: quem instala o serviço por conta e aponta o AT para ele usa o serviço, com a ciência de que o estado daquele serviço não é mais assunto do AT — e, portanto, que o backup da pasta não o cobre. A aprovação de uma demanda arriscada, aqui, acontece na própria máquina: o serviço `notifier` é do caminho container.
+- As integrações (§7) podem existir sem container: quem instala o serviço por conta e aponta o AT para ele usa o serviço, com a ciência de que o estado daquele serviço não é mais assunto do AT — e, portanto, que o backup da pasta não o cobre. A aprovação de uma demanda arriscada, aqui, acontece na própria máquina; a notificação, essa não é um serviço do §7 — ela é o Web Push do próprio PWA (§7f).
 
 - Expor o AT pelo caminho hospedado com o Authelia do caminho container é o **modo avançado**, e não é suportado: quem quiser o portão, usa o caminho container.
 
 ### Caminho container
 
-- É o **`at-deploy`** montando um ambiente de serviços em containers de imagens fixadas (§7). Aqui existe isolamento, e ele existe por um motivo específico: **conter o raio de explosão de cada serviço**. O comprometimento do `ntfy` alcança a notificação e nada mais; o do corretor alcança o corretor. O que cada serviço expõe é o que ele se propõe a fazer, e nada além.
+- É o **`at-deploy`** montando um ambiente de serviços em containers de imagens fixadas (§7). Aqui existe isolamento, e ele existe por um motivo específico: **conter o raio de explosão de cada serviço**. O comprometimento do provedor de identidade alcança a autenticação e nada mais; o do corretor alcança o corretor. O que cada serviço expõe é o que ele se propõe a fazer, e nada além.
 
-- Serviço que precisa falar com o AT — e não o AT com ele — tem o escopo delimitado: credencial com papel declarado, e só o que aquele papel permite. Mínimo privilégio, aplicado. No `ntfy`, isso é a ACL por tópico: a única conta que o AT guarda publica e lê, e não alcança nenhum outro tópico. Quem alcança de fora nem chega a isso sozinho: o notificador fica atrás do mesmo Authelia do site — no mesmo nome, numa porta diferente —, provado por Basic na própria requisição, e depois da pergunta é a borda quem carrega a credencial do AT — nunca a da pessoa.
+- Serviço que precisa falar com o AT — e não o AT com ele — tem o escopo delimitado: credencial com papel declarado, e só o que aquele papel permite. Mínimo privilégio, aplicado — e quem alcança um serviço de fora passa antes pelo portão do site, provado por Basic na própria requisição; depois da pergunta é a borda quem carrega a credencial do AT, nunca a da pessoa.
 
 - O caminho container é o que sustenta o portão de autenticação (§7b), e é onde o AT entra como mais um app atrás dele.
 
