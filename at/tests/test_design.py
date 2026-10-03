@@ -77,11 +77,13 @@ class TheRegistry(unittest.TestCase):
     def test_it_declares_at_least_one_theme(self):
         self.assertTrue(webapp.theme_rows())
 
-    def test_every_theme_is_a_pair_of_files(self):
+    def test_every_theme_wears_at_least_one_side(self):
+        # `at` is the one pair left (2026-10-04): every other theme kept the
+        # side it wore by default and dropped its mirror, so one file is
+        # enough — never zero.
         for row in webapp.theme_rows():
-            self.assertTrue((THEMES / f"{row['id']}.css").is_file(), row["id"])
-            dark = THEMES / f"{row['id']}-dark.css"
-            self.assertTrue(dark.is_file() or (row.get("side") != "dark"), row["id"])
+            sides = webapp.theme_sides(row["id"])
+            self.assertTrue(sides, row["id"])
 
     def test_a_theme_that_is_not_declared_is_never_a_path(self):
         row = webapp.active_theme("../../etc/passwd")

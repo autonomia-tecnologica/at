@@ -1005,7 +1005,19 @@ a.ref:hover, a.url:hover { border-bottom-color: currentColor; background: var(--
 .turn .answer-table tbody tr:hover td { background: none; }
 .turn .proposal .tag { color: var(--ink-3); margin-right: var(--space-2); }
 .turn[data-kind="question"] .answer, .turn[data-kind="refused"] .answer { color: var(--ink-2); }
-.chat { display: flex; flex-direction: column; height: 100%; gap: var(--space-3); }
+/* THE SAME MARGIN EVERY OTHER PAGE BRINGS (`#body table`, `.prose`, above):
+   `#body` carries none of its own, and a view that forgot it sits flush
+   against the window — which `.chat` did (2026-10-03) until this line. The
+   margin goes on three sides, not four, the same as the table's: the panel
+   still ends where the window ends at the FOOT, so no scrollbar-reveal strip
+   reopens there. `height` drops the margin's own `--space-6` so the box
+   still fits `#body` exactly — a margin is OUTSIDE the box it is measured
+   against, and `height: 100%` plus it would overflow by exactly that much. */
+.chat {
+  display: flex; flex-direction: column; gap: var(--space-3);
+  height: calc(100% - var(--space-6));
+  margin: var(--space-6) var(--space-6) 0;
+}
 /* WHITE — the page around it is `--surface-0`, close enough in the light
    theme that a grey turn (`.answer-msg`) read as sitting on the SAME grey as
    its own log. */

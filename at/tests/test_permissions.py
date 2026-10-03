@@ -12,9 +12,17 @@ named here, with the reason it is not about the Working Folder at all.
 
 from __future__ import annotations
 
+import io
+import os
+import tempfile
 import unittest
+from contextlib import redirect_stdout
+from pathlib import Path
+from unittest import mock
 
-from at.core import permissions
+from at import i18n
+from at.core import boot, permissions
+from at.i18n import tr
 from at.ui.cli import tree
 
 # The five words that are the artifact's OWN INTERFACE, and not an act on the
@@ -96,3 +104,78 @@ class TheWordsOfTheTree(unittest.TestCase):
         for word in NAMED_EXCEPTIONS:
             with self.subTest(word=word):
                 self.assertNotIn(word, catalogue)
+
+
+# TASK-186, fatia 2/4: o motor de Actions centralizado. O que a fatia prova é
+# a FORMA — cada entrada coberta tem um `name`, uma `key` que traduz para algo
+# diferente da própria chave, e um `kind` dentre os dois que o módulo conhece
+# —, não a cobertura total do catálogo (a própria ressalva do módulo).
+COVERED_PERMISSIONS = (
+    "webapp:run",
+    "backup:make",
+    "backup:restore",
+    "secret:scan",
+    "job:run",
+    "job:approve",
+    "job:refuse",
+)
+
+
+class TheModifiersOfAnAct(unittest.TestCase):
+    # `job` e `secret` são tabelas: `is_known` lê `catalogue()`, que por sua
+    # vez lê `schema.declared()` — e isso só responde dentro de uma Pasta de
+    # Trabalho. `webapp`/`backup` não precisam dela (vivem em `EXTRA`), mas a
+    # classe toda sobe uma, do mesmo jeito que `test_cli.py` já faz.
+    def setUp(self):
+        self.scratch = tempfile.TemporaryDirectory()
+        self.env = mock.patch.dict(
+            os.environ,
+            {"AT_ROOT": str(Path(self.scratch.name)), "AT_LANG": "pt_BR"},
+        )
+        self.env.start()
+        i18n.reset()
+        with redirect_stdout(io.StringIO()):
+            boot.create_working_folder()
+
+    def tearDown(self):
+        self.env.stop()
+        i18n.reset()
+        self.scratch.cleanup()
+
+    def test_every_covered_permission_is_itself_known(self):
+        for permission in COVERED_PERMISSIONS:
+            with self.subTest(permission=permission):
+                self.assertTrue(permissions.is_known(permission))
+
+    def test_secret_scan_is_covered_with_nothing(self):
+        # `scan` não aceita flag nem argumento — a tupla vazia é o que a
+        # cobertura diz sobre ele, e não a ausência da entrada.
+        self.assertIn("secret:scan", permissions.MODIFIERS)
+        self.assertEqual(permissions.modifiers("secret:scan"), ())
+
+    def test_every_covered_modifier_has_the_right_shape(self):
+        for permission in COVERED_PERMISSIONS:
+            for modifier in permissions.modifiers(permission):
+                with self.subTest(permission=permission, name=modifier.name):
+                    self.assertIsInstance(modifier, permissions.Modifier)
+                    self.assertTrue(modifier.name)
+                    self.assertIn(modifier.kind, (permissions.FLAG, permissions.ARGUMENT))
+                    self.assertNotEqual(tr(modifier.key), modifier.key)
+
+    def test_webapp_run_carries_its_four_flags(self):
+        names = {m.name for m in permissions.modifiers("webapp:run")}
+        self.assertEqual(names, {"--port", "--public-port", "--host", "--no-caddy"})
+        for modifier in permissions.modifiers("webapp:run"):
+            with self.subTest(name=modifier.name):
+                self.assertEqual(modifier.kind, permissions.FLAG)
+
+    def test_backup_and_job_carry_an_argument_each(self):
+        for permission in ("backup:make", "backup:restore", "job:run",
+                           "job:approve", "job:refuse"):
+            with self.subTest(permission=permission):
+                found = permissions.modifiers(permission)
+                self.assertEqual(len(found), 1)
+                self.assertEqual(found[0].kind, permissions.ARGUMENT)
+
+    def test_an_unmapped_permission_answers_with_nothing(self):
+        self.assertEqual(permissions.modifiers("task:list"), ())

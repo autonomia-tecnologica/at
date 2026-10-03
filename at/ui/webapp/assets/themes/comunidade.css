@@ -11,7 +11,13 @@
    not a per-theme door — and every per-component spacing knob (the popover's
    own padding, the switch's own geometry) is now the SAME shared scale every
    other theme reads, which is the point: a theme colours and types the page,
-   it does not retune its breathing room one control at a time. */
+   it does not retune its breathing room one control at a time.
+
+   ONE SIDE, NOT TWO (2026-10-04): comunidade was always a light-first theme
+   — the night file was the counterpart, never the one it wore by default —
+   and a theme the registry does not pair with its own light/dark picker
+   (only `at` keeps that choice) carries one look, not two half-finished
+   ones. `comunidade-dark.css` is gone; this is the network. */
 
 :root {
   /* ===== type ============================================================ */
@@ -106,7 +112,7 @@
   --nav-toggle-size: 18px;
   --header-h: 64px;
   --page-pad-x: var(--space-5);
-  --nav-bg: var(--surface-1);
+  --nav-bg: #e4e6e9; /* a step off --surface-1, so the topbar (also --surface-1) never reads as the same panel */
   --nav-border: var(--border-soft);
   --nav-edge: 4px 0 24px rgb(31 44 68 / 18%);
   --nav-ink-1: var(--ink-1);

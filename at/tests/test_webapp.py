@@ -233,7 +233,10 @@ class TheState(ServerCase):
         state = json.loads(body)
         self.assertEqual(state["lang"], "pt_BR")
         self.assertTrue(any(theme["id"] == "at" for theme in state["themes"]))
-        self.assertTrue(all(theme["side"] in ("light", "dark") for theme in state["themes"]))
+        self.assertTrue(all(set(theme["sides"]) <= {"light", "dark"} and theme["sides"]
+                             for theme in state["themes"]))
+        at_row = next(theme for theme in state["themes"] if theme["id"] == "at")
+        self.assertEqual(sorted(at_row["sides"]), ["dark", "light"])
 
 
 class TheTablePayload(ServerCase):
@@ -407,14 +410,24 @@ class TheLook(ServerCase):
         self.assertEqual(body, (webapp.ASSETS / "base.css").read_bytes())
 
     def test_a_theme_is_resolved_by_lookup(self):
-        _, _, body = self.get("/theme.css?theme=gothic")
+        _, _, body = self.get("/theme.css?theme=at")
         self.assertEqual(body.decode("utf-8"),
-                         (webapp.THEMES / "gothic.css").read_text(encoding="utf-8"))
+                         (webapp.THEMES / "at.css").read_text(encoding="utf-8"))
 
     def test_the_dark_side_is_a_second_file(self):
-        _, _, body = self.get("/theme.css?theme=gothic&dark")
+        _, _, body = self.get("/theme.css?theme=at&dark")
         self.assertEqual(body.decode("utf-8"),
-                         (webapp.THEMES / "gothic-dark.css").read_text(encoding="utf-8"))
+                         (webapp.THEMES / "at-dark.css").read_text(encoding="utf-8"))
+
+    def test_a_theme_with_one_side_answers_it_either_way(self):
+        # `gothic` kept only its dark file (2026-10-04) — asking for the
+        # light side of a theme that does not have one answers the side
+        # that exists, never a 404.
+        dark_css = (webapp.THEMES / "gothic-dark.css").read_text(encoding="utf-8")
+        _, _, light_request = self.get("/theme.css?theme=gothic")
+        _, _, dark_request = self.get("/theme.css?theme=gothic&dark")
+        self.assertEqual(light_request.decode("utf-8"), dark_css)
+        self.assertEqual(dark_request.decode("utf-8"), dark_css)
 
     def test_an_id_that_names_no_theme_falls_back_to_the_default(self):
         _, _, body = self.get("/theme.css?theme=../../etc/passwd")

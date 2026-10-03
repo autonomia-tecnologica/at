@@ -1,6 +1,22 @@
-/* gothic, the cathedral at night — the light side's own notes
-   (`gothic.css`) hold here too. This is the side the theme wears by default
-   (`"side": "dark"` in the registry). */
+/* gothic — an illuminated manuscript: parchment, black ink and the red
+   rubric. Rewritten against the `at` design system (2026-10-03): the
+   palette, the square corner and the serif body carry over unchanged, and
+   the blackletter survives too — `--font-display` names UnifrakturMaguntia,
+   now hosted by `base.css` itself (it was always vendored, only the
+   `@font-face` lived in the retired `base-shared.css`). What changed is
+   WHERE it shows: `--font-display` is three narrow spots (the brand glyph,
+   the brand name, a stat's big number), never a page's own title the way
+   `--sidebar-title-family`/`--group-head-family` let it be before — this
+   system has one display slot, not one per chrome element. The parchment's
+   lattice texture and the ornamented rule dividers are gone the same way
+   frutiger-aero's glass is: there is no selector a theme may hold, and no
+   hook left in `base.css` to ask for either.
+
+   ONE SIDE, NOT TWO (2026-10-04): gothic was always a dark-first theme —
+   the parchment file was the day face, never the one it wore by default —
+   and a theme the registry does not pair with its own light/dark picker
+   (only `at` keeps that choice) carries one look, not two half-finished
+   ones. `gothic.css` is gone; this is the cathedral. */
 
 :root {
   /* ===== type ============================================================ */
@@ -95,7 +111,7 @@
   --nav-toggle-size: 18px;
   --header-h: 64px;
   --page-pad-x: var(--space-5);
-  --nav-bg: var(--surface-1);
+  --nav-bg: #332c2e; /* a step off --surface-1, so the topbar (also --surface-1) never reads as the same panel */
   --nav-border: var(--border-soft);
   --nav-edge: 4px 0 28px rgb(0 0 0 / 50%);
   --nav-ink-1: var(--ink-1);

@@ -293,18 +293,35 @@ def active_theme(requested: str | None) -> dict | None:
 
 
 def theme_css(requested: str | None, dark: bool) -> str | None:
-    """The stylesheet of the active theme; the light side answers when the dark
-    file does not exist."""
+    """The stylesheet of the active theme; the OTHER side answers when the
+    asked one does not exist. Only `at` ships both — every other theme in the
+    registry kept the one side it wore by default and dropped its mirror
+    (2026-10-04) — so a theme with one file answers the same CSS whichever
+    way `dark` reads: it carries no choice for the page to get wrong."""
     row = active_theme(requested)
     if row is None:
         return None
     ident = str(row.get("id"))
-    sides = [f"{ident}-dark.css", f"{ident}.css"] if dark else [f"{ident}.css"]
+    sides = [f"{ident}-dark.css", f"{ident}.css"] if dark else [f"{ident}.css", f"{ident}-dark.css"]
     for name in sides:
         where = THEMES / name
         if where.is_file():
             return where.read_text(encoding="utf-8")
     return None
+
+
+def theme_sides(ident: str) -> list[str]:
+    """Which files a theme actually has — never hand-declared (the old
+    `"side"` field drifted from the files it described), always read off
+    disk. Only `at` answers both: every other theme in the registry kept
+    the one side it wore by default (2026-10-04) and the picker in Settings
+    reads this to know whether there is a choice to offer at all."""
+    sides = []
+    if (THEMES / f"{ident}.css").is_file():
+        sides.append("light")
+    if (THEMES / f"{ident}-dark.css").is_file():
+        sides.append("dark")
+    return sides
 
 
 def base_css_path(requested: str | None) -> Path:
@@ -470,7 +487,7 @@ PAGE_WORDS = (
     # along.
     "brand", "brand_name",
     "tasks", "files", "cofre", "tables", "settings", "general", "appearance", "language",
-    "dark_mode", "dark_system", "dark_theme", "dark_light", "dark_dark",
+    "dark_mode", "dark_system", "dark_light", "dark_dark",
     "motion", "themes", "no_project", "all_tasks", "board", "new_task", "new_project", "delete_project",
     "move_to_project", "records", "hidden", "no_records", "error", "filter",
     # THE FILA'S BADGE (TASK-162, fatia 2/2): whether this browser is online,
@@ -646,7 +663,7 @@ def state_payload() -> dict:
         "theme": row.get("id") if row else None,
         "themes": [
             {"id": theme.get("id"), "label": theme_label(theme),
-             "side": "dark" if theme.get("side") == "dark" else "light",
+             "sides": theme_sides(str(theme.get("id"))),
              # The theme describes ITSELF, one description per side: the page
              # shows the one being worn, and follows the swap without asking.
              "desc": theme.get("desc") if isinstance(theme.get("desc"), dict) else None,

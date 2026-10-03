@@ -1,6 +1,18 @@
-/* console, at night — the terminal the AT always booted into. The light
-   side's notes (`console.css`) hold here too; this is the side the theme
-   wears by default (`"side": "dark"` in the registry). */
+/* console — the look the AT always had: terminal, monospaced, blue accent.
+   Rewritten against the `at` design system (2026-10-03): the palette, the
+   monospace face and the short 4px corner carry over unchanged. What does
+   not is the chrome — the letter-initial file icons (`P`, `M`, `J`, `O`) and
+   every per-component tuning (the popover's own padding, the switch's own
+   geometry) are gone, folded into the one shared set and the one shared
+   scale every theme now reads. `--nav-bg` is a step off `--surface-1`
+   (2026-10-03) — the topbar reads it bare, so the sidebar needs its OWN
+   value or the two panels fuse into one shape with a seam down the middle.
+
+   ONE SIDE, NOT TWO (2026-10-04): console was always a dark-first theme —
+   the light file was the "daytime terminal" variant, never the one it
+   wore by default — and a theme the registry does not pair with its own
+   light/dark picker (only `at` keeps that choice) carries one look, not
+   two half-finished ones. `console.css` is gone; this is the console. */
 
 :root {
   /* ===== type ============================================================ */
@@ -95,7 +107,7 @@
   --nav-toggle-size: 18px;
   --header-h: 64px;
   --page-pad-x: var(--space-5);
-  --nav-bg: var(--surface-1);
+  --nav-bg: #3b3e43; /* a step off --surface-1, so the topbar (also --surface-1) never reads as the same panel */
   --nav-border: var(--border-soft);
   --nav-edge: 4px 0 28px rgb(0 0 0 / 50%);
   --nav-ink-1: var(--ink-1);

@@ -20,7 +20,9 @@ export interface Kind {
 export interface ThemeRow {
   id: string;
   label: string;
-  side: "light" | "dark";
+  // WHICH FILES THE THEME ACTUALLY HAS, read off disk server-side — one
+  // entry means no choice to offer (only `at` ever answers both, today).
+  sides: ("light" | "dark")[];
   // The theme describes ITSELF, one description per side.
   desc: { light?: string; dark?: string } | null;
   // Almost always null: the shared `base.css`. A theme walking its own design

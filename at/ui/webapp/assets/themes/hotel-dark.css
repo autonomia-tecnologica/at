@@ -1,6 +1,24 @@
-/* hotel, lights out — the light side's own notes (`hotel.css`) hold here
-   too. This is the side the theme wears by default (`"side": "dark"` in the
-   registry). */
+/* hotel — the hotel room of 2004. Rewritten against the `at` design system
+   (2026-10-03): the palette (hotel blue, cream, plum ink), the square corner
+   and the pixel brand carry over — `--font-display` names Silkscreen, now
+   hosted by `base.css` itself, in the system's three narrow display spots
+   (the brand glyph, the brand name, a stat's big number).
+
+   WHAT THE ROOM LOST: the isometric floor tile, the hard-stop bevel on every
+   surface and the 4px block shadow were all drawn by a theme that could
+   still declare its own `background`/`box-shadow` shape per role; this
+   system's surfaces are flat colours and its elevation is one shared shadow
+   scale, so none of the three has a hook left to ask for. The gold accent
+   (`--gold`/`--gold-ink`, the coin, the "in-use" mark) has no slot either —
+   there is one accent, and here it is the hotel blue. The switch is a pill
+   now, like every other theme's: `--switch-radius` does not exist any more
+   for a theme to zero out.
+
+   ONE SIDE, NOT TWO (2026-10-04): hotel was always a dark-first theme — the
+   lit-room file was the day face, never the one it wore by default — and a
+   theme the registry does not pair with its own light/dark picker (only
+   `at` keeps that choice) carries one look, not two half-finished ones.
+   `hotel.css` is gone; this is the room, lights out. */
 
 :root {
   /* ===== type ============================================================ */
@@ -95,7 +113,7 @@
   --nav-toggle-size: 18px;
   --header-h: 64px;
   --page-pad-x: var(--space-5);
-  --nav-bg: var(--surface-1);
+  --nav-bg: #48405b; /* a step off --surface-1, so the topbar (also --surface-1) never reads as the same panel */
   --nav-border: var(--border-soft);
   --nav-edge: 4px 0 28px rgb(0 0 0 / 50%);
   --nav-ink-1: var(--ink-1);

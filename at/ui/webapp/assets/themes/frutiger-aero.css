@@ -5,7 +5,14 @@
    blur hook left to ask for. What survives is the PALETTE (sky blue, petrol
    ink, the Aero accent) flattened to one representative stop apiece, and the
    generous pill corner (`--r-lg: 22px`) that was this theme's other half of
-   the identity. */
+   the identity.
+
+   ONE SIDE, NOT TWO (2026-10-04): frutiger-aero was always a light-first
+   theme — the after-sunset file was the counterpart, never the one it wore
+   by default — and a theme the registry does not pair with its own
+   light/dark picker (only `at` keeps that choice) carries one look, not
+   two half-finished ones. `frutiger-aero-dark.css` is gone; this is the
+   sky. */
 
 :root {
   /* ===== type ============================================================ */
@@ -100,7 +107,7 @@
   --nav-toggle-size: 18px;
   --header-h: 64px;
   --page-pad-x: var(--space-5);
-  --nav-bg: var(--surface-1);
+  --nav-bg: #d3e1e7; /* a step off --surface-1, so the topbar (also --surface-1) never reads as the same panel */
   --nav-border: var(--border-soft);
   --nav-edge: 4px 0 24px rgb(11 59 80 / 18%);
   --nav-ink-1: var(--ink-1);

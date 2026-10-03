@@ -5,7 +5,13 @@
    in alpha. `--border-soft` softened from solid black to black at 18%, and
    `--border-strong` is the solid black the old `--line` always was: the new
    system draws a border in two weights where the old one drew one, and a
-   theme with no colour still has to answer both. */
+   theme with no colour still has to answer both.
+
+   ONE SIDE, NOT TWO (2026-10-04): paper was always a light-first theme —
+   "blackpaper", its own mirror, was the counterpart, never the one it wore
+   by default — and a theme the registry does not pair with its own
+   light/dark picker (only `at` keeps that choice) carries one look, not
+   two half-finished ones. `paper-dark.css` is gone; this is the page. */
 
 :root {
   /* ===== type ============================================================ */
@@ -98,7 +104,7 @@
   --nav-toggle-size: 18px;
   --header-h: 64px;
   --page-pad-x: var(--space-5);
-  --nav-bg: var(--surface-1);
+  --nav-bg: #e6e6e6; /* a step off --surface-1, so the topbar (also --surface-1) never reads as the same panel */
   --nav-border: var(--border-soft);
   --nav-edge: 4px 0 24px rgb(0 0 0 / 18%);
   --nav-ink-1: var(--ink-1);

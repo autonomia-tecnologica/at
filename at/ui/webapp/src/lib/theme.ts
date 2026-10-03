@@ -1,7 +1,7 @@
 // theme — the look the page wears, and the TWO things chosen about it: WHICH
 // theme, and WHICH SIDE of it.
 //
-// The SAME keys (`at.theme`, `at.dark`) and the SAME four states of the side.
+// The SAME keys (`at.theme`, `at.dark`) and the SAME three states of the side.
 // The `link` this module moves is `#theme`, and whoever moves it BEFORE the first
 // paint is `js/boot.js` (classic, in the `head`), which repeats these keys on
 // purpose — it cannot import from here.
@@ -20,10 +20,11 @@ export const themeState = reactive({ dark: false, id: null as string | null });
 export const THEME_KEY = "at.theme";
 export const DARK_KEY = "at.dark";
 
-// The FOUR states of the side. `theme` is not a side: it is "let the THEME
-// answer", and the answer belongs to the theme because a side is part of what a
-// theme IS. Every other theme declares nothing, and nothing means light.
-export const DARK_STATES = ["system", "theme", "light", "dark"] as const;
+// The THREE states of the side. A fourth, `theme` — "let the theme answer
+// its own declared side" — existed until 2026-10-04 and is gone: it only
+// ever paid for itself on `at`, and `at` wears light and dark by a person's
+// own choice like every other theme now does.
+export const DARK_STATES = ["system", "light", "dark"] as const;
 export type DarkState = (typeof DARK_STATES)[number];
 
 const SYSTEM_DARK = window.matchMedia("(prefers-color-scheme: dark)");
@@ -54,17 +55,8 @@ export function darkState(): DarkState {
   return (DARK_STATES as readonly string[]).includes(state) ? (state as DarkState) : "system";
 }
 
-// THE SIDE A THEME WEARS BY ITSELF — the answer to the `theme` state. Who
-// declares it is the theme (`side` in the registry), and a theme that declares
-// nothing means LIGHT.
-export function themeSide(): "light" | "dark" {
-  const row = activeTheme();
-  return row && row.side === "dark" ? "dark" : "light";
-}
-
 export function darkOn(): boolean {
   const state = darkState();
-  if (state === "theme") return themeSide() === "dark";
   return state === "system" ? SYSTEM_DARK.matches : state === "dark";
 }
 
@@ -75,30 +67,26 @@ export function activeTheme(): ThemeRow | null {
   return themeRow(savedTheme()) || themeRow(store.theme) || store.themes[0] || null;
 }
 
+// WHICH SIDE IS ON SCREEN, for THIS theme (2026-10-04). Most themes answer
+// only one side — `row.sides` says which, read off the files the server
+// actually found — and a theme with one side wears it no matter what the
+// person's light/dark preference is: there is nothing there to choose from.
+// Only a theme with both (only `at`, today) asks `darkOn()`.
+function activeSide(row: ThemeRow | null): boolean {
+  if (row && row.sides.length === 1) return row.sides[0] === "dark";
+  return darkOn();
+}
+
 export function applyTheme(): ThemeRow | null {
   const row = activeTheme();
   const node = link();
-  themeState.dark = darkOn();
+  const dark = activeSide(row);
+  themeState.dark = dark;
   themeState.id = row ? row.id : null;
-  // THE ANSWER IS ONLY WRITTEN WHEN WHOEVER KNOWS IT HAS ARRIVED. What the boot
-  // reads is below, and it can only be answered against the vocabulary the
-  // server sends — so a call with `store.themes` still empty (the entrance,
-  // which is drawn before `/api/state` is ever asked) answers `light` for every
-  // theme, and writing that down would corrupt the preference in silence and
-  // paint the wrong side on the NEXT load.
   if (!row || !node) return row;
-  // WHAT THE BOOT READS. `js/boot.js` runs BEFORE the first paint, and by then
-  // the page has no vocabulary to look a theme up in, so it cannot answer "which
-  // side does this theme wear?". The answer is written down HERE, where it
-  // exists, and read THERE, where it does not. It is only written under the
-  // `theme` state — the other three are the boot's own.
-  if (darkState() === "theme") {
-    const side = themeState.dark ? "dark" : "light";
-    if (loadPrefs(DARK_KEY).side !== side) savePrefs(DARK_KEY, { state: "theme", side });
-  }
   const params: string[] = [];
   if (savedTheme()) params.push("theme=" + encodeURIComponent(row.id));
-  if (darkOn()) params.push("dark");
+  if (dark) params.push("dark");
   node.setAttribute("href", "/theme.css" + (params.length ? "?" + params.join("&") : ""));
   // THE SECOND LINK, THE SAME DOOR, AND THE SAME QUERY (2026-09-28). Every
   // theme in the registry names no `base` of its own today and reads

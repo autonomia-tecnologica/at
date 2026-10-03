@@ -3,7 +3,13 @@
    serif stack carry over unchanged, system fonts only — the old file never
    hosted its own face either (`Iowan Old Style`/`Palatino` are OS serifs),
    so nothing here needed the font door the gothic/hotel migrations used.
-   The soft corner (`--r-sm: 3px`) keeps close to the old `--radius: 3px`. */
+   The soft corner (`--r-sm: 3px`) keeps close to the old `--radius: 3px`.
+
+   ONE SIDE, NOT TWO (2026-10-04): tipography was always a light-first theme
+   — the night file was the counterpart, never the one it wore by default —
+   and a theme the registry does not pair with its own light/dark picker
+   (only `at` keeps that choice) carries one look, not two half-finished
+   ones. `tipography-dark.css` is gone; this is the book. */
 
 :root {
   /* ===== type ============================================================ */
@@ -98,7 +104,7 @@
   --nav-toggle-size: 18px;
   --header-h: 64px;
   --page-pad-x: var(--space-5);
-  --nav-bg: var(--surface-1);
+  --nav-bg: #d3cab6; /* a step off --surface-1, so the topbar (also --surface-1) never reads as the same panel */
   --nav-border: var(--border-soft);
   --nav-edge: 4px 0 24px rgb(27 26 23 / 18%);
   --nav-ink-1: var(--ink-1);

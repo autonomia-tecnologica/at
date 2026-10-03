@@ -24,7 +24,13 @@
     "action.restore": "Restaurar",
     "action.admin": "Administrar",
     "action.lang": "Escolher",
-    "action.convert": "Converter"
+    "action.convert": "Converter",
+    "modifier.webapp.port": "Porta que o AT escuta",
+    "modifier.webapp.public_port": "Porta que outra coisa já publica",
+    "modifier.webapp.host": "Nome ou endereço que o AT atende",
+    "modifier.webapp.no_caddy": "Mantém no loop, sem o Caddy embutido",
+    "modifier.backup.destination": "Para onde a cópia vai, ou de onde ela volta",
+    "modifier.job.id": "O trabalho que espera"
   },
   "en_US": {
     "line": "{object}: {action}",
@@ -51,6 +57,12 @@
     "action.restore": "Restore",
     "action.admin": "Administer",
     "action.lang": "Choose",
-    "action.convert": "Convert"
+    "action.convert": "Convert",
+    "modifier.webapp.port": "Port AT listens on",
+    "modifier.webapp.public_port": "Port something else already publishes",
+    "modifier.webapp.host": "Name or address AT answers on",
+    "modifier.webapp.no_caddy": "Keeps it on the loop, without the bundled Caddy",
+    "modifier.backup.destination": "Where the copy goes, or where it comes back from",
+    "modifier.job.id": "The job that waits"
   }
 }

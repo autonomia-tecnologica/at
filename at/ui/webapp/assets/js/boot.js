@@ -25,25 +25,18 @@ try {
   const saved = JSON.parse(localStorage.getItem("at.theme"));
   const id = saved && typeof saved.id === "string" ? saved.id : "";
   if (id) params.push("theme=" + encodeURIComponent(id));
-  // THE SIDE: four states, and the factory one is the SYSTEM. The question asked
-  // here is the same one `theme.js` will ask after the paint — the choice is a
-  // single one, read twice, and that is why the key, the states and the name of
-  // the key in the URL cannot diverge between the two.
+  // THE SIDE: three states, and the factory one is the SYSTEM. The question
+  // asked here is the same one `theme.js` will ask after the paint — the
+  // choice is a single one, read twice, and that is why the key, the states
+  // and the name of the key in the URL cannot diverge between the two.
   const side = JSON.parse(localStorage.getItem("at.dark"));
   const raw = side && typeof side.state === "string" ? side.state : "";
-  // A state that is NONE of the four counts as "system" — exactly as in
+  // A state that is NONE of the three counts as "system" — exactly as in
   // `theme.js`, and that is why the list shows up here. A spoiled value cannot
   // make the boot answer one thing and the page another: between the two lives the
   // flash, which is precisely what this file exists to avoid.
-  const state = ["system", "theme", "light", "dark"].includes(raw) ? raw : "system";
-  // `theme` IS ANSWERED FROM THE CACHE, and it is the only state this file cannot
-  // work out by itself: which side a theme wears is declared in the registry, the
-  // registry arrives with the API — after the paint. So `theme.js` writes the
-  // answer down when it knows it (`side` beside the state) and this reads it.
-  // WITH NO CACHED ANSWER the system answers, which is the state this file would
-  // have fallen back to anyway.
+  const state = ["system", "light", "dark"].includes(raw) ? raw : "system";
   const dark = state === "dark" ||
-    (state === "theme" && side && side.side === "dark") ||
     (state === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
   if (dark) params.push("dark");
   if (params.length) {
