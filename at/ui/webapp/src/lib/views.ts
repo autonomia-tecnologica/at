@@ -62,12 +62,15 @@ export const CHAT_KEY = "chat";
 export const FILE_PREFIX = "file:";
 export const PROJECT_PREFIX = "project:";
 
-// THE WEBAPP'S OWN SURFACE FOR THE INTERPRETER IS OFF (2026-09-27). The CORE's
-// switch (`store.interpreter`) is a different thing and stays exactly what it
-// was — a folder can still be asked from the `cli`. This is the layer ABOVE it:
-// the chat and the balloon are not offered on THIS surface while the feature is
-// unfinished, and flipping it back is the one line this constant is.
-export const NLU_UI_ENABLED = false;
+// THE WEBAPP'S OWN SURFACE FOR THE INTERPRETER IS BACK ON (2026-10-03). It was
+// off from 2026-09-27 while the feature stood unfinished — no real path to the
+// assist, nothing for a sentence Jev could still save to become but a flat
+// refusal. TASK-180, fatia 3/3 closed that gap (`/api/ask`'s own `main_key`,
+// the Control Panel's switch and mode), so the one line this constant always
+// was is flipped. The CORE's switch (`store.interpreter`) is a different
+// thing and is untouched by this — a folder can still be asked from the
+// `cli` with the WebApp's own surface off, and still can with it on.
+export const NLU_UI_ENABLED = true;
 
 export interface Frame {
   view: string;

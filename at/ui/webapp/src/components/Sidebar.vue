@@ -147,8 +147,8 @@ onUnmounted(() => {
          not: the switch of the balloon hides the balloon. What takes the chat away
          is the CORE's switch (`store.interpreter`) — with the interpreter off
          there is no box, no balloon and no chat, because the function is gone.
-         `NLU_UI_ENABLED` is the WEBAPP's own switch, above that one (views.ts):
-         the feature is unfinished, so this surface does not offer it yet. -->
+         `NLU_UI_ENABLED` is the WEBAPP's own switch, above that one (views.ts) —
+         on since TASK-180, fatia 3/3 closed the feature. -->
     <button v-if="NLU_UI_ENABLED && store.interpreter" type="button" class="file"
             :data-view="CHAT_KEY" :class="{ on: isCurrent(CHAT_KEY) }" @click="openChat">
       <span>{{ word("chat") }}</span>
