@@ -21,25 +21,15 @@
 
 import { ref, computed, watch, onMounted } from "vue";
 import { api, post } from "../lib/api";
+import { fetchCatalogue, groupCatalogue } from "../lib/catalogue";
 import { label as worded, setFields, word } from "../lib/store";
 import { back, markPage, nav, openRef, poke, setTrail, showError } from "../lib/views";
 import TableView from "../components/TableView.vue";
 import RoleCreate from "../components/RoleCreate.vue";
+import type { CatalogueEntry } from "../lib/catalogue";
 import type { RecordRow, TablePayload } from "../lib/record";
 
 const ROLE = "role";
-
-// One entry of the closed list, as the server hands it over: the machine name,
-// the words for its object and its action, and the risk it declares.
-interface CatalogueEntry {
-  key: string;
-  object: string;
-  object_label: string;
-  action: string;
-  action_label: string;
-  label: string;
-  risk: number;
-}
 
 const payload = ref<TablePayload | null>(null);
 const catalogue = ref<CatalogueEntry[]>([]);
@@ -62,18 +52,9 @@ const unknown = computed(() => record.value?.unknown ?? []);
 
 // The closed list, GROUPED BY OBJECT: the objects are what a person thinks in
 // (`Tarefas`, `Papéis`), and forty checks in a row would be a wall with no doors.
-const groups = computed(() => {
-  const out: { object: string; label: string; entries: CatalogueEntry[] }[] = [];
-  for (const entry of catalogue.value) {
-    let group = out.find(candidate => candidate.object === entry.object);
-    if (!group) {
-      group = { object: entry.object, label: entry.object_label, entries: [] };
-      out.push(group);
-    }
-    group.entries.push(entry);
-  }
-  return out;
-});
+const groups = computed(() =>
+  groupCatalogue(catalogue.value, entry => entry.object, entry => entry.object_label),
+);
 
 const spec = (field: string) => payload.value?.fields.find(item => item.name === field) || null;
 const fieldWord = (field: string) => worded(spec(field)?.labels);
@@ -116,8 +97,7 @@ async function load(): Promise<void> {
 
 async function loadCatalogue(): Promise<void> {
   try {
-    const answer = await api<{ permissions: CatalogueEntry[] }>("/api/catalogue");
-    catalogue.value = answer.permissions;
+    catalogue.value = await fetchCatalogue();
   } catch (err) {
     // The catalogue is what the SCREEN needs and not what the folder owes: a
     // person who may read roles but not the list is refused, and the refusal is
@@ -202,7 +182,7 @@ watch(() => nav.current?.view, view => {
            is the many-choice control: a role is a SET. -->
       <div class="form-block">
         <h2>{{ word("permission_pick") }}</h2>
-        <div v-for="group in groups" :key="group.object" class="form-block">
+        <div v-for="group in groups" :key="group.key" class="form-block">
           <h3>{{ group.label }}</h3>
           <div class="checks">
             <label v-for="entry in group.entries" :key="entry.key" class="check-row"

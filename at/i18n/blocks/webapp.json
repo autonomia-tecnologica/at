@@ -127,7 +127,16 @@
     "permission_pick": "Permissões do papel",
     "unknown_permission": "O catálogo não conhece",
     "unknown_hint": "Estas permissões não existem no catálogo. Elas não concedem nada e seguem ditas aqui até alguém tirá-las do papel.",
-    "credential_none": "Sem credencial"
+    "credential_none": "Sem credencial",
+    "actions": "Actions",
+    "actions_hint": "O catálogo inteiro, por verbo: toda entidade que cada ato alcança, os flags e argumentos que aceita, e por qual porta (terminal, web, frase) ele é alcançado. É só leitura — nada aqui executa um ato de verdade.",
+    "modifier_flag": "Flag",
+    "modifier_argument": "Argumento",
+    "reach_cli": "Terminal",
+    "reach_web": "Web",
+    "reach_llm": "Frase",
+    "reach_orphan": "Nenhuma porta alcança",
+    "reach_none_known": "Sem porta ainda, por desenho"
   },
   "en_US": {
     "serving": "AT WebApp at {url}",
@@ -257,6 +266,15 @@
     "permission_pick": "Role permissions",
     "unknown_permission": "The catalogue does not know",
     "unknown_hint": "These permissions do not exist in the catalogue. They grant nothing and are still said here until somebody takes them out of the role.",
-    "credential_none": "No credential"
+    "credential_none": "No credential",
+    "actions": "Actions",
+    "actions_hint": "The whole catalogue, by verb: every entity each act reaches, the flags and arguments it accepts, and which interface (terminal, web, phrase) reaches it. Read-only — nothing here runs a real act.",
+    "modifier_flag": "Flag",
+    "modifier_argument": "Argument",
+    "reach_cli": "Terminal",
+    "reach_web": "Web",
+    "reach_llm": "Phrase",
+    "reach_orphan": "No interface reaches this",
+    "reach_none_known": "No interface yet, by design"
   }
 }

@@ -27,6 +27,7 @@ from unittest import mock
 
 from at import i18n
 from at.core import (
+    actions_audit,
     actors,
     assist,
     audit,
@@ -2069,6 +2070,42 @@ class TheRbacScreens(ServerCase):
         self.assertEqual(entry["action_label"], i18n.tr("table.action.create"))
         self.assertEqual(entry["risk"], permissions.risk("task:create"))
         self.assertNotIn(entry["object_label"], ("permission.object.task", "task"))
+
+    def test_an_entry_carries_the_modifiers_its_act_accepts(self):
+        # TASK-189, fatia 4/4: `webapp:run` é a entrada com mais flags do
+        # catálogo (`permissions.MODIFIERS`), e a árvore de Actions é o que
+        # lê este campo para desenhá-los sob a entidade.
+        _, _, body = self.get("/api/catalogue", headers=self.cookie())
+        entry = next(
+            one for one in json.loads(body)["permissions"] if one["key"] == "webapp:run"
+        )
+        self.assertEqual(
+            [modifier["name"] for modifier in entry["modifiers"]],
+            ["--port", "--public-port", "--host", "--no-caddy"],
+        )
+        self.assertEqual(entry["modifiers"][0]["kind"], "flag")
+        self.assertEqual(entry["modifiers"][0]["label"], i18n.tr(permissions.MODIFIERS["webapp:run"][0].key))
+        # `task:create` não aceita flag nem argumento: a lista vem vazia, não
+        # ausente — a mesma forma que `permissions.modifiers` já devolve.
+        plain = next(
+            one for one in json.loads(body)["permissions"] if one["key"] == "task:create"
+        )
+        self.assertEqual(plain["modifiers"], [])
+
+    def test_an_entry_carries_the_reach_and_the_orphan_mark(self):
+        # TASK-189, fatia 4/4: a mesma marca que a auditoria (`actions_audit`,
+        # fatia 3/4) já calcula, lida pela rota e não recalculada por ela.
+        _, _, body = self.get("/api/catalogue", headers=self.cookie())
+        entries = {one["key"]: one for one in json.loads(body)["permissions"]}
+        reached = actions_audit.reach()
+        orphaned = set(actions_audit.orphans())
+        for key, entry in entries.items():
+            self.assertEqual(entry["reach"], sorted(reached[key]))
+            self.assertEqual(entry["orphan"], key in orphaned)
+        # Nenhum ponto de verdade por desenho (`NO_INTERFACE_YET`) é dito órfão.
+        for key in actions_audit.NO_INTERFACE_YET:
+            self.assertFalse(entries[key]["orphan"])
+            self.assertEqual(entries[key]["reach"], [])
 
     def test_reading_the_catalogue_is_reading_the_roles(self):
         self.person("task:list")

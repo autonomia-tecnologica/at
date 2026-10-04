@@ -140,6 +140,7 @@ from urllib.parse import parse_qs, urlparse
 
 from at import __version__, convert, i18n, nlu
 from at.core import (
+    actions_audit,
     actors,
     assist,
     audit,
@@ -527,6 +528,10 @@ PAGE_WORDS = (
     # tables whose records are more than a form (§4, item 11).
     "people", "create", "new_role", "new_machine", "mint", "revoke", "token_once",
     "permission_pick", "unknown_permission", "unknown_hint", "credential_none",
+    # A árvore de Actions (TASK-189, fatia 4/4): verbo → entidades → modificadores,
+    # com a marca de quais portas alcançam cada ação do catálogo.
+    "actions", "actions_hint", "modifier_flag", "modifier_argument",
+    "reach_cli", "reach_web", "reach_llm", "reach_orphan", "reach_none_known",
     # The entrance's, because the entrance comes back when a session dies under
     # a running page (the 401 hook) — and it would come back wordless.
     *SESSION_WORDS,
@@ -847,14 +852,26 @@ def _says(table: str, row: dict) -> dict:
 
 
 def catalogue_payload() -> dict:
-    """The closed list, as the screen that moves a role reads it.
+    """The closed list, as the screen that moves a role reads it — and, for the
+    Actions tree (TASK-189, fatia 4/4), the same list carrying what the role
+    picker never needed: the modifiers each act accepts and the interfaces that
+    reach it.
 
     One entry per permission — the machine name, the label a person reads and the
     risk it declares — and never a guess: whatever the catalogue does not name is
     not here, which is exactly what makes the screen able to say that a role names
     something that does not exist. The order is the catalogue's, so the picker
     draws the list it was handed and sorts nothing.
+
+    **`modifiers` and `reach` are read off the SAME declarations the fatias
+    before this one wrote** (`permissions.modifiers`, `actions_audit.reach`), and
+    not a second count: a page that drew its own would be the catalogue's
+    second home. `orphan` is `actions_audit.orphans()`'s verdict, by key — the
+    named exceptions (`NO_INTERFACE_YET`) answer `False` with an empty `reach`,
+    which is a gap already decided, and never the one `orphan` flags.
     """
+    reached = actions_audit.reach()
+    orphaned = frozenset(actions_audit.orphans())
     entries = []
     for name in permissions.all_permissions():
         obj, _, action = name.partition(":")
@@ -870,6 +887,12 @@ def catalogue_payload() -> dict:
                 "action_label": permissions.action_label(action),
                 "label": permissions.label(name),
                 "risk": permissions.risk(name),
+                "modifiers": [
+                    {"name": modifier.name, "label": i18n.tr(modifier.key), "kind": modifier.kind}
+                    for modifier in permissions.modifiers(name)
+                ],
+                "reach": sorted(reached.get(name, frozenset())),
+                "orphan": name in orphaned,
             }
         )
     return {"permissions": entries}

@@ -37,6 +37,7 @@ import { setTrail } from "../lib/views";
 // NOTIFICAÇÕES (Web Push): o botão pede a permissão do navegador e inscreve o
 // PWA — sem ntfy, sem app à parte. `state()` diz o que a tela desenha.
 import { enable as enablePush, state as pushNow } from "../lib/push";
+import ActionsView from "../components/ActionsView.vue";
 import Foldable from "../components/Foldable.vue";
 import PeopleView from "../components/PeopleView.vue";
 import RiskRuler from "../components/RiskRuler.vue";
@@ -80,7 +81,7 @@ async function pickAssistMode(mode: (typeof ASSIST_MODES)[number]): Promise<void
 
 // AS ABAS, na ordem em que a tela se apresenta: o que a pasta é (o idioma), o
 // que se vê, quem age nela e o que ela mede de risco.
-const TABS = ["general", "appearance", "people", "risk"] as const;
+const TABS = ["general", "appearance", "people", "risk", "actions"] as const;
 
 const tab = ref<(typeof TABS)[number]>("general");
 const motion = ref(motionOn());
@@ -291,6 +292,15 @@ watchEffect(() => setTrail(word("settings")));
         <h2>{{ word("risk") }}</h2>
         <div class="block-body">
           <RiskRuler />
+        </div>
+      </section>
+
+      <!-- A ÁRVORE DE ACTIONS (TASK-189, fatia 4/4): o catálogo inteiro, por
+           verbo — leitura, nunca um botão que executa. -->
+      <section v-if="tab === 'actions'" class="block">
+        <h2>{{ word("actions") }}</h2>
+        <div class="block-body">
+          <ActionsView />
         </div>
       </section>
     </div>
