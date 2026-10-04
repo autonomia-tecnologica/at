@@ -34,13 +34,13 @@ asks `authelia.standing()` as it always has, finds the systemd-started one
 already listening on the port this file remembered, and never spawns a
 second.
 
-**`update` does not restart what did not change** (the same promise
-`environment.update`'s own Redis exception makes, for the same reason): a
-unit whose content is byte-for-byte what was already on disk, and which is
-already active, is left running — restarting Authelia drops every open
-session (no Redis on this path, TASK-184's own decision, never revisited
-here), and a `host update` that runs because the WEBAPP's code changed must
-not pay that price for a service it did not touch.
+**`update` does not restart what did not change.** A unit whose content is
+byte-for-byte what was already on disk, and which is already active, is
+left running — restarting Authelia drops every open session (it keeps its
+registry in MEMORY, no Redis on this path or on the container one, TASK-184's
+own decision, never revisited here), and a `host update` that runs because
+the WEBAPP's code changed must not pay that price for a service it did not
+touch.
 """
 
 from __future__ import annotations

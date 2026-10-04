@@ -282,14 +282,11 @@ class TheManifest(unittest.TestCase):
     """What the binary carries: the services of §7a, pinned in version and digest."""
 
     def test_the_services_of_the_section_are_declared(self):
-        # TASK-187: o dnsmasq saiu — não há mais DNS do ambiente. O Redis vem
-        # PRIMEIRO agora, e o resto da ordem é a ORDER THINGS COME UP: a borda
-        # pergunta ao provedor sobre todo pedido e faz proxy para o WebApp, então
-        # os dois estão antes dela. **O Redis vem ANTES do provedor** porque é
-        # ele quem lê o registro de sessões quando sobe, e um portão que sobe
-        # com o registro atrás é um portão sem onde guardar quem está dentro.
+        # TASK-187: o dnsmasq saiu — não há mais DNS do ambiente. A ordem que
+        # sobra é a ORDER THINGS COME UP: a borda pergunta ao provedor sobre
+        # todo pedido e faz proxy para o WebApp, então os dois estão antes dela.
         self.assertEqual([service.name for service in env.SERVICES],
-                         [env.REDIS, env.IDENTITY, env.WEBAPP, "caddy"])
+                         [env.IDENTITY, env.WEBAPP, "caddy"])
 
     def test_every_image_is_pinned_in_version_and_hashing(self):
         # §3 (Dependência externa): "Dependências de pacotes e imagens são
@@ -374,25 +371,6 @@ class TheManifest(unittest.TestCase):
                         f"{service.name} does not mount its own state folder",
                     )
 
-    def test_the_session_store_joins_the_environment_network_and_publishes_nothing(self):
-        # §7b's session store: quem o lê é o provedor, e só ele — então ele está
-        # na rede do ambiente. **E ele não publica porta nenhuma**: a porta dele
-        # é a da rede, entre containers, e uma porta desta máquina abriria a
-        # memória das sessões a quem está fora do ambiente.
-        store = _service(env.REDIS)
-        self.assertEqual(store.network, env.NETWORK)
-        self.assertEqual(env.ports_of(store), ())
-
-    def test_the_session_store_mounts_its_configuration_and_nothing_else(self):
-        # **Uma montagem, e é a do ARQUIVO** — `host` vazio, que é a cópia que o
-        # `_materialize` faz da pasta de estado para o container ler, e é onde o
-        # `redis.conf` cai. **Nenhum volume existe para guardar o conteúdo da
-        # sessão**: uma montagem a mais aqui, com a cara de quem persiste dado,
-        # seria a decisão desta fatia desfeita por dentro.
-        store = _service(env.REDIS)
-        self.assertEqual([(mount.container, mount.host, mount.file)
-                          for mount in store.mounts],
-                         [(env.REDIS_CONFIG, "", False)])
 
 def _service(name: str) -> env.Service:
     return next(service for service in env.SERVICES if service.name == name)
@@ -402,31 +380,31 @@ class ThePin(FolderCase):
     """§3: the pin only moves forward, and an instance ahead is not downgraded."""
 
     def test_a_folder_that_never_pinned_is_behind(self):
-        self.assertEqual(env.decide(_service(env.REDIS), {}), env.OUTDATED)
+        self.assertEqual(env.decide(_service(env.IDENTITY), {}), env.OUTDATED)
 
     def test_a_folder_at_the_pin_is_at_the_pin(self):
-        service = _service(env.REDIS)
-        pins = {env.REDIS: {"version": service.image.version,
+        service = _service(env.IDENTITY)
+        pins = {env.IDENTITY: {"version": service.image.version,
                             "digest": service.image.digest}}
         self.assertEqual(env.decide(service, pins), env.CURRENT)
 
     def test_a_folder_behind_the_binary_is_re_pinned(self):
         self.assertEqual(
-            env.decide(_service(env.REDIS), {env.REDIS: {"version": "2.89", "digest": "sha256:" + "a" * 64}}),
+            env.decide(_service(env.IDENTITY), {env.IDENTITY: {"version": "2.89", "digest": "sha256:" + "a" * 64}}),
             env.OUTDATED,
         )
 
     def test_a_folder_ahead_of_the_binary_warns_and_proceeds(self):
-        service = _service(env.REDIS)
+        service = _service(env.IDENTITY)
         ahead = {"version": "9.99", "digest": "sha256:" + "b" * 64}
-        self.assertEqual(env.decide(service, {env.REDIS: ahead}), env.AHEAD)
+        self.assertEqual(env.decide(service, {env.IDENTITY: ahead}), env.AHEAD)
         # And what it runs is what it HAS: the pin does not move backward.
-        self.assertEqual(env.running(service, {env.REDIS: ahead}).version, "9.99")
+        self.assertEqual(env.running(service, {env.IDENTITY: ahead}).version, "9.99")
 
     def test_a_digest_that_moved_at_the_same_version_is_out_of_date(self):
-        service = _service(env.REDIS)
+        service = _service(env.IDENTITY)
         moved = {"version": service.image.version, "digest": "sha256:" + "c" * 64}
-        self.assertEqual(env.decide(service, {env.REDIS: moved}), env.OUTDATED)
+        self.assertEqual(env.decide(service, {env.IDENTITY: moved}), env.OUTDATED)
 
     def test_a_record_nobody_can_read_is_no_record(self):
         env.pin_file().parent.mkdir(parents=True, exist_ok=True)
@@ -466,7 +444,7 @@ class TheOffer(FolderCase):
             with self.subTest(answer=answer):
                 self.quiet(env.up, secret=self.phrase, ask=lambda question, answer=answer: answer)
         self.assertFalse(env.pin_file().exists())
-        self.assertFalse(env.state(env.REDIS).exists())
+        self.assertFalse(env.state(env.IDENTITY).exists())
 
     def test_nothing_is_asked_of_the_runtime_without_a_podman(self):
         with mock.patch.object(podman, "run", mock.Mock()) as called:
@@ -527,21 +505,6 @@ class TheUp(FolderCase):
         self.quiet(env.up, secret=self.phrase)
         self.assertIn("reverse_proxy", (env.state("caddy") / "Caddyfile").read_text(encoding="utf-8"))
 
-    def test_the_session_store_lands_with_the_disk_off(self):
-        # O que o Redis roda é o arquivo que o AT escreve, e o que o arquivo faz
-        # é DESLIGAR o disco: `save ""` desliga o RDB e `appendonly no` desliga o
-        # AOF, então o que ele carrega é memória e nada é escrito em pasta
-        # nenhuma. `protected-mode no` é a terceira, e ela existe porque quem o
-        # alcança é o provedor, que é OUTRO container: o modo protegido do Redis
-        # recusa quem chega de fora do laço quando não há senha, e um Redis que
-        # ninguém alcança é um provedor sem registro de sessão.
-        self.runtime()
-        self.quiet(env.up, secret=self.phrase)
-        text = (env.state(env.REDIS) / env.REDIS_CONF).read_text(encoding="utf-8")
-        self.assertIn('save ""', text)
-        self.assertIn("appendonly no", text)
-        self.assertIn("protected-mode no", text)
-
     def test_the_caddyfile_of_the_container_keeps_its_storage_in_the_container(self):
         # §7a: the same Caddy, the same generator — and the one line that is a
         # path and not a decision is where the folder is inside the container.
@@ -570,7 +533,7 @@ class TheUp(FolderCase):
         fake = self.runtime(fails=("pull",))
         outcome, text = self.quiet(env.up, secret=self.phrase)
         self.assertEqual(outcome, env.FAILED)
-        self.assertIn(i18n.tr(_service(env.REDIS).label), text)
+        self.assertIn(i18n.tr(_service(env.IDENTITY).label), text)
         self.assertNotIn("run", fake.verbs())
         self.assertFalse(env.pin_file().exists())
 
@@ -580,7 +543,7 @@ class TheUp(FolderCase):
         ahead = {"version": "9.99", "digest": "sha256:" + "d" * 64}
         env.pin_file().parent.mkdir(parents=True, exist_ok=True)
         env.pin_file().write_text(
-            json.dumps({env.REDIS: ahead}), encoding="utf-8"
+            json.dumps({env.IDENTITY: ahead}), encoding="utf-8"
         )
         fake = self.runtime()
         # `bring_up` and not `up`: a pin already on the folder makes `up` refuse
@@ -589,13 +552,13 @@ class TheUp(FolderCase):
         outcome, text = self.quiet(env.bring_up, secret=self.phrase)
         self.assertEqual(outcome, env.UP)
         self.assertIn(i18n.tr(
-            "services.up.ahead", service=i18n.tr(_service(env.REDIS).label),
-            held="9.99", pin=_service(env.REDIS).image.version,
+            "services.up.ahead", service=i18n.tr(_service(env.IDENTITY).label),
+            held="9.99", pin=_service(env.IDENTITY).image.version,
         ), text)
-        self.assertIn(f"docker.io/library/redis:9.99@{ahead['digest']}",
+        self.assertIn(f"docker.io/authelia/authelia:9.99@{ahead['digest']}",
                       [call[-1] for call in fake.calls])
         # And the pin it leaves behind is the one it is at, still ahead.
-        self.assertEqual(env.held()[env.REDIS]["version"], "9.99")
+        self.assertEqual(env.held()[env.IDENTITY]["version"], "9.99")
 
     def test_the_network_is_created_when_the_machine_does_not_have_it(self):
         fake = self.runtime(fails=("network",))
@@ -638,9 +601,7 @@ class TheUpdate(FolderCase):
         self.assertIn(i18n.tr("services.update.unprovisioned"), text)
         self.assertEqual(fake.calls, [], "`update` touched a never-provisioned folder")
 
-    def test_update_re_pins_and_recreates_every_container_but_the_redis(self):
-        # TASK-172: o Redis é a UMA exceção — ele carrega o registro de sessão
-        # em memória, e recriá-lo aqui derrubaria toda sessão aberta.
+    def test_update_re_pins_and_recreates_every_container(self):
         self.runtime()
         self.quiet(env.up, secret=self.phrase)
         fake = self.runtime()
@@ -648,42 +609,10 @@ class TheUpdate(FolderCase):
         self.assertEqual(outcome, env.UPDATED)
         self.assertIn(i18n.tr("services.update.done"), text)
         for service in env.SERVICES:
-            if service.name == env.REDIS:
-                continue
             with self.subTest(service=service.name):
                 self.assertIn(["rm", "--force", env.container(service.name)],
                               fake.calls)
                 _call(fake, env.container(service.name))
-        self.assertNotIn(["rm", "--force", env.container(env.REDIS)], fake.calls)
-
-    def test_update_leaves_the_redis_container_standing_when_its_pin_did_not_move(self):
-        # A sessão sobrevive porque o container SEGUE de pé — não porque algo o
-        # recria com o mesmo conteúdo, que é impossível: o Redis não guarda nada
-        # em disco.
-        self.runtime()
-        self.quiet(env.up, secret=self.phrase)
-        fake = self.runtime()
-        self.quiet(env.update, secret=self.phrase)
-        self.assertNotIn("run", [call[0] for call in fake.calls
-                                  if env.container(env.REDIS) in call])
-
-    def test_update_recreates_the_redis_when_its_own_pin_moved(self):
-        # A exceção é só enquanto o PIN não muda: um Redis desatualizado é
-        # recriado como qualquer outro serviço, e o registro que se perde com
-        # ele é o preço que `restart` já aceitava para um reinício do PRÓPRIO
-        # Redis.
-        self.runtime()
-        self.quiet(env.up, secret=self.phrase)
-        pins = env.held()
-        pins[env.REDIS] = {"version": "1.0", "digest": "sha256:" + "a" * 64}
-        env.pin_file().write_text(json.dumps(pins), encoding="utf-8")
-        fake = self.runtime()
-        outcome, _ = self.quiet(env.update, secret=self.phrase)
-        self.assertEqual(outcome, env.UPDATED)
-        self.assertIn(["rm", "--force", env.container(env.REDIS)], fake.calls)
-        _call(fake, env.container(env.REDIS))
-        self.assertEqual(env.held()[env.REDIS]["version"],
-                          _service(env.REDIS).image.version)
 
     def test_update_leaves_what_was_already_drawn_exactly_as_it_was(self):
         self.runtime()
@@ -700,16 +629,16 @@ class TheUpdate(FolderCase):
         self.runtime()
         self.quiet(env.up, secret=self.phrase)
         pins = env.held()
-        pins[env.REDIS] = {"version": "9.99", "digest": "sha256:" + "d" * 64}
+        pins[env.IDENTITY] = {"version": "9.99", "digest": "sha256:" + "d" * 64}
         env.pin_file().write_text(json.dumps(pins), encoding="utf-8")
         fake = self.runtime()
         outcome, text = self.quiet(env.update, secret=self.phrase)
         self.assertEqual(outcome, env.UPDATED)
         self.assertIn(i18n.tr(
-            "services.up.ahead", service=i18n.tr(_service(env.REDIS).label),
-            held="9.99", pin=_service(env.REDIS).image.version,
+            "services.up.ahead", service=i18n.tr(_service(env.IDENTITY).label),
+            held="9.99", pin=_service(env.IDENTITY).image.version,
         ), text)
-        self.assertEqual(env.held()[env.REDIS]["version"], "9.99")
+        self.assertEqual(env.held()[env.IDENTITY]["version"], "9.99")
 
     def test_the_words_reach_the_cli_and_map_to_an_exit_code(self):
         self.runtime()
@@ -882,19 +811,14 @@ class TheIdentityProvider(FolderCase):
         self.up()
         self.assertEqual(self.secret(), drawn)
 
-    def test_the_session_registry_is_the_redis_and_not_the_memory(self):
-        # **A linha que esta fatia existe para escrever.** Sem ela o provedor
-        # guarda quem está dentro na PRÓPRIA memória, e um restart do container
-        # — o caso relatado — zera o registro: o cookie segue assinado pelo mesmo
-        # `secret`, e o provedor já não conhece a sessão que ele nomeia. **O host
-        # é o NOME do container na rede**, como o do portão (`GATE_ENV`), porque
-        # é assim que um container alcança o outro; a porta é a do Redis, que não
-        # publica nenhuma.
+    def test_the_session_registry_is_the_providers_memory(self):
+        # O provedor guarda quem está dentro na PRÓPRIA memória — não há
+        # `session.redis` nenhum apontando para um serviço do ambiente: um
+        # restart do container zera o registro, e o cookie segue assinado pelo
+        # mesmo `secret` sem que o provedor ainda conheça a sessão que ele
+        # nomeia (§7b).
         self.up()
-        text = self.conf()
-        self.assertIn("  redis:", text)
-        self.assertIn(f'    host: "{env.container(env.REDIS)}"', text)
-        self.assertIn(f"    port: {env.REDIS_PORT}", text)
+        self.assertNotIn("redis:", self.conf())
 
     def test_the_users_file_carries_the_people_and_the_derivation_the_row_holds(self):
         # §7b's split, written out: who is an actor is AT's, how it is proved
@@ -1207,9 +1131,9 @@ class TheAddress(FolderCase):
         # A container published on an address the machine does not have comes up
         # RUNNING AND WITHOUT ITS PORT — so it is not started at all.
         lost = env.Service(
-            name=env.REDIS,
-            label=f"services.{env.REDIS}.name",
-            image=_service(env.REDIS).image,
+            name="lost",
+            label=f"services.{env.IDENTITY}.name",
+            image=_service(env.IDENTITY).image,
             ports=(env.Port(53, "udp", address=NOBODY),),
         )
         self.runtime()
@@ -1326,7 +1250,7 @@ class TheDown(FolderCase):
             with self.subTest(service=service.name):
                 self.assertIn(["rm", "--force", env.container(service.name)], fake.calls)
         self.assertIn(["network", "rm", env.NETWORK], fake.calls)
-        self.assertIn(i18n.tr("services.down.done", where=env.state(env.REDIS).parent), text)
+        self.assertIn(i18n.tr("services.down.done", where=env.state(env.IDENTITY).parent), text)
 
     def test_the_folder_is_not_touched(self):
         self.runtime()
@@ -1503,7 +1427,7 @@ class TheWebappContainer(FolderCase):
 
     def test_a_service_that_needs_nothing_is_told_nothing(self):
         fake = self.up()
-        for name in (env.REDIS, env.IDENTITY, "caddy"):
+        for name in (env.IDENTITY, "caddy"):
             with self.subTest(service=name):
                 self.assertNotIn("--env", _call(fake, env.container(name)))
 
@@ -1681,12 +1605,6 @@ def _catalogue() -> tuple[tuple[Path, int | None, frozenset[str]], ...]:
         # DIRETÓRIO ali se ele não existisse (`Mount.file`). Não carrega segredo
         # nenhum: o que ele leva é o que o Authelia tem a dizer.
         (identity / env.IDENTITY_NOTIFICATIONS, None, frozenset()),
-        # No secret at all: the image the folder is pinned at and the Redis's own
-        # configuration.
-        # O `redis.conf` do §7b: sem segredo nenhum, como o outro — o que ele
-        # carrega é a decisão do serviço (o disco desligado e o modo protegido
-        # aberto para o provedor, que é OUTRO container).
-        (env.state(env.REDIS) / env.REDIS_CONF, None, frozenset()),
         (env.pin_file(), None, frozenset()),
     )
 

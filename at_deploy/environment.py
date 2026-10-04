@@ -312,29 +312,6 @@ IDENTITY_SECRETS = (IDENTITY_SESSION, IDENTITY_ENCRYPTION, IDENTITY_JWT)
 # covers (§3) and what makes the notice recoverable instead of lost.
 IDENTITY_NOTIFICATIONS = "notifications"
 
-# §7b's session store, and it is a service of its OWN for the one reason it
-# exists. The provider keeps its sessions in MEMORY — `session.redis` is the
-# only store it has besides the memory itself —, so a container restarted alone
-# (a crash, a healthcheck, a stray `podman restart`) takes every open session
-# with it: the cookie the person holds is still signed by the same secret, and
-# the provider no longer knows the session it names. **Reiniciar só o Authelia
-# não pode derrubar o Redis junto**, e é isso que decide a forma: um container
-# separado e não um processo dentro do provedor, porque um Redis que morresse
-# com ele não entregaria nada do que este serviço existe para entregar.
-#
-# **Ele não guarda nada em disco, e o preço está declarado.** O que ele carrega
-# é volátil — sessão — e perder o conteúdo numa reinicialização do PRÓPRIO Redis
-# é aceito: não é o caso que este serviço cobre. **Nenhum volume ou montagem
-# existe para guardar sessão.** A montagem que ele TEM é a do seu arquivo de
-# configuração, que é razão técnica — o mesmo lugar-comum de todo serviço, que
-# sobe lendo um arquivo que o AT escreveu —, e não persistência de dado nenhum.
-#
-# O nome é o PAPEL, como o do provedor e o do notificador, e não a marca.
-REDIS = "redis"
-REDIS_PORT = 6379
-REDIS_CONFIG = "/etc/redis"
-REDIS_CONF = "redis.conf"
-
 # §7a's edge, by the name the manifest gives it — and by the name the deploy's
 # own probes ask the environment for the image they run in (`inside`): it is the
 # one image of the manifest that carries an HTTP client, and it is already
@@ -1217,50 +1194,6 @@ def _quoted(value: str) -> str:
     return f'"{escaped}"'
 
 
-def _redis_conf() -> str:
-    """O Redis do portão — a memória do provedor, fora do provedor (§7b).
-
-    **O que este arquivo faz é DESLIGAR o disco, e é a decisão da fatia.** Um
-    Redis de fábrica tira uma fotografia do banco de tempos em tempos (o RDB) e
-    pode escrever um log de tudo o que mudou (o AOF); neste serviço as duas
-    coisas não têm o que guardar. O que ele carrega é SESSÃO, e a sessão morre
-    com ele por decisão: `save ""` desliga o RDB — a string vazia é como o Redis
-    diz "nunca" —, e `appendonly no` desliga o AOF. Sem os dois, nada é escrito
-    em disco, e nenhuma pasta precisa existir para receber nada.
-
-    **`protected-mode no` é a outra metade, e ela tem preço.** O modo protegido
-    do Redis recusa quem chega de fora do laço quando não há senha — e quem
-    chega aqui é o provedor, que é OUTRO container, com o endereço dele na rede:
-    deixá-lo ligado seria um Redis que ninguém alcança. **A senha não entra**: ela
-    seria mais um valor sorteado, selado na pasta e levado até o `session.redis`
-    do Authelia, e o que compraria é pouco, porque o Redis não publica porta
-    nenhuma (§ `SERVICES`) e quem o alcança é só quem já está na rede `at` — a
-    rede dos containers do próprio AT. **O preço, dito**: a memória das sessões
-    é legível por qualquer container do ambiente, porque é a mesma rede que
-    todos eles já compartilham.
-    """
-    return "\n".join([
-        f"# {tr('services.redis.file.header')}",
-        # As três linhas do serviço, e cada uma tem a razão no docstring.
-        'save ""',
-        "appendonly no",
-        "protected-mode no",
-    ]) + "\n"
-
-
-def _redis_command() -> tuple[str, ...]:
-    """O que o container do Redis RODA: o binário, com o arquivo do AT.
-
-    A imagem oficial roda `redis-server` sem argumento nenhum quando nada é dito,
-    e sem arquivo as configurações são as de fábrica — que é justamente o que
-    este serviço NÃO quer: o disco ligado e a porta fechada a quem chega de
-    fora. Então o caminho entra no argv, e o caminho é o da CONSTANTE e não o da
-    pasta: quem monta a pasta é o `run_argv`, e o container a vê no mesmo lugar
-    em que ela é declarada (`REDIS_CONFIG`).
-    """
-    return ("redis-server", f"{REDIS_CONFIG}/{REDIS_CONF}")
-
-
 def _identity_conf() -> str:
     """Authelia's configuration — the gate, declared by AT (§7b).
 
@@ -1296,16 +1229,15 @@ def _identity_conf() -> str:
     estado, que é a pasta que o backup cobre (§3): um aviso sobrevive a uma pasta
     copiada.
 
-    **A sessão não mora aqui dentro.** O provedor guarda quem está dentro num
-    REGISTRO, e o registro dele é um serviço do ambiente — o `redis:` abaixo o
-    aponta para ele —, e não a memória do container: um restart do container
-    zera a memória, e era isso que jogava a pessoa de volta ao login com o
-    cookie ainda válido na mão. O que a PASTA guarda continua sendo o `secret`
-    que assina o cookie, e o mesmo segredo entre dois restarts mantém de pé toda
-    sessão que estava aberta — e agora o registro que a nomeia também sobrevive,
-    porque quem reinicia é o provedor e não o Redis. **Um `update`, que recria
-    TODOS os containers, derruba as duas coisas**, e é o preço declarado desta
-    fatia: o que ela resolve é o provedor reiniciando sozinho.
+    **A sessão mora na MEMÓRIA do provedor, e é a única coisa que ele tem.**
+    O que a PASTA guarda é o `secret` que assina o cookie, e o mesmo segredo
+    entre dois restarts mantém o cookie válido — mas o registro que ele nomeia
+    não atravessa: um restart do container, de qualquer origem — um crash, uma
+    troca de credencial (`restart`), um `update`, um `podman restart` avulso —
+    zera a memória, e é a pessoa de volta ao login com um cookie que o provedor
+    já não conhece. **Este é o preço aceito, e não um a resolver aqui**: um
+    registro que sobrevivesse a um restart seria um serviço de SESSÃO a mais no
+    ambiente, e o §7 não o tem.
 
     **No OIDC provider is declared, and that is a decision and not an omission.**
     §7b has Authelia speaking OIDC with whoever speaks OIDC and forward-auth
@@ -1346,16 +1278,6 @@ def _identity_conf() -> str:
         # (`caddy.PORTAL`).
         f"    - domain: {site}",
         f"      authelia_url: {portal_url()}",
-        # **A sessão mora no Redis, e é esta linha que a fatia entrega.** Sem
-        # ela o provedor guarda quem está dentro na PRÓPRIA memória, e um
-        # restart do container — o caso relatado — zera o registro: o cookie
-        # segue assinado pelo mesmo `secret`, e o provedor já não conhece a
-        # sessão que ele nomeia. O host é o NOME do container na rede, como o do
-        # portão (`GATE_ENV`), porque é assim que um container alcança o outro —
-        # e a porta é a do Redis, que não publica nenhuma.
-        "  redis:",
-        f"    host: {_quoted(container(REDIS))}",
-        f"    port: {REDIS_PORT}",
         "storage:",
         f"  encryption_key: {_quoted(encryption)}",
         "  local:",
@@ -1483,27 +1405,6 @@ WEBAPP_IMAGE = Image(
 # picks the one this machine is. Moving a pin is a release's act, and it moves
 # forward (§3).
 SERVICES: tuple[Service, ...] = (
-    # §7b's session store, and it comes up FIRST and BEFORE the provider: who
-    # reads it is the provider, and it reads it when it starts — a gate that
-    # comes up with nowhere to keep who is inside is the memory it has always
-    # been. **É a rede `at`**: quem fala com ele é o provedor, e é nesta rede
-    # que os dois se alcançam (§ `REDIS`).
-    #
-    # **Nada é publicado**, e não é omissão: a porta dele é a da REDE, entre
-    # containers, e publicá-la seria abrir a memória das sessões a quem está
-    # fora do ambiente — o contrário do que este serviço existe para fazer.
-    Service(
-        name=REDIS,
-        label=f"services.{REDIS}.name",
-        image=Image(
-            repo="docker.io/library/redis",
-            version="8.8.3",
-            digest="sha256:b2ba68d56e7e7ea88b64f4eaf307bceafc012079f227ed795785f4283a592dc0",
-        ),
-        mounts=(Mount(REDIS_CONFIG),),
-        command=_redis_command,
-        writes=((REDIS_CONF, _redis_conf),),
-    ),
     # §7b's gate, and it comes up BEFORE the Caddy on purpose: the edge asks it
     # about every request, and an edge whose provider is not standing yet
     # answers nothing (the order is the module docstring's).
@@ -2100,18 +2001,6 @@ def _start(service: Service, pins: dict[str, dict], key: bytes | None) -> bool:
             print(tr("services.up.no_address", service=name, address=address))
             return False
 
-    # §7b, TASK-172: o Redis já de pé, no MESMO pin, fica onde está. Recriá-lo
-    # aqui — como `update` recria todo o resto — derrubaria o registro de
-    # sessão que ele guarda em MEMÓRIA (nenhum volume o persiste, e essa regra
-    # não muda), então o preço que `restart` já aceitava para um reinício do
-    # PRÓPRIO Redis só é cobrado quando o PIN dele muda de fato.
-    if (service.name == REDIS and decide(service, pins) == CURRENT
-            and _state_of(service) == RUNNING):
-        _record(service, image)
-        print(tr("services.up.service", service=name, image=image.shown(),
-                 where=where))
-        return True
-
     # Whatever carries that name is AT's and is about to be replaced: the name
     # is the service, and two containers cannot share one.
     podman.run(["rm", "--force", container(service.name)])
@@ -2202,19 +2091,18 @@ def update(ask: Ask | None = None, secret: Ask | None = None) -> str:
     à frente do pin avisa e segue** — a mesma regra de sempre (`decide`,
     `_start`): não é rebaixada.
 
-    **A UMA exceção é o Redis (TASK-172).** Todo o resto é recriado sempre;
-    o container do Redis é o único que `_start` deixa de pé quando o PIN
-    dele não mudou (`decide(service, pins) == CURRENT`) — porque é ele quem
-    guarda, só em MEMÓRIA, o registro de quem está logado (§7b), e recriá-lo
-    aqui apagaria esse registro do mesmo jeito que reiniciar o PRÓPRIO Redis
-    já apagava (`restart`). **O que persiste é a PASTA, e isto não a toca**:
-    o cofre, `App/`, o estado de cada serviço, e o que já foi SORTEADO — o
-    segredo do portão, os três do provedor, a credencial do AT no
-    notificador. `bring_up` sorteia esses valores só quando faltam
-    (`_drawn`, `draw_gate`): uma pasta que já os tem selados não vê nada
-    mudar neles, e é por isso que rodar isto sobre um ambiente de pé não
-    derruba as sessões que já estavam abertas — o segredo que as assina é o
-    mesmo, e o registro que as nomeia sobrevive porque o Redis sobrevive.
+    **Nenhum serviço fica de pé por exceção, e o provedor é um deles.** Ele
+    guarda quem está logado só em MEMÓRIA (§7b), e isto recria o container
+    dele como recria todo o resto — então isto DERRUBA toda sessão que estava
+    aberta, do mesmo jeito que um crash ou um `podman restart` avulso já
+    derrubava (`restart` paga o mesmo preço, por um reinício só do provedor).
+    **O que persiste é a PASTA, e isto não a toca**: o cofre, `App/`, o estado
+    de cada serviço, e o que já foi SORTEADO — o segredo do portão, os três
+    do provedor, a credencial do AT no notificador. `bring_up` sorteia esses
+    valores só quando faltam (`_drawn`, `draw_gate`): uma pasta que já os tem
+    selados não vê nada mudar neles, e é por isso que o cookie de uma sessão
+    aberta antes continua ASSINADO depois — só que o provedor novo não sabe
+    mais o nome que esse cookie carrega, e a pessoa volta ao login.
 
     Uma pasta que NUNCA subiu — sem pin nenhum registrado (`held`) — não tem o
     que `update`: o word certo para ela é `up`, e é o que a recusa diz.
@@ -2372,20 +2260,16 @@ def restart(name: str, secret: Ask | None = None) -> bool:
     not restarted and answers `False`: there is nothing to start again, and what
     brings it up is `up`, with the pull and the pin (`set_credential` says so).
 
-    **The session secret is not re-drawn, and that is what makes this cheap.**
-    It is drawn once and kept (`_drawn`), and it is what seals the session
-    cookie: the same value across a restart keeps every session that was open —
-    **e o registro que as nomeia sobrevive junto**, porque ele não é a memória
-    deste container: é o Redis do §7b (`REDIS`), um serviço do ambiente que este
-    reinício não toca. **É esta fatia que faz a frase ser verdade**: antes dela
-    o provedor guardava o registro na memória, e o reinício que troca uma
-    credencial derrubava, de fato, toda sessão que estava aberta. **Um
-    `update` não derruba mais o Redis** (TASK-172, `_start`): ele recria todo
-    o resto, mas o container do Redis fica de pé quando o PIN dele não
-    mudou, e é assim que o registro atravessa junto com o segredo que o
-    assina. O preço que sobra é o de sempre — reiniciar o PRÓPRIO Redis, um
-    crash ou um `podman restart` avulso dele, leva o registro com ele — e §3
-    declara esse preço onde o ato do operador é registrado.
+    **O segredo de sessão não é re-sorteado, e o cookie continua ASSINADO —
+    mas quem está dentro não.** O provedor guarda o registro de quem está
+    logado só na MEMÓRIA do container (§7b), e este reinício recria o
+    container (`podman rm --force`, a mesma linha que `_start` roda): toda
+    sessão que estava aberta cai, e a pessoa volta ao login com um cookie que
+    o provedor novo não conhece. **Este é o preço que o reinício de uma
+    credencial trocada paga**, e §3 declara esse preço onde o ato do operador
+    é registrado — não há meio de trocar a credencial sem o provedor ler o
+    arquivo de novo, e não há meio de ele ler o arquivo de novo sem recriar o
+    container que o guardava em memória.
 
     **E ele PEDE a Chave Principal, porque ele monta de novo** (`unlock`): o
     `_prepare` reescreve o `configuration.yml` — os três do provedor entram
@@ -2584,7 +2468,7 @@ def status() -> None:
         print(tr("services.status.site",
                  url=caddy_service.address(site_host(), PORT)))
 
-    # The services are a TABLE — always, and that is the point. Six lines of
+    # The services are a TABLE — always, and that is the point. Three lines of
     # one shape in a column are what a person compares, and the drawing is
     # `ui/words.table`'s: the same one the `cli`'s listing uses, so the two
     # artifacts print a table the same way.

@@ -18,7 +18,6 @@ alterações
 ambiente
 analisado
 anytype
-aof
 api
 app
 architected
@@ -65,7 +64,6 @@ github
 gitleaks
 glibc
 headscale
-healthcheck
 horizonte
 hospedado
 hsts
@@ -118,10 +116,8 @@ pyinstaller
 radarr
 rawg
 rbac
-rdb
 realizar
 recomendado
-redis
 resends
 restaurar
 retornar

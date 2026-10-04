@@ -19,14 +19,11 @@ authelia/` carries the release named exactly as the vendor names it
 Authelia's own goreleaser spells it that way and not the way Caddy's does).
 Linux only, for now (§9): Authelia itself ships no darwin or windows asset.
 
-**No Redis, and it is a decision and not an omission.** The container path's
-Authelia keeps its session registry in a Redis container so a lone restart of
-the provider does not drop every open session (`at_deploy/environment.py`,
-`_identity_conf`). The bundle has no second process to keep that registry
-alive across an Authelia restart either, so the trade is accepted instead of
-grown a Redis of its own: a bundle Authelia that restarts drops its sessions,
-and the person logs in again — the same price `up`'s own comment calls out,
-paid once more and on purpose.
+**No Redis, and it is a decision and not an omission.** Authelia keeps its
+session registry in MEMORY on both paths (`at_deploy/environment.py`'s own
+`_identity_conf` pays the same price, TASK-184) — neither carries a second
+process to keep that registry alive across a restart. A bundle Authelia that
+restarts drops its sessions, and the person logs in again.
 
 **The secret is drawn once and kept in PLAINTEXT, beside this folder's own
 binary.** This is the Caddy's own rule (`caddy.gate_file`) and not the

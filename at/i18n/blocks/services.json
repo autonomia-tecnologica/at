@@ -1,8 +1,5 @@
 {
   "pt_BR": {
-    "redis.name": "Redis",
-    "redis.about": "A memória do portão: o registro das sessões, para que reiniciar o Authelia não tire ninguém de dentro",
-    "redis.file.header": "Escrito pelo AT: o Redis do portão. Ele é memória e não guarda nada em disco — o que ele carrega é sessão.",
     "caddy.name": "Caddy",
     "caddy.about": "O TLS do ambiente e a porta por onde o AT é alcançado",
     "identity-provider.name": "Authelia",
@@ -77,9 +74,6 @@
     "status.missing": "não instalado"
   },
   "en_US": {
-    "redis.name": "Redis",
-    "redis.about": "The gate's memory: the session registry, so that restarting Authelia puts nobody out",
-    "redis.file.header": "Written by AT: the gate's Redis. It is memory and keeps nothing on disk — what it carries is sessions.",
     "caddy.name": "Caddy",
     "caddy.about": "The environment's TLS and the port AT is reached on",
     "identity-provider.name": "Authelia",

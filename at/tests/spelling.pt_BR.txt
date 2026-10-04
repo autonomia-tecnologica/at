@@ -18,7 +18,6 @@ agendador
 alpha
 android
 anytype
-aof
 apis
 app
 argv
@@ -142,7 +141,6 @@ hasheado
 hashing
 head
 headscale
-healthcheck
 hello
 heroic
 host
@@ -167,6 +165,7 @@ llm
 llms
 locale
 log
+logado
 login
 m
 mac
@@ -216,9 +215,7 @@ query
 radarr
 rawg
 rbac
-rdb
 re
-redis
 reemitido
 registra
 registrada
@@ -304,4 +301,5 @@ wizard
 worker
 workflows
 world
+zera
 zerados
