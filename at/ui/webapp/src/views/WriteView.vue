@@ -19,8 +19,9 @@
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { api } from "../lib/api";
 import { word } from "../lib/store";
-import { pageReadsOnItsOwn, pageLoaded } from "../lib/views";
+import { pageReadsOnItsOwn, pageLoaded, open, FILE_PREFIX } from "../lib/views";
 import { useWriting, writingState } from "../lib/writing";
+import { downloadFile, isSaveGesture } from "../lib/download";
 import { highlightMarkdown } from "../lib/mdHighlight";
 
 // THIS PAGE READS FOR ITSELF, and the boot has to know: the file's text comes
@@ -88,6 +89,34 @@ function flush(): void {
   void writer.flush();
 }
 
+// CTRL+S SAVES THE OPEN FILE TO THE PERSON'S MACHINE, and it is the SAME file:
+// the bytes come from the raw read door (`lib/download.ts`) and leave whole —
+// nothing decodes or re-encodes them. The edits on the page reach the disk
+// first, so what is downloaded is what is written.
+async function saveLocally(): Promise<void> {
+  await writer.flush();
+  downloadFile(props.path);
+}
+
+// THE KEY IS THE PAGE'S (a `keydown` on the document, not a field's): whoever
+// is writing is inside the `<textarea>`, and a listener on the field alone
+// would miss the gesture the moment focus was anywhere else. `preventDefault`
+// keeps the browser's own "Save Page As" out of the way — the file, not the
+// page, is what Ctrl+S means here.
+function onKeydown(event: KeyboardEvent): void {
+  if (!isSaveGesture(event)) return;
+  event.preventDefault();
+  void saveLocally();
+}
+
+// AN EXIT. This page draws with NO shell — it is meant to open in a tab of its
+// own (`FileView.vue`), which is why nothing here drew a voltar — but a reload,
+// a bookmark or a shared address lands on it with nothing to leave by. The step
+// out is the file's READ page, which the shell draws whole.
+function leaveToRead(): void {
+  open(FILE_PREFIX + props.path, null);
+}
+
 async function load(): Promise<void> {
   try {
     const found = await api<FilePayload>("/api/file?path=" + encodeURIComponent(props.path));
@@ -109,6 +138,7 @@ async function load(): Promise<void> {
 
 onMounted(async () => {
   document.title = props.path;
+  document.addEventListener("keydown", onKeydown);
   await load();
   grow();
   el.value?.focus();
@@ -116,6 +146,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  document.removeEventListener("keydown", onKeydown);
   document.removeEventListener("visibilitychange", flush);
   flush();
   writer.leave();
@@ -140,6 +171,9 @@ onBeforeUnmount(() => {
         <!-- THE THIN STATUS LINE: the save's state, and what is written. Nothing
              else — no button, no chrome. -->
         <footer class="write-status" :class="{ bad: writingState.failed }">
+          <!-- THE WAY OUT (2026-10-05): the page draws with no shell, so it
+               draws its own voltar — the file's read page. -->
+          <button type="button" class="leave" @click="leaveToRead">{{ word("back") }}</button>
           <span class="state">{{ stateWord }}</span>
           <span class="n">{{ chars }} {{ word("chars") }}</span>
           <span class="n">{{ words }} {{ word("words") }}</span>

@@ -1,10 +1,16 @@
 {
   "pt_BR": {
     "no_key": "O Cofre está sem a chave nesta subida — nada pode ser aberto agora.",
-    "unreadable": "A chave desta subida não abre este arquivo."
+    "unreadable": "A chave desta subida não abre este arquivo.",
+    "open_confirm": "Abrir {name}? O conteúdo decifrado vai aparecer na tela.",
+    "save_local": "Salvar cópia",
+    "cannot_show": "Este arquivo não tem visualizador — salve uma cópia e abra no seu computador."
   },
   "en_US": {
     "no_key": "The Strongbox has no key this boot — nothing can be opened right now.",
-    "unreadable": "This boot's key does not open this file."
+    "unreadable": "This boot's key does not open this file.",
+    "open_confirm": "Open {name}? The decrypted content will be shown on screen.",
+    "save_local": "Save a copy",
+    "cannot_show": "This file has no viewer — save a copy and open it on your machine."
   }
 }

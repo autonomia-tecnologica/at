@@ -45,15 +45,12 @@ export const TASKS_KEY = "tasks";
 export const FILES_KEY = "files";
 export const TABLES_KEY = "tables";
 
-// THE STRONGBOX'S OWN SCREEN (TASK-156): a fourth fold, sibling of FILES — it
-// lists what the vigia-driven seal already sealed (`/api/strongbox`), and
-// reads nothing else — the fold has no gesture of its own, because sealing
-// is the Watcher's (`at.core.strongbox`) and never a click on this page.
-// THE KEY IS `strongbox` (2026-10-05), the English identifier the module and
-// the route already wear: the pt_BR screen still says "Cofre" and the en_US
-// one says "Strongbox", but the word is the CATALOG's and the key is the
-// code's — the address moved to `/strongbox` with the key.
-export const STRONGBOX_KEY = "strongbox";
+// O COFRE NÃO TEM CHAVE DE VIEW (2026-10-05). Ele teve uma tela própria
+// (TASK-156) — a quarta dobra, irmã de Arquivos —, e ela saiu: era a mesma
+// árvore do painel numa página só, "sem necessidade de existir". O que o
+// Cofre oferece de verdade, abrir um arquivo selado, não é uma view — é uma
+// camada por cima da tela que estiver de pé (`StrongboxViewer`,
+// `lib/strongbox`), então a quarta dobra é só uma dobra.
 
 // The interpreter's chat, which is a view of the page like the others — and one
 // the page does not OFFER when the interpreter is off (`store.interpreter`),
@@ -289,7 +286,15 @@ function note(): void {
   const { view, id } = nav.current;
   if (view.startsWith(FILE_PREFIX)) lastFileView = view;
   else if (view.startsWith(PROJECT_PREFIX) || view === ORPHANS_KEY || view === store.types.task) lastTaskView = view;
-  remember(view, id, nav.path);
+  // THE WRITE PAGE IS NOT A PLACE THE SHELL RETURNS TO (2026-10-05). It draws
+  // with NO shell at all — no panel, no topo, no voltar (`WriteView.vue`,
+  // `App.vue`'s `isWrite`) — and it is meant to be opened in a tab of its own.
+  // But `localStorage` is shared across tabs: a visit to the write tab would
+  // remember `write:<path>` as "the last place", and the next reload of the
+  // MAIN tab would open the shell-less write page with no way out. The address
+  // still follows the page (`/write/<path>`, a reload or a bookmark lands
+  // there); only the REMEMBER is skipped.
+  if (!view.startsWith(WRITE_PREFIX)) remember(view, id, nav.path);
   const path = addressOf(view, id);
   if (location.pathname !== path) history.replaceState(null, "", path);
 }

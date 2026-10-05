@@ -16,10 +16,9 @@ import "./styles/app.css";
 import "./lib/offline";
 // A INSCRIÇÃO NO PUSH (Web Push) — a notificação do PWA, que substituiu o ntfy.
 import { register as registerPush } from "./lib/push";
-import { registerView, registerType, TASKS_KEY, FILES_KEY, STRONGBOX_KEY, TABLES_KEY, BOARD_KEY, WRITE_PREFIX } from "./lib/views";
+import { registerView, registerType, TASKS_KEY, FILES_KEY, TABLES_KEY, BOARD_KEY, WRITE_PREFIX } from "./lib/views";
 import TasksView from "./views/TasksView.vue";
 import FilesView from "./views/FilesView.vue";
-import StrongboxView from "./views/StrongboxView.vue";
 import TablesView from "./views/TablesView.vue";
 import BoardView from "./views/BoardView.vue";
 import SettingsView from "./views/SettingsView.vue";
@@ -44,9 +43,10 @@ registerView(TASKS_KEY, TasksView);
 // THE OTHER TWO SECTIONS, one line each — which is the whole point of the key
 // being the fold's id.
 registerView(FILES_KEY, FilesView);
-// THE STRONGBOX'S OWN SCREEN (TASK-156), a fourth line for the same reason:
-// the fold's id is the view's address (`/strongbox`).
-registerView(STRONGBOX_KEY, StrongboxView);
+// O COFRE NÃO TEM TELA PRÓPRIA (2026-10-05): a seção era uma página só com a
+// mesma árvore do painel, e "sem necessidade de existir". O que ele oferece —
+// o leitor de um arquivo selado — abre por cima de QUALQUER tela
+// (`StrongboxViewer`), então a seção é só a dobra que cresce no painel.
 registerView(TABLES_KEY, TablesView);
 // THE BOARD: not a section's own fold, but the door right after ORPHANS in the
 // same tree (`Sidebar.vue`) — a view like any other, with an address of its

@@ -7,12 +7,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#ffffff">
 <title>AT</title>
 <!-- O PWA de verdade (TASK-162, fatia 2/2): o manifesto é o que deixa
      "instalar" fazer sentido, e o Service Worker (main.ts) é quem responde
      com o avião ligado — os dois de raiz, e nenhum dos dois bundlado pelo
      Vite (por isso fora do marcador do look abaixo, que é só CSS e o boot.js). -->
 <link rel="manifest" href="/manifest.webmanifest">
+<!-- O ÍCONE DE INSTALAÇÃO. O manifesto carrega os PNG que o Chrome exige para
+     oferecer "Instalar app" (192 e 512); este é o do iOS, que não lê o
+     manifesto e pega a imagem por aqui. Ambos são do mesmo logo (`icons/`). -->
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <!-- AT'S LOOK, and it comes from the SERVER, on the same origin: the
      THEME, then the choice (before the first paint), then the BASE.
 

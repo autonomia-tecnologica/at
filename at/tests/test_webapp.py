@@ -520,10 +520,17 @@ class TheDoors(ServerCase):
             self.assertIsNone(webapp.served(webapp.ICONS, name), name)
 
     def test_an_icon_that_exists_is_served(self):
-        name = sorted(entry.name for entry in webapp.ICONS.iterdir())[0]
-        status, headers, _ = self.get(f"/icons/{name}")
+        status, headers, _ = self.get("/icons/at.svg")
         self.assertEqual(status, 200)
         self.assertEqual(headers["Content-Type"], "image/svg+xml")
+
+    def test_a_png_icon_is_served_for_the_manifest_install(self):
+        # The manifest's own icons are PNG (`manifest.webmanifest`) — the shape
+        # Android reads to offer "Install app", and a shape the server serves
+        # through the same `/icons/` door as the SVG look.
+        status, headers, _ = self.get("/icons/icon-192.png")
+        self.assertEqual(status, 200)
+        self.assertEqual(headers["Content-Type"], "image/png")
 
     def test_a_hosted_font_is_served_with_its_revision(self):
         status, headers, body = self.get("/vendor/font-nunito-sans-400")
@@ -1035,6 +1042,7 @@ class TheStrongboxOpenDoor(ServerCase):
         path = self.seal("photo.png", clear)
         status, opened = self.post("/api/strongbox/open", {"path": path})
         self.assertEqual(status, 200)
+        self.assertEqual(opened["kind"], "image")
         url = opened["url"]
         self.assertTrue(url.startswith("/api/strongbox/download?token="))
 
@@ -1049,6 +1057,23 @@ class TheStrongboxOpenDoor(ServerCase):
         # already spent by the first `take`, and the Vault keeps no copy of it.
         status, _, _ = self.get(url)
         self.assertEqual(status, 404)
+
+    def test_the_open_answers_the_kind_the_page_draws(self):
+        # The kind travels WITH the address, so the page knows how to draw the
+        # file before it walks the one-time link (`strongbox.look`).
+        text = self.seal("nota.txt", "uma nota com acento".encode("utf-8"))
+        status, opened = self.post("/api/strongbox/open", {"path": text})
+        self.assertEqual(status, 200)
+        self.assertEqual(opened["kind"], "text")
+
+        pdf = self.seal("doc.pdf", b"%PDF-1.7\n")
+        _, opened = self.post("/api/strongbox/open", {"path": pdf})
+        self.assertEqual(opened["kind"], "pdf")
+
+        # A `.txt` that is not valid UTF-8 has no text viewer — it downloads.
+        broken = self.seal("quebrado.txt", b"caf\xe9")
+        _, opened = self.post("/api/strongbox/open", {"path": broken})
+        self.assertEqual(opened["kind"], "other")
 
     def test_an_unlisted_extension_downloads_as_an_attachment(self):
         # `.html` is the case the person raised: opening this as a document
@@ -1069,15 +1094,16 @@ class TheStrongboxOpenDoor(ServerCase):
         self.assertEqual(headers["Content-Type"], "application/octet-stream")
         self.assertIn("attachment", headers["Content-Disposition"])
 
-    def test_a_token_from_a_key_that_no_longer_opens_it_answers_500(self):
+    def test_a_file_the_key_does_not_open_is_refused_at_the_door(self):
         # The folder was sealed with a DIFFERENT key than this boot's — the
-        # same answer a wrong key gets at any door of the Vault.
+        # same answer a wrong key gets at any door of the Vault. The door is
+        # the OPEN now: it reads the clear once to answer the KIND, so a file
+        # the key does not open is refused BEFORE any link exists — no overlay
+        # ever opens on an error.
         path = self.seal("photo.png", b"bytes", key=b"o" * 32)
-        status, opened = self.post("/api/strongbox/open", {"path": path})
-        self.assertEqual(status, 200)
-        status, _, raw = self.get(opened["url"])
+        status, answer = self.post("/api/strongbox/open", {"path": path})
         self.assertEqual(status, 500)
-        self.assertEqual(json.loads(raw)["error"], i18n.tr("strongbox.unreadable"))
+        self.assertEqual(answer["error"], i18n.tr("strongbox.unreadable"))
 
     def test_an_unknown_token_answers_not_found(self):
         status, _, _ = self.get("/api/strongbox/download?token=never-existed")

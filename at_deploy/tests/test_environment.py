@@ -886,9 +886,12 @@ class TheGate(FolderCase):
         self.assertIn(f"header_up {caddy.GATE_HEADER} {caddy.gate_secret()}", text)
         # And the ask comes first: the Caddy finds out who is calling before it
         # hands anything to the WebApp. O proxy do WebApp é o do NOME na rede —
-        # o do portal é o outro, e ele vem antes de tudo (`PORTAL`).
+        # o do portal e o do PWA são os outros, e cada um vem antes no SEU
+        # caminho (`PORTAL`, `/manifest.webmanifest`), então a pergunta vem
+        # antes do proxy DENTRO do `handle` de sempre.
         behind = f"reverse_proxy {env.container(env.WEBAPP)}:{env.WEBAPP_PORT}"
-        self.assertLess(text.index("forward_auth"), text.index(behind))
+        gated = text[text.index("\thandle {"):]
+        self.assertLess(gated.index("forward_auth"), gated.index(behind))
         self.assertIn(
             f"forward_auth {env.container(env.IDENTITY)}:{env.IDENTITY_PORT}", text)
         self.assertIn(f"uri {caddy.AUTH_URI}", text)

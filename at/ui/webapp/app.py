@@ -549,7 +549,7 @@ PAGE_WORDS = (
     # The context menu's own items (TASK-120, fatia 1): what the row's menu
     # offers when the engine says `edit` is legal.
     "edit",
-    "back", "write", "saving",
+    "back", "confirm_cancel", "confirm_ok", "write", "saving",
     "saved", "save_failed", "chars", "words", "language_name", "language_flag",
     "ft_text", "ft_markdown", "ft_python", "ft_json", "ft_yaml", "ft_shell",
     "ft_dockerfile", "ft_binary", "ft_other",
@@ -580,6 +580,9 @@ PAGE_WORDS = (
     # com a marca de quais portas alcançam cada ação do catálogo.
     "actions", "actions_hint", "modifier_flag", "modifier_argument",
     "reach_cli", "reach_web", "reach_llm", "reach_orphan", "reach_none_known",
+    # O LEITOR DO COFRE (TASK-155): a confirmação antes de abrir, o botão de
+    # salvar uma cópia, e o que se diz de um arquivo que não tem visualizador.
+    "open_confirm", "save_local", "cannot_show",
     # The entrance's, because the entrance comes back when a session dies under
     # a running page (the 401 hook) — and it would come back wordless.
     *SESSION_WORDS,
@@ -1490,7 +1493,11 @@ class Handler(BaseHTTPRequestHandler):
             self._static(ASSETS, "manifest.webmanifest")
             return
 
-        if head == "icons" and len(rest) == 1 and rest[0].endswith(".svg"):
+        # `.svg` for the look, `.png` for the launcher: the manifest's own
+        # install icons have to be PNG (`_CONTENT_TYPES` serves them as
+        # `image/png`), and Android offers no "Install app" without a 192 and a
+        # 512 — an SVG icon is a picture, not a WebAPK icon.
+        if head == "icons" and len(rest) == 1 and rest[0].endswith((".svg", ".png")):
             self._static(ICONS, rest[0])
             return
 
@@ -1884,13 +1891,19 @@ class Handler(BaseHTTPRequestHandler):
         self._json({"path": target.name})
 
     def _post_strongbox_open(self) -> None:
-        """`{path}` → `{url}`: a one-time link to the clear of `path`.
+        """`{path}` → `{url, kind}`: a one-time link to the clear of `path`,
+        and HOW the page should draw it.
 
-        **What this route hands back is an ADDRESS, never the content.**
-        Whoever confirmed they want the file open gets somewhere to navigate
-        to — the page sends the browser there (`window.location`, a link,
-        whatever the gesture is), and it is that navigation that spends the
-        link (`_get_strongbox_download`). Nothing here decrypts anything.
+        **What this route hands back is an ADDRESS, never the content.** Whoever
+        confirmed they want the file open gets somewhere to navigate to — the
+        page sends the browser there (`window.location`, a link, whatever the
+        gesture is), and it is that navigation that spends the link
+        (`_get_strongbox_download`). What this route DOES read is the clear,
+        once, to answer `kind` (`strongbox.look`) — the page has to know whether
+        it is drawing an image, a PDF, text or none of them BEFORE it walks the
+        link, and the kind is not a fact of the `.enc`'s name. Reading it here
+        also means a file the key does not open is refused at the DOOR, before
+        any overlay opens on an error.
 
         `path` has to be exactly one of the names `strongbox.listed()` hands
         back — the SAME listing the page already reads to draw the tree: a
@@ -1904,11 +1917,20 @@ class Handler(BaseHTTPRequestHandler):
         if not isinstance(path, str) or path not in strongbox.listed():
             self._json({"error": "bad request"}, 400)
             return
-        if keys.strongbox_key() is None:
+        key = keys.strongbox_key()
+        if key is None:
             self._json({"error": i18n.tr("strongbox.no_key")}, 503)
             return
+        clear = strongbox.open_file(strongbox.folder() / path, key)
+        if clear is None:
+            self._json({"error": i18n.tr("strongbox.unreadable")}, 500)
+            return
+        name = Path(path).name.removesuffix(strongbox.SUFFIX)
         token = self.server.strongbox_links.open(path)
-        self._json({"url": f"/api/strongbox/download?token={token}"})
+        self._json({
+            "url": f"/api/strongbox/download?token={token}",
+            "kind": strongbox.look(clear, name),
+        })
 
     def _get_strongbox_download(self, token: str) -> None:
         """The clear `token` opens — once, straight into the response, never

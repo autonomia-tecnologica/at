@@ -17,7 +17,7 @@
 
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { store, word } from "../lib/store";
-import { CHAT_KEY, NLU_UI_ENABLED, TASKS_KEY, FILES_KEY, STRONGBOX_KEY, TABLES_KEY, BOARD_KEY, SETTINGS_KEY, isCurrent, open, countOf } from "../lib/views";
+import { CHAT_KEY, NLU_UI_ENABLED, TASKS_KEY, FILES_KEY, TABLES_KEY, BOARD_KEY, SETTINGS_KEY, isCurrent, open, countOf } from "../lib/views";
 import { byName } from "../lib/order";
 import { toggleNav } from "../lib/nav";
 import Foldable from "./Foldable.vue";
@@ -122,9 +122,11 @@ onUnmounted(() => {
     <Foldable id="files" :label="word('files')" box-class="branch" :view="FILES_KEY">
       <FileTree />
     </Foldable>
-    <!-- THE STRONGBOX, right after Arquivos — a fourth fold, the same shape as
-         the third (TASK-156): what it lists is what the vigia already sealed. -->
-    <Foldable id="strongbox" :label="word('strongbox')" box-class="branch" :view="STRONGBOX_KEY">
+    <!-- THE STRONGBOX, right after Arquivos — a fourth fold, and ONLY a fold
+         now (2026-10-05): the section's own screen is gone, so the head opens
+         and closes the tree and goes nowhere. What it lists is what the vigia
+         already sealed, and a file opens over WHATEVER screen is up. -->
+    <Foldable id="strongbox" :label="word('strongbox')" box-class="branch">
       <StrongboxTree />
     </Foldable>
     <Foldable id="tables" :label="word('tables')" box-class="kinds" :view="TABLES_KEY">

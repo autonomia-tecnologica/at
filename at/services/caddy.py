@@ -484,15 +484,18 @@ def caddyfile(host: str, port: int, backend: int, gate: str | None = None,
     secret but no provider would otherwise ask a question with no answer and
     answer every request with a failure.
 
-    **With the ask comes the portal's way around it, and they are one block.**
-    The provider answers every unauthenticated request with a redirect to its
+    **With the ask come the two ways around it, and they are one block.** The
+    provider answers every unauthenticated request with a redirect to its
     portal, so the portal itself cannot be asked about — asking is what sends
-    the browser there. The two `handle`s below are the whole of it: the portal's
+    the browser there; and the PWA's manifest and icons cannot be asked about
+    either, because the browser fetches the manifest WITHOUT credentials and
+    never reaches the provider through the ask. The three `handle`s below are
+    the whole of it: the PWA's paths go STRAIGHT to the WebApp, the portal's
     path goes STRAIGHT to the provider, and everything else goes through the ask
     and then to the WebApp. Caddy sorts a matched `handle` before the bare one,
-    which is the fallback, so the portal's path wins where it matches and the
+    which is the fallback, so the matched paths win where they match and the
     rest of the site is untouched. The `handle`s exist only where there is a
-    gate to go around: a folder with no provider writes neither.
+    gate to go around: a folder with no provider writes none of them.
 
     `storage` is a path and not a decision (§7a), and it is the line that
     differs between the two paths because the folder is the one that does: the
@@ -543,12 +546,24 @@ def caddyfile(host: str, port: int, backend: int, gate: str | None = None,
         "\ttls internal",
     ]
     if gated:
-        # The portal comes FIRST and OUTSIDE the ask: it is where the gate sends
-        # the browser, so asking the provider about it is what closes the loop
-        # (`PORTAL`). The matcher names the path with and without the trailing
-        # slash — the redirect lands on `/authelia/`, but a person typing the
-        # path without it must not be asked about it either.
+        # O UTILITÁRIO DO PWA É PÚBLICO, E TEM QUE SER. O Chrome busca o
+        # MANIFESTO sem credenciais (`credentials: omit`, o que a spec manda),
+        # e atrás do ask ele nunca chega — sem manifesto lido não existe
+        # "Instalar app", por mais ícones que haja. São dois caminhos, e só
+        # dois: o manifesto e os ícones — metadado e imagem, nenhum dado da
+        # pasta, e nada que a lista de `.enc` ou o claro de um arquivo toque.
+        # Vão direto ao WebApp, sem o `forward_auth` e sem o cabeçalho do
+        # portão: quem os serve é o `_static`, que não pergunta nada.
         lines += [
+            "\t@pwa path /manifest.webmanifest /icons/*",
+            "\thandle @pwa {",
+            f"\t\treverse_proxy {behind}:{backend}",
+            "\t}",
+            # The portal comes FIRST and OUTSIDE the ask: it is where the gate sends
+            # the browser, so asking the provider about it is what closes the loop
+            # (`PORTAL`). The matcher names the path with and without the trailing
+            # slash — the redirect lands on `/authelia/`, but a person typing the
+            # path without it must not be asked about it either.
             f"\t@portal path {PORTAL} {PORTAL}/*",
             "\thandle @portal {",
             f"\t\treverse_proxy {auth}",

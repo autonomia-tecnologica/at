@@ -8,16 +8,21 @@
 // row can say about it. The folder that path names is the same hierarchy
 // `Arquivos` reads; this draws it the same way.
 //
-// A SEALED FILE IS A LEAF AND NOT A DOOR: it carries a NAME and nothing else —
-// no bucket (what selar hides is exactly a file's shape), no icon and no click,
-// because there is still no reader on this page (TASK-155). The row keeps the
-// tree's own box so the column reads as one, and opens nothing.
+// A SEALED FILE IS NOW A DOOR (TASK-155): the row carries a NAME — no bucket,
+// because what selar hides is exactly a file's shape — and OPENING it, after a
+// confirmation, draws the clear in the viewer over the page (`StrongboxViewer`,
+// `lib/strongbox`). The row keeps the tree's own box so the column reads as one.
 //
-// THE CLOTH IS THE ONLY THING THAT VARIES (`variant`): the panel's tree and the
-// section's page are the same nesting and different dressing — `base.css` names
-// the two (`nav .entry.leaf`, `.tree-leaf`, `.tree-dir`).
+// THERE IS ONE CLOTH NOW (2026-10-05): the section's own page is gone, so the
+// only tree is the panel's — `base.css` names it (`nav .entry.leaf`). The
+// reader opens over ANY screen, which is why the section needed no screen of
+// its own.
 import { computed } from "vue";
 import Foldable from "./Foldable.vue";
+import { word } from "../lib/store";
+import { toast } from "../lib/toast";
+import { ask } from "../lib/confirm";
+import { openSealed } from "../lib/strongbox";
 
 export interface StrongboxNode {
   dirs: Map<string, StrongboxNode>;
@@ -28,9 +33,8 @@ const props = withDefaults(
   defineProps<{
     node: StrongboxNode;
     prefix?: string;
-    variant?: "nav" | "page";
   }>(),
-  { prefix: "", variant: "nav" },
+  { prefix: "" },
 );
 
 const byPath = (a: string, b: string): number =>
@@ -40,22 +44,36 @@ const dirs = computed(() => [...props.node.dirs.entries()].sort((a, b) => byPath
 const files = computed(() => [...props.node.files].sort(byPath));
 
 const join = (name: string): string => (props.prefix ? props.prefix + "/" + name : name);
+
+// ONE CLICK OPENS THE FILE, after a CONFIRMATION: the clear leaves the Vault
+// for the screen, and that is a thing the person says yes to. The path is the
+// full one the listing hands back (`strongbox.listed`), what the server's door
+// checks membership against — not a name this tree made up.
+async function openLeaf(full: string): Promise<void> {
+  const name = full.split("/").pop()!.replace(/\.enc$/, "");
+  if (!(await ask(word("open_confirm").replace("{name}", name)))) return;
+  try {
+    await openSealed(full);
+  } catch (err) {
+    toast((err as Error).message);
+  }
+}
 </script>
 
 <template>
   <template v-for="[name, child] in dirs" :key="name">
     <!-- A FOLDER INSIDE THE TREE IS A `Foldable`, born collapsed and remembering
          what was opened — the same disclosure the file tree uses, one level
-         down (`head-class="node"` in the panel, `tree-dir` on the page). -->
-    <Foldable :id="`strongbox:${variant}:${join(name)}`" :label="name"
-              :box-class="variant === 'nav' ? 'branch' : 'tree-branch'"
-              :head-class="variant === 'nav' ? 'node' : 'tree-dir'">
-      <StrongboxTreeNode :node="child" :prefix="join(name)" :variant="variant" />
+         down (`head-class="node"`). -->
+    <Foldable :id="`strongbox:${join(name)}`" :label="name"
+              box-class="branch" head-class="node">
+      <StrongboxTreeNode :node="child" :prefix="join(name)" />
     </Foldable>
   </template>
-  <!-- THE NAMES THAT ENDED HERE, each the tail of its own path. -->
-  <div v-for="name in files" :key="name"
-       :class="variant === 'nav' ? 'file entry leaf' : 'tree-leaf'">
+  <!-- THE NAMES THAT ENDED HERE, each the tail of its own path — and each one a
+       DOOR (TASK-155): the row opens the file in the viewer, over the page. -->
+  <button v-for="name in files" :key="name" type="button"
+          class="file entry leaf" @click="openLeaf(join(name))">
     <span>{{ name }}</span>
-  </div>
+  </button>
 </template>

@@ -63,6 +63,38 @@ class TheSeal(unittest.TestCase):
         self.assertFalse(strongbox.fingerprinted(self.folder / "nao-existe.enc"))
 
 
+class TheLook(unittest.TestCase):
+    """`look`: COMO o visualizador desenha o claro — e a promessa do Ctrl+S.
+
+    Texto exige UTF-8 VÁLIDO, porque é isso que faz o que a pessoa salva
+    localmente ser o arquivo decifrado byte a byte. O que não decodifica não é
+    texto: baixa.
+    """
+
+    def test_an_image_suffix_is_an_image(self):
+        self.assertEqual(strongbox.look(b"\x89PNG", "foto.png"), "image")
+        self.assertEqual(strongbox.look(b"qualquer", "FOTO.JPEG"), "image")
+
+    def test_a_pdf_suffix_is_a_pdf(self):
+        self.assertEqual(strongbox.look(b"%PDF-1.7", "doc.pdf"), "pdf")
+
+    def test_valid_utf8_is_text_whatever_the_name(self):
+        clear = "uma nota, com acento e tudo".encode("utf-8")
+        self.assertEqual(strongbox.look(clear, "nota.md"), "text")
+        self.assertEqual(strongbox.look(clear, "sem-extensao"), "text")
+
+    def test_bytes_that_are_not_utf8_are_not_text(self):
+        # Latin-1 `é` is a single 0xE9 byte, and it is not a valid UTF-8
+        # sequence — decoding it would substitute U+FFFD and break byte for byte.
+        self.assertEqual(strongbox.look(b"caf\xe9", "nota.txt"), "other")
+
+    def test_a_nul_byte_is_not_text(self):
+        self.assertEqual(strongbox.look(b"a\x00b", "nota.txt"), "other")
+
+    def test_a_binary_with_a_text_suffix_is_not_text(self):
+        self.assertEqual(strongbox.look(b"\xff\xfe\x00\x01", "dados.txt"), "other")
+
+
 class TheWatcher(unittest.TestCase):
     """`Watcher.tick`: a escrita que PAROU vira `.enc` sozinha."""
 

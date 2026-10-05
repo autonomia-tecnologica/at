@@ -340,8 +340,11 @@ class TheCaddyfile(FolderCase):
         self.assertIn(f"\t\t\turi {caddy.AUTH_URI}", text)
         self.assertIn("\t\t\tcopy_headers Remote-User Remote-Groups Remote-Name "
                       "Remote-Email", text)
-        self.assertLess(text.index("forward_auth"),
-                        text.index("reverse_proxy 127.0.0.1:41234"))
+        # A pergunta precede o proxy do WebApp DENTRO do `handle` de sempre —
+        # os `handle`s do PWA e do portal vêm antes, cada um no seu caminho.
+        gated = text[text.index("\thandle {"):]
+        self.assertLess(gated.index("forward_auth"),
+                        gated.index("reverse_proxy 127.0.0.1:41234"))
 
     def test_the_portal_is_routed_straight_to_the_provider(self):
         # **O defeito que isto tranca, medido contra o container**: o portão
@@ -358,8 +361,11 @@ class TheCaddyfile(FolderCase):
         # O portal vem ANTES da pergunta, e o proxy do WebApp depois dela.
         self.assertLess(text.index("handle @portal"),
                         text.index("forward_auth"))
-        self.assertLess(text.index("forward_auth"),
-                        text.index("reverse_proxy 127.0.0.1:41234"))
+        # A pergunta precede o proxy do WebApp DENTRO do `handle` de sempre —
+        # os `handle`s do PWA e do portal vêm antes, cada um no seu caminho.
+        gated = text[text.index("\thandle {"):]
+        self.assertLess(gated.index("forward_auth"),
+                        gated.index("reverse_proxy 127.0.0.1:41234"))
 
     def test_the_portal_is_never_asked_about(self):
         # O que fecha o laço não é só a ORDEM: é que a pergunta não esteja no
@@ -461,16 +467,33 @@ class TheAdaptedGate(FolderCase):
         text = caddy.caddyfile("localhost", 12399, 41234,
                                gate="segredo-sorteado", auth="127.0.0.1:9091")
         routes = self.routes(text)
-        self.assertEqual(len(routes), 2)
+        self.assertEqual(len(routes), 3)
         self.assertEqual(routes[0]["match"],
+                         [{"path": ["/manifest.webmanifest", "/icons/*"]}])
+        self.assertEqual(routes[1]["match"],
                          [{"path": [caddy.PORTAL, f"{caddy.PORTAL}/*"]}])
-        self.assertIsNone(routes[1].get("match"),
+        self.assertIsNone(routes[2].get("match"),
                           "o resto do site tem de ser o fallback, e não um caminho")
+
+    def test_the_pwa_utility_goes_straight_to_the_webapp(self):
+        # O manifesto e os ícones, SEM a pergunta: o Chrome busca o manifesto
+        # sem credenciais (`credentials: omit`) e atrás do ask ele nunca chega
+        # — sem manifesto não há "Instalar app". A rota deles vai direto ao
+        # WebApp, e o que se lê aqui é o que o Caddy ENTENDEU.
+        text = caddy.caddyfile("localhost", 12399, 41234,
+                               gate="segredo-sorteado", auth="127.0.0.1:9091")
+        pwa = self.routes(text)[0]
+        self.assertEqual(pwa["match"],
+                         [{"path": ["/manifest.webmanifest", "/icons/*"]}])
+        drawn = json.dumps(pwa)
+        self.assertIn("127.0.0.1:41234", drawn)
+        self.assertNotIn(caddy.AUTH_URI, drawn)
+        self.assertNotIn("127.0.0.1:9091", drawn)
 
     def test_the_portal_goes_to_the_provider_and_the_rest_through_the_ask(self):
         text = caddy.caddyfile("localhost", 12399, 41234,
                                gate="segredo-sorteado", auth="127.0.0.1:9091")
-        portal, rest = self.routes(text)
+        _, portal, rest = self.routes(text)
         portal_proxy = portal["handle"][0]["routes"][0]["handle"][0]
         self.assertEqual(portal_proxy["upstreams"], [{"dial": "127.0.0.1:9091"}])
         # O resto do site pergunta ao provedor (o `uri` da pergunta, e o mesmo

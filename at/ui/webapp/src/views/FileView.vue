@@ -7,9 +7,10 @@
 // A markdown file is PROSE (`bucket` — the server's word, not the extension), any
 // other text is text as it is, and a file that is not text says why instead.
 
-import { ref, watch, onMounted, watchEffect } from "vue";
+import { ref, watch, onMounted, onBeforeUnmount, watchEffect } from "vue";
 import { api } from "../lib/api";
-import { nav, setTrail, addressOf, WRITE_PREFIX } from "../lib/views";
+import { nav, setTrail, open, WRITE_PREFIX } from "../lib/views";
+import { downloadFile, isSaveGesture } from "../lib/download";
 import ProseField from "../components/ProseField.vue";
 
 interface FilePayload {
@@ -37,19 +38,37 @@ async function load(): Promise<void> {
   }
 }
 
-// ONE CLICK, ANYWHERE ON THE FILE, OPENS THE WRITE TAB (2026-10-05): there is
-// no button to find and no mode to leave — the whole read surface IS the
-// door, for the one case there is anything behind it (a writable text file).
-// A NEW TAB, not a mode swapped in here: `WriteView.vue` owns the whole
-// window for exactly the reason a phone, mid-trip, is not the place to also
-// keep the folder open.
+// ONE CLICK, ANYWHERE ON THE FILE, OPENS THE WRITE PAGE (2026-10-05): there is
+// no button to find and no mode to leave — the whole read surface IS the door,
+// for the one case there is anything behind it (a writable text file).
+//
+// IN THIS WINDOW, AND NOT A TAB OF ITS OWN (2026-10-05, a pedido). It opened in
+// a new tab, and that is exactly what the COFRE's reader must not do: on a
+// phone the app is a PWA with no tabs, so a `window.open` throws the person out
+// to the system browser — the same reason the sealed file opens over the page.
+// The write page draws with no shell and keeps its OWN voltar (`WriteView.vue`),
+// so opening it here is a page change with a way back, not a trap.
 function openWrite(): void {
   if (!payload.value || !payload.value.writable || payload.value.text === null) return;
-  window.open(addressOf(WRITE_PREFIX + payload.value.path, null), "_blank");
+  open(WRITE_PREFIX + payload.value.path, null);
+}
+
+// CTRL+S SAVES THE OPEN FILE TO THE PERSON'S MACHINE, byte a byte — the same
+// promise the write page makes (`lib/download.ts`): what leaves is the file on
+// the disk, not a re-encoding of it.
+function onKeydown(event: KeyboardEvent): void {
+  if (!isSaveGesture(event)) return;
+  event.preventDefault();
+  downloadFile(props.path);
 }
 
 onMounted(() => {
+  document.addEventListener("keydown", onKeydown);
   void load();
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener("keydown", onKeydown);
 });
 
 // THE PATH IS THE TRAIL: `Arquivos › Notas › uma nota.md`. Every folder it

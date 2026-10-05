@@ -73,6 +73,48 @@ def sealed_name(path: Path) -> Path:
     return path.with_name(path.name + SUFFIX)
 
 
+# AS EXTENSÕES QUE UM VISUALIZADOR DESENHA INLINE (TASK-155, fatia de leitura).
+# Imagem e PDF são o que o navegador já sabe mostrar sozinho numa aba ou num
+# quadro; um nome fora daqui não ganha visualizador — BAIXA.
+IMAGE_SUFFIX = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico", ".avif")
+PDF_SUFFIX = (".pdf",)
+
+# O teto, em bytes, do que este produto mostra como TEXTO na tela. Um arquivo
+# maior que isto ainda abre — só não abre como texto: o que não é texto é o que
+# baixa. O número é o do `prose` (`MAX_FILE_BYTES`) porque a pergunta é a mesma
+# — "cabe num campo que uma pessoa lê?" —, e duas respostas para ela derivam.
+MAX_TEXT_BYTES = 256 * 1024
+
+
+def look(clear: bytes, name: str) -> str:
+    """Como desenhar `clear`: `"image"`, `"pdf"`, `"text"` ou `"other"`.
+
+    A pergunta é da PÁGINA e não do Cofre — o que entra em `Cofre/` sela
+    sozinho, e este módulo nunca desenhou nada. Mas é o Cofre que tem o claro
+    em mãos, e é ele que o entrega já classificado para a página não precisar
+    de uma segunda regra (nem baixar duas vezes o mesmo arquivo para saber o
+    que ele é).
+
+    **Texto exige UTF-8 VÁLIDO, e é isso que sustenta a promessa do Ctrl+S**:
+    o que a pessoa salva localmente é o arquivo decifrado, byte a byte — e um
+    decode que substituísse bytes inválidos por U+FFFD quebraria essa promessa
+    na primeira gravação. O que não decodifica como UTF-8 não é texto aqui;
+    baixa.
+    """
+    suffix = Path(name).suffix.lower()
+    if suffix in IMAGE_SUFFIX:
+        return "image"
+    if suffix in PDF_SUFFIX:
+        return "pdf"
+    if len(clear) <= MAX_TEXT_BYTES and b"\0" not in clear[:4096]:
+        try:
+            clear.decode("utf-8")
+        except UnicodeDecodeError:
+            return "other"
+        return "text"
+    return "other"
+
+
 def listed() -> list[str]:
     """Todo `.enc` de `Cofre/`, como caminhos POSIX relativos a ela, em ordem
     de nome (TASK-156) — a mesma forma de `at.prose.listing.listed`.

@@ -15,6 +15,8 @@ import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { api, whenRefused } from "./lib/api";
 import { enter, lost, session, signedIn } from "./lib/session";
 import { store, applyState, label, word, tableOf } from "./lib/store";
+import { ensureRenderer } from "./lib/markdown";
+import { ensureFonts } from "./lib/fonts";
 import { nav, ui, isKind, viewFor, open, markPage, poke, resumePath, setTrail, armPageLoad, pageReading, pageLoad, CHAT_KEY, NLU_UI_ENABLED, ORPHANS_KEY, BOARD_KEY, FILE_PREFIX, PROJECT_PREFIX, WRITE_PREFIX } from "./lib/views";
 import { applyTheme, watchSystem } from "./lib/theme";
 import { applyMotion } from "./lib/motion";
@@ -24,6 +26,7 @@ import { applyNav, navRail, toggleNav } from "./lib/nav";
 import { watchNarrow } from "./lib/breakpoint";
 import { loadPrefs, SELECT_KEY } from "./lib/prefs";
 import { popState, closePop } from "./lib/pop";
+import { viewer } from "./lib/strongbox";
 import { balloonOn } from "./lib/balloon";
 import { shortcutsState, arm, disarm, act, isTyping } from "./lib/shortcuts";
 import Sidebar from "./components/Sidebar.vue";
@@ -31,6 +34,8 @@ import Popover from "./components/Popover.vue";
 import Balloon from "./components/Balloon.vue";
 import Toast from "./components/Toast.vue";
 import Hint from "./components/Hint.vue";
+import ConfirmDialog from "./components/ConfirmDialog.vue";
+import StrongboxViewer from "./components/StrongboxViewer.vue";
 import KindView from "./views/KindView.vue";
 import LoginView from "./views/LoginView.vue";
 import SetupView from "./views/SetupView.vue";
@@ -151,7 +156,11 @@ function showSaved(): void {
   }
   const saved = loadPrefs(SELECT_KEY);
   const view = String(saved.view || "");
-  if (view && offered(view)) {
+  // A `write:` DOES NOT RESUME (2026-10-05): it is shell-less, and a browser
+  // that already saved one as "the last place" before this rule existed would
+  // otherwise reopen the stranded write page. The address still opens it
+  // (`/write/<path>`); the REMEMBERED one is ignored.
+  if (view && !view.startsWith(WRITE_PREFIX) && offered(view)) {
     markPage(view, saved.id);
     resumePath(saved.back); // the saved path comes back: the step back lands where it did
     return;
@@ -184,10 +193,15 @@ function toggle(): void {
 }
 
 // THE SECOND STEP OF THE GATE. `signedIn` is the server saying WHO IS IN, and it
-// arrives with the words of the entrance — but NOT with the TABLES and not with
-// the page, which come in `/api/state` one answer later. Drawing the shell in
-// between paints it full-size and empty and fills it a moment after: the flash
-// `js/boot.js` kills one screen earlier. So the gate waits for the state too.
+// arrives with the words of the entrance — but not with the TABLES, not with
+// the page, not with the MARKDOWN RENDERER and not with the TEN SELF-HOSTED
+// FACES, which land one or more answers later (`/api/state`, `/vendor/marked`,
+// `lib/fonts.ts`). Drawing the shell in between paints it full-size and empty,
+// fills it with raw notation that reformats a moment after, or — the one
+// `font-display: block` alone does not reach — leaves a plain cell blank while
+// a badge two columns over already reads fine, because the two wear different
+// WEIGHTS of the same family and nothing says the files land together. So the
+// gate waits for ALL of it.
 const booted = ref(false);
 
 // AND THEN A BEAT, BEFORE ANY OF IT IS SHOWN. The shell mounting is not the
@@ -235,7 +249,16 @@ async function load(): Promise<void> {
   booted.value = false;
   armPageLoad();
   try {
-    applyState(await api<Record<string, unknown>>("/api/state"));
+    // The renderer and the ten faces ride ALONGSIDE the state fetch, not after
+    // it: none of the three have anything to say to each other, and waiting
+    // for one before asking for the next would only make the gate stay shut
+    // longer than it has to.
+    const [state] = await Promise.all([
+      api<Record<string, unknown>>("/api/state"),
+      ensureRenderer(),
+      ensureFonts(),
+    ]);
+    applyState(state);
     applyTheme();
     showSaved();
   } catch (err) {
@@ -450,6 +473,14 @@ defineExpose({ refresh });
     <!-- THE ESC-ARMED SHORTCUTS' HINT (TASK-126): a layer of its own too,
          mounted once so it stays reachable from `lib/shortcuts.ts` alone. -->
     <Hint />
+    <!-- A PERGUNTA DA CASA (2026-10-05): o "sim ou não" desenhado pelo produto
+         em vez da caixa do navegador — `lib/confirm.ts` é a porta, e este é o
+         único lugar que a monta. -->
+    <ConfirmDialog />
+    <!-- O LEITOR DO COFRE (TASK-155): uma camada por cima de tudo, montada
+         uma vez só aqui — o arquivo selado abre por qualquer lugar (o painel,
+         a seção), e quem o desenha não pertence a nenhum dos dois. -->
+    <StrongboxViewer v-if="viewer.file" />
     </template>
   </template>
   <!-- A PRIMEIRA SUBIDA vem ANTES da entrada, e as duas são o mesmo `else`:

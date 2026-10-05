@@ -21,7 +21,7 @@
 
    A THEME DECLARES ONLY `:root`. This file declares every selector. */
 
-/* ===== the typefaces (2026-09-28, +2 on 2026-10-03) =====================
+/* ===== the typefaces (2026-09-28, +2 on 2026-10-03, swap→block on 2026-10-05)
    Nunito Sans for the body (`--font-sans`) and Quicksand for anything that
    has to carry weight on the page (`--font-display`: the brand mark, a
    page's own title, a stat's big number) — `at`'s own two.
@@ -31,27 +31,33 @@
    `--font-display` only, never the body — so they ride the door as a third
    and fourth NAME, not a new slot. Both were already vendored (pinned,
    installed) for `base-shared.css`'s five; migrating the two themes that
-   actually used them cost nothing but the two rules below. */
+   actually used them cost nothing but the two rules below.
+
+   `font-display: block` AND NOT `swap`: these files are HOSTED, same origin,
+   a few KB each — the fallback-then-swap `swap` buys is a flash with nothing
+   underneath it, the same FOUC the boot gate (`App.vue`, `booted`) exists to
+   kill one layer up. `block` holds the glyph invisible for its short window
+   instead of painting it twice. */
 @font-face { font-family: "Nunito Sans"; font-style: normal; font-weight: 400;
-             font-display: swap; src: url("/vendor/font-nunito-sans-400") format("woff2"); }
+             font-display: block; src: url("/vendor/font-nunito-sans-400") format("woff2"); }
 @font-face { font-family: "Nunito Sans"; font-style: normal; font-weight: 600;
-             font-display: swap; src: url("/vendor/font-nunito-sans-600") format("woff2"); }
+             font-display: block; src: url("/vendor/font-nunito-sans-600") format("woff2"); }
 @font-face { font-family: "Nunito Sans"; font-style: normal; font-weight: 700;
-             font-display: swap; src: url("/vendor/font-nunito-sans-700") format("woff2"); }
+             font-display: block; src: url("/vendor/font-nunito-sans-700") format("woff2"); }
 @font-face { font-family: "Nunito Sans"; font-style: normal; font-weight: 800;
-             font-display: swap; src: url("/vendor/font-nunito-sans-800") format("woff2"); }
+             font-display: block; src: url("/vendor/font-nunito-sans-800") format("woff2"); }
 @font-face { font-family: "Quicksand"; font-style: normal; font-weight: 500;
-             font-display: swap; src: url("/vendor/font-quicksand-500") format("woff2"); }
+             font-display: block; src: url("/vendor/font-quicksand-500") format("woff2"); }
 @font-face { font-family: "Quicksand"; font-style: normal; font-weight: 600;
-             font-display: swap; src: url("/vendor/font-quicksand-600") format("woff2"); }
+             font-display: block; src: url("/vendor/font-quicksand-600") format("woff2"); }
 @font-face { font-family: "Quicksand"; font-style: normal; font-weight: 700;
-             font-display: swap; src: url("/vendor/font-quicksand-700") format("woff2"); }
+             font-display: block; src: url("/vendor/font-quicksand-700") format("woff2"); }
 @font-face { font-family: "UnifrakturMaguntia"; font-style: normal; font-weight: 400;
-             font-display: swap; src: url("/vendor/font-unifrakturmaguntia") format("woff2"); }
+             font-display: block; src: url("/vendor/font-unifrakturmaguntia") format("woff2"); }
 @font-face { font-family: "Silkscreen"; font-style: normal; font-weight: 400;
-             font-display: swap; src: url("/vendor/font-silkscreen-400") format("woff2"); }
+             font-display: block; src: url("/vendor/font-silkscreen-400") format("woff2"); }
 @font-face { font-family: "Silkscreen"; font-style: normal; font-weight: 700;
-             font-display: swap; src: url("/vendor/font-silkscreen-700") format("woff2"); }
+             font-display: block; src: url("/vendor/font-silkscreen-700") format("woff2"); }
 
 * { box-sizing: border-box; }
 /* THE HAND, EVERYWHERE SOMETHING IS CLICKABLE — a DESIGN SYSTEM rule and not a
@@ -61,10 +67,30 @@
    that promise is kept, for every button the app has or ever grows — the
    per-selector `cursor: pointer` rules elsewhere in this file predate it and
    are harmless now, not load-bearing. */
-button:not(:disabled), [role="button"] { cursor: pointer; }
+button:not(:disabled), [role="button"] {
+  cursor: pointer;
+  /* UM BOTÃO NÃO É UM PARÁGRAFO (2026-10-05). No celular, um toque ou um
+     segurar sobre um controle que carrega um RÓTULO começa uma SELEÇÃO DE
+     TEXTO — e a seleção do AT é o azul da marca (`::selection`, abaixo), então
+     o botão saía com um quadrado azul e as alças de seleção, "parecendo coisa
+     de href". O rótulo de um controle não é conteúdo para selecionar: é o NOME
+     do controle. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
 
 body {
-  margin: 0; height: 100vh; display: flex;
+  margin: 0; display: flex;
+  /* A VIEWPORT VISÍVEL, E NÃO A GRANDE (2026-10-05). `100vh` no celular conta a
+     altura com a barra de URL ESCONDIDA: o corpo fica mais alto que a área
+     visível, a PÁGINA ganha rolagem própria por cima da rolagem de `#body`, e
+     ao rolar o topo sai da tela enquanto o `.menu-toggle` (fixo) fica — o
+     ícone "anda com a tela" em vez de morar na barra. `100dvh` é a altura que
+     se VÊ agora; o `vh` fica antes como o fallback de quem não o conhece. */
+  height: 100vh;
+  height: 100dvh;
   background: var(--surface-0); color: var(--ink-1);
   font-family: var(--font-sans);
   font-size: var(--text-base); line-height: var(--leading-normal);
@@ -939,11 +965,13 @@ pre.text { overflow-wrap: break-word; white-space: pre-wrap; word-break: break-w
    strip. `min-width: 0` is the other half: it lets the item sit below its
    content's own minimum instead of refusing to. */
 .write-page {
-  flex: 1; min-width: 0; height: 100vh; overflow-y: auto;
+  flex: 1; min-width: 0; overflow-y: auto;
+  height: 100vh;
+  height: 100dvh;
   background: var(--surface-1); color: var(--ink-1);
 }
 .write-page .text { margin: var(--space-6); white-space: pre-wrap; }
-.write-page-stage { position: relative; min-height: 100vh; padding-bottom: var(--space-7); box-sizing: border-box; }
+.write-page-stage { position: relative; min-height: 100vh; min-height: 100dvh; padding-bottom: var(--space-7); box-sizing: border-box; }
 .write-highlight, .write-page-field {
   margin: 0; border: 0; box-sizing: border-box; width: 100%;
   padding: var(--space-5);
@@ -985,6 +1013,13 @@ pre.text { overflow-wrap: break-word; white-space: pre-wrap; word-break: break-w
 .write-status .state { margin-inline-end: auto; }
 .write-status.bad .state { color: var(--danger); }
 .write-status .n { font-variant-numeric: tabular-nums; }
+/* A SAÍDA, na barra: a página não desenha casca, então desenha o próprio
+   voltar — o `Voltar` do rodapé leva à página de leitura do mesmo arquivo. */
+.write-status .leave {
+  border: 0; background: none; padding: 0; cursor: pointer;
+  font: inherit; color: var(--accent);
+}
+.write-status .leave:hover { text-decoration: underline; }
 
 .page-actions { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;
                 margin: var(--space-6) var(--space-6) 0; padding: 0; }
@@ -1226,28 +1261,6 @@ a.ref:hover, a.url:hover { border-bottom-color: currentColor; background: var(--
 .row b { font-weight: var(--weight-semibold); }
 .row .n { margin-left: auto; color: var(--ink-3); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
 
-/* ===== the Strongbox page's tree ========================================
-   THE SAME NESTING THE PANEL DRAWS, DRESSED FOR A PAGE (2026-10-05). A folder
-   is a `Foldable` head (`.tree-dir`) and its box is `.tree-branch`, where the
-   indent lives; a sealed file is `.tree-leaf`. The `.row` above is for a list
-   read top to bottom — this is for one WALKED, one folder deep at a time. */
-.tree { display: flex; flex-direction: column; gap: 2px; }
-.tree .tree-dir {
-  display: flex; align-items: center; gap: var(--space-2); width: 100%;
-  padding: var(--space-3) var(--space-4); background: var(--surface-1);
-  border: 1px solid var(--border-soft); border-radius: var(--r-md);
-  color: var(--ink-1); font: inherit; font-size: var(--text-base); text-align: left;
-  cursor: pointer;
-  transition: background-color var(--dur-fast) var(--ease-out);
-}
-.tree .tree-dir:hover { background: var(--surface-2); }
-.tree .tree-dir .t { font-weight: var(--weight-medium); }
-.tree-branch { padding-left: var(--space-5); }
-.tree-leaf {
-  padding: var(--space-2) var(--space-5); color: var(--ink-2);
-  font-size: var(--text-sm); overflow-wrap: break-word;
-}
-
 /* O TOM DE CADA BALDE, e ele é do DESENHO e não do dado: os quatro baldes são
    uma lista fechada do motor (`prose.bucket`), como os status de uma tarefa —
    e o que a cor diz é de que espécie é o arquivo, não quanto ele vale. */
@@ -1482,3 +1495,39 @@ html.no-motion *, html.no-motion *::before, html.no-motion *::after {
   /* A MARKDOWN TABLE DOES NOT STACK — it keeps its rows and scrolls sideways. */
   .md-table { display: block; overflow-x: auto; }
 }
+
+/* ===== o LEITOR DO COFRE (TASK-155) ====================================
+   O claro por cima da página: uma camada que ocupa a tela, com a barra
+   (Voltar · nome · salvar) e o corpo. Imagem e PDF são desenhados pelo
+   navegador; o texto rola; o que não tem visualizador só oferece o salvar.
+   `z-index` acima do resto (as pops ficam abaixo), porque enquanto ele está
+   aberto é ele a tela. */
+.strongbox-viewer {
+  position: fixed; inset: 0; z-index: 40;
+  display: flex; flex-direction: column;
+  background: var(--surface-1); color: var(--ink-1);
+}
+.strongbox-viewer .viewer-bar {
+  display: flex; align-items: center; gap: var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--border-soft);
+}
+.strongbox-viewer .viewer-name {
+  margin-inline-end: auto; font-weight: var(--weight-semibold);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.strongbox-viewer .viewer-bar button {
+  border: 0; background: none; padding: 0; cursor: pointer;
+  font: inherit; color: var(--accent);
+}
+.strongbox-viewer .viewer-bar button:hover { text-decoration: underline; }
+.strongbox-viewer .viewer-body { flex: 1; min-height: 0; overflow: auto; display: flex; }
+.strongbox-viewer .viewer-text {
+  margin: 0; padding: var(--space-5); width: 100%;
+  white-space: pre-wrap; overflow-wrap: break-word;
+  font: inherit; font-size: var(--text-md); line-height: var(--leading-normal);
+}
+.strongbox-viewer .viewer-image { margin: auto; max-width: 100%; max-height: 100%; object-fit: contain; }
+.strongbox-viewer .viewer-pdf { border: 0; width: 100%; height: 100%; }
+.strongbox-viewer .viewer-none { margin: auto; padding: var(--space-5); text-align: center; color: var(--ink-2); }
+.strongbox-viewer .viewer-error { margin: auto; color: var(--danger); }
