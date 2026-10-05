@@ -15,7 +15,7 @@ shell closes.
 **No vendoring happens here, and no network either.** Authelia already
 travels vendorized inside this very binary (`at.services.authelia`, TASK-177)
 — the same tarball `at-cli webapp --include-caddy` already unpacks into
-`App/authelia/` the first time it runs. `host up` calls the exact same
+`App/services/authelia/` the first time it runs. `host up` calls the exact same
 `ensure()`, so a folder that already ran the bundle once has nothing left to
 unpack, and one that never did gets it unpacked here instead.
 

@@ -1101,6 +1101,91 @@ def _project_desc_limit(ask: Ask | None) -> list[Report]:
     return _extend(PROJECT_DESC_LIMIT)
 
 
+# Os serviços que o caminho HOSPEDADO espalhava pela raiz de `App/`, e a casa
+# única que o §7 lhes dá: `App/services/<serviço>/`, a mesma dos serviços do
+# caminho container. O Caddy já forçava o encontro — `caddy.directory()` e
+# `environment.state("caddy")` são a MESMA pasta, e o arquivo do portão que os
+# dois desenham vive nela —, e esta migração é o resto deles alcançando a casa.
+SERVICES: tuple[str, ...] = ("caddy", "authelia", "push", "gitleaks")
+
+# O que é um ARQUIVO e não uma pasta: o cache do Jev, que era `App/jev-cache.json`
+# e passa a ser `App/services/jev/cache.json` (o Jev é uma API externa, e ainda
+# assim é um serviço — §4).
+JEV_CACHE = ("jev-cache.json", "jev", "cache.json")
+
+
+def _merge_into(target: Path, source: Path) -> list[str]:
+    """Move o que `source` tem para dentro de `target`, sem sobrescrever nada.
+
+    Devolve os nomes das entradas que o destino JÁ carregava e que por isso
+    ficaram onde estavam. Uma pasta que chegou primeiro — o `App/services/caddy/`
+    de quem andou pelo caminho container — mantém o que tinha, e só os nomes que
+    ela não carrega é que vão. Depois de mover, a pasta de origem se apaga; se
+    sobrou alguma entrada recusada, ela fica (e o motivo é dito), porque apagar a
+    origem com algo dentro seria perder o que o destino recusou.
+    """
+    target.mkdir(parents=True, exist_ok=True)
+    kept: list[str] = []
+    for entry in sorted(source.iterdir()):
+        destination = target / entry.name
+        if destination.exists():
+            kept.append(entry.name)
+            continue
+        entry.rename(destination)
+    try:
+        source.rmdir()
+    except OSError:
+        pass
+    return kept
+
+
+def _services_under_their_house(ask: Ask | None) -> list[Report]:
+    """Migração vinte e seis: cada serviço passa a morar sob `App/services/` (§7).
+
+    O caminho hospedado espalhava os serviços dele pela raiz de `App/` — o
+    Caddy, o Authelia, o push, o gitleaks e o cache do Jev —, enquanto o caminho
+    container já guardava TUDO sob `App/services/<serviço>/`. São os MESMOS
+    serviços, e a casa é uma só: esta migração traz os do caminho hospedado para
+    dentro dela, e a raiz de `App/` fica só com o que não é serviço (os ajustes,
+    os contadores, o registro da instalação, o carimbo das migrações, o idioma).
+
+    Não pergunta: é a pasta do PRÓPRIO AT (§3, migration) — nada de fora aponta
+    para `App/caddy/` —, e o movimento nunca sobrescreve: um destino que já
+    existe fica com o que tinha, e o que sobrou é dito. O Authelia que está DE
+    PÉ não é reiniciado por isto: ele guarda os caminhos antigos, e quem o
+    reinicia é a pessoa, depois.
+    """
+    house = paths.services_dir()
+    root = paths.app_dir()
+    moved: list[str] = []
+    collided: list[str] = []
+    for name in SERVICES:
+        source = root / name
+        if not source.is_dir():
+            continue
+        kept = _merge_into(house / name, source)
+        moved.append(name)
+        collided += [f"{name}/{entry}" for entry in kept]
+    loose, jev_folder, jev_name = JEV_CACHE
+    source = root / loose
+    if source.is_file():
+        destination = house / jev_folder / jev_name
+        if destination.exists():
+            collided.append(loose)
+        else:
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            source.rename(destination)
+            moved.append(loose)
+    report: list[Report] = []
+    if moved:
+        report.append(("boot.migration.services.moved", {"names": ", ".join(moved)}))
+    if collided:
+        report.append(("boot.migration.services.collision", {"names": ", ".join(collided)}))
+    if not report:
+        report.append(("boot.migration.services.kept", {}))
+    return report
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, _legacy_instance),
     Migration(2, _capitalized_instance),
@@ -1127,6 +1212,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(23, _silent_additions),
     Migration(24, _project_desc_limit),
     Migration(25, _strongbox_permission_renamed),
+    Migration(26, _services_under_their_house),
 )
 
 

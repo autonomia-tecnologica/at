@@ -144,7 +144,7 @@ def witness() -> tuple[str, str] | None:
     route is going to make.
 
     No witness is a real answer, and `to_gate` says it in its own words: the
-    secret is the folder's own (`App/caddy/gate`, drawn at installation, §7b),
+    secret is the folder's own (`App/services/caddy/gate`, drawn at installation, §7b),
     and the name has to be a row AT can resolve (`actors.asserted`).
 
     **O segredo é lido como o CONTAINER o lê** (`environment.gate_opened`), e

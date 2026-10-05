@@ -114,22 +114,24 @@ Harness/                  what governs whoever works in the folder — named, st
 Vault/                    what seals on its own — named, still empty
 ```
 
-That listing is what a folder is born with. One folder arrives later, and only if
-the person asks for it: `App/caddy/` — the Caddy unpacked out of the binary, the
-stamp that says which platform it serves, the Caddyfile AT generates, and the
-Caddy's own storage, its local authority among the rest. It is written by
-`at-cli webapp` (without `--no-caddy`) and by nothing else (§6, §12), and it lives in
-`App/` for the reason §3 gives: what was extracted to run belongs to the folder,
-so a copied folder comes back with the Caddy and the certificates it had.
+That listing is what a folder is born with. `App/services/` arrives later, and only
+if a service is asked for — but it is the house of EVERY service now, on BOTH paths,
+and each one lives in `App/services/<service>/`. The Caddy is the first: `at-cli
+webapp` (without `--no-caddy`) unpacks `App/services/caddy/` — the Caddy out of the
+binary, the stamp that says which platform it serves, the Caddyfile AT generates,
+and the Caddy's own storage, its local authority among the rest (§6, §12) —, and it
+lives under `App/` for the reason §3 gives: what was extracted to run belongs to the
+folder, so a copied folder comes back with the Caddy and the certificates it had.
+The hosted path's Authelia, the push, the gitleaks and the Jev cache live there too.
 
-The other folder that arrives only when it is asked for is `App/services/`, the
-state of the container path's services (§7a). What writes in it is `at-deploy up`: `images.json` records the pin this folder IS at, per service, and each
-service's own folder carries what it reads — `caddy/Caddyfile`, the Caddyfile
-AT generates, with the storage inside the container. Nothing comes up without Podman: AT checks whether it
-exists and, if it does not, offers the two ways out — install it, or continue on
-the hosted path. The images are pinned in version and hashing, as §3 demands, so
-the folder's pin and the binary's are compared on every `up` — and an instance
-AHEAD of the binary's pin warns and proceeds, because it is not downgraded.
+On the container path it is `at-deploy up` that writes in `App/services/`: `images.json`
+records the pin this folder IS at, per service, and each service's own folder carries
+what it reads — `caddy/Caddyfile`, the Caddyfile AT generates, with the storage inside
+the container. Nothing comes up without Podman: AT checks whether it exists and, if it
+does not, offers the two ways out — install it, or continue on the hosted path. The
+images are pinned in version and hashing, as §3 demands, so the folder's pin and the
+binary's are compared on every `up` — and an instance AHEAD of the binary's pin warns
+and proceeds, because it is not downgraded.
 
 The note at the root is the one file a folder carries for whoever works inside it:
 it says what the folder is, what it holds and how to reach the rest, and it cites

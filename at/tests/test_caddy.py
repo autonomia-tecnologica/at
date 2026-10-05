@@ -137,14 +137,14 @@ class ThePayload(unittest.TestCase):
 
 
 class TheUnpacking(FolderCase):
-    """`App/caddy/` — the binary, the stamp, and the rule that it happens once."""
+    """`App/services/caddy/` — the binary, the stamp, and the rule that it happens once."""
 
     def stamp(self) -> Path:
         return caddy.stamp_file()
 
     def test_it_lands_in_the_instance_folder(self):
         where = caddy.ensure()
-        self.assertEqual(where, self.root / "App" / "caddy" / "caddy")
+        self.assertEqual(where, self.root / "App" / "services" / "caddy" / "caddy")
         self.assertTrue(where.is_file())
         self.assertTrue(os.access(where, os.X_OK), "the unpacked Caddy must be runnable")
         self.assertEqual(self.stamp().read_text(encoding="utf-8").strip(),
@@ -239,8 +239,8 @@ class TheSecret(FolderCase):
         self.assertEqual(caddy.gate_secret(), drawn)
 
     def test_an_envelope_the_container_path_left_is_not_a_plain_secret(self):
-        # Os dois caminhos escrevem no MESMO `App/caddy/gate` e
-        # `App/caddy/notify` (`at_deploy.environment.gate_file`/
+        # Os dois caminhos escrevem no MESMO `App/services/caddy/gate` e
+        # `App/services/caddy/notify` (`at_deploy.environment.gate_file`/
         # `notify_gate_file`, a mesma `caddy.directory()`), e o container
         # SELA o que escreve ali. Uma pasta que trocou de caminho carrega o
         # envelope do outro — lê-lo como senha em claro é o que fazia o

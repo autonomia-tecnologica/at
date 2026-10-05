@@ -36,7 +36,7 @@ two lines are too — the one case this sentence still describes.
 
 **The secret is READ here, and DRAWN in TWO different places now (TASK-177,
 2026-10-02).** `gate_secret` and `gate_file` are below because the file is
-this Caddy's own (`App/caddy/gate`), and both artifacts read them: `at-cli`
+this Caddy's own (`App/services/caddy/gate`), and both artifacts read them: `at-cli`
 refuses the identity that arrives without it, and the WebApp's check is what
 turns the M2M into a door. The container path's draw is `at-deploy`'s
 installation act (§7b, item 27, sealed by the Chave Principal because that
@@ -68,8 +68,8 @@ from at.i18n import tr
 # `<sys._MEIPASS>/at/services/caddy.py`, which is where `at-cli.spec` lands it.
 PAYLOAD = Path(__file__).resolve().parents[1] / "vendor" / "caddy"
 
-# The instance folder the unpacking goes to: `App/caddy/`. It is `App/` and not
-# the person's folders because it is what AT wrote to run, and it holds the
+# The instance folder the unpacking goes to: `App/services/caddy/` — the house
+# of the services (§7), shared with the container path's Caddy. It is `App/` and not
 # four things the Caddy needs to live inside the folder: the binary, the stamp
 # that says which platform it serves, the Caddyfile AT generates, and the
 # Caddy's OWN storage — its local CA and the certificates issued against it —
@@ -202,8 +202,8 @@ def payload() -> Path | None:
 
 
 def directory() -> Path:
-    """`App/caddy/` — where everything this file writes lives."""
-    return paths.app_dir() / FOLDER
+    """`App/services/caddy/` — where everything this file writes lives."""
+    return paths.service_dir(FOLDER)
 
 
 def binary() -> Path:
@@ -231,9 +231,9 @@ def storage_dir() -> Path:
 # A autoridade que emite o certificado do AT, dentro de um storage do Caddy.
 # **É um caminho do PRÓPRIO Caddy e não uma decisão de AT** — `tls internal`
 # emite por nome contra uma CA local, e ele a guarda aqui —, então ele é escrito
-# uma vez só, e os dois caminhos o leem do seu storage: o hospedado, que é o
-# `App/caddy/storage`, e o container, cujo `/data` é montado da pasta de estado
-# do mesmo serviço (§7a).
+# uma vez só, e os dois caminhos o leem do MESMO storage: `App/services/caddy/
+# storage` é a pasta do serviço, o hospedado a lê direto e o container a monta
+# em `/data` (§7a).
 #
 # **Ele é a metade PÚBLICA da CA local**, e é por isso que ele é nomeado: um
 # cliente que valida TLS contra a CA pública recusa o certificado do AT, que é
@@ -245,13 +245,13 @@ AUTHORITY = Path("pki") / "authorities" / "local" / "root.crt"
 
 
 def authority_file(root: Path | None = None) -> Path:
-    """A CA local do Caddy, dentro de um storage — o de dentro da pasta por
-    padrão, e o do container quando quem chama passa a raiz dele.
+    """A CA local do Caddy, dentro de um storage — o da pasta por padrão, e o do
+    container quando quem chama passa a raiz dele.
 
-    A raiz é um parâmetro porque são DOIS storages com o mesmo conteúdo: o
-    caminho hospedado usa o do `App/caddy`, e o container usa a pasta de estado
-    do serviço (§7a). O que os dois têm em comum é o que o Caddy escreve dentro,
-    e é isso que este arquivo nomeia.
+    A raiz é um parâmetro porque o container alcança a MESMA pasta do serviço por
+    outro caminho — de dentro dele o storage é `/data`, e no host é
+    `state(CADDY)/storage` (§7a). O que os dois têm em comum é o que o Caddy
+    escreve dentro, e é isso que este arquivo nomeia.
     """
     return (root or storage_dir()) / AUTHORITY
 
@@ -269,10 +269,10 @@ CERTIFICATES = Path("certificates") / "local"
 def certificates_dir(root: Path | None = None) -> Path:
     """O diretório dos certificados POR NOME, dentro de um storage.
 
-    A raiz é um parâmetro pela mesma razão de `authority_file`: são DOIS storages
-    com o mesmo conteúdo, e o que eles têm em comum é o que o Caddy escreve
-    dentro. Cada entrada é um nome servido, e é o NOME que diz se ele ainda
-    serve (`environment.names`).
+    A raiz é um parâmetro pela mesma razão de `authority_file`: o container lê a
+    mesma pasta de serviço por outro caminho (`/data` de dentro dele), e o que os
+    dois têm em comum é o que o Caddy escreve dentro. Cada entrada é um nome
+    servido, e é o NOME que diz se ele ainda serve (`environment.names`).
     """
     return (root or storage_dir()) / CERTIFICATES
 
@@ -325,7 +325,7 @@ def ensure() -> Path | None:
 
 
 def gate_file() -> Path:
-    """`App/caddy/gate` — the secret's file, drawn by whoever installs the gate.
+    """`App/services/caddy/gate` — the secret's file, drawn by whoever installs the gate.
 
     É o arquivo da PASTA, e dois desenhos escrevem nele — nunca os dois na
     mesma pasta. O container path o sela (`at_deploy.environment.draw_gate`,
@@ -346,7 +346,7 @@ def _drawn_in_the_clear(where: Path) -> str:
 
     **O nome do arquivo é o mesmo que o caminho container usa**
     (`at_deploy.environment.gate_file`, na mesma `caddy.directory()`), porque
-    os dois são a mesma pasta `App/caddy/` do mesmo Caddy — só que o caminho
+    os dois são a mesma pasta `App/services/caddy/` do mesmo Caddy — só que o caminho
     container SELA o que escreve ali (item 50), e o que está selado não é o
     valor em claro que este caminho lê. Um envelope encontrado aqui não é um
     valor já sorteado — é o OUTRO caminho, e o sorteio é o mesmo de um arquivo
@@ -368,7 +368,7 @@ def draw_gate() -> str:
     """O segredo do portão, sorteado uma vez e mantido em CLARO (§6, bundle).
 
     **Este é o desenho do CAMINHO HOSPEDADO**, e não o do item 50: a pasta
-    deste Caddy (`App/caddy/`) nunca é copiada para dentro de um container —
+    deste Caddy (`App/services/caddy/`) nunca é copiada para dentro de um container —
     ela é a cópia de trabalho de uma única máquina, já coberta pelo backup —,
     então o valor que o `header_up` carrega não precisa do envelope da Chave
     Principal que o caminho container exige (`at_deploy.environment.

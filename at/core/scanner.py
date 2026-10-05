@@ -17,7 +17,7 @@ version that answered).
 
 **And AT carries the tool, so nothing is installed on the person's machine.** The
 vendor's tarball travels inside `at-cli` (§3, Dependência externa) and
-`at/services/gitleaks.py` unpacks it into `App/gitleaks/`; `found` answers THAT
+`at/services/gitleaks.py` unpacks it into `App/services/gitleaks/`; `found` answers THAT
 path. **The embedded one wins, and the machine's PATH is never consulted.** A
 `gitleaks` the person installed would be a dependency nobody pinned — and the
 version this module names is honest only because there is exactly one candidate:
@@ -59,7 +59,7 @@ exemption is a fact about the envelope and not a hope about the rules.
 **What the CONTAINER path filled is exempt by PATH, and that is a different
 kind of exemption.** The `--no-git` walk reads the disk raw — it is what lets a
 folder with no repository still be scanned — and raw means no `.gitignore`
-either: the TLS storage the Caddy writes into `App/caddy/` and the credentials
+either: the TLS storage the Caddy writes into `App/services/caddy/` and the credentials
 a service materializes into `App/services/` are AT's own output, drawn or
 provisioned and never typed by a person, and a scan that found them would be
 finding what item 51 already excuses by construction elsewhere and only fails
@@ -164,7 +164,7 @@ def found() -> str | None:
 
     **It answers the unpacked one and never the machine's PATH.** The scanner is
     the artifact's, like the Caddy is (§3, Dependência externa): `ensure` unpacks
-    the vendor's tarball into `App/gitleaks/` — once, and only when the platform
+    the vendor's tarball into `App/services/gitleaks/` — once, and only when the platform
     stamp disagrees — and answers where it landed. A `gitleaks` the person
     installed is not consulted even when it is newer: it is a dependency nobody
     pinned, and the version this module says stood behind a scan is only a fact

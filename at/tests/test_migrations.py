@@ -330,6 +330,65 @@ class TheFoldersFollowTheLanguage(FolderCase):
         self.assertIn(i18n.tr("boot.migration.folders.born", names="Convertidos"), output)
 
 
+class TheServicesFindTheirHouse(FolderCase):
+    """Migration vinte e seis: os serviços do caminho hospedado passam a morar
+    sob `App/services/` (§7), a mesma casa dos serviços do caminho container."""
+
+    def loose(self) -> None:
+        """Uma pasta como o caminho hospedado a deixava: os serviços soltos na
+        raiz de `App/`, e o cache do Jev como um arquivo."""
+        app = self.root / "App"
+        for name in ("caddy", "authelia", "push", "gitleaks"):
+            (app / name).mkdir(parents=True, exist_ok=True)
+            (app / name / "stamp").write_text("x\n", encoding="utf-8")
+        (app / "jev-cache.json").write_text("{}\n", encoding="utf-8")
+
+    def test_every_service_loose_in_app_moves_under_their_house(self):
+        self.born()
+        self.loose()
+        self.forgotten()
+        output = self.caught_up()
+        app = self.root / "App"
+        for name in ("caddy", "authelia", "push", "gitleaks"):
+            self.assertTrue((app / "services" / name / "stamp").is_file())
+            self.assertFalse((app / name).exists())
+        self.assertFalse((app / "jev-cache.json").exists())
+        self.assertTrue((app / "services" / "jev" / "cache.json").is_file())
+        self.assertIn(
+            i18n.tr(
+                "boot.migration.services.moved",
+                names="caddy, authelia, push, gitleaks, jev-cache.json",
+            ),
+            output,
+        )
+
+    def test_a_destination_that_already_existed_keeps_what_it_had(self):
+        self.born()
+        self.loose()
+        # O caminho container já tinha posto o Caddyfile dele no destino; o do
+        # caminho hospedado tem o MESMO nome, e o que chegou primeiro fica.
+        container = self.root / "App" / "services" / "caddy"
+        container.mkdir(parents=True, exist_ok=True)
+        (container / "Caddyfile").write_text("container\n", encoding="utf-8")
+        (self.root / "App" / "caddy" / "Caddyfile").write_text("hosted\n", encoding="utf-8")
+        self.forgotten()
+        output = self.caught_up()
+        self.assertEqual(
+            (container / "Caddyfile").read_text(encoding="utf-8"), "container\n"
+        )
+        self.assertTrue((container / "stamp").is_file())
+        self.assertIn(
+            i18n.tr("boot.migration.services.collision", names="caddy/Caddyfile"),
+            output,
+        )
+
+    def test_a_folder_with_nothing_loose_has_nothing_to_move(self):
+        self.born()
+        self.forgotten()
+        output = self.caught_up()
+        self.assertIn(i18n.tr("boot.migration.services.kept"), output)
+
+
 # ------------------------------------------------------- the declaration ---
 
 

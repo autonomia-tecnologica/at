@@ -78,14 +78,35 @@ export function plainText(source: string | null | undefined): string {
     .trim();
 }
 
+// A table as MARKDOWN — the notation the chat and every `.md` file already share,
+// so a `list` answer is parsed by the SAME renderer a file is (`proseHtml`, below)
+// and drawn with the chat's own block (`.md-table`). BEFORE, the chat drew it with
+// a component of its own; that component is gone. The cells are escaped so a value
+// carrying a pipe does not open a column of its own, and a newline folds to a
+// space so a cell stays one line.
+export function tableMarkdown(header: string[], rows: string[][]): string {
+  const cell = (value: unknown): string =>
+    String(value ?? "").replace(/\|/g, "\\|").replace(/\r?\n/g, " ").trim();
+  const line = (cells: string[]): string => `| ${cells.map(cell).join(" | ")} |`;
+  const rule = `| ${header.map(() => "---").join(" | ")} |`;
+  return [line(header), rule, ...rows.map(row => line(row))].join("\n");
+}
+
 // The prose, as HTML. NULL is the honest answer while the renderer has not
 // landed: the field then draws the text it has, which is what the page knows
 // how to do.
-export async function proseHtml(source: string): Promise<string | null> {
+//
+// `tableClass` names the class every `<table>` in the output wears — the chat
+// passes `md-table` so its tables get the chat's own block, and a file passes
+// nothing, keeping `.prose table`. It is an OPINION the caller holds, so it is
+// asked for and not decided here.
+export async function proseHtml(
+  source: string, tableClass?: string,
+): Promise<string | null> {
   const renderer = marked();
   if (!source || !rendererReady.value || !renderer) return null;
   const html = await renderer.parse(source, { async: false });
-  return sanitize(String(html));
+  return sanitize(String(html), tableClass);
 }
 
 // The renderer as the hosted script leaves it on the global. `marked.umd.js`
@@ -146,13 +167,13 @@ function safeUrl(value: string): boolean {
 // parsing document is INERT: no script runs, no image loads and no link is
 // followed while the tree is walked — the browser builds it detached from the
 // page, and only the pruned copy is ever assigned.
-function sanitize(html: string): string {
+function sanitize(html: string, tableClass?: string): string {
   const doc = new DOMParser().parseFromString(html, "text/html");
-  prune(doc.body);
+  prune(doc.body, tableClass);
   return doc.body.innerHTML;
 }
 
-function prune(node: Node): void {
+function prune(node: Node, tableClass?: string): void {
   for (const child of Array.from(node.childNodes)) {
     // A comment never paints; it goes, so nothing hidden travels with the copy.
     if (child.nodeType === Node.COMMENT_NODE) {
@@ -186,6 +207,10 @@ function prune(node: Node): void {
     }
     // A link the person follows leaves the page; the referrer does not go with.
     if (tag === "a") element.setAttribute("rel", "noopener noreferrer");
-    prune(element);
+    // The class the CHAT's tables wear (`.md-table`), set AFTER the attribute
+    // allow-list — `table` allows no attributes and the loop above would strip
+    // it. A file passes no class, so `.prose table` stays its own block.
+    if (tag === "table" && tableClass) element.setAttribute("class", tableClass);
+    prune(element, tableClass);
   }
 }

@@ -498,7 +498,13 @@ function openRecord(rec: RecordRow): void {
               >+{{ hiddenNow.size }} {{ word("hidden") }}</button>
       <span v-else>+{{ hiddenNow.size }} {{ word("hidden") }}</span>
     </p>
-    <table>
+    <!-- THE GRID WEARS `.grid` (2026-10-05): the product's table block in
+         `base.css` — the card, the sticky uppercase header, the mobile
+         `data-label` stacking — is THIS table's and no other's. A markdown
+         table (a `.md` file, a chat answer) is a table too, and it must NOT
+         wear the product's dress; scoping the block to `.grid` is what keeps
+         the two apart. -->
+    <table class="grid">
       <colgroup>
         <col v-for="(w, i) in widths" :key="i" :style="{ width: w + 'px' }">
       </colgroup>

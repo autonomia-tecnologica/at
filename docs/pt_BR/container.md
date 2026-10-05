@@ -70,7 +70,7 @@
 
 - **O notificador não é um serviço do ambiente: é o Web Push do próprio PWA.** A notificação do AT é a do navegador — o service worker do PWA se inscreve no *push service* (o FCM no Chrome/Android, o Mozilla no Firefox), e o sistema operacional desenha o aviso. Não há container a instalar, conta a criar, tópico a configurar nem segunda porta a separar.
 
-- **Quem cumpre o serviço `notifier` (§4) é `at/core/push.py`**, dentro do `at-cli` que serve o WebApp, nos DOIS caminhos. Ele sorteia o par **VAPID** (P-256) na pasta — `App/push/` —, guarda as inscrições que os navegadores mandam, e cifra cada aviso por `aes128gcm` (RFC 8291) com o JWT `ES256` (RFC 8292) na entrega ao push service. O par privado nunca sai da pasta; do lado da página viaja só a chave PÚBLICA.
+- **Quem cumpre o serviço `notifier` (§4) é `at/core/push.py`**, dentro do `at-cli` que serve o WebApp, nos DOIS caminhos. Ele sorteia o par **VAPID** (P-256) na pasta — `App/services/push/` —, guarda as inscrições que os navegadores mandam, e cifra cada aviso por `aes128gcm` (RFC 8291) com o JWT `ES256` (RFC 8292) na entrega ao push service. O par privado nunca sai da pasta; do lado da página viaja só a chave PÚBLICA.
 
 - **A página nunca segura segredo.** Para se inscrever ela pede a chave pública (`/api/push/key`) e devolve a inscrição (`/api/push/subscribe`); os avisos que ela lista vêm por dentro, da rota que o `notifier:read` cobre (§4), e nunca de uma credencial que o navegador guarde.
 

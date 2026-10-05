@@ -31,7 +31,7 @@ container environment's (`at_deploy/environment.py`'s item-50 sealing): that
 sealing exists because the environment's state folder is COPIED into a
 container's mount with no encryption of its own, and the Chave Principal is
 what makes the copy safe. Nothing here is copied into a container — the
-secrets live in `App/authelia/`, inside the Working Folder the backup already
+secrets live in `App/services/authelia/`, inside the Working Folder the backup already
 covers, on the one machine that ever reads them. A plaintext file in `App/` is
 exactly the trust Caddy's own gate secret already carries.
 
@@ -64,7 +64,7 @@ from at.services import caddy
 # Where the payload travels: `at/vendor/authelia/`.
 PAYLOAD = Path(__file__).resolve().parents[1] / "vendor" / "authelia"
 
-# `App/authelia/` — the instance folder, the Caddy's own arithmetic.
+# `App/services/authelia/` — the instance folder, the Caddy's own arithmetic.
 FOLDER = "authelia"
 
 BINARY = "authelia"
@@ -131,8 +131,8 @@ def payload() -> Path | None:
 
 
 def directory() -> Path:
-    """`App/authelia/` — where everything this file writes lives."""
-    return paths.app_dir() / FOLDER
+    """`App/services/authelia/` — where everything this file writes lives."""
+    return paths.service_dir(FOLDER)
 
 
 def binary() -> Path:

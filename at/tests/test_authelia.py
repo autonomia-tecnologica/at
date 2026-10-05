@@ -84,7 +84,7 @@ class ThePayload(unittest.TestCase):
 class TheUnpacking(FolderCase):
     def test_it_lands_in_the_instance_folder(self):
         where = authelia.ensure()
-        self.assertEqual(where, self.root / "App" / "authelia" / "authelia")
+        self.assertEqual(where, self.root / "App" / "services" / "authelia" / "authelia")
         self.assertTrue(where.is_file())
         self.assertTrue(os.access(where, os.X_OK))
         self.assertEqual(

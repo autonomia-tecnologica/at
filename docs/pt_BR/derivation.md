@@ -113,23 +113,24 @@ Harness/                  o que governa quem trabalha na pasta — nomeada, aind
 Cofre/                    o que sela sozinho — nomeada, ainda vazia
 ```
 
-A listagem acima é aquilo com que a pasta nasce. Uma pasta chega depois, e só se a
-pessoa pedir: `App/caddy/` — o Caddy extraído de dentro do binário, o carimbo que
-diz para que plataforma ele serve, o Caddyfile que o AT gera e o armazenamento do
-próprio Caddy, a autoridade local dele entre o resto. Ela é escrita por
-`at-cli webapp` (sem `--no-caddy`) e por mais nada (§6, §12), e mora em `App/` pelo
-motivo que o §3 dá: o que foi extraído para rodar é da pasta, então uma pasta
-copiada volta com o Caddy e os certificados que ela tinha.
+A listagem acima é aquilo com que a pasta nasce. `App/services/` chega depois, e só
+se um serviço for pedido — mas agora é a casa de TODO serviço, nos DOIS caminhos, e
+cada um mora em `App/services/<serviço>/`. O Caddy é o primeiro: `at-cli webapp`
+(sem `--no-caddy`) extrai `App/services/caddy/` — o Caddy de dentro do binário, o
+carimbo que diz para que plataforma ele serve, o Caddyfile que o AT gera e o
+armazenamento do próprio Caddy, a autoridade local dele entre o resto (§6, §12) —, e
+mora sob `App/` pelo motivo que o §3 dá: o que foi extraído para rodar é da pasta,
+então uma pasta copiada volta com o Caddy e os certificados que ela tinha. O
+Authelia do caminho hospedado, o push, o gitleaks e o cache do Jev moram ali também.
 
-A outra pasta que só chega quando se pede é `App/services/`, o estado dos serviços
-do caminho container (§7a). Quem escreve nela é `at-deploy up`: `images.json`
-guarda o pino em que ESTA pasta está, por serviço, e a pasta de cada serviço
-carrega o que ele lê — `caddy/Caddyfile`, o Caddyfile que o AT gera, com o
-armazenamento do lado de dentro do container. Nada sobe sem o Podman: o AT verifica se ele existe e, não
+No caminho container quem escreve em `App/services/` é o `at-deploy up`: `images.json`
+guarda o pino em que ESTA pasta está, por serviço, e a pasta de cada serviço carrega o
+que ele lê — `caddy/Caddyfile`, o Caddyfile que o AT gera, com o armazenamento do lado
+de dentro do container. Nada sobe sem o Podman: o AT verifica se ele existe e, não
 existindo, oferece as duas saídas — instalar, ou seguir no caminho hospedado. As
-imagens são fixadas em versão e hashing, como o §3 exige, então o pino da pasta e o
-do binário são comparados a cada subida — e uma instância À FRENTE do pino do
-binário avisa e prossegue, porque não é rebaixada.
+imagens são fixadas em versão e hashing, como o §3 exige, então o pino da pasta e o do
+binário são comparados a cada subida — e uma instância À FRENTE do pino do binário
+avisa e prossegue, porque não é rebaixada.
 
 A nota na raiz é o arquivo que a pasta carrega para quem trabalha dentro dela: ela
 diz o que a pasta é, o que ela guarda e como chegar ao resto, e cita o documento

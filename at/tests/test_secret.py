@@ -445,7 +445,7 @@ class TheEntry(SecretCase):
         # (`test_vault.py::TheEntry`, e o teste abaixo).
         #
         # **O oitavo é `services/caddy.py`** (TASK-177, 02/10/2026): o caminho
-        # hospedado e o caminho container escrevem no MESMO `App/caddy/gate`, e o
+        # hospedado e o caminho container escrevem no MESMO `App/services/caddy/gate`, e o
         # container sela o que escreve ali. Este arquivo não sela nem abre nada —
         # ele só RECONHECE o envelope do outro caminho (`vault.envelopes`), para
         # não ler o texto cifrado como se fosse a sua própria senha em claro.

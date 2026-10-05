@@ -27,7 +27,7 @@ POLL = 0.01
 
 
 def drawn_gate(secret: str = DRAWN_GATE) -> str:
-    """Leave `App/caddy/gate` as `up` would have left it, and answer the secret."""
+    """Leave `App/services/caddy/gate` as `up` would have left it, and answer the secret."""
     where = caddy.gate_file()
     where.parent.mkdir(parents=True, exist_ok=True)
     files.atomic_write_text(where, f"{secret}\n")

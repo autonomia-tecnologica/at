@@ -209,7 +209,7 @@ class ScannerCase(unittest.TestCase):
                     BARE=versioning.BARE,
                     MISSING=versioning.MISSING,
                     # `_excluded` reads this off the SAME module — the real one,
-                    # untouched: what generates `App/caddy/` and `App/services/`
+                    # untouched: what generates `App/services/`
                     # is a fact of the folder, not of the versioning STATE this
                     # helper exists to fake.
                     generated_dirs=versioning.generated_dirs,
@@ -333,12 +333,12 @@ class TheWalk(ScannerCase):
 
 
 class TheExclusion(ScannerCase):
-    """What AT itself fills — `App/caddy/`, `App/services/` — scans clean
+    """What AT itself fills — `App/services/` — scans clean
     (item 51: a path exemption, not the vault's constructive one)."""
 
     def test_a_finding_under_the_caddys_storage_is_not_accused(self):
         self.state(versioning.BARE)
-        self.tool([leak("generic-api-key", "App/caddy/storage/root.key", 1)], code=1)
+        self.tool([leak("generic-api-key", "App/services/caddy/storage/root.key", 1)], code=1)
         code, text = self.scan()
         self.assertEqual(code, 0)
         self.assertIn(tr("secrets.scan.clean"), text)
@@ -356,7 +356,7 @@ class TheExclusion(ScannerCase):
         self.state(versioning.BARE)
         self.tool(
             [
-                leak("generic-api-key", "App/caddy/storage/root.key", 1),
+                leak("generic-api-key", "App/services/caddy/storage/root.key", 1),
                 leak("aws-access-token", "Arquivos/nota.md", 3),
             ],
             code=1,
@@ -381,7 +381,7 @@ class TheExclusion(ScannerCase):
 
     def test_the_exclusion_is_the_same_list_the_gitignore_writes(self):
         excluded = {where.name for where in versioning.generated_dirs()}
-        self.assertEqual(excluded, {"caddy", "services"})
+        self.assertEqual(excluded, {"services"})
 
 
 class TheAnswer(ScannerCase):

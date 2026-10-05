@@ -9,10 +9,22 @@
 // question and a refusal are answers too, and they are shown where the answer
 // goes: the page writes none of these sentences, it puts where they are read the
 // ones it was handed.
+//
+// **THE ANSWER IS MARKDOWN NOW (2026-10-05).** A `list` used to be drawn by a
+// component of its own — a table element, a bullet list — dressed by the
+// product's table block. That block is the PRODUCT'S, and it belongs to the
+// Tables screen alone (`base.css`, `.grid`); the chat is not it. So the answer
+// goes through the SAME renderer a `.md` file goes through (`lib/markdown`):
+// a `list` that filled a `table` becomes a markdown table (`tableMarkdown`), a
+// `list` that filled `bullets` already arrives as markdown (the engine writes
+// `- line`), and every other answer is the sentence the engine wrote. The
+// declared type is still read — to know HOW to build the markdown —, and the
+// drawing is the chat's own block (`.md-table`).
 
-import { computed, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { store, word } from "../lib/store";
 import type { Turn } from "../lib/ask";
+import { ensureRenderer, proseHtml, rendererReady, tableMarkdown } from "../lib/markdown";
 
 const props = defineProps<{ turn: Turn }>();
 
@@ -44,13 +56,30 @@ function retry(): void {
   emit("retry", key);
 }
 
-// A BIG TABLE STARTS FOLDED — the answer is one message among many, not a
-// screen of its own, and a listing long enough to push every other turn off
-// screen on every reload would be the chat undoing itself one answer at a
-// time. Short ones (the common case) never fold at all — the class only
-// lands past `FOLD_OVER` rows, and a click past that point is what grows it.
-const expanded = ref(false);
-const FOLD_OVER = 6;
+// THE MARKDOWN SOURCE of the answer: a table's own rows in the notation, or the
+// text the engine already wrote (a plain answer, or a `list`'s `- line`
+// bullets). The chat never draws the source — it renders it, below.
+const body = computed(() => props.turn.table
+  ? tableMarkdown(props.turn.table.header, props.turn.table.rows)
+  : props.turn.text);
+
+// The rendered HTML, or NULL while the hosted renderer has not landed — the
+// turn then draws the source it has, the honest answer with no renderer
+// (`ProseField.vue`'s own rule), and REDRAWS when `rendererReady` flips.
+const html = ref<string | null>(null);
+
+async function render(): Promise<void> {
+  html.value = null;
+  const out = await proseHtml(body.value, "md-table");
+  if (out !== null) html.value = out;
+}
+
+onMounted(() => {
+  void ensureRenderer();
+  void render();
+});
+watch(body, render);
+watch(rendererReady, render);
 </script>
 
 <template>
@@ -60,28 +89,12 @@ const FOLD_OVER = 6;
       <time v-if="when" class="stamp">{{ when }}</time>
     </p>
     <div class="answer-msg">
-      <div v-if="turn.table" class="answer-table-wrap"
-           :class="{ folded: turn.table.rows.length > FOLD_OVER && !expanded }"
-           @click="turn.table.rows.length > FOLD_OVER && !expanded && (expanded = true)">
-        <table class="answer-table">
-          <thead>
-            <tr><th v-for="(cell, i) in turn.table.header" :key="i">{{ cell }}</th></tr>
-          </thead>
-          <tbody>
-            <tr v-for="(row, r) in turn.table.rows" :key="r">
-              <td v-for="(cell, c) in row" :key="c">{{ cell }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <ul v-else-if="turn.bullets" class="answer-bullets-wrap"
-          :class="{ folded: turn.bullets.length > FOLD_OVER && !expanded }"
-          @click="turn.bullets.length > FOLD_OVER && !expanded && (expanded = true)">
-        <li v-for="(line, i) in turn.bullets" :key="i">{{ line }}</li>
-      </ul>
-      <time v-if="(turn.table || turn.bullets) && when" class="stamp">{{ when }}</time>
-      <p v-if="!turn.table && !turn.bullets" class="answer">
-        {{ turn.text }}
+      <template v-if="html !== null">
+        <div class="md-body" v-html="html"></div>
+        <time v-if="when" class="stamp">{{ when }}</time>
+      </template>
+      <p v-else class="answer">
+        {{ body }}
         <time v-if="when" class="stamp">{{ when }}</time>
       </p>
     </div>

@@ -53,9 +53,10 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 from at.core import files, paths
 
-# A pasta do push dentro de `App/` — ao lado do resto do que o AT escreve, e
-# não em `App/services/`, que é o estado dos SERVIÇOS do caminho container (§7).
-# Aqui não há container nenhum: é o processo do AT falando com o navegador.
+# `App/services/push/` — a casa dos serviços (§7). O notificador é o serviço
+# `notifier` (§4), e o par VAPID e as inscrições são o estado DELE: não há
+# container nenhum aqui — é o processo do AT falando com o navegador —, mas um
+# serviço é um serviço, e a casa é a mesma dos outros.
 FOLDER = "push"
 VAPID_FILE = "vapid.json"
 SUBSCRIPTIONS = "subscriptions.json"
@@ -88,7 +89,7 @@ FIELDS = ("id", "time", "title", "message", "priority", "tags")
 
 
 def directory() -> Path:
-    return paths.app_dir() / FOLDER
+    return paths.service_dir(FOLDER)
 
 
 def _b64url(data: bytes) -> str:

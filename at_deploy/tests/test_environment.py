@@ -2207,7 +2207,7 @@ class TheRunDirectory(FolderCase):
     def test_the_gate_is_materialized_and_handed_to_the_webapp(self):
         # O WebApp é o TERCEIRO leitor do portão e o único de dentro do
         # container: ele o lê pela pasta inteira que monta (`Mirror`), e o
-        # `App/caddy/gate` de lá é o arquivo da PASTA — que guarda o ENVELOPE, e
+        # `App/services/caddy/gate` de lá é o arquivo da PASTA — que guarda o ENVELOPE, e
         # que por isso ninguém de dentro abriria. Então ele recebe a cópia clara
         # como uma montagem própria, e o `at-cli` de dentro é told onde ela está.
         fake = self.up()

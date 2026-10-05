@@ -908,10 +908,10 @@ def scan(args: list[str]) -> tuple[int, str]:
     **A read leaves nothing of the person's (§3).** There is no actor and no via
     in the signature because there is no line to write and nothing to version:
     the scan changes nothing of the folder it reads, which is exactly what makes
-    it a read. The one thing it can write is AT's own — `App/gitleaks/`, where
+    it a read. The one thing it can write is AT's own — `App/services/gitleaks/`, where
     the scanner the artifact carries is unpacked the first time it is asked for
     (`scanner.found`) — and that is AT's tool in AT's folder, the same sense
-    `App/caddy/` is. What it also does not do is decide anything about the
+    `App/services/caddy/` is. What it also does not do is decide anything about the
     ceiling: the catalogue names `secret:scan` and the role that carries it, and a
     surface that has to refuse without it — the page's routes — writes that line
     itself, the way every other route does.

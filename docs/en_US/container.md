@@ -70,7 +70,7 @@
 
 - **The notifier is not a service of the environment: it is the PWA's own Web Push.** AT's notification is the browser's — the PWA's service worker subscribes to the *push service* (FCM on Chrome/Android, Mozilla on Firefox), and the operating system draws the alert. There is no container to install, no account to create, no topic to configure and no second port to separate.
 
-- **Whoever fulfils the `notifier` service (§4) is `at/core/push.py`**, inside the `at-cli` that serves the WebApp, on BOTH paths. It draws the **VAPID** pair (P-256) in the folder — `App/push/` —, keeps the subscriptions the browsers send, and encrypts each alert with `aes128gcm` (RFC 8291) and the `ES256` JWT (RFC 8292) on delivery to the push service. The private half never leaves the folder; only the PUBLIC key travels to the page.
+- **Whoever fulfils the `notifier` service (§4) is `at/core/push.py`**, inside the `at-cli` that serves the WebApp, on BOTH paths. It draws the **VAPID** pair (P-256) in the folder — `App/services/push/` —, keeps the subscriptions the browsers send, and encrypts each alert with `aes128gcm` (RFC 8291) and the `ES256` JWT (RFC 8292) on delivery to the push service. The private half never leaves the folder; only the PUBLIC key travels to the page.
 
 - **The page never holds a secret.** To subscribe it asks for the public key (`/api/push/key`) and returns the subscription (`/api/push/subscribe`); the alerts it lists come from inside, from the route `notifier:read` covers (§4), and never from a credential the browser keeps.
 

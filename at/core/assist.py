@@ -173,7 +173,18 @@ def mode() -> str:
 # mais declarada nesta pasta, a entrada não serve — o Jev responde de novo, e o
 # cache se cura sozinho. É a mesma checagem que `_tier`/`_rewrite` fariam
 # depois, feita cedo para não gastar uma rede com lixo.
-CACHE_FILE = "jev-cache.json"
+#
+# **O Jev é uma API EXTERNA, e ainda assim é um serviço (§4).** A casa dele é
+# `App/services/jev/`, e o cache é o estado DELE — antes morava solto em
+# `App/jev-cache.json`, e a fatia dos serviços o trouxe para a casa. O nome
+# interno do serviço é `jev`, e o arquivo, `cache.json`.
+FOLDER = "jev"
+CACHE = "cache.json"
+
+
+def cache_file() -> Path:
+    """`App/services/jev/cache.json` — o que o Jev respondeu, guardado."""
+    return paths.service_dir(FOLDER) / CACHE
 
 
 def _normalize(text: str) -> str:
@@ -190,7 +201,7 @@ def _key(text: str, language: str) -> str:
 
 
 def _entries() -> dict:
-    data = files.read_json(paths.app_dir() / CACHE_FILE, default={})
+    data = files.read_json(cache_file(), default={})
     return data if isinstance(data, dict) else {}
 
 
@@ -225,7 +236,7 @@ def _remember(key: str, guess: jev.Decision) -> None:
         "table_span": guess.table_span,
     }
     files.atomic_write_text(
-        paths.app_dir() / CACHE_FILE,
+        cache_file(),
         json.dumps(data, ensure_ascii=False, indent=2) + "\n",
     )
 

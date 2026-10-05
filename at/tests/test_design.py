@@ -204,6 +204,38 @@ class TheDoors(unittest.TestCase):
             self.assertIsNone(webapp.hosted(name), name)
 
 
+class TheTableBlocks(unittest.TestCase):
+    """The product's table block is the GRID's, and the chat's is markdown.
+
+    2026-10-05: the product block used `:not(.prose table)`, which reached the
+    CHAT's answer table too — a markdown table is a table, and the chat's is not
+    a product page. The block is scoped to `.grid` now (the class `TableView.vue`
+    puts on the one table it draws), and the chat's answer is markdown rendered
+    by the same parser a file is, wearing `.md-table`.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.base = without_comments((ASSETS / "base.css").read_text(encoding="utf-8"))
+        cls.ask_turn = (
+            webapp.HERE / "src" / "components" / "AskTurn.vue"
+        ).read_text(encoding="utf-8")
+
+    def test_the_product_block_is_scoped_to_the_grid(self):
+        self.assertIn("#body table.grid", self.base)
+        # O seletor que vazava para o chat não existe mais.
+        self.assertNotIn("table:not(.prose table)", self.base)
+
+    def test_the_chat_wears_its_own_markdown_table(self):
+        self.assertIn(".md-table", self.base)
+
+    def test_the_chat_no_longer_draws_a_table_element_of_its_own(self):
+        # O componente de tabela/fold do chat saiu: a resposta é UM corpo
+        # markdown, e nada mais carrega `.answer-table` nem `.folded`.
+        self.assertNotIn("answer-table", self.ask_turn)
+        self.assertNotIn("folded", self.ask_turn)
+
+
 class TheTypefaces(unittest.TestCase):
     """The hosted files, pinned by version and by hash.
 

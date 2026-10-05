@@ -222,7 +222,7 @@ def i18n_dir() -> Path:
 
 
 def services_dir() -> Path:
-    """`App/services/` — the state of the SERVICES of the container path (§7).
+    """`App/services/` — where EVERY service's state lives (§7), both paths.
 
     Inside `App/` and not a folder of its own at the root: it is what AT
     wrote to run, like the Caddy it unpacks and the language it chose, and §7
@@ -231,8 +231,30 @@ def services_dir() -> Path:
     enter. The name does not move with the language for the same reason `App/`
     does not: what a person opens is `App/`, and the services inside it are the
     machine's words.
+
+    **This was the CONTAINER path's alone, and it is the HOSTED path's now too.**
+    The hosted path used to scatter its services across the root of `App/` —
+    `App/caddy/`, `App/authelia/`, `App/push/`, `App/gitleaks/` and
+    `App/jev-cache.json` — and the two paths answered to two houses for the same
+    services. The Caddy made the collision plain: `caddy.directory()` (hosted) and
+    `environment.state("caddy")` (container) were two folders for one service, and
+    the gate file they SHARE already forced them to meet. A service lives here
+    now — `<serviço>` is the same word in either path —, and the root of `App/`
+    keeps only what is not a service (the settings, the counters, the install
+    record, the migration stamp, the language).
     """
     return app_dir() / "services"
+
+
+def service_dir(name: str) -> Path:
+    """`App/services/<serviço>/` — one service's own state, whichever path runs it.
+
+    The one place that spells the join, so a module that carries a service never
+    resolves a path of its own (§4: no surface resolves a path beyond `core`).
+    `name` is the machine's internal name for the service and not a word on
+    screen, exactly like every other internal name here.
+    """
+    return services_dir() / name
 
 
 def active_language_file() -> Path:

@@ -166,7 +166,7 @@ class TheRepository(ScratchCase):
         self.born()
         written = (self.root / ".gitignore").read_text(encoding="utf-8")
         self.assertEqual(written, versioning.ignore_text())
-        for derived in ("App/caddy/", "App/services/", "*.tmp", "at-cli", "at-deploy"):
+        for derived in ("App/services/", "*.tmp", "at-cli", "at-deploy"):
             self.assertIn(derived, written)
         # And NEVER what the person wrote: the folders and the settings they own
         # are the history's whole point (§4).
@@ -176,7 +176,7 @@ class TheRepository(ScratchCase):
     def test_generated_dirs_is_the_one_list_the_ignore_and_the_scanner_share(self):
         found = versioning.generated_dirs()
         names = {where.name for where in found}
-        self.assertEqual(names, {"caddy", "services"})
+        self.assertEqual(names, {"services"})
         for where in found:
             self.assertTrue(where.is_relative_to(paths.working_folder()))
 

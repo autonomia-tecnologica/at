@@ -70,7 +70,6 @@ from typing import Callable
 
 from at.core import files, paths, settings
 from at.i18n import tr
-from at.services import caddy
 
 # What a person answers with, injected so a test can answer without a terminal —
 # the same shape `boot.ensure_working_folder` takes.
@@ -476,17 +475,20 @@ def reset() -> None:
 
 
 def generated_dirs() -> tuple[Path, ...]:
-    """The two folders AT itself fills, and a person never types into: the
-    Caddy it unpacked out of the binary, and the state the container path's
-    services write (§7, item 51).
+    """The ONE folder AT itself fills, and a person never types into: the state
+    every service writes — the Caddy and the Authelia it unpacks, the push, the
+    gitleaks, the Jev cache — under `App/services/` (§7, item 51).
 
-    Read off the functions that already name them — `at.services.caddy
-    .directory`, `paths.services_dir` — and not retyped as a second list: this
-    is the ONE place that says "AT wrote it, and nobody typed it", and both
-    `ignore_text` (what git leaves out) and `at.core.scanner` (what a scan
-    skips) read it rather than carrying their own copy.
+    It used to be TWO — `App/caddy/` beside `App/services/` — because the hosted
+    path scattered its services across `App/` and only the container path knew
+    `App/services/`. The services share the one house now, so the list collapsed
+    to the folder that holds them all, read off `paths.services_dir` and not
+    retyped as a second list: this is the ONE place that says "AT wrote it, and
+    nobody typed it", and both `ignore_text` (what git leaves out) and
+    `at.core.scanner` (what a scan skips) read it rather than carrying their own
+    copy.
     """
-    return (caddy.directory(), paths.services_dir())
+    return (paths.services_dir(),)
 
 
 def ignore_text() -> str:

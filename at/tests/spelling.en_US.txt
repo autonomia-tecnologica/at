@@ -73,6 +73,7 @@ infraestrutura
 instalar
 ip
 iso
+jev
 json
 jwt
 lan

@@ -32,7 +32,10 @@
     "migration.folders.born": "Nasceram, nomeadas e ainda vazias: {names}.",
     "migration.folders.collision": "Há duas pastas para o mesmo nome interno ({names}): escolher uma seria esconder a outra. Nada foi movido — junte as duas à mão, se era isso.",
     "migration.note.written": "O AT escreveu `AGENT.md` na raiz da pasta: é a nota que apresenta a pasta a quem começa a trabalhar nela.",
-    "migration.note.kept": "A pasta já tinha um `AGENT.md` — o que estava lá ficou, e nada foi sobrescrito."
+    "migration.note.kept": "A pasta já tinha um `AGENT.md` — o que estava lá ficou, e nada foi sobrescrito.",
+    "migration.services.moved": "Os serviços foram para a casa deles, sob App/services/: {names}.",
+    "migration.services.collision": "O destino já tinha algo com este nome, e o que estava lá ficou: {names}. Nada foi sobrescrito — o AT avisa em vez de escolher por você.",
+    "migration.services.kept": "Não havia serviço solto na raiz de App/ — nada a mover."
   },
   "en_US": {
     "first_run.notice": "AT was opened in the folder {folder}.\n\nThere is no App/settings.json here, so this is taken to be a new Working Folder.\n\nDo you confirm that AT should use this folder? An empty folder, anywhere on your computer, is recommended. Cancel and move the file elsewhere if you disagree.",
@@ -67,6 +70,9 @@
     "migration.folders.born": "Born, named and still empty: {names}.",
     "migration.folders.collision": "There are two folders for the same internal name ({names}): picking one would hide the other. Nothing was moved — join them by hand if that is what you meant.",
     "migration.note.written": "AT wrote `AGENT.md` at the folder root: it is the note that presents the folder to whoever starts working in it.",
-    "migration.note.kept": "The folder already carried an `AGENT.md` — the one that was there stayed, and nothing was overwritten."
+    "migration.note.kept": "The folder already carried an `AGENT.md` — the one that was there stayed, and nothing was overwritten.",
+    "migration.services.moved": "The services moved into their own house, under App/services/: {names}.",
+    "migration.services.collision": "The destination already carried something by this name, and what was there stayed: {names}. Nothing was overwritten — AT warns instead of choosing for you.",
+    "migration.services.kept": "No service was loose in the root of App/ — nothing to move."
   }
 }

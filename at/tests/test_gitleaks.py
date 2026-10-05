@@ -4,7 +4,7 @@ The same two promises the Caddy's file checks, for the same reasons. The first i
 about the ARTIFACT: the repository carries the vendor's tarball byte for byte, and
 `at-cli.spec` is what puts it inside the binary — and only that spec, because the
 deploy has no scanning word. The second is about the FOLDER: the unpacking lands
-in `App/gitleaks/`, with the stamp that says which platform it serves, and it
+in `App/services/gitleaks/`, with the stamp that says which platform it serves, and it
 happens once — the second start writes nothing.
 
 The last test here RUNS the unpacked binary, and that is the Caddy's precedent:
@@ -93,7 +93,7 @@ class ThePayload(unittest.TestCase):
 
 
 class TheUnpacking(unittest.TestCase):
-    """`App/gitleaks/` — the binary, the stamp, and the rule that it happens once."""
+    """`App/services/gitleaks/` — the binary, the stamp, and the rule that it happens once."""
 
     def setUp(self):
         self.scratch = tempfile.TemporaryDirectory()
@@ -116,7 +116,7 @@ class TheUnpacking(unittest.TestCase):
 
     def test_it_lands_in_the_instance_folder(self):
         where = gitleaks.ensure()
-        self.assertEqual(where, self.root / "App" / "gitleaks" / "gitleaks")
+        self.assertEqual(where, self.root / "App" / "services" / "gitleaks" / "gitleaks")
         self.assertTrue(where.is_file())
         self.assertTrue(os.access(where, os.X_OK),
                         "the unpacked gitleaks must be runnable")

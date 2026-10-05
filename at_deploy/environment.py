@@ -1092,7 +1092,7 @@ def draw_gate(key: bytes) -> str:
     **It is the deploy's act and it moved here with the rest of §7** (item 27):
     §7b says AT draws a secret per installation, and the installation is the
     environment's, which is the deploy tool's. The FILE it writes is still the
-    Caddy's own — `App/caddy/gate`, beside the Caddyfile that is its only writer
+    Caddy's own — `App/services/caddy/gate`, beside the Caddyfile that is its only writer
     — and both artifacts read it: `at-cli` refuses the identity that arrives
     without it, and the WebApp's check is what turns the M2M into a door.
 
@@ -1473,7 +1473,7 @@ SERVICES: tuple[Service, ...] = (
 
 def state(name: str) -> Path:
     """`App/services/<serviço>/` — where that service's state lives (§7)."""
-    return paths.services_dir() / name
+    return paths.service_dir(name)
 
 
 def run_dir() -> Path:

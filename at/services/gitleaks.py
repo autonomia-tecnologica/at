@@ -6,7 +6,7 @@ pin lives. `gitleaks` is MIT, so it may travel inside the binary — and it does
 in `at-cli` only (`at-deploy` has no scanning word, so embedding it there would
 pay the megabytes for a door nobody knocks on). This module is the half that
 makes that travel real: the vendor's tarball goes into `at/vendor/gitleaks/`, the
-scanner unpacks it into `App/gitleaks/`, and `at/core/scanner.py` runs what came
+scanner unpacks it into `App/services/gitleaks/`, and `at/core/scanner.py` runs what came
 out. Nothing here reaches a network, and nothing here runs the program.
 
 **The payload is the vendor's tarball, byte for byte.** Found by the platform and
@@ -29,8 +29,8 @@ unpacked scanner is never one the folder would try to run.
 
 **Extracting is what a scan pays once.** The common path is one `is_file` and one
 `read_text` and no writing at all; the first scan after the payload or the
-platform changes unpacks into `App/gitleaks/`, which is AT's own folder in the
-same sense `App/caddy/` is. It is not the person's data, it is not versioned by
+platform changes unpacks into `App/services/gitleaks/`, which is AT's own folder in the
+same sense `App/services/caddy/` is. It is not the person's data, it is not versioned by
 the scan, and it leaves no `audit` line — the read's promise (§3, item 51) is
 untouched.
 """
@@ -52,7 +52,7 @@ from at.core import files, paths
 # `<sys._MEIPASS>/at/services/gitleaks.py`, which is where `at-cli.spec` lands it.
 PAYLOAD = Path(__file__).resolve().parents[1] / "vendor" / "gitleaks"
 
-# The instance folder the unpacking goes to: `App/gitleaks/`. It is `App/` and
+# The instance folder the unpacking goes to: `App/services/gitleaks/`. It is `App/` and
 # not the person's folders for the reason the Caddy's is: it is what AT wrote to
 # run, and a folder carried to another machine carries the tool with it (§3, the
 # backup promise).
@@ -123,8 +123,8 @@ def payload() -> Path | None:
 
 
 def directory() -> Path:
-    """`App/gitleaks/` — where everything this file writes lives."""
-    return paths.app_dir() / FOLDER
+    """`App/services/gitleaks/` — where everything this file writes lives."""
+    return paths.service_dir(FOLDER)
 
 
 def binary() -> Path:

@@ -447,7 +447,14 @@ nav .side-foot > .file { justify-content: flex-start; gap: var(--space-2); }
 /* ===== table ============================================================ */
 
 table { border-collapse: separate; border-spacing: 0; width: 100%; table-layout: fixed; }
-#body table:not(.prose table) {
+/* THE PRODUCT'S TABLE IS THE GRID'S AND NO OTHER'S (2026-10-05): `.grid` is the
+   class `TableView.vue` puts on the one table it draws, and this block — the
+   page's card, the margins, the corners, the shadow — is THAT table's. It used
+   to reach every table in `#body` that was not `.prose` (`:not(.prose table)`),
+   which quietly caught the CHAT's answer table too: a markdown table is a table,
+   and the chat's is not a product page. A markdown table wears `.md-table` now
+   (below), and the Files' `.prose table` keeps its own block; neither is a grid. */
+#body table.grid {
   margin: var(--space-6) var(--space-6) 0;
   width: calc(100% - 2 * var(--space-6));
   background: var(--surface-1);
@@ -496,10 +503,10 @@ th .fbtn::before { color: var(--ink-3); width: 12px; height: 12px; vertical-alig
 th .fbtn:hover::before { color: var(--ink-1); }
 th .fbtn.on::before { color: var(--accent); }
 th .to { color: var(--ink-3); margin-left: 4px; }
-tbody tr { cursor: pointer; }
-tbody tr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-tbody tr:hover td { background: var(--row-hover); }
-td.id { color: var(--ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.grid tbody tr { cursor: pointer; }
+.grid tbody tr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.grid tbody tr:hover td { background: var(--row-hover); }
+.grid td.id { color: var(--ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
 
 /* ===== the value of a CLOSED LIST ========================================
    The status of a task, the priority of a row: the page marks WHICH member the
@@ -512,7 +519,7 @@ td.id { color: var(--ink-3); white-space: nowrap; font-variant-numeric: tabular-
    high and critical — and the everyday middle (to do, medium) stays the quiet
    neutral. A table where every row wears a colour is a table where the colour
    stopped meaning anything. */
-td[data-value] .v, .chip[data-value] {
+.grid td[data-value] .v, .chip[data-value] {
   display: inline-block; padding: 2px var(--space-3);
   border-radius: var(--r-full);
   background: var(--surface-2); color: var(--ink-2);
@@ -797,11 +804,11 @@ button.opt { background: none; border: 0; font: inherit; width: 100%; text-align
 }
 .block-body { padding: var(--space-4) var(--space-5) var(--space-5); }
 /* A TABLE INSIDE A SECTION IS A TABLE AND NOT ANOTHER CARD. The rule above
-   (`#body table:not(.prose table)`) dresses a table that IS the page — its own
+   (`#body table.grid`) dresses a table that IS the page — its own
    surface, its own corners, the page's margins — and inside a section the card
    is already there: the second frame is a table floating inside a box that
    holds it. */
-#body .block-body table:not(.prose table) {
+#body .block-body table.grid {
   margin: 0; width: 100%;
   background: none; border-radius: 0; box-shadow: none;
 }
@@ -875,6 +882,40 @@ pre.text { overflow-wrap: break-word; white-space: pre-wrap; word-break: break-w
 .prose th { color: var(--ink-3); font-weight: var(--weight-semibold); }
 .prose img { max-width: 100%; border-radius: var(--r-sm); }
 .prose.field-prose { margin: 0; padding: 0; background: none; border-radius: 0; box-shadow: none; }
+
+/* ===== the markdown table (.md-table) ====================================
+   THE CHAT'S TABLE, and it IS a markdown table and not a product one. A chat
+   answer is markdown now (`AskTurn.vue`): it renders through the same hosted
+   `marked` a `.md` file does, and the table in it wears `.md-table` — the class
+   `lib/markdown`'s sanitizer stamps on every `<table>` it renders when the
+   caller asks for it. It is DELIBERATELY not the product grid (`.grid`, above):
+   a bordered, zebra'd little table that reads as a quotation from the data,
+   where the grid is the screen of the Tables. So it carries no card, no
+   pull-to-page margins, and none of the mobile `data-label` stacking — the
+   product's dress is the grid's. Column alignment honours the `align` the
+   renderer leaves on a cell, so a markdown `:---:` reaches the screen. */
+.md-table {
+  border-collapse: separate; border-spacing: 0; width: 100%; table-layout: auto;
+  margin: var(--space-2) 0 0;
+  border: 1px solid var(--border-soft); border-radius: var(--r-sm);
+  overflow: hidden;
+}
+.md-table th, .md-table td {
+  padding: var(--space-2) var(--space-3); text-align: left; vertical-align: top;
+  border-bottom: 1px solid var(--border-soft);
+}
+/* The header is the markdown one and not the grid's: no stick, no uppercase, no
+   letterspacing — a plain grey label, the way a quoted table reads. */
+.md-table th {
+  position: static; background: var(--surface-2); color: var(--ink-2);
+  font-weight: var(--weight-semibold); font-size: var(--text-xs);
+  text-transform: none; letter-spacing: normal; white-space: normal;
+  border-bottom: 1px solid var(--border-strong);
+}
+.md-table tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--ink-1) 3.5%, var(--surface-1)); }
+.md-table tbody tr:last-child td { border-bottom: 0; }
+.md-table th[align="center"], .md-table td[align="center"] { text-align: center; }
+.md-table th[align="right"], .md-table td[align="right"] { text-align: right; }
 
 /* ===== the write tab: the file alone (2026-10-05, `WriteView.vue`) =========
    `App.vue` draws NOTHING else for this view — no `nav`, no `header`, no
@@ -989,8 +1030,9 @@ a.ref:hover, a.url:hover { border-bottom-color: currentColor; background: var(--
 }
 /* THE STAMP RIDES THE SAME LINE as the text, the way `.said`'s does — a card
    that put its clock on a row of its own was a card a line taller for nothing,
-   for the common case of one short sentence back. A TABLE has no such line to
-   share it with, so there it keeps the row below (`turn.table` branch above). */
+   for the common case of one short sentence back. When the answer is RENDERED
+   (`.md-body`, below) there is no such line to share it with — a table, a list
+   —, so it keeps the row below; the plain `.answer` fallback keeps it inline. */
 .turn .answer-msg .stamp { opacity: .6; font-size: var(--text-xs); white-space: nowrap; }
 .turn .answer-msg > .stamp { align-self: flex-end; }
 .turn .answer {
@@ -998,55 +1040,26 @@ a.ref:hover, a.url:hover { border-bottom-color: currentColor; background: var(--
   margin: 0; white-space: pre-wrap;
 }
 .turn .answer .stamp { margin-left: auto; }
-/* THE TABLE IS ITS OWN PANEL inside the grey card — `--surface-1`, the same
-   white every content card sits on (`.prose`, `.record-body`), so a glance
-   tells the card from what it is carrying the way it already does everywhere
-   else in the product. */
-.turn .answer-table-wrap { position: relative; background: var(--surface-1); border-radius: var(--r-sm); overflow: hidden; }
-.turn .answer-table th, .turn .answer-table td { padding: var(--cell-pad-y) var(--cell-pad); }
-/* THE BULLETS SIT RIGHT ON THE CARD — no panel of their own (unlike the
-   table): a one-line-per-row list is already as plain as the card itself, and
-   a second white box around it would be a frame around nothing. */
-.turn .answer-bullets-wrap {
-  position: relative; margin: 0; padding: 0; list-style: none;
-  display: flex; flex-direction: column; gap: var(--space-1);
-}
-.turn .answer-bullets-wrap li { padding-left: 1.1em; position: relative; }
-.turn .answer-bullets-wrap li::before { content: "•"; position: absolute; left: 0; color: var(--ink-3); }
-/* A LONG LISTING STARTS FOLDED — a fixed window of rows, a fade at the edge
-   saying there is more, and a click (anywhere on it) opens the rest. Without
-   this a `list` with a hundred rows would be a chat where one answer pushes
-   every turn that came before it off the screen on every reload. The two
-   wraps fade to DIFFERENT colours because they sit on different surfaces —
-   the table's own white panel, the bullets' grey card (`.answer-msg`'s own
-   mix, repeated below). */
-.turn .answer-table-wrap.folded, .turn .answer-bullets-wrap.folded {
-  max-height: 15.5rem; overflow: hidden; cursor: pointer;
-}
-/* `tbody tr { cursor: default }` below is MORE specific than the wrapper's own
-   `cursor: pointer` (an extra type selector beats a class), so a folded
-   table's rows were drawing the arrow right where the click to expand it
-   actually lands — only the gaps between them inherited the hand. */
-.turn .answer-table-wrap.folded tbody tr { cursor: pointer; }
-.turn .answer-table-wrap.folded::after,
-.turn .answer-bullets-wrap.folded::after {
-  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3.5rem;
-  pointer-events: none;
-}
-.turn .answer-table-wrap.folded::after { background: linear-gradient(to bottom, transparent, var(--surface-1)); }
-.turn .answer-bullets-wrap.folded::after {
-  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--ink-1) 6%, var(--surface-1)));
-}
-/* `th` STICKS TO ITS SCROLLER'S TOP everywhere else (base.css, above) because a
-   TableView IS its own scroller — the whole view is the rows, and the header
-   rides over them. A chat turn is not: the table is one short block among many
-   in `.chat-log`'s scroll, and a sticky header here pins itself to the LOG's
-   top and rides over every turn that follows instead of its own three rows. */
-.turn .answer-table th { position: static; background: none; }
-.turn .answer-table tbody tr { cursor: default; }
-.turn .answer-table tbody tr:hover td { background: none; }
+/* THE ANSWER IS MARKDOWN (2026-10-05): `.md-body` holds what the renderer
+   (`lib/markdown`) built out of the engine's answer — a paragraph, a markdown
+   list, or the `.md-table` above. NONE of it wears a panel of its own now: the
+   grey card (`.answer-msg`) is the one surface, and the table inside it is the
+   table block's. The turn used to draw a table ELEMENT and a bullet LIST of its
+   own (`.answer-table*`, `.answer-bullets-wrap`, `.folded`); the three are gone
+   — the answer is one markdown body, whatever shape it came back in. */
+.turn .md-body { display: flex; flex-direction: column; gap: var(--space-2); }
+.turn .md-body > :first-child { margin-top: 0; }
+.turn .md-body > :last-child { margin-bottom: 0; }
+/* A paragraph keeps the line breaks the engine wrote (`pre-wrap`), the same
+   rule the plain `.answer` paragraph always had. */
+.turn .md-body p { margin: 0; white-space: pre-wrap; }
+.turn .md-body ul, .turn .md-body ol { margin: 0; padding-left: 1.2em; }
+.turn .md-body li { margin: 0; }
+.turn .md-body code { background: var(--surface-2); border-radius: 5px; padding: .1em .35em; font-size: .92em; }
+.turn .md-body a { color: var(--accent); }
 .turn .proposal .tag { color: var(--ink-3); margin-right: var(--space-2); }
-.turn[data-kind="question"] .answer, .turn[data-kind="refused"] .answer { color: var(--ink-2); }
+.turn[data-kind="question"] .answer, .turn[data-kind="refused"] .answer,
+.turn[data-kind="question"] .md-body, .turn[data-kind="refused"] .md-body { color: var(--ink-2); }
 /* THE SAME MARGIN EVERY OTHER PAGE BRINGS (`#body table`, `.prose`, above):
    `#body` carries none of its own, and a view that forgot it sits flush
    against the window — which `.chat` did (2026-10-03) until this line. The
@@ -1369,7 +1382,7 @@ html.no-motion *, html.no-motion *::before, html.no-motion *::after {
   nav { width: 80vw; border-right: 0; }
   #kinds, #body, .pop, .settings { scrollbar-width: none; }
   #kinds::-webkit-scrollbar, #body::-webkit-scrollbar, .pop::-webkit-scrollbar, .settings::-webkit-scrollbar { display: none; }
-  #body table:not(.prose table) { margin: var(--space-4) 0 0; width: 100%; border-radius: var(--r-md); }
+  #body table.grid { margin: var(--space-4) 0 0; width: 100%; border-radius: var(--r-md); }
   .prose, pre.text, .record-body { margin: var(--space-4) var(--space-4) 0; }
   .groups { padding: var(--space-4); }
   .page-actions, .hidden-count { margin-left: var(--space-4); margin-right: var(--space-4); }
@@ -1380,16 +1393,22 @@ html.no-motion *, html.no-motion *::before, html.no-motion *::after {
   th, td { padding: var(--space-2) var(--space-2); }
   .pop { max-width: calc(100vw - 24px); }
   #head-right .loc { display: none; }
-  table, tbody, tr, td { display: block; }
-  thead { display: none; }
-  tr {
+  /* THE STACKING IS THE GRID'S (2026-10-05): a narrow screen turns the product
+     grid into one card per row, each cell a labelled line (`data-label`). It is
+     the GRID's gesture and not every table's — a markdown table keeps its rows
+     and scrolls sideways instead (`base.css`, `.md-table`). */
+  .grid, .grid tbody, .grid tr, .grid td { display: block; }
+  .grid thead { display: none; }
+  .grid tr {
     margin-bottom: var(--space-3); padding: var(--space-4);
     background: var(--surface-1); border: 1px solid var(--border-soft);
     border-radius: var(--r-md); box-shadow: var(--shadow-xs);
   }
-  td { display: flex; gap: var(--space-3); padding: 0; }
-  td + td { margin-top: var(--space-1); border-bottom: 0; }
-  td::before { content: attr(data-label); flex: 0 0 auto; color: var(--ink-3); min-width: 34%; }
-  tbody tr:hover { background: var(--row-hover); box-shadow: var(--shadow-sm); }
-  tbody tr:hover td { background: none; }
+  .grid td { display: flex; gap: var(--space-3); padding: 0; }
+  .grid td + td { margin-top: var(--space-1); border-bottom: 0; }
+  .grid td::before { content: attr(data-label); flex: 0 0 auto; color: var(--ink-3); min-width: 34%; }
+  .grid tbody tr:hover { background: var(--row-hover); box-shadow: var(--shadow-sm); }
+  .grid tbody tr:hover td { background: none; }
+  /* A MARKDOWN TABLE DOES NOT STACK — it keeps its rows and scrolls sideways. */
+  .md-table { display: block; overflow-x: auto; }
 }
