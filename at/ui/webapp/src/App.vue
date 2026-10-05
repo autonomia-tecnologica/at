@@ -16,6 +16,7 @@ import { api, whenRefused } from "./lib/api";
 import { enter, lost, session, signedIn } from "./lib/session";
 import { store, applyState, label, word, tableOf } from "./lib/store";
 import { ensureRenderer } from "./lib/markdown";
+import { ensureFonts } from "./lib/fonts";
 import { nav, ui, isKind, viewFor, open, markPage, poke, resumePath, setTrail, firstKindSettled, CHAT_KEY, NLU_UI_ENABLED, ORPHANS_KEY, BOARD_KEY, FILE_PREFIX, PROJECT_PREFIX, WRITE_PREFIX } from "./lib/views";
 import { applyTheme, watchSystem } from "./lib/theme";
 import { applyMotion } from "./lib/motion";
@@ -186,12 +187,14 @@ function toggle(): void {
 
 // THE SECOND STEP OF THE GATE. `signedIn` is the server saying WHO IS IN, and it
 // arrives with the words of the entrance — but not with the TABLES, not with
-// the page, and not with the MARKDOWN RENDERER, which land one or two answers
-// later (`/api/state`, `/vendor/marked`). Drawing the shell in between paints it
-// full-size and empty, or fills it with raw notation that reformats a moment
-// after — the same flash `js/boot.js` kills one screen earlier and the fonts'
-// own `font-display: block` kills one layer lower (`base.css`). So the gate
-// waits for ALL of it.
+// the page, not with the MARKDOWN RENDERER and not with the TEN SELF-HOSTED
+// FACES, which land one or more answers later (`/api/state`, `/vendor/marked`,
+// `lib/fonts.ts`). Drawing the shell in between paints it full-size and empty,
+// fills it with raw notation that reformats a moment after, or — the one
+// `font-display: block` alone does not reach — leaves a plain cell blank while
+// a badge two columns over already reads fine, because the two wear different
+// WEIGHTS of the same family and nothing says the files land together. So the
+// gate waits for ALL of it.
 const booted = ref(false);
 
 // THE FOURTH STEP, AND THE ONE THAT SHOWS: `booted` lets the shell MOUNT —
@@ -213,12 +216,14 @@ async function load(): Promise<void> {
   booted.value = false;
   revealed.value = false;
   try {
-    // The renderer rides ALONGSIDE the state fetch, not after it: the two have
-    // nothing to say to each other, and waiting for one before asking for the
-    // other would only make the gate stay shut longer than it has to.
+    // The renderer and the ten faces ride ALONGSIDE the state fetch, not after
+    // it: none of the three have anything to say to each other, and waiting
+    // for one before asking for the next would only make the gate stay shut
+    // longer than it has to.
     const [state] = await Promise.all([
       api<Record<string, unknown>>("/api/state"),
       ensureRenderer(),
+      ensureFonts(),
     ]);
     applyState(state);
     applyTheme();
