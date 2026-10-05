@@ -11,7 +11,7 @@
 // on the same origin. Here they are REASSERTED by their owner, and that is what
 // guarantees the class and the preference do not drift after a click.
 
-import { computed, onMounted, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { api, whenRefused } from "./lib/api";
 import { enter, lost, session, signedIn } from "./lib/session";
 import { store, applyState, label, word, tableOf } from "./lib/store";
@@ -183,16 +183,32 @@ function toggle(): void {
   toggleNav();
 }
 
+// THE SECOND STEP OF THE GATE. `signedIn` is the server saying WHO IS IN, and it
+// arrives with the words of the entrance — but not with the TABLES and not with
+// the page, which come in `/api/state` one answer later. Drawing the shell in
+// between paints it full-size and empty and fills it a moment after, the same
+// flash `js/boot.js` kills one screen earlier. So the gate waits for BOTH.
+const booted = ref(false);
+
 // THE BOOT, AND IT IS ONE PATH. Whoever has just proved a credential walks
 // exactly what a reload walks: the state, the theme and the entry page — so the
 // shell ends in the same place either way and there is no second boot.
 async function load(): Promise<void> {
+  // The shell goes back under the gate and only leaves it once the state is
+  // applied: a credential just proved walks this same path, and it must not draw
+  // the shell with the PREVIOUS state's tables.
+  booted.value = false;
   try {
     applyState(await api<Record<string, unknown>>("/api/state"));
     applyTheme();
     showSaved();
   } catch (err) {
     setTrail(word("error") + " " + (err as Error).message);
+  } finally {
+    // Served or refused, the boot is DONE. A server that did not answer has no
+    // words to wait for; holding the gate would leave the page blank forever
+    // where it now shows the error it fell back to.
+    booted.value = true;
   }
 }
 
@@ -278,14 +294,17 @@ defineExpose({ refresh });
 </script>
 
 <template>
-  <!-- NOTHING until the server has said who is in. `session.ready` false is a
-       state of its own — the answer is on its way and the page does not know it
-       yet — and drawing the shell there would flash the entrance on every
-       reload, one screen before the one `js/boot.js` already guards.
+  <!-- NOTHING until the server has said who is in, AND NOTHING AGAIN until the
+       state it promised has arrived. The gate is now TWO steps: `signedIn`
+       false is the answer on its way and the page does not know it yet, and
+       `signedIn` true with `booted` false is the words of the entrance already
+       in but the TABLES and the page still one answer away (`/api/state`) —
+       drawing the shell in either gap would flash it empty, one screen before
+       the one `js/boot.js` already guards.
        THE WHOLE SHELL IS UNDER THE GATE, the balloon included: with no session
        the interpreter's switch is still its default, and a balloon flying over
        the entrance would be a box talking to nobody. -->
-  <template v-if="signedIn">
+  <template v-if="signedIn && booted">
     <!-- THE WRITE TAB OWNS THE WINDOW, ALONE (2026-10-05): no `nav`, no
          `header`, nothing this shell would otherwise always draw — the one
          page that is allowed to be the whole screen, because it is the one
@@ -381,6 +400,6 @@ defineExpose({ refresh });
        a entrada desenhada ali seria um formulário que ninguém poderia ganhar.
        O que a página pede, nesse estado, é o que CRIA o primeiro (TASK-176,
        fatia 3/3). -->
-  <SetupView v-else-if="session.ready && session.first" />
-  <LoginView v-else-if="session.ready" />
+  <SetupView v-else-if="!signedIn && session.ready && session.first" />
+  <LoginView v-else-if="!signedIn && session.ready" />
 </template>
