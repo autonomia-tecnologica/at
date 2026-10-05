@@ -291,18 +291,13 @@ class TheTypefaces(unittest.TestCase):
             self.assertEqual(digest, entry["sha256"], key)
             self.assertEqual(where.stat().st_size, entry["bytes"], key)
 
-    def test_every_face_blocks_and_carries_its_format(self):
-        # `block`, and not `swap` (2026-10-05): these files are HOSTED, same
-        # origin, a few KB each — `swap` paints the fallback immediately and
-        # reflows into the real face a moment later, which is the flash the
-        # boot gate (`App.vue`, `booted`) exists to kill one layer up. `block`
-        # holds the glyph invisible through its short window instead.
+    def test_every_face_swaps_and_carries_its_format(self):
         faces: list[str] = []
         for body in self.bases.values():
             faces += re.findall(r"@font-face\s*\{[^}]*\}", body)
         self.assertTrue(faces)
         for face in faces:
-            self.assertIn("font-display: block", face)
+            self.assertIn("font-display: swap", face)
             self.assertIn('format("woff2")', face)
 
     def test_the_faces_and_the_pinned_fonts_are_the_same_set(self):

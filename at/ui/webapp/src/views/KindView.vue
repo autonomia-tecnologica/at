@@ -6,10 +6,10 @@
 // filters and lets the person choose — the slice is the CLI's default, not the
 // page's.
 
-import { ref, computed, watch, onMounted, nextTick } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 import { api } from "../lib/api";
 import { setFields, kindLabel } from "../lib/store";
-import { nav, openRef, setTrail, showError, markFirstKindSettled } from "../lib/views";
+import { nav, openRef, setTrail, showError } from "../lib/views";
 import TableView from "../components/TableView.vue";
 import RecordView from "../components/RecordView.vue";
 import type { TablePayload } from "../lib/record";
@@ -39,25 +39,6 @@ async function load(): Promise<void> {
   } catch (err) {
     payload.value = null;
     showError(err as Error);
-  } finally {
-    // The sidebar's LIVE count is `TableView`'s own `watchEffect`, which only
-    // runs once `payload` has actually mounted it — not in the same tick as
-    // the assignment above. And `TableView` has a SECOND thing that lands
-    // late the same way: the column widths (`measure()`) are a DOM reading,
-    // scheduled from ITS OWN `onMounted` through ITS OWN `nextTick` — a
-    // nested one Vue does not promise to fold into this `nextTick` here, so
-    // awaiting it bare left the table room to paint with NO `<col>` (the
-    // browser's own auto layout) and snap to the measured widths a frame
-    // later, right as the gate was opening. Two animation frames is what
-    // actually waits on the BROWSER: a `nextTick` only waits on VUE's queue,
-    // and the first `requestAnimationFrame` only proves the frame `measure`
-    // runs in has started, not that layout from it has been painted — the
-    // second is the one after that paint.
-    await nextTick();
-    await new Promise<void>(resolve => {
-      requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-    });
-    markFirstKindSettled();
   }
 }
 

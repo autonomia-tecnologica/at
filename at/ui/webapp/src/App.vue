@@ -11,13 +11,11 @@
 // on the same origin. Here they are REASSERTED by their owner, and that is what
 // guarantees the class and the preference do not drift after a click.
 
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { api, whenRefused } from "./lib/api";
 import { enter, lost, session, signedIn } from "./lib/session";
 import { store, applyState, label, word, tableOf } from "./lib/store";
-import { ensureRenderer } from "./lib/markdown";
-import { ensureFonts } from "./lib/fonts";
-import { nav, ui, isKind, viewFor, open, markPage, poke, resumePath, setTrail, firstKindSettled, CHAT_KEY, NLU_UI_ENABLED, ORPHANS_KEY, BOARD_KEY, FILE_PREFIX, PROJECT_PREFIX, WRITE_PREFIX } from "./lib/views";
+import { nav, ui, isKind, viewFor, open, markPage, poke, resumePath, setTrail, armPageLoad, pageReading, pageLoad, CHAT_KEY, NLU_UI_ENABLED, ORPHANS_KEY, BOARD_KEY, FILE_PREFIX, PROJECT_PREFIX, WRITE_PREFIX } from "./lib/views";
 import { applyTheme, watchSystem } from "./lib/theme";
 import { applyMotion } from "./lib/motion";
 import { writingState } from "./lib/writing";
@@ -186,25 +184,46 @@ function toggle(): void {
 }
 
 // THE SECOND STEP OF THE GATE. `signedIn` is the server saying WHO IS IN, and it
-// arrives with the words of the entrance — but not with the TABLES, not with
-// the page, not with the MARKDOWN RENDERER and not with the TEN SELF-HOSTED
-// FACES, which land one or more answers later (`/api/state`, `/vendor/marked`,
-// `lib/fonts.ts`). Drawing the shell in between paints it full-size and empty,
-// fills it with raw notation that reformats a moment after, or — the one
-// `font-display: block` alone does not reach — leaves a plain cell blank while
-// a badge two columns over already reads fine, because the two wear different
-// WEIGHTS of the same family and nothing says the files land together. So the
-// gate waits for ALL of it.
+// arrives with the words of the entrance — but NOT with the TABLES and not with
+// the page, which come in `/api/state` one answer later. Drawing the shell in
+// between paints it full-size and empty and fills it a moment after: the flash
+// `js/boot.js` kills one screen earlier. So the gate waits for the state too.
 const booted = ref(false);
 
-// THE FOURTH STEP, AND THE ONE THAT SHOWS: `booted` lets the shell MOUNT —
-// `nav` and `main` enter the DOM, and a table page (`KindView`) starts its OWN
-// fetch — but mounted is not SEEN yet. `revealed` is what the template actually
-// shows the shell on (`base.css`'s `.revealed`, a 0.3s fade), and it only turns
-// true once the page that is about to show has settled (`firstKindSettled`) —
-// bounded by a short timeout, because a page with nothing to settle (Settings,
-// a project, a file…) must not sit behind a gate built for a table.
+// AND THEN A BEAT, BEFORE ANY OF IT IS SHOWN. The shell mounting is not the
+// same as the shell being READY to look at: the page it opened fetches its own
+// rows, the browser lays the table out, the self-hosted faces and the markdown
+// renderer land — each a fraction behind the mount, each one a small correction
+// on screen if it is watched as it happens. A short, fixed pause before the
+// reveal lets all of it settle BEHIND the gate, so what a person sees is the
+// finished shell arriving, not the shell assembling itself. 300ms is what that
+// pause measured out to: long enough to cover the corrections, short enough
+// that the wait itself is not the thing they notice.
+const SETTLE_MS = 300;
+
+// THE FADE IS ON `body`, ONE ELEMENT, NOT ON `nav` AND `main` SEPARATELY: two
+// elements each running their own opacity transition is two fades, and a panel
+// and a page settling on different beats reads as the shell coming apart, not
+// as one thing arriving. `body` sits outside the Vue tree `#app` mounts into,
+// so the class is toggled by hand — the one spot this component reaches past
+// its own root, on purpose.
+//
+// IT IS A LATCH: `signedIn` false is the ENTRANCE, shown under this same fade
+// as soon as `session.ready`, and a person who then signs in must not watch the
+// whole body fade back out and in while the shell takes the entrance's place —
+// once there was something on screen, there always is.
 const revealed = ref(false);
+const bodyShown = ref(false);
+watch(
+  () => session.ready && (!signedIn.value || revealed.value),
+  ready => { if (ready) bodyShown.value = true; },
+  { immediate: true },
+);
+watch(
+  bodyShown,
+  value => document.body.classList.toggle("revealed", value),
+  { immediate: true },
+);
 
 // THE BOOT, AND IT IS ONE PATH. Whoever has just proved a credential walks
 // exactly what a reload walks: the state, the theme and the entry page — so the
@@ -214,18 +233,9 @@ async function load(): Promise<void> {
   // applied: a credential just proved walks this same path, and it must not draw
   // the shell with the PREVIOUS state's tables.
   booted.value = false;
-  revealed.value = false;
+  armPageLoad();
   try {
-    // The renderer and the ten faces ride ALONGSIDE the state fetch, not after
-    // it: none of the three have anything to say to each other, and waiting
-    // for one before asking for the next would only make the gate stay shut
-    // longer than it has to.
-    const [state] = await Promise.all([
-      api<Record<string, unknown>>("/api/state"),
-      ensureRenderer(),
-      ensureFonts(),
-    ]);
-    applyState(state);
+    applyState(await api<Record<string, unknown>>("/api/state"));
     applyTheme();
     showSaved();
   } catch (err) {
@@ -236,16 +246,19 @@ async function load(): Promise<void> {
     // where it now shows the error it fell back to.
     booted.value = true;
   }
-  // `nav.current` is what `showSaved()` just decided, ABOVE — set only when the
-  // try succeeded. A plain table is the one page whose sidebar number is drawn
-  // twice (`views.ts`, `firstKindSettled`); anything else has nothing to wait
-  // for and reveals the moment it is mounted.
-  if (isKind(nav.current?.view ?? "")) {
+  // `booted` just let the page MOUNT (the template's own `v-if`), and a page
+  // that reads for itself — a file's text, a table's rows — only starts that
+  // read now, in its `onMounted`. One tick is what it takes for that setup to
+  // have run and said whether it reads (`pageReading`); then the boot waits for
+  // it, bounded so a read that never lands cannot hold the page shut.
+  await nextTick();
+  if (pageReading()) {
     await Promise.race([
-      firstKindSettled,
-      new Promise<void>(resolve => setTimeout(resolve, 500)),
+      pageLoad(),
+      new Promise<void>(resolve => setTimeout(resolve, 600)),
     ]);
   }
+  await new Promise<void>(resolve => setTimeout(resolve, SETTLE_MS));
   revealed.value = true;
 }
 
@@ -351,13 +364,13 @@ defineExpose({ refresh });
       <component :is="frame.component" v-if="frame" v-bind="frame.props" :key="frame.key" />
     </template>
     <template v-else>
-    <!-- THE FADE (TASK pending, 0.3s): `nav` and `main` are already MOUNTED the
-         moment `booted` is true — a table page is already fetching its rows
-         behind this — but stay invisible (`base.css`, `.revealed`) until
-         `revealed` turns true, which is one step later (`load()`). What was a
-         hard cut from nothing to the full shell is now a 0.3s fade into the
-         FINISHED state, sidebar numbers included. -->
-    <nav :class="{ revealed }">
+    <!-- THE FADE (0.3s, on `body` — see `revealed` above): `nav` and `main`
+         are already MOUNTED the moment `booted` is true — a table page is
+         already fetching its rows behind this — but the WHOLE BODY stays
+         invisible until `revealed` turns true, one step later (`load()`).
+         What was a hard cut from nothing to the full shell is now ONE 0.3s
+         fade into the FINISHED state, sidebar numbers included. -->
+    <nav>
       <!-- A MARCA E O NOME DELA, lado a lado: a telha é a sigla, e o que vem
            depois dela é o nome inteiro — quem chega não tem como saber o que
            "AT" quer dizer, e a sidebar é onde o produto se apresenta. -->
@@ -367,7 +380,7 @@ defineExpose({ refresh });
       </h1>
       <Sidebar />
     </nav>
-    <main :class="{ revealed }">
+    <main>
       <header id="head">
         <!-- THE PANEL'S DOOR, IN THE ONE CORNER IT NOW LIVES IN: the words flip
              with the state the same way the old row-button's did, so a screen

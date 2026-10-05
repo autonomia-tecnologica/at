@@ -21,7 +21,7 @@
 
    A THEME DECLARES ONLY `:root`. This file declares every selector. */
 
-/* ===== the typefaces (2026-09-28, +2 on 2026-10-03, swap→block on 2026-10-05)
+/* ===== the typefaces (2026-09-28, +2 on 2026-10-03) =====================
    Nunito Sans for the body (`--font-sans`) and Quicksand for anything that
    has to carry weight on the page (`--font-display`: the brand mark, a
    page's own title, a stat's big number) — `at`'s own two.
@@ -31,33 +31,27 @@
    `--font-display` only, never the body — so they ride the door as a third
    and fourth NAME, not a new slot. Both were already vendored (pinned,
    installed) for `base-shared.css`'s five; migrating the two themes that
-   actually used them cost nothing but the two rules below.
-
-   `font-display: block` AND NOT `swap`: these files are HOSTED, same origin,
-   a few KB each — the fallback-then-swap `swap` buys is a flash with nothing
-   underneath it, the same FOUC the boot gate (`App.vue`, `booted`) exists to
-   kill one layer up. `block` holds the glyph invisible for its short window
-   instead of painting it twice. */
+   actually used them cost nothing but the two rules below. */
 @font-face { font-family: "Nunito Sans"; font-style: normal; font-weight: 400;
-             font-display: block; src: url("/vendor/font-nunito-sans-400") format("woff2"); }
+             font-display: swap; src: url("/vendor/font-nunito-sans-400") format("woff2"); }
 @font-face { font-family: "Nunito Sans"; font-style: normal; font-weight: 600;
-             font-display: block; src: url("/vendor/font-nunito-sans-600") format("woff2"); }
+             font-display: swap; src: url("/vendor/font-nunito-sans-600") format("woff2"); }
 @font-face { font-family: "Nunito Sans"; font-style: normal; font-weight: 700;
-             font-display: block; src: url("/vendor/font-nunito-sans-700") format("woff2"); }
+             font-display: swap; src: url("/vendor/font-nunito-sans-700") format("woff2"); }
 @font-face { font-family: "Nunito Sans"; font-style: normal; font-weight: 800;
-             font-display: block; src: url("/vendor/font-nunito-sans-800") format("woff2"); }
+             font-display: swap; src: url("/vendor/font-nunito-sans-800") format("woff2"); }
 @font-face { font-family: "Quicksand"; font-style: normal; font-weight: 500;
-             font-display: block; src: url("/vendor/font-quicksand-500") format("woff2"); }
+             font-display: swap; src: url("/vendor/font-quicksand-500") format("woff2"); }
 @font-face { font-family: "Quicksand"; font-style: normal; font-weight: 600;
-             font-display: block; src: url("/vendor/font-quicksand-600") format("woff2"); }
+             font-display: swap; src: url("/vendor/font-quicksand-600") format("woff2"); }
 @font-face { font-family: "Quicksand"; font-style: normal; font-weight: 700;
-             font-display: block; src: url("/vendor/font-quicksand-700") format("woff2"); }
+             font-display: swap; src: url("/vendor/font-quicksand-700") format("woff2"); }
 @font-face { font-family: "UnifrakturMaguntia"; font-style: normal; font-weight: 400;
-             font-display: block; src: url("/vendor/font-unifrakturmaguntia") format("woff2"); }
+             font-display: swap; src: url("/vendor/font-unifrakturmaguntia") format("woff2"); }
 @font-face { font-family: "Silkscreen"; font-style: normal; font-weight: 400;
-             font-display: block; src: url("/vendor/font-silkscreen-400") format("woff2"); }
+             font-display: swap; src: url("/vendor/font-silkscreen-400") format("woff2"); }
 @font-face { font-family: "Silkscreen"; font-style: normal; font-weight: 700;
-             font-display: block; src: url("/vendor/font-silkscreen-700") format("woff2"); }
+             font-display: swap; src: url("/vendor/font-silkscreen-700") format("woff2"); }
 
 * { box-sizing: border-box; }
 /* THE HAND, EVERYWHERE SOMETHING IS CLICKABLE — a DESIGN SYSTEM rule and not a
@@ -75,7 +69,15 @@ body {
   font-family: var(--font-sans);
   font-size: var(--text-base); line-height: var(--leading-normal);
   -webkit-font-smoothing: antialiased;
+  /* THE BOOT'S FADE (0.3s), ONE ELEMENT. The whole application arrives as one
+     thing — the panel and the page cannot settle on different beats, because
+     neither of them fades on its own (`App.vue`, `bodyShown`). `body` is
+     hidden until the boot says there is something to show, and the class is
+     the latch that says so. */
+  opacity: 0;
+  transition: opacity .3s var(--ease-out);
 }
+body.revealed { opacity: 1; }
 
 /* WHAT IS SELECTED IS OURS, and not the browser's blue: the brand at one of its
    lightest steps, which is the one field of solid colour a page may wear — it
@@ -100,18 +102,10 @@ nav {
   background: var(--nav-bg);
   border-right: 1px solid var(--nav-border);
   transform: translateX(-100%);
-  opacity: 0;
   transition: transform var(--dur-base) var(--ease-out),
-              box-shadow var(--dur-base) var(--ease-out),
-              opacity .3s var(--ease-out);
+              box-shadow var(--dur-base) var(--ease-out);
 }
 html.nav-open nav { transform: translateX(0); box-shadow: var(--nav-edge); }
-/* THE BOOT'S FADE, 0.3s (`App.vue`, `revealed`): `nav` and `main` are mounted
-   the moment the shell is, already fetching a table's own rows behind the
-   scenes, but stay invisible until that first page has actually settled — a
-   hard cut from nothing to the finished shell becomes a fade into it instead,
-   with no number that still has to correct itself on screen when it does. */
-nav.revealed, main.revealed { opacity: 1; }
 
 /* THE TWO SCROLLERS SCROLL ONE WAY, AND ONLY ONE (2026-09-28). A horizontal bar
    is never welcome here and it is never possible: the table is `table-layout:
@@ -150,8 +144,6 @@ main {
   background-image: radial-gradient(1100px 460px at 100% -8%,
                                     var(--accent-50), transparent 72%);
   background-repeat: no-repeat;
-  opacity: 0;
-  transition: opacity .3s var(--ease-out);
 }
 header {
   display: flex; align-items: center; gap: var(--space-3);
@@ -1387,6 +1379,68 @@ html.no-motion *, html.no-motion *::before, html.no-motion *::after {
 }
 
 /* ===== responsive: the one literal band (contract with breakpoint.ts) ===== */
+
+/* THE WIDE WINDOW: THE PANEL IS A RAIL (2026-10-05). Below 961px the panel is
+   the overlay drawer it needs to be — there is no room to keep it on screen.
+   At and above the band there IS room, so it is the other thing: a THIN COLUMN
+   that is always there, carrying only the MARKS (the icons, never the words),
+   and the foot's own button opens it into the full panel. It goes back IN FLOW
+   here — a flex sibling of `main`, not the fixed overlay of the narrow side —
+   which is what lets the page sit BESIDE it instead of under it, and what
+   makes the one thing that moves (its width) push the page rather than cover
+   it. `position: relative` and not `static`: the foot is `absolute`, and it
+   still has to hang off the panel's own box. */
+@media (min-width: 961px) {
+  nav {
+    position: relative;
+    width: var(--nav-rail-w);
+    transform: none;
+    transition: width var(--dur-base) var(--ease-out);
+  }
+  html.nav-open nav { width: var(--nav-w); box-shadow: var(--nav-edge); }
+  /* MARKS, NOT WORDS. While the panel is a rail every caret, count and long
+     name leaves it, and a section's contents — open only by the person's
+     choice — have no column to live in at 44px. `html:not(.nav-open)` and not
+     a second rule to put them back: open, none of this applies and the base
+     rules are the ones in force, which is where the words belong. */
+  html:not(.nav-open) nav .caret,
+  html:not(.nav-open) nav .n,
+  html:not(.nav-open) nav .brand-name,
+  html:not(.nav-open) nav .foldable { display: none; }
+  /* THE LABELS STAY FOR A SCREEN READER, they only stop being SEEN: a rail row
+     is still a button with a name, and `display: none` would take the name with
+     the pixels (WCAG 2.4.6, and a control a screen reader cannot announce is a
+     control only a sighted person has). */
+  html:not(.nav-open) nav .t,
+  html:not(.nav-open) nav .side-foot > .file > span {
+    position: absolute; width: 1px; height: 1px;
+    padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%);
+    white-space: nowrap; border: 0;
+  }
+  /* A rail row is the mark CENTERED, and the box a word-and-mark row needs is
+     wider than the rail: the side margins and the padding that made room for a
+     label would squeeze the icon past the edge. */
+  html:not(.nav-open) nav button,
+  html:not(.nav-open) nav .folder {
+    justify-content: center;
+    width: calc(100% - 2 * var(--space-2));
+    margin-inline: var(--space-2);
+    padding-inline: 0;
+  }
+  /* The brand is the rail's own top mark: centered, with the gutter its 34px
+     tile does not need at 44px of column. */
+  html:not(.nav-open) nav h1 { justify-content: center; padding-inline: 0; }
+  /* The foot's door says "open" while the panel is a rail — the close glyph is
+     only right once the full panel is what is on screen. */
+  nav .side-foot > .file.nav-toggle::before { --i: url("/icons/at2-nav-menu.svg"); }
+  html.nav-open nav .side-foot > .file.nav-toggle::before { --i: url("/icons/at2-nav-close.svg"); }
+  /* The corner button and its scrim are the NARROW side's doors: nothing here
+     is summoned from off-screen, so neither has a job. The header starts where
+     the rail ends, with the ordinary page gutter. */
+  .menu-toggle { display: none; }
+  header { padding-inline-start: var(--space-6); }
+  html.nav-open .scrim { display: none; }
+}
 
 @media (max-width: 960px) {
   /* THE DRAWER LEAVES A STRIP OF THE PAGE (2026-10-05): at full width it left

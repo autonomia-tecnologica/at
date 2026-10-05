@@ -134,23 +134,41 @@ export function countOf(view: string, total: number): number {
   return live === undefined ? total : live;
 }
 
-// THE GATE'S THIRD STEP, AND ONLY FOR A TABLE'S OWN PAGE (2026-10-05): a kind's
-// sidebar number is drawn TWICE at boot — once from the store's total
-// (`countOf`'s fallback, the moment the shell mounts) and once from the page's
-// own rows (`setLiveCount`, above, once `KindView`'s fetch lands) — and the
-// second draw used to land a beat after the first was already on screen, the
-// same flash the rest of the boot gate (`App.vue`) exists to kill. `KindView`
-// resolves this the moment its FIRST fetch settles, win or lose; nothing else
-// ever calls it, which is why `App.vue` races it against a short timeout
-// instead of awaiting it bare — a page with nothing to wait for (Settings, a
-// project, a file…) must still reveal on schedule.
-let settleFirstKind: (() => void) | null = null;
-export const firstKindSettled: Promise<void> = new Promise(resolve => {
-  settleFirstKind = resolve;
-});
-export function markFirstKindSettled(): void {
-  settleFirstKind?.();
-  settleFirstKind = null;
+// A PAGE'S OWN FIRST READ. The boot (`App.vue`) waits for the STATE, but a page
+// that also reads for itself — a file's text (`WriteView`), a table's rows
+// (`KindView`) — is still filling when the shell would reveal, and revealing
+// there shows the page EMPTY for a beat before its content lands. A page that
+// reads on its own says so the moment it is set up (`pageReadsOnItsOwn`, called
+// synchronously, before the boot decides whether it has anything to wait for)
+// and calls `pageLoaded` when that read settles — win or lose.
+//
+// The boot RACES the wait against a short timeout, so a read that never lands
+// (a slow disk, a hung request) cannot hold the page shut forever: the shell
+// shows the error it fell back to instead of nothing at all.
+let selfReading = false;
+let settlePageLoad: (() => void) | null = null;
+let loadingPage: Promise<void> = Promise.resolve();
+
+export function armPageLoad(): void {
+  selfReading = false;
+  loadingPage = new Promise<void>(resolve => { settlePageLoad = resolve; });
+}
+
+export function pageReadsOnItsOwn(): void {
+  selfReading = true;
+}
+
+export function pageReading(): boolean {
+  return selfReading;
+}
+
+export function pageLoaded(): void {
+  settlePageLoad?.();
+  settlePageLoad = null;
+}
+
+export function pageLoad(): Promise<void> {
+  return loadingPage;
 }
 
 // A page that could not be drawn says so where the page's own words go — the

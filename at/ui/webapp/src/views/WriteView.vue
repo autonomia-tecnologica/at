@@ -19,8 +19,16 @@
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { api } from "../lib/api";
 import { word } from "../lib/store";
+import { pageReadsOnItsOwn, pageLoaded } from "../lib/views";
 import { useWriting, writingState } from "../lib/writing";
 import { highlightMarkdown } from "../lib/mdHighlight";
+
+// THIS PAGE READS FOR ITSELF, and the boot has to know: the file's text comes
+// from `/api/file` on mount, so without this the shell would reveal over a
+// write page whose field is still empty. `pageReadsOnItsOwn` runs in SETUP
+// (synchronously), so the shell — which checks one tick later — learns it
+// before the read even starts; `pageLoaded` in `load`'s `finally` closes it.
+pageReadsOnItsOwn();
 
 interface FilePayload {
   path: string;
@@ -92,6 +100,10 @@ async function load(): Promise<void> {
   } catch (err) {
     payload.value = null;
     error.value = (err as Error).message;
+  } finally {
+    // Win or lose, the boot's wait for THIS page is over — the text is in the
+    // field, or the error is what the page will show. Nothing lands after.
+    pageLoaded();
   }
 }
 
