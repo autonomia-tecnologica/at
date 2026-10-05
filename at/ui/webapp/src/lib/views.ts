@@ -134,6 +134,25 @@ export function countOf(view: string, total: number): number {
   return live === undefined ? total : live;
 }
 
+// THE GATE'S THIRD STEP, AND ONLY FOR A TABLE'S OWN PAGE (2026-10-05): a kind's
+// sidebar number is drawn TWICE at boot — once from the store's total
+// (`countOf`'s fallback, the moment the shell mounts) and once from the page's
+// own rows (`setLiveCount`, above, once `KindView`'s fetch lands) — and the
+// second draw used to land a beat after the first was already on screen, the
+// same flash the rest of the boot gate (`App.vue`) exists to kill. `KindView`
+// resolves this the moment its FIRST fetch settles, win or lose; nothing else
+// ever calls it, which is why `App.vue` races it against a short timeout
+// instead of awaiting it bare — a page with nothing to wait for (Settings, a
+// project, a file…) must still reveal on schedule.
+let settleFirstKind: (() => void) | null = null;
+export const firstKindSettled: Promise<void> = new Promise(resolve => {
+  settleFirstKind = resolve;
+});
+export function markFirstKindSettled(): void {
+  settleFirstKind?.();
+  settleFirstKind = null;
+}
+
 // A page that could not be drawn says so where the page's own words go — the
 // panel keeps whatever it was showing.
 export function showError(err: Error): void {

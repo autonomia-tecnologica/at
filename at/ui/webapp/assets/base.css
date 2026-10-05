@@ -100,10 +100,18 @@ nav {
   background: var(--nav-bg);
   border-right: 1px solid var(--nav-border);
   transform: translateX(-100%);
+  opacity: 0;
   transition: transform var(--dur-base) var(--ease-out),
-              box-shadow var(--dur-base) var(--ease-out);
+              box-shadow var(--dur-base) var(--ease-out),
+              opacity .3s var(--ease-out);
 }
 html.nav-open nav { transform: translateX(0); box-shadow: var(--nav-edge); }
+/* THE BOOT'S FADE, 0.3s (`App.vue`, `revealed`): `nav` and `main` are mounted
+   the moment the shell is, already fetching a table's own rows behind the
+   scenes, but stay invisible until that first page has actually settled — a
+   hard cut from nothing to the finished shell becomes a fade into it instead,
+   with no number that still has to correct itself on screen when it does. */
+nav.revealed, main.revealed { opacity: 1; }
 
 /* THE TWO SCROLLERS SCROLL ONE WAY, AND ONLY ONE (2026-09-28). A horizontal bar
    is never welcome here and it is never possible: the table is `table-layout:
@@ -142,6 +150,8 @@ main {
   background-image: radial-gradient(1100px 460px at 100% -8%,
                                     var(--accent-50), transparent 72%);
   background-repeat: no-repeat;
+  opacity: 0;
+  transition: opacity .3s var(--ease-out);
 }
 header {
   display: flex; align-items: center; gap: var(--space-3);

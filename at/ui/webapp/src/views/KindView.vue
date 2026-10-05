@@ -6,10 +6,10 @@
 // filters and lets the person choose — the slice is the CLI's default, not the
 // page's.
 
-import { ref, computed, watch, onMounted } from "vue";
+import { ref, computed, watch, onMounted, nextTick } from "vue";
 import { api } from "../lib/api";
 import { setFields, kindLabel } from "../lib/store";
-import { nav, openRef, setTrail, showError } from "../lib/views";
+import { nav, openRef, setTrail, showError, markFirstKindSettled } from "../lib/views";
 import TableView from "../components/TableView.vue";
 import RecordView from "../components/RecordView.vue";
 import type { TablePayload } from "../lib/record";
@@ -39,6 +39,12 @@ async function load(): Promise<void> {
   } catch (err) {
     payload.value = null;
     showError(err as Error);
+  } finally {
+    // The sidebar's LIVE count is `TableView`'s own `watchEffect`, and that
+    // only runs once `payload` has actually mounted it — one tick after the
+    // assignment above, never in the same one.
+    await nextTick();
+    markFirstKindSettled();
   }
 }
 
