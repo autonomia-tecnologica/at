@@ -1434,7 +1434,12 @@ html.no-motion *, html.no-motion *::before, html.no-motion *::after {
      wider than the rail: the side margins and the padding that made room for a
      label would squeeze the icon past the edge. */
   html:not(.nav-open) nav button,
-  html:not(.nav-open) nav .folder {
+  html:not(.nav-open) nav .folder,
+  /* THE FOOT'S ROWS ARE `.file`, AND THAT IS WHY THEY NEED THEIR OWN SELECTOR:
+     the base rule (`nav .side-foot > .file`, below) is more specific than
+     `nav button`, so on the rail it kept `flex-start` and the mark sat at the
+     left edge instead of centered — the report. Same treatment, named. */
+  html:not(.nav-open) nav .side-foot > .file {
     justify-content: center;
     width: calc(100% - 2 * var(--space-2));
     margin-inline: var(--space-2);
