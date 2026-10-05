@@ -20,7 +20,7 @@ import unittest
 import urllib.error
 import urllib.request
 from contextlib import contextmanager, redirect_stdout
-from datetime import date
+from datetime import date, timedelta
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from unittest import mock
@@ -971,6 +971,49 @@ class TheConvertRoute(ServerCase):
     def test_a_missing_file_is_refused(self):
         status, _ = self.post("/api/convert", {"path": "nao-existe.md", "to": "pdf"})
         self.assertEqual(status, 404)
+
+
+class TheRemindersDoor(ServerCase):
+    """`/api/reminders` — os lembretes com o PRÓXIMO disparo (TASK-164), que é o
+    que a metade "o que vem" da tela de Lembretes desenha. O cálculo é do motor
+    (`reminder.upcoming`); a rota só o entrega, com `freq` e `status` no texto
+    que a pessoa lê (o mesmo `tables.text_of` da tabela)."""
+
+    def test_it_hands_the_reminders_with_their_next_fire(self):
+        tables.create("reminder", {"text": "água", "freq": "daily", "at": "09:00,19:00"})
+        _, _, body = self.get("/api/reminders")
+        payload = json.loads(body)
+        self.assertEqual(len(payload["reminders"]), 1)
+        item = payload["reminders"][0]
+        self.assertEqual(item["text"], "água")
+        self.assertEqual(item["at"], ["09:00", "19:00"])
+        self.assertEqual(item["freq"], i18n.tr("table.reminder.field.freq.daily"))
+        self.assertEqual(item["status"], i18n.tr("table.reminder.field.status.active"))
+        self.assertTrue(item["active"])
+        self.assertIsNotNone(item["next"])
+
+    def test_a_paused_reminder_is_left_out(self):
+        # Um `paused` não volta a tocar: não é "o que vem".
+        tables.create(
+            "reminder",
+            {"text": "quieto", "freq": "daily", "at": "09:00", "status": "paused"},
+        )
+        _, _, body = self.get("/api/reminders")
+        self.assertEqual(json.loads(body), {"reminders": []})
+
+    def test_a_reminder_beyond_tomorrow_is_left_out(self):
+        # "Só hoje e amanhã" (2026-10-05): o que toca depois disso é calendário.
+        far = date.today() + timedelta(days=30)
+        tables.create(
+            "reminder",
+            {"text": "longe", "freq": "once", "on_date": far.isoformat(), "at": "09:00"},
+        )
+        _, _, body = self.get("/api/reminders")
+        self.assertEqual(json.loads(body), {"reminders": []})
+
+    def test_a_folder_with_no_reminder_answers_with_an_empty_list(self):
+        _, _, body = self.get("/api/reminders")
+        self.assertEqual(json.loads(body), {"reminders": []})
 
 
 class TheStrongboxDoor(ServerCase):

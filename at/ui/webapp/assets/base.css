@@ -308,7 +308,12 @@ nav hr.sep {
    for each. `--nav-ink-2` is the same family one step down — bright enough to
    lead, quiet enough to sit in the panel — and the POINTER is what lifts it to
    white. */
-nav .folder {
+/* A SECTION THAT IS NOT A FOLD (TASK-164): "Lembretes" é um capítulo do painel
+   como as dobras ao lado, e veste a MESMA roupa — as maiúsculas em negrito e o
+   ar em volta — para o painel se ler como uma lista só de seções. O que ele NÃO
+   carrega é a seta: não há nada embaixo dele para abrir. */
+nav .folder,
+nav .file[data-view="reminders"] {
   display: flex; justify-content: flex-start; align-items: center; gap: var(--space-2);
   /* THE BOX IS THE TEXT'S, now that a section head is also a ROW. It used to be
      `16px 20px 4px` — the air above a head that could only open and close — and
@@ -417,6 +422,10 @@ nav .folder[data-branch="tasks"]::before,
 nav .folder[data-branch="files"]::before,
 nav .folder[data-branch="strongbox"]::before,
 nav .folder[data-branch="tables"]::before,
+/* A quinta porta com forma (TASK-164): "Lembretes" é uma LINHA e não uma dobra,
+   e o marcador é escrito pela `data-view` dela — nunca `.file` sozinho, pelo
+   motivo acima. */
+nav .file[data-view="reminders"]::before,
 nav .side-foot > .file::before,
 .caret::before,
 .menu-toggle::before,
@@ -446,6 +455,7 @@ nav .folder[data-branch="tasks"]::before { --i: url("/icons/at2-nav-tasks.svg");
 nav .folder[data-branch="files"]::before { --i: url("/icons/at2-nav-files.svg"); }
 nav .folder[data-branch="strongbox"]::before { --i: url("/icons/at2-nav-strongbox.svg"); }
 nav .folder[data-branch="tables"]::before { --i: url("/icons/at2-nav-tables.svg"); }
+nav .file[data-view="reminders"]::before { --i: url("/icons/at2-nav-reminders.svg"); }
 nav .side-foot > .file[data-view="settings"]::before { --i: url("/icons/at2-nav-settings.svg"); }
 nav .side-foot > .file[data-view="chat"]::before { --i: url("/icons/at2-nav-chat.svg"); }
 /* THE FOOT'S OWN CLOSE (2026-10-05): it only ever shows while the panel is
@@ -1260,6 +1270,16 @@ a.ref:hover, a.url:hover { border-bottom-color: currentColor; background: var(--
 }
 .row b { font-weight: var(--weight-semibold); }
 .row .n { margin-left: auto; color: var(--ink-3); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+
+/* O LEMBRETE, na tela de Lembretes (TASK-164): a mesma linha que se lê, com o
+   TEXTO à esquerda, a recorrência em cinza ao lado, e o PRÓXIMO toque à direita
+   — é ele que separa um lembrete de uma tarefa, e é o que a linha diz depois do
+   nome. Um lembrete que não vem (pausado, um `once` vencido) fica esmaecido: a
+   linha existe, e diz que não vem. */
+.reminder { flex-wrap: wrap; }
+.reminder .meta { color: var(--ink-3); font-size: var(--text-sm); }
+.reminder .n { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.reminder.paused { opacity: .55; }
 
 /* O TOM DE CADA BALDE, e ele é do DESENHO e não do dado: os quatro baldes são
    uma lista fechada do motor (`prose.bucket`), como os status de uma tarefa —

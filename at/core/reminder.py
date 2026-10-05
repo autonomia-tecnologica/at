@@ -48,7 +48,7 @@ from __future__ import annotations
 
 import re
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from at.core import tables
 from at.data import store
@@ -219,6 +219,47 @@ def due(at: date | None = None, rows: list[dict] | None = None) -> dict[str, lis
         if any(occurs(row, at + timedelta(days=days)) for days in _warn_days(row)):
             warned.append(row)
     return {"due": arrived, "warn": warned}
+
+
+# O horizonte em que "o próximo disparo" é procurado — um ano e um dia, o maior
+# ciclo que uma recorrência tem (`yearly`). Uma linha que não ocorre dentro dele
+# não tem próximo: um `once` já vencido, um `monthly` no dia 31 de um mês que não
+# o tem, um `freq` que falha fechado.
+HORIZON = 366
+
+
+def upcoming(row: dict, now: datetime | None = None) -> tuple[date, str] | None:
+    """O PRÓXIMO disparo da linha — o dia e a hora —, ou `None` se nunca mais vem.
+
+    É o que a tela de Lembretes mostra e o que separa um lembrete de uma tarefa:
+    a tarefa tem prazo, o lembrete tem um PRÓXIMO toque. A regra é a de sempre,
+    lida de `occurs` (o dia) e `hours` (as horas) e nunca reescrita aqui —
+    procura-se para a frente, do dia de `now`, o primeiro dia que a recorrência
+    alcança com uma hora ainda por vir.
+
+    "Ainda por vir" espelha a janela da rodada (`ask._covers`): a hora marcada
+    vale do seu minuto em diante, e nada depois. A de hoje às 19:00, lida às
+    19:04, já é a de amanhã.
+    """
+    moment = now if now is not None else datetime.now()
+    day = moment.date()
+    times = hours(row)
+    if not times:
+        return None
+    current = moment.hour * 60 + moment.minute
+    for step in range(HORIZON):
+        when = day + timedelta(days=step)
+        if not occurs(row, when):
+            continue
+        for hour in times:
+            if step > 0 or _minute(hour) >= current:
+                return when, hour
+    return None
+
+
+def _minute(hour: str) -> int:
+    """`HH:MM` no minuto do dia — a mesma aritmética que `ask._covers` faz."""
+    return int(hour[:2]) * 60 + int(hour[3:])
 
 
 def _stamps(row: dict) -> list[str]:

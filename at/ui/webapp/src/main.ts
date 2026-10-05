@@ -16,10 +16,11 @@ import "./styles/app.css";
 import "./lib/offline";
 // A INSCRIÇÃO NO PUSH (Web Push) — a notificação do PWA, que substituiu o ntfy.
 import { register as registerPush } from "./lib/push";
-import { registerView, registerType, TASKS_KEY, FILES_KEY, TABLES_KEY, BOARD_KEY, WRITE_PREFIX } from "./lib/views";
+import { registerView, registerType, TASKS_KEY, FILES_KEY, TABLES_KEY, REMINDERS_KEY, BOARD_KEY, WRITE_PREFIX } from "./lib/views";
 import TasksView from "./views/TasksView.vue";
 import FilesView from "./views/FilesView.vue";
 import TablesView from "./views/TablesView.vue";
+import RemindersView from "./views/RemindersView.vue";
 import BoardView from "./views/BoardView.vue";
 import SettingsView from "./views/SettingsView.vue";
 import ChatView from "./views/ChatView.vue";
@@ -48,6 +49,10 @@ registerView(FILES_KEY, FilesView);
 // o leitor de um arquivo selado — abre por cima de QUALQUER tela
 // (`StrongboxViewer`), então a seção é só a dobra que cresce no painel.
 registerView(TABLES_KEY, TablesView);
+// A SEÇÃO DE LEMBRETES (TASK-164): a chave é o nome dela, e o endereço é
+// `/reminders`. A seção é uma LINHA no painel e não uma dobra, mas a tela é
+// dela — o registro não sabe a diferença, e é isso que o registro é para.
+registerView(REMINDERS_KEY, RemindersView);
 // THE BOARD: not a section's own fold, but the door right after ORPHANS in the
 // same tree (`Sidebar.vue`) — a view like any other, with an address of its
 // own (`/board`).

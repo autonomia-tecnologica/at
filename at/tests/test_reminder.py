@@ -130,6 +130,61 @@ class Occurs(unittest.TestCase):
         self.assertFalse(reminder.occurs(r, date(2026, 10, 1)))
 
 
+class Upcoming(unittest.TestCase):
+    """O PRÓXIMO disparo de uma linha — o que a tela de Lembretes mostra
+    (TASK-164): sem pasta, sem store. Segunda-feira 05/10/2026 é o dia de
+    referência (o mesmo `date.today()` que o resto da suíte evita)."""
+
+    def test_a_daily_skips_to_tomorrow_once_the_hour_has_passed(self):
+        r = row(freq="daily", at=["09:00", "19:00"])
+        self.assertEqual(
+            reminder.upcoming(r, datetime(2026, 10, 5, 19, 4)),
+            (date(2026, 10, 6), "09:00"),
+        )
+
+    def test_a_daily_with_an_hour_still_ahead_is_today(self):
+        r = row(freq="daily", at=["09:00", "19:00"])
+        self.assertEqual(
+            reminder.upcoming(r, datetime(2026, 10, 5, 18, 0)),
+            (date(2026, 10, 5), "19:00"),
+        )
+
+    def test_a_weekly_lands_on_its_next_weekday(self):
+        # Monday 05/10; `weekday()` counts Monday as 0, so 2 is Wednesday.
+        r = row(freq="weekly", on_weekday=[2], at=["09:00"])
+        self.assertEqual(
+            reminder.upcoming(r, datetime(2026, 10, 5, 10, 0)),
+            (date(2026, 10, 7), "09:00"),
+        )
+
+    def test_a_yearly_lands_a_year_ahead_when_its_day_has_passed(self):
+        r = row(freq="yearly", on_month=10, on_day=5, at=["09:00"])
+        self.assertEqual(
+            reminder.upcoming(r, datetime(2026, 10, 5, 19, 4)),
+            (date(2027, 10, 5), "09:00"),
+        )
+
+    def test_a_once_already_past_has_no_next(self):
+        r = row(freq="once", on_date="2026-10-05", at=["09:00"])
+        self.assertIsNone(reminder.upcoming(r, datetime(2026, 10, 5, 19, 4)))
+
+    def test_a_once_still_ahead_has_its_day(self):
+        r = row(freq="once", on_date="2026-10-05", at=["19:00"])
+        self.assertEqual(
+            reminder.upcoming(r, datetime(2026, 10, 5, 9, 0)),
+            (date(2026, 10, 5), "19:00"),
+        )
+
+    def test_a_paused_row_has_no_next(self):
+        r = row(freq="daily", status="paused", at=["09:00"])
+        self.assertIsNone(reminder.upcoming(r, datetime(2026, 10, 5, 8, 0)))
+
+    def test_a_row_with_no_hours_has_no_next(self):
+        # A row with no `at` owes no push (`hours` answers nothing), so there is
+        # no fire to point at.
+        self.assertIsNone(reminder.upcoming(row(freq="daily"), datetime(2026, 10, 5, 8, 0)))
+
+
 class Due(unittest.TestCase):
     """The day's split: what lands on it, and what is inside its warning."""
 
@@ -525,6 +580,47 @@ class TheListing(ReminderCase):
         # Not the generic "nada aqui ainda": a range still names itself
         # (`ask._described`), the same way the exact-day case already did.
         self.assertIn("até", result.text)
+
+
+class TheGate(ReminderCase):
+    """A `once` reminder carries a DATE, or it does not exist.
+
+    The rule is the declaration's — `on_date` declares `required_when: {freq:
+    once}` — and the engine reads it (`tables._require`): a `once` with no date
+    is a row `occurs` can never land (`reminder.ONCE` reads `on_date` alone), so
+    it must not be born. It is the gate for the defect of 2026-10-05: the Jev
+    marked a spoken date ("hj") the grammar cannot read, the field dropped to
+    residue, and a `once` reminder was written with nothing ever to fire it.
+    """
+
+    def refusal(self) -> str:
+        return tr("table.error.required", field=tables.label("reminder", "on_date"))
+
+    def test_a_once_with_no_date_is_refused(self):
+        with self.assertRaises(tables.TableError) as caught:
+            tables.create(
+                "reminder", {"text": "passagens", "freq": "once", "at": "19:00"}
+            )
+        self.assertEqual(str(caught.exception), self.refusal())
+
+    def test_a_once_with_a_date_is_born(self):
+        made = tables.create(
+            "reminder",
+            {"text": "passagens", "freq": "once", "on_date": "2026-10-05", "at": "19:00"},
+        )
+        self.assertEqual(made["freq"], "once")
+
+    def test_a_daily_needs_no_date(self):
+        # The rule reaches ONE freq, and the engine reads it off the declaration
+        # and not off a name — a row that comes round every day declares no date.
+        made = tables.create("reminder", {"text": "água", "freq": "daily", "at": "19:00"})
+        self.assertEqual(made["freq"], "daily")
+
+    def test_editing_a_daily_into_a_once_with_no_date_is_refused(self):
+        made = tables.create("reminder", {"text": "água", "freq": "daily", "at": "19:00"})
+        with self.assertRaises(tables.TableError) as caught:
+            tables.edit("reminder", made["id"], {"freq": "once"})
+        self.assertEqual(str(caught.exception), self.refusal())
 
 
 if __name__ == "__main__":

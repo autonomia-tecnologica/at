@@ -1212,6 +1212,36 @@ def _reminder_hour(ask: Ask | None) -> list[Report]:
     return _extend(REMINDER_HOUR)
 
 
+# O que ESTA troca acrescenta a uma declaração que JÁ está no disco — migração
+# vinte e oito, a mesma forma de nove, dezessete, vinte e sete.
+#
+# **O `on_date` de um lembrete passa a ser obrigatório quando `freq` é `once`.**
+# Um lembrete de uma vez sem data NUNCA ocorre (`reminder.occurs` exige
+# `on_date` para o `once`), e nada o barrava: a linha nascia morta e calada —
+# o Jev marca a data de uma frase ("hj") como `day_span`, a palavra-campo é
+# plantada, mas o `read_day` da gramática não lê a gíria, o `on_date` cai como
+# resíduo e o `once` fica sem data, para nunca tocar. O portão é do motor
+# (`tables._require` lê o `required_when` da própria declaração), e vale para
+# toda porta — CLI, WebApp e a frase.
+ONCE_NEEDS_A_DAY: dict[str, dict] = {
+    "reminder": {
+        "fields": {
+            "on_date": {"required_when": {"freq": "once"}},
+        },
+    },
+}
+
+
+def _once_needs_a_day(ask: Ask | None) -> list[Report]:
+    """Migração vinte e oito: o `once` do lembrete exige a data.
+
+    Não pergunta, pela mesma razão da vinte e sete: é declaração do produto, e
+    o que ela faz é impedir uma linha que já não podia funcionar de nascer. As
+    linhas que já existem não são tocadas — quem as tiver, e quiser, decide.
+    """
+    return _extend(ONCE_NEEDS_A_DAY)
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, _legacy_instance),
     Migration(2, _capitalized_instance),
@@ -1240,6 +1270,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(25, _strongbox_permission_renamed),
     Migration(26, _services_under_their_house),
     Migration(27, _reminder_hour),
+    Migration(28, _once_needs_a_day),
 )
 
 

@@ -45,6 +45,12 @@ export const TASKS_KEY = "tasks";
 export const FILES_KEY = "files";
 export const TABLES_KEY = "tables";
 
+// A SEÇÃO DE LEMBRETES (TASK-164), pela mesma regra das outras: a chave é o
+// nome da seção, e o endereço dela é `/reminders`. Ela NÃO é uma dobra — é uma
+// linha só, entre Arquivos e Cofre — mas é uma seção com tela própria, e a
+// chave é dela.
+export const REMINDERS_KEY = "reminders";
+
 // O COFRE NÃO TEM CHAVE DE VIEW (2026-10-05). Ele teve uma tela própria
 // (TASK-156) — a quarta dobra, irmã de Arquivos —, e ela saiu: era a mesma
 // árvore do painel numa página só, "sem necessidade de existir". O que o

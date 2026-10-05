@@ -153,6 +153,7 @@ from at.core import (
     permissions,
     projects,
     push,
+    reminder,
     risk,
     settings,
     strongbox,
@@ -538,6 +539,9 @@ PAGE_WORDS = (
     "tasks", "files", "strongbox", "tables", "settings", "general", "appearance", "language",
     "dark_mode", "dark_system", "dark_light", "dark_dark",
     "motion", "themes", "no_project", "all_tasks", "board", "new_task", "new_project", "delete_project",
+    # A TELA DE LEMBRETES (TASK-164): a seção, as duas metades, e o que uma
+    # pasta sem lembrete e um dia sem aviso dizem.
+    "reminders", "reminders_coming", "reminders_rang", "reminders_none", "reminders_quiet",
     "move_to_project", "records", "hidden", "no_records", "error", "filter",
     # THE FILA'S BADGE (TASK-162, fatia 2/2): whether this browser is online,
     # and how many edits are still waiting to leave it.
@@ -1718,6 +1722,17 @@ class Handler(BaseHTTPRequestHandler):
             self._get_notifications()
             return
 
+        if rest == ["reminders"]:
+            # TASK-164: a metade "o que vem" da tela de Lembretes — os lembretes
+            # com o PRÓXIMO disparo CALCULADO. A recorrência é do motor
+            # (`reminder.upcoming`), e a página não a repete: a regra mora num
+            # lugar só. A demanda é a de listar a tabela, a mesma de toda
+            # leitura dela.
+            if not self._may(permissions.needed(reminder.REMINDER, "list")):
+                return
+            self._get_reminders()
+            return
+
         if rest == ["push", "key"]:
             # A chave PÚBLICA do VAPID, que a página passa ao
             # `pushManager.subscribe`. Pública por construção: o par privado
@@ -1799,6 +1814,43 @@ class Handler(BaseHTTPRequestHandler):
         """
         messages, _ = notifier.read()
         self._json({"messages": messages})
+
+    def _get_reminders(self) -> None:
+        """Os lembretes com o PRÓXIMO disparo — a metade "o que vem" (TASK-164).
+
+        **SÓ HOJE E AMANHÃ** (2026-10-05, pedido da pessoa): a seção é o que
+        precisa da atenção de AGORA, e o que toca depois disso não é "próximo",
+        é calendário — a tabela é quem o mostra por inteiro. Um lembrete que não
+        volta a tocar (um `paused`, um `once` vencido, um dia que o mês não tem)
+        não entra: não há disparo para apontar, e uma linha sem próximo na lista
+        do que VEM seria uma promessa que `occurs` já recusa.
+
+        A ordem é a do relógio: o que toca primeiro vem primeiro.
+
+        As quatro colunas do schema (`freq`, `at`, `status`, `text`) e o
+        cálculo, e nada além: o `note` é do lembrete e não desta tela. `freq` e
+        `status` vão no TEXTO que a pessoa lê (`tables.text_of`, o mesmo que a
+        tabela usa) e não no enum cru — a página inventa palavra nenhuma.
+        """
+        today = reminder.today()
+        upcoming = []
+        for row in store.load(reminder.REMINDER):
+            when = reminder.upcoming(row)
+            if when is None or (when[0] - today).days > 1:
+                continue
+            upcoming.append(
+                {
+                    "id": row.get("id"),
+                    "text": row.get("text"),
+                    "freq": tables.text_of(reminder.REMINDER, "freq", row.get("freq")),
+                    "at": row.get("at"),
+                    "status": tables.text_of(reminder.REMINDER, "status", row.get("status")),
+                    "active": row.get("status") == reminder.ACTIVE,
+                    "next": f"{when[0].isoformat()} {when[1]}",
+                }
+            )
+        upcoming.sort(key=lambda item: (item["next"], item["id"] or 0))
+        self._json({"reminders": upcoming})
 
     def _post_push_subscribe(self) -> None:
         """Guarda a inscrição do navegador — o `PushSubscription.toJSON()`.

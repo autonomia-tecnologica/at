@@ -17,7 +17,7 @@
 
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { store, word } from "../lib/store";
-import { CHAT_KEY, NLU_UI_ENABLED, TASKS_KEY, FILES_KEY, TABLES_KEY, BOARD_KEY, SETTINGS_KEY, isCurrent, open, countOf } from "../lib/views";
+import { CHAT_KEY, NLU_UI_ENABLED, TASKS_KEY, FILES_KEY, TABLES_KEY, REMINDERS_KEY, BOARD_KEY, SETTINGS_KEY, isCurrent, open, countOf } from "../lib/views";
 import { byName } from "../lib/order";
 import { toggleNav } from "../lib/nav";
 import Foldable from "./Foldable.vue";
@@ -65,6 +65,10 @@ function openSettings(): void {
 
 function openChat(): void {
   open(CHAT_KEY, null);
+}
+
+function openReminders(): void {
+  open(REMINDERS_KEY, null);
 }
 
 // `--foot-space` USED TO BE A GUESS (2026-09-27): a constant in `base.css`,
@@ -122,7 +126,15 @@ onUnmounted(() => {
     <Foldable id="files" :label="word('files')" box-class="branch" :view="FILES_KEY">
       <FileTree />
     </Foldable>
-    <!-- THE STRONGBOX, right after Arquivos — a fourth fold, and ONLY a fold
+    <!-- LEMBRETES (TASK-164), entre Arquivos e Cofre: uma LINHA, e não uma
+         dobra — o que ela guarda é uma tela só (o que vem, e o que já tocou
+         hoje), e a tela é o todo dela. A marca (o sino) é pendurada por
+         `base.css` na `data-view`, como a de toda porta com forma. -->
+    <button type="button" class="file" :data-view="REMINDERS_KEY"
+            :class="{ on: isCurrent(REMINDERS_KEY) }" @click="openReminders">
+      <span>{{ word("reminders") }}</span>
+    </button>
+    <!-- THE STRONGBOX, right after Lembretes — a fourth fold, and ONLY a fold
          now (2026-10-05): the section's own screen is gone, so the head opens
          and closes the tree and goes nowhere. What it lists is what the vigia
          already sealed, and a file opens over WHATEVER screen is up. -->

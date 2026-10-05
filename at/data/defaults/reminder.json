@@ -60,7 +60,10 @@
     "on_date": {
       "label": "table.reminder.field.on_date",
       "type": "day",
-      "filterable": true
+      "filterable": true,
+      "required_when": {
+        "freq": "once"
+      }
     },
     "at": {
       "label": "table.reminder.field.at",

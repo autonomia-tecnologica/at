@@ -40,8 +40,13 @@ WEEKDAYS = folded({
     "domingo": 6,
 })
 
-# `amanhã` is the day that comes; `hoje` is the day the clock is saying.
-RELATIVE = folded({"hoje": 0, "amanhã": 1})
+# `amanhã` is the day that comes; `hoje` is the day the clock is saying — and
+# `hj`, the way it is written short, is the same day the clock is saying. It
+# lives here and not in the assist's vocabulary because a spoken day is read by
+# the GRAMMAR: the assist plants the field word and hands the span over as it
+# was written, so a `once` reminder made from "…passagens hj 19h" only lands a
+# date if `read_day` knows the abbreviation (2026-10-05, the defect).
+RELATIVE = folded({"hoje": 0, "hj": 0, "amanhã": 1})
 
 # The numbers that are written out. One entry per form — the gender changes the
 # word and never the value, and `duas` and `dois` are the same two.

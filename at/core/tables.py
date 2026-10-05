@@ -755,13 +755,36 @@ def _reference_value(field: dict, raw: str) -> Any:
     return [targets[0], number] if len(targets) > 1 else number
 
 
+def _required(field: dict, row: dict) -> bool:
+    """Whether this field is required FOR THIS ROW — the declaration's two ways.
+
+    `required` is unconditional: the field a row can never be born without. A
+    `required_when` is the OTHER way, and it is what a rule of the DECLARATION
+    says about one field in terms of another: a map of field→value that, when
+    every pair holds on the row, makes this field required too. The reminder's
+    `on_date` carries `{"freq": "once"}` — a `once` reminder with no date is a
+    row that can never come round (`reminder.occurs`), so it must not be born;
+    a `daily` one declares no date at all and is complete without it.
+
+    It is read off the declaration and never off a name in code: a table that
+    needs the rule says it in its own file, the way `open_day_field` reads the
+    field whose `default` is null and no list of names is written anywhere.
+    """
+    if field.get("required"):
+        return True
+    when = field.get("required_when")
+    if not isinstance(when, dict):
+        return False
+    return all(row.get(name) == value for name, value in when.items())
+
+
 def _require(table: str, row: dict) -> None:
     declared = schema.of(table) or {}
     fields = declared.get("fields")
     if not isinstance(fields, dict):
         return
     for name, field in fields.items():
-        if not isinstance(field, dict) or not field.get("required"):
+        if not isinstance(field, dict) or not _required(field, row):
             continue
         value = row.get(name)
         if value is None or value == "" or value == []:
