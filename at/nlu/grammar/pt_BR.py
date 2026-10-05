@@ -12,9 +12,10 @@ becoming a guess.
 `sexta` costs the same way: it is a weekday, and in a day field that is what it
 says. Nothing here reads it as the sixth of anything.
 
-The three readers below are the grammar's contract (`read_day`, `read_instant`,
-`read_number`), and each answers what fits the type — `day` leaves as the writer's
-local day, `instant` as a point in time in UTC.
+The readers below are the grammar's contract (`read_day`, `read_instant`,
+`read_time`, `read_number`), and each answers what fits the type — `day` leaves
+as the writer's local day, `instant` as a point in time in UTC, and `time` as the
+clock hour alone (`HH:MM`).
 """
 
 from __future__ import annotations
@@ -22,7 +23,7 @@ from __future__ import annotations
 import re
 from datetime import timedelta
 
-from at.nlu.grammar import clock, day_of_month, next_weekday, number_of
+from at.nlu.grammar import clock, clock_text, day_of_month, next_weekday, number_of
 from at.nlu.normalizer import fold, folded
 from at.nlu.reading import Question, Reading, Residue, Refused, Value
 
@@ -177,6 +178,40 @@ def read_instant(text: str, now) -> Reading:
         # added and no period supposed. Outside the hours that exist it is not an
         # hour: it comes back as a residue, and not as a guessed period of day.
         return Value(clock(now.date(), count, 0, text), op)
+    return Residue(text)
+
+
+def read_time(text: str, now) -> Reading:
+    """`18h`, `18h30`, `18:30`, `duas`, `meia-noite`: a hora-do-dia, as `HH:MM`.
+
+    Lê as MESMAS palavras que `read_instant` — os dois domínios são a mesma
+    expressão de relógio — e difere no que devolve: aqui a hora sozinha, sem dia
+    e sem fuso, que é o que o `at` de um lembrete guarda. O `now` entra só para
+    o contrato dos leitores; uma hora não tem dia para pendurar.
+    """
+    op, spelled = _interval(text)
+    if not spelled:
+        return Residue(text)
+    if spelled in FIXED:
+        hour, minute = FIXED[spelled]
+        return Value(clock_text(hour, minute, text), op)
+    if spelled == HALF_PAST_WORD:
+        return Question("nlu.ask.which_hour", text)
+    match = HALF_PAST.match(spelled)
+    if match:
+        count = _count(match.group(1))
+        if not isinstance(count, int):
+            return Residue(text)
+        return Value(clock_text(count, 30, text), op)
+    for shape in (CLOCK, CLOCK_H):
+        match = shape.match(spelled)
+        if match:
+            hour = int(match.group(1))
+            minute = int(match.group(2) or 0)
+            return Value(clock_text(hour, minute, text), op)
+    count = _count(spelled)
+    if isinstance(count, int) and 0 <= count <= 23:
+        return Value(clock_text(count, 0, text), op)
     return Residue(text)
 
 

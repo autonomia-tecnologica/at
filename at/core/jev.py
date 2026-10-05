@@ -83,6 +83,13 @@ TABLE = "table"
 ACTION_SPAN = "action_span"
 TABLE_SPAN = "table_span"
 
+# A DATA e a HORA, quando a frase as escreve como PALAVRA e não como campo.
+# "me lembrar de imprimir passagens hoje 18h" não tem "data" nem "horário": o
+# Jev é quem diz que "hoje" é a data e "18h" a hora, e o código planta a
+# palavra-campo antes de cada uma — depois disso o matcher lê uma frase comum.
+DAY_SPAN = "day_span"
+TIME_SPAN = "time_span"
+
 
 @dataclass(frozen=True)
 class Decision:
@@ -97,6 +104,12 @@ class Decision:
     que carregam a ação e a tabela, ou `NONE` quando a frase não as escreve (o
     comando vem do sentido, não de uma palavra). É o que o código gasta antes
     de ler os argumentos.
+
+    **`day_span` e `time_span` são a mesma coisa para a DATA e a HORA.** Elas
+    não são canônicos de ação nem de tabela: são as palavras que dizem QUANDO e
+    A QUE HORAS — `hoje`, `sexta`, `18h` —, e o código planta a palavra-campo da
+    tabela antes de cada uma, para o matcher ler uma frase comum (`at.core.assist`,
+    `_ground`). `NONE` quando a frase não nomeia nenhuma das duas.
     """
 
     action: str
@@ -105,6 +118,8 @@ class Decision:
     table_confidence: float
     action_span: str = ""
     table_span: str = ""
+    day_span: str = ""
+    time_span: str = ""
 
     @property
     def confidence(self) -> float:
@@ -182,6 +197,18 @@ def decide(
                     "instructions": _text("assist.criteria.span.table", language),
                     "criteria": spans,
                 },
+                # Quando e a que horas, na mesma forma: o Jev aponta a palavra,
+                # o código copia e planta a palavra-campo da tabela antes dela.
+                DAY_SPAN: {
+                    "type": "choice",
+                    "instructions": _text("assist.criteria.span.day", language),
+                    "criteria": spans,
+                },
+                TIME_SPAN: {
+                    "type": "choice",
+                    "instructions": _text("assist.criteria.span.time", language),
+                    "criteria": spans,
+                },
             },
         }
     ).encode("utf-8")
@@ -223,6 +250,11 @@ def _read(raw: bytes) -> Decision:
             # mesma, só sem saber ONDE — e o código não gasta trecho nenhum.
             action_span=str(answers.get(ACTION_SPAN, {}).get("choice", NONE)),
             table_span=str(answers.get(TABLE_SPAN, {}).get("choice", NONE)),
+            # Mesma tolerância dos trechos acima: um servidor que ainda não
+            # conhece as perguntas de data e hora responde `NONE`, e a leitura
+            # segue sem elas — nenhuma palavra-campo é plantada.
+            day_span=str(answers.get(DAY_SPAN, {}).get("choice", NONE)),
+            time_span=str(answers.get(TIME_SPAN, {}).get("choice", NONE)),
         )
     except (ValueError, KeyError, TypeError, UnicodeError) as error:
         raise JevError(f"unreadable answer: {error}") from None

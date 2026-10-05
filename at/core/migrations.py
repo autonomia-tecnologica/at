@@ -1186,6 +1186,32 @@ def _services_under_their_house(ask: Ask | None) -> list[Report]:
     return report
 
 
+# What THIS release adds to a declaration that is ALREADY on disk — migration
+# twenty-seven, the same shape nine, fifteen, seventeen and eighteen write.
+#
+# **O `at` de um lembrete declara que seus itens são HORAS** (`"items": "time"`).
+# A lista já guardava horas (`["09:00"]`) desde que nasceu; o que faltava era a
+# declaração DIZER isso — sem a chave, o tipo `list` não conta nada sobre os
+# itens, e a gramática não tinha por onde ler `18h` de uma frase.
+REMINDER_HOUR: dict[str, dict] = {
+    "reminder": {
+        "fields": {
+            "at": {"items": "time"},
+        },
+    },
+}
+
+
+def _reminder_hour(ask: Ask | None) -> list[Report]:
+    """Migration twenty-seven: o `at` do lembrete diz que seus itens são horas.
+
+    Não pergunta, e não enche linha nenhuma: é declaração do produto, e o valor
+    que já estava lá (`["09:00"]`) sempre foi uma hora — o que muda é só a
+    gramática poder lê-la de uma frase.
+    """
+    return _extend(REMINDER_HOUR)
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, _legacy_instance),
     Migration(2, _capitalized_instance),
@@ -1213,6 +1239,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(24, _project_desc_limit),
     Migration(25, _strongbox_permission_renamed),
     Migration(26, _services_under_their_house),
+    Migration(27, _reminder_hour),
 )
 
 

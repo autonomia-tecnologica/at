@@ -11,9 +11,10 @@ What both languages share is the rule underneath: the type the field declares is
 what decides which domain a word is read in, and where the type does not decide,
 the phrase comes back as a question and never as the likeliest reading.
 
-The three readers below are the grammar's contract (`read_day`, `read_instant`,
-`read_number`), and each answers what fits the type — `day` leaves as the writer's
-local day, `instant` as a point in time in UTC.
+The readers below are the grammar's contract (`read_day`, `read_instant`,
+`read_time`, `read_number`), and each answers what fits the type — `day` leaves
+as the writer's local day, `instant` as a point in time in UTC, and `time` as the
+clock hour alone (`HH:MM`).
 """
 
 from __future__ import annotations
@@ -21,7 +22,7 @@ from __future__ import annotations
 import re
 from datetime import timedelta
 
-from at.nlu.grammar import clock, day_of_month, next_weekday, number_of
+from at.nlu.grammar import clock, clock_text, day_of_month, next_weekday, number_of
 from at.nlu.normalizer import fold, folded
 from at.nlu.reading import Question, Reading, Residue, Refused, Value
 
@@ -140,6 +141,44 @@ def read_instant(text: str, now) -> Reading:
         # guessed at. Outside the hours that exist it is not an hour at all: it
         # comes back as a residue, and not as a guess between morning and night.
         return Value(clock(now.date(), count, 0, text))
+    return Residue(text)
+
+
+def read_time(text: str, now) -> Reading:
+    """`2pm`, `14:30`, `two`, `midnight`, `half past two`: a time of day, as `HH:MM`.
+
+    The same words `read_instant` reads — one clock expression, two domains —
+    and a different answer: here the hour alone, with no day and no zone, which
+    is what a reminder's `at` stores. `now` is only the readers' contract; an
+    hour has no day to hang from.
+    """
+    spelled = fold(text)
+    if spelled in FIXED:
+        hour, minute = FIXED[spelled]
+        return Value(clock_text(hour, minute, text))
+    if spelled in HALVES:
+        return Question("nlu.ask.which_hour", text)
+    match = HALF_PAST.match(spelled)
+    if match:
+        count = _count(match.group(1))
+        if not isinstance(count, int):
+            return Residue(text)
+        return Value(clock_text(count, 30, text))
+    match = CLOCK.match(spelled)
+    if match:
+        return Value(clock_text(int(match.group(1)), int(match.group(2)), text))
+    match = MERIDIEM.match(spelled)
+    if match:
+        hour = int(match.group(1))
+        if not 1 <= hour <= 12:
+            raise Refused("nlu.error.no_such_clock", value=text)
+        afternoon = match.group(3) == "pm"
+        return Value(clock_text(
+            hour % 12 + (12 if afternoon else 0), int(match.group(2) or 0), text
+        ))
+    count = _count(spelled)
+    if isinstance(count, int) and 0 <= count <= 23:
+        return Value(clock_text(count, 0, text))
     return Residue(text)
 
 

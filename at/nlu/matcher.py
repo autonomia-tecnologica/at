@@ -242,9 +242,16 @@ def _read(
     open, and a table that declares none is asked about instead.
     """
     if named is not None:
-        kind = schema.field(table, named).get("type")
+        declared = schema.field(table, named)
+        kind = declared.get("type")
         if kind in KINDS:
             return named, resolve(chunk, kind, language=language, now=now)
+        # A LIST whose ITEMS are a kind the grammar reads (`at`, the reminder's
+        # hours) is read item by item: `18h, 20h` becomes a list of two times.
+        # The declaration is what says the items are times — the type alone
+        # cannot, since every `list` field stores one.
+        if kind == "list" and declared.get("items") in KINDS:
+            return named, _list_reading(chunk, declared.get("items"), language, now)
         # A field of a type the grammar has no reader for — a text is the
         # example — is not read at all: its content is residue, and residue is
         # what the primary field is for.
@@ -255,6 +262,29 @@ def _read(
     if field is None and isinstance(reading, Value):
         return None, Question("nlu.ask.which_field", chunk)
     return field, reading
+
+
+def _list_reading(
+    chunk: str, kind: str, language: str, now: datetime
+) -> Reading:
+    """A `list` field's value: every comma-separated item, each read as `kind`.
+
+    An item the grammar does not read makes the WHOLE chunk a residue — a list
+    half-read is a list guessed at — and residue is what the primary field is
+    for. A question an item raises goes back whole, the same as everywhere else.
+    """
+    items = [piece.strip() for piece in chunk.split(",") if piece.strip()]
+    if not items:
+        return Residue(chunk)
+    values: list[Any] = []
+    for piece in items:
+        reading = resolve(piece, kind, language=language, now=now)
+        if isinstance(reading, Question):
+            return reading
+        if not isinstance(reading, Value):
+            return Residue(chunk)
+        values.append(reading.value)
+    return Value(values)
 
 
 def open_day_field(table: str) -> str | None:
@@ -273,6 +303,22 @@ def open_day_field(table: str) -> str | None:
         and declared.get("default") is None
     ]
     return found[0] if len(found) == 1 else None
+
+
+def list_field(table: str, kind: str) -> str | None:
+    """The `list` field whose items are `kind`, if the table declares one.
+
+    Read off the DECLARATION — `"items": "time"` on the reminder's `at` — and
+    never off a list of field names, the same rule `open_day_field` follows.
+    """
+    for name, declared in _fields(table).items():
+        if (
+            isinstance(declared, dict)
+            and declared.get("type") == "list"
+            and declared.get("items") == kind
+        ):
+            return name
+    return None
 
 
 def _fields(table: str) -> dict:

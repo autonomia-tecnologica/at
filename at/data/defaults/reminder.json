@@ -65,6 +65,7 @@
     "at": {
       "label": "table.reminder.field.at",
       "type": "list",
+      "items": "time",
       "required": true
     },
     "warn_days": {

@@ -2478,7 +2478,20 @@ def beat(times: int | None = None, pause: Callable[[float], None] = time.sleep) 
             print(i18n.tr("webapp.clock_failed", error=error))
         done += 1
         if times is None or done < times:
-            pause(clock.CADENCE.total_seconds())
+            pause(_rest(clock.CADENCE.total_seconds()))
+
+
+def _rest(period: float) -> float:
+    """The seconds until the next boundary of `period` — the beat lands ON the
+    grid instead of drifting a little later with every pass.
+
+    Com a cadência no minuto, um passo que derrapa (a cadência MAIS o trabalho
+    da passada, a cada passada) acaba pulando um minuto inteiro — e um lembrete
+    marcado para esse minuto não toca. Dormir até a PRÓXIMA borda reseta a
+    deriva a cada passada, e é o que faz "toca às 18h00" valer mesmo depois de
+    horas de batida.
+    """
+    return period - (time.time() % period)
 
 
 # How long `run` waits for whoever already holds the port to answer

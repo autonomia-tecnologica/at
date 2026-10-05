@@ -49,10 +49,15 @@ from at.data import store
 # The cadence (§4, item 24): how long a job waits between two rounds, and
 # therefore the grain of the whole schedule. It is read in MINUTES, and it is
 # the clock's own — a job's declaration says when it starts and nothing else,
-# because a period is a field the table does not carry. Ten is the number the
-# versioning cadence settled on (§4, item 30), which is the one job the folder
-# already has: an idle folder gets its version at that grain.
-CADENCE = timedelta(minutes=10)
+# because a period is a field the table does not carry.
+#
+# **Um minuto** (a pedido da pessoa, 2026-10-05): o lembrete marca a HORA do dia
+# (`at`), e o passo que cobre a hora precisa caber DENTRO do minuto — com dez, o
+# aviso saía até dez minutos depois. O preço está nomeado no docstring do módulo
+# e vale para todo job declarado: um job que rodasse a cada passo passa a rodar
+# a cada minuto. A pasta de hoje não tem job nenhum, então o que muda agora é só
+# a batida do laço.
+CADENCE = timedelta(minutes=1)
 
 # The act the clock performs when it recovers a round AT was not up for. It is
 # this module's own word, the way `job:run` is the object's: §3 writes a line for

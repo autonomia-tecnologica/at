@@ -1,7 +1,7 @@
 {
   "pt_BR": {
-    "name.one": "Trabalho",
-    "name.many": "Trabalhos",
+    "name.one": "Job",
+    "name.many": "Jobs",
     "field.what": "O que",
     "field.table": "Tabela",
     "field.arguments": "Argumentos",

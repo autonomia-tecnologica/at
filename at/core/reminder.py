@@ -32,17 +32,21 @@ warn ahead of each week's occurrence and not just its first.
 this module's one reading of the machine's calendar, and the seam a test
 freezes instead of sleeping to the next day.
 
-**`notified` is the round's own guard against firing every pass, and it lives
-on the row.** The clock's cadence is the minute (`at.core.clock.CADENCE`), and
-a reminder's occurrence is the DAY — so a round that pushed once and asked
-again ten minutes later would push again, all day, for as long as the day's
-occurrence holds. `mark_notified` writes the one field the round owns on this
-row, the way `jobs.reschedule` writes the one field the clock owns on a job's —
-directly, with no actor and no via to name, because it is the engine keeping
-its own bookkeeping and not an act a person or a via performed (§3).
+**`notified` is the round's own guard, and it is per (day, HOUR).** A reminder
+names the hours of its day (`at`: `["09:00", "18:00"]` — the water six times,
+the medicine at its two doses), the clock's cadence is ten minutes
+(`at.core.clock.CADENCE`), and the round covers every hour it runs for: a row
+that pushed at 09:00 and is asked again ten minutes later must not push again
+for THAT hour, while 18:00 is still owed its own. The mark is the pair, and
+`mark_notified` writes the one field the round owns on this row the way
+`jobs.reschedule` writes the one field the clock owns on a job's — directly,
+with no actor and no via to name, because it is the engine keeping its own
+bookkeeping and not an act a person or a via performed (§3).
 """
 
 from __future__ import annotations
+
+import re
 
 from datetime import date, timedelta
 
@@ -57,6 +61,10 @@ ON_WEEKDAY = "on_weekday"
 ON_DAY = "on_day"
 ON_MONTH = "on_month"
 ON_DATE = "on_date"
+# A que horas o dia deve tocar — o `at`, uma LISTA (`["09:00", "18:00"]`): é
+# ela que diz quantos avisos o dia deve, e a hora marcada é o que a rodada lê
+# para não tocar tudo de uma vez na primeira passada do dia.
+AT = "at"
 WARN_DAYS = "warn_days"
 STATUS = "status"
 SINCE = "since"
@@ -84,6 +92,15 @@ FREQUENCIES = (DAILY, WEEKLY, MONTHLY, YEARLY, ONCE)
 # is not one of the engine's six: it reads the store and rewrites no row, so it
 # is declared under `permissions.NARROWED` and not among `tables.ACTIONS`.
 DUE = "due"
+
+# A forma de um horário no `at`: `HH:MM`, 24 horas — a mesma que o motor guarda,
+# e o que a rodada lê para casar a hora marcada com o relógio. Um `at` que não
+# casa (uma edição à mão) é ignorado, e não vira um aviso fora de hora.
+HOUR = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
+
+# Quantos "já avisei" a linha guarda — fundo o bastante para a semana inteira de
+# qualquer lembrete, e um teto para o campo não crescer sem fim.
+HISTORY = 64
 
 
 def today() -> date:
@@ -150,6 +167,28 @@ def occurs(row: dict, day: date) -> bool:
     return False
 
 
+def hours(row: dict) -> list[str]:
+    """Os horários do dia que a linha deve tocar, como `HH:MM`, em ordem.
+
+    O `at` é uma LISTA (`["09:00", "18:00"]`) — a água seis vezes ao dia, o
+    remédio nas duas doses — e é ela que diz QUANTOS avisos o dia deve. `occurs`
+    diz o dia; isto diz a que horas, e a rodada precisa dos dois para não tocar
+    a manhã inteira na primeira passada. Uma linha sem `at` legível não deve
+    aviso nenhum: não há hora para casar.
+    """
+    raw = row.get(AT) if isinstance(row, dict) else None
+    if isinstance(raw, str):
+        raw = raw.split(",")
+    if not isinstance(raw, list):
+        return []
+    found: list[str] = []
+    for item in raw:
+        text = str(item).strip()
+        if HOUR.match(text):
+            found.append(text)
+    return sorted(found)
+
+
 def _warn_days(row: dict) -> list[int]:
     warn = row.get(WARN_DAYS) if isinstance(row, dict) else None
     if not isinstance(warn, list):
@@ -182,19 +221,34 @@ def due(at: date | None = None, rows: list[dict] | None = None) -> dict[str, lis
     return {"due": arrived, "warn": warned}
 
 
-def notified(row: dict, day: date) -> bool:
-    """Whether this row already pushed for `day` — the round's own guard.
+def _stamps(row: dict) -> list[str]:
+    """The "already pushed" marks the row carries, as `"AAAA-MM-DD HH:MM"`.
 
-    A row `mark_notified` has not yet written to, or one whose `notified` was
-    hand-edited to something else, answers `False`: the safe side for a round
-    is asking again, never staying silent on a day it never actually pushed
-    for.
+    Uma versão anterior gravava o DIA sozinho (`"2026-09-28"`); ele é lido como
+    um carimbo sem hora, então não casa com horário nenhum e as horas restantes
+    do dia ainda saem. O campo é do próprio round (§3), e o formato é dele.
     """
-    return _day(row, NOTIFIED) == day
+    held = row.get(NOTIFIED) if isinstance(row, dict) else None
+    if isinstance(held, str):
+        return [held]
+    if isinstance(held, list):
+        return [str(item) for item in held]
+    return []
 
 
-def mark_notified(row: dict, day: date) -> dict:
-    """Write `day` as the one this row was last pushed for.
+def notified(row: dict, day: date, hour: str) -> bool:
+    """Whether this row already pushed for `day` at `hour` — the round's guard.
+
+    It is per (day, hour): a reminder that names six hours of the day owes six
+    pushes, and one does not cover the others. A row `mark_notified` has not yet
+    written to, or one whose `notified` was hand-edited to something else,
+    answers `False` — the safe side for a round is asking again.
+    """
+    return f"{day.isoformat()} {hour}" in _stamps(row)
+
+
+def mark_notified(row: dict, day: date, hour: str) -> dict:
+    """Write `day`+`hour` as one this row was pushed for.
 
     The one field the round owns on this row, written directly like
     `jobs.reschedule` writes the one field the clock owns on a job's — no
@@ -205,4 +259,7 @@ def mark_notified(row: dict, day: date) -> dict:
     number = store.number_of(row)
     if number is None or store.find(REMINDER, number) is None:
         return row
-    return tables.edit(REMINDER, number, {NOTIFIED: day.isoformat()})
+    stamp = f"{day.isoformat()} {hour}"
+    stamps = [entry for entry in _stamps(row) if entry != stamp]
+    stamps.append(stamp)
+    return tables.edit(REMINDER, number, {NOTIFIED: stamps[-HISTORY:]})

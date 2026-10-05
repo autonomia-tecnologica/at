@@ -39,6 +39,15 @@ asks instead of applying, through the very `Question` shape `cli` and WebApp
 already print — the rewritten sentence is what the person is asked to repeat,
 so saying yes is saying that sentence again and walking the ordinary road.
 
+**E a DATA e a HORA ganham, cada uma, a palavra-campo da própria tabela**
+(`_ground`): "me lembrar de imprimir passagens hoje 18h" não escreve "data" nem
+"horário", e é o Jev quem aponta `hoje` e `18h` (`jev.DAY_SPAN`/`TIME_SPAN`) —
+o código planta `data` e `horário` antes delas, e o matcher lê a frase como
+qualquer outra. É por isso que a leitura da data e da hora continua 100%
+determinística: o Jev diz ONDE, e quem lê o valor é o matcher, com a mesma
+gramática de sempre. Uma data dita ancora a recorrência em `once` (a regra da
+pessoa, 2026-10-05), plantado antes do corpo para uma frequência falada vencer.
+
 **The switch is this module's own, separate from the interpreter's, and born
 ON.** `nlu.SWITCH` ("interpreter") governs the deterministic layer, which
 calls no service and so has nothing to weigh against being on by default; this
@@ -220,6 +229,10 @@ def _cached(key: str) -> jev.Decision | None:
             table_confidence=float(entry["table_confidence"]),
             action_span=str(entry.get("action_span", "")),
             table_span=str(entry.get("table_span", "")),
+            # Uma entrada GRAVADA ANTES dos trechos de data e hora não os tem:
+            # lê `NONE`, e a leitura sai sem eles — o cache se cura na próxima.
+            day_span=str(entry.get("day_span") or jev.NONE),
+            time_span=str(entry.get("time_span") or jev.NONE),
         )
     except (KeyError, TypeError, ValueError):
         return None
@@ -234,6 +247,8 @@ def _remember(key: str, guess: jev.Decision) -> None:
         "table_confidence": guess.table_confidence,
         "action_span": guess.action_span,
         "table_span": guess.table_span,
+        "day_span": guess.day_span,
+        "time_span": guess.time_span,
     }
     files.atomic_write_text(
         cache_file(),
@@ -298,11 +313,11 @@ def decide(
     # O "Confirmar" reenvia a frase canônica com uma MARCA (`confirmed`), e o
     # `propose` a lê SÓ com o matcher — é o que impede o loop de re-perguntar ao
     # Jev para sempre.
-    reduced = _reduce(text, guess)
+    sentence = _ground(text, guess, language)
     if tier == CONFIRM:
-        return Question(ASK_KEY, _rewrite(reduced, guess, language))
+        return Question(ASK_KEY, sentence)
     try:
-        return matcher.match(reduced, language=language, now=now,
+        return matcher.match(sentence, language=language, now=now,
                              action=guess.action, table=guess.table)
     except Refused:
         return None
@@ -397,31 +412,83 @@ def _folded(tier: str) -> str:
     return AUTO if mode() == AUTOMATIC else CONFIRM
 
 
-def _reduce(text: str, guess: jev.Decision) -> str:
-    """A frase SEM as palavras que o Jev apontou como a ação e a tabela.
+# A palavra que o Jev NÃO apontou: o trecho não está escrito na frase.
+def _real(span: str) -> bool:
+    return bool(span) and span != jev.NONE
 
-    O que sobra é o material dos argumentos — o texto do campo, a data, o
-    número. É o que impede a gíria da ação (`joga`) de vazar para o `text` da
-    tarefa: o Jev disse ONDE ela está, e o código a tira.
+
+# O valor de `freq` que faz de uma recorrência um compromisso de uma vez só —
+# a regra da pessoa (2026-10-05). É uma chave de enum como qualquer outra; o
+# que o código lê é a DECLARAÇÃO, nunca o nome.
+ONCE = "once"
+
+
+def _ground(text: str, guess: jev.Decision, language: str) -> str:
+    """A frase reescrita nas palavras do vocabulário — o matcher lê uma frase
+    comum, e não precisa conhecer gíria nenhuma.
+
+    A ação e a tabela que o Jev escolheu vão à FRENTE (`jev.spoken`), e as
+    palavras que ele apontou como a ação e a tabela SAEM do corpo, para a gíria
+    (`joga`, `penca`) não vazar como argumento.
+
+    **A data e a hora ganham a palavra-campo que a PRÓPRIA tabela declara**, e é
+    isso que faz "… hoje 18h" — sem campo nenhum — atravessar o matcher: a
+    `hoje` planta-se o `data` (o `on_date` da tabela) e à `18h` o `horário` (o
+    `at`), ambos lidos do `schema` e do vocabulário e nunca de uma lista aqui.
+    Uma tabela que não declara o campo (uma tarefa, sem hora) não recebe planta
+    nenhuma — o trecho volta a ser do corpo, como era.
     """
-    drop = {
-        span
-        for span in (guess.action_span, guess.table_span)
-        if span and span != jev.NONE
-    }
-    if not drop:
-        return text
-    return " ".join(word for word in text.split() if word not in drop)
+    table = guess.table
+    drop = {span for span in (guess.action_span, guess.table_span) if _real(span)}
+    plants = (
+        (guess.day_span, matcher.open_day_field(table)),
+        (guess.time_span, matcher.list_field(table, "time")),
+    )
+    body: list[str] = []
+    for word in text.split():
+        if word in drop:
+            continue
+        for span, field in plants:
+            if _real(span) and word == span and field:
+                body.append(jev.spoken(field, language) or field)
+        body.append(word)
+    parts = [
+        word
+        for word in (jev.spoken(guess.action, language), jev.spoken(guess.table, language))
+        if word
+    ]
+    # O `once` da regra vai ANTES do corpo: uma frequência que a pessoa DISSE
+    # (`todo dia`) vem depois e é a que fica — a última dita vence.
+    anchor = _anchor(guess, table, language)
+    if anchor:
+        parts.append(anchor)
+    parts.extend(body)
+    return " ".join(parts).strip()
 
 
-def _rewrite(text: str, guess: jev.Decision, language: str) -> str:
-    """`text`, with the guessed action and table planted at the front in
-    words the deterministic vocabulary ALREADY reads — what the matcher
-    resolves next with no help from this module (the docstring's own
-    "resubmits to the real matcher")."""
-    words = [jev.spoken(guess.action, language), jev.spoken(guess.table, language)]
-    prefix = " ".join(word for word in words if word)
-    return f"{prefix} {text}".strip() if prefix else text
+def _anchor(guess: jev.Decision, table: str, language: str) -> str:
+    """Uma DATA dita na frase faz da recorrência um compromisso de UMA VEZ (a
+    regra da pessoa, 2026-10-05): em vez do `daily` que a tabela traz por
+    padrão, o `once`. Uma frase sem data — só a hora, ou nada — não ancora nada
+    e deixa o `daily` da tabela valer.
+    """
+    if not _real(guess.day_span) or _freq_field(table) is None:
+        return ""
+    return jev.spoken(ONCE, language) or ""
+
+
+def _freq_field(table: str) -> str | None:
+    """O campo cuja lista fechada carrega o compromisso único — o `freq` de
+    qualquer tabela que recorra. Lido da DECLARAÇÃO (`enum`), nunca de um nome.
+    """
+    fields = (schema.of(table) or {}).get("fields")
+    if not isinstance(fields, dict):
+        return None
+    for name, field in fields.items():
+        enum = field.get("enum") if isinstance(field, dict) else None
+        if isinstance(enum, dict) and ONCE in enum:
+            return name
+    return None
 
 
 def _credential(main_key: str | None) -> str | None:

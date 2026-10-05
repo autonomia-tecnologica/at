@@ -231,9 +231,10 @@ class TheDeclaration(ClockCase):
     def test_the_cadence_is_the_clock_s_and_it_is_read_in_minutes(self):
         # The granularity the slice decides: minutes, and one number for the
         # whole folder — the declaration says WHEN a job starts, and the rhythm
-        # after that is the clock's.
-        self.assertEqual(clock.CADENCE, timedelta(minutes=10))
-        self.assertEqual(clock.next_instant(AT), tables.utc(AT + timedelta(minutes=10)))
+        # after that is the clock's. Um minuto (a pedido da pessoa, 2026-10-05):
+        # o lembrete marca a HORA, e o passo que a cobre tem de caber no minuto.
+        self.assertEqual(clock.CADENCE, timedelta(minutes=1))
+        self.assertEqual(clock.next_instant(AT), tables.utc(AT + timedelta(minutes=1)))
 
     def test_the_words_a_recovered_round_is_named_by_read_in_both_languages(self):
         self.assertIn("Rodada recuperada", tr("job.recovered"))
@@ -554,7 +555,11 @@ class TheProcess(ClockCase):
             webapp.beat(times=2, pause=paused.append)
         self.assertEqual(ticked.call_count, 2)
         self.assertEqual(reminded.call_count, 2)
-        self.assertEqual(paused, [clock.CADENCE.total_seconds()])
+        # A pausa é ALINHADA à borda da cadência: positiva e nunca maior que um
+        # passo inteiro — um passo que derrapa perderia o minuto marcado.
+        self.assertEqual(len(paused), 1)
+        self.assertGreater(paused[0], 0)
+        self.assertLessEqual(paused[0], clock.CADENCE.total_seconds())
 
     def test_the_reminders_round_shares_the_pass_and_the_notifiers_key(self):
         held = webapp_keys._keys.get(webapp_keys.NOTIFIER_KEY_ENV)

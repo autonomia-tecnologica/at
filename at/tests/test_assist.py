@@ -336,6 +336,72 @@ class TheRewrite(AssistCase):
         self.assertEqual(proposal.table, "task")
 
 
+class TheReminder(AssistCase):
+    """A frase que o Jev lê e o matcher executa: a data e a hora entram nos
+    campos do lembrete SEM palavra-campo nenhuma ("hoje 18h", não "data
+    hoje horário 18h") — o Jev aponta os trechos, o rewrite planta as
+    palavras-campo da própria tabela e o matcher lê a frase comum."""
+
+    def setUp(self):
+        super().setUp()
+        self.sealed()
+        settings.save({**settings.load(), assist.MODE: assist.AUTOMATIC})
+
+    def answer(self, **spans: str):
+        def post(url, body, headers, timeout):
+            import json
+            answers = {
+                "action": {"type": "choice", "choice": "create", "confidence": 0.95},
+                "table": {"type": "choice", "choice": "reminder", "confidence": 0.95},
+            }
+            for name, choice in spans.items():
+                answers[name] = {"type": "choice", "choice": choice, "confidence": 0.95}
+            return json.dumps({"answers": answers}).encode("utf-8")
+        return post
+
+    def decide(self, text: str, **spans: str):
+        return assist.decide(
+            text, language="pt_BR", now=NOW, main_key=MAIN_KEY,
+            transport=self.answer(**spans),
+        )
+
+    def test_a_date_and_an_hour_land_in_the_reminder_fields(self):
+        result = self.decide(
+            "me lembrar de imprimir passagens hoje 18h",
+            action_span="lembrar", day_span="hoje", time_span="18h",
+        )
+        self.assertIsInstance(result, nlu.Proposal)
+        self.assertEqual(result.values.get("text"), "imprimir passagens")
+        self.assertEqual(result.values.get("on_date"), "2026-09-22")
+        self.assertEqual(result.values.get("at"), ["18:00"])
+        # A data ancora a recorrência: um compromisso de uma vez só.
+        self.assertEqual(result.values.get("freq"), "once")
+
+    def test_an_hour_with_no_date_leaves_the_daily_default(self):
+        result = self.decide(
+            "me lembrar de regar a planta às 9h",
+            action_span="lembrar", time_span="9h",
+        )
+        self.assertIsInstance(result, nlu.Proposal)
+        self.assertEqual(result.values.get("at"), ["09:00"])
+        self.assertIsNone(result.values.get("on_date"))
+        # Sem data, a frequência dita é a da tabela (`daily`) — nada a ancorar.
+        self.assertIsNone(result.values.get("freq"))
+
+    def test_the_confirm_sentence_replays_to_the_same_row(self):
+        settings.save({**settings.load(), assist.MODE: assist.CAUTIOUS})
+        question = self.decide(
+            "me lembrar de imprimir passagens hoje 18h",
+            action_span="lembrar", day_span="hoje", time_span="18h",
+        )
+        self.assertIsInstance(question, nlu.Question)
+        # Repetir a frase que a pergunta traz é a estrada determinística comum.
+        proposal = nlu.propose(question.text, now=NOW)
+        self.assertEqual(proposal.values.get("at"), ["18:00"])
+        self.assertEqual(proposal.values.get("on_date"), "2026-09-22")
+        self.assertEqual(proposal.values.get("freq"), "once")
+
+
 class ThePropose(AssistCase):
     """`nlu.propose` pergunta ao Jev PRIMEIRO e cai no matcher quando `decide`
     devolve `None` — a inversão (03/10/2026)."""

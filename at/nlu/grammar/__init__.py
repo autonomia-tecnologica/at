@@ -34,7 +34,18 @@ from at.nlu.reading import Refused
 # declares. This dict is the contract between this module and the language
 # modules — the reason `read_day` and `read_number` can be called by name — and
 # the whole of what the grammar answers in.
-KINDS = {"day": "read_day", "instant": "read_instant", "number": "read_number"}
+#
+# `time` é a HORA-DO-DIA (`18:00`), e não o `instant` que o `day` completa: o
+# lembrete guarda a que horas toca (`at`, uma lista), e a data dele mora noutro
+# campo — ler `18h` como um ponto em UTC daria a hora de HOJE à hora que não tem
+# dia. Os dois leem os mesmos números e as mesmas palavras; o que muda é o que
+# sai.
+KINDS = {
+    "day": "read_day",
+    "instant": "read_instant",
+    "time": "read_time",
+    "number": "read_number",
+}
 
 
 def of(language: str):
@@ -158,3 +169,16 @@ def clock(day: date, hour: int, minute: int, wrote: str) -> str:
         raise Refused("nlu.error.no_such_clock", value=wrote)
     here = datetime.combine(day, time(hour, minute)).astimezone()
     return tables.utc(here)
+
+
+def clock_text(hour: int, minute: int, wrote: str) -> str:
+    """A hora-do-dia a phrase names, written the way the reminder's `at` stores
+    one: `HH:MM`, with no day and no zone — a time of day is the same in every
+    calendar, and the day it lands on is the row's own (`on_date`, `freq`).
+
+    The refusal is `clock`'s own: `25:00` is a clock expression and no clock has
+    it, so it does not become a residue and does not become a guess.
+    """
+    if not 0 <= hour <= 23 or not 0 <= minute <= 59:
+        raise Refused("nlu.error.no_such_clock", value=wrote)
+    return f"{hour:02d}:{minute:02d}"

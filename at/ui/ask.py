@@ -836,60 +836,80 @@ def _fired(row: dict) -> None:
 
 
 def remind(
-    at: date | None = None,
+    now: datetime | None = None,
     key: bytes | None = None,
     send: Callable[[str, str, bytes | None], tuple[bool, str]] | None = None,
 ) -> list[dict]:
-    """One round of the clock's OTHER schedule: the reminders `at` is about
+    """One round of the clock's OTHER schedule: the reminders THIS PASS is about
     (§4, item 29's second slice — TASK-145).
 
     **Two schedules share one clock, and they are not the same shape.** A job's
-    round faces the bar and moves an instant on at the MINUTE's grain
-    (`tick`); a reminder's round asks nothing of the bar — there is no write to
-    refuse, only a push that may or may not go out — and its grain is the DAY
-    (`reminder.due`). What keeps a day-grained occurrence from pushing once a
-    pass for as long as the day holds is `reminder.notified`, asked before
-    every send and written only after one that WENT OUT (`mark_notified`): a
-    push that failed is retried on the next pass, the same "not in a loop, but
-    not given up on either" the round's own bookkeeping already gives a job
-    that a wall or a network refused.
+    round faces the bar and moves an instant on at the MINUTE's grain (`tick`);
+    a reminder names the HOURS of its day (`at`: `["09:00", "18:00"]` — the
+    water six times, the medicine at its two doses) and its grain is the
+    (day, HOUR). `reminder.occurs` says the DAY, `reminder.hours` says the
+    hours, and this round fires an hour when its pass COVERS it (`_covers`: the
+    marked minute and the cadence after it). An hour the round was not up for is
+    not owed — a server that was down at 11:00 does not fire the 11:00 at noon.
 
-    **`due` wins the one push a day owes, `warn` gets its own text.** The two
-    lists `reminder.due` answers never share a row for the same occurrence
-    (that module's own rule), so a row read here is asked for exactly one of
-    the two sentences below and never both on the same day.
+    **What keeps an hour from pushing on every pass that covers it is
+    `reminder.notified`, asked before a send and written only after one that
+    WENT OUT (`mark_notified`, per (day, hour)): a push that failed is retried
+    on the next pass that covers the hour, the same "not in a loop, but not
+    given up on either" the round's own bookkeeping already gives a job that a
+    wall or a network refused. The guard is per HOUR and not per day: the 09:00
+    of a six-times-a-day reminder must not cover its 11:00.
 
-    `at` is the calendar this pass reads (`reminder.today` when `None`), `key`
-    is the derived key this boot holds for the notifier's scope — `None` is a
-    boot with nothing to open the credential with, and `notifier.publish`
-    answers `no_token` for it rather than sending an envelope nobody could
-    read on the other end — and `send` is the seam a test drives instead of
-    reaching the network (`notifier.publish` when `None`).
+    **`due` wins the hour's push, `warn` gets its own text.** The two lists
+    `reminder.due` answers never share a row for the same occurrence (that
+    module's own rule), so a row read here is asked for exactly one of the two
+    sentences below.
+
+    `now` is the instant this pass reads (`datetime.now` when `None`) — the day
+    AND the hour come off it, which is why the round can no longer be handed a
+    bare calendar — `key` is the derived key this boot holds for the notifier's
+    scope (`None` is a boot with nothing to open the credential with, and
+    `notifier.publish` answers `no_token` for it rather than sending an envelope
+    nobody could read on the other end), and `send` is the seam a test drives
+    instead of reaching the network (`notifier.publish` when `None`).
 
     The rows this pass actually pushed for come back, the way `tick`'s rounded
     rows do, so a caller can say what happened without reading the store back.
     """
     if files.readonly():
         return []
-    today = at if at is not None else reminder.today()
+    moment = now if now is not None else datetime.now()
+    today = moment.date()
     push = send if send is not None else notifier.publish
     found = reminder.due(today)
     fired: list[dict] = []
-    for row in found["due"]:
-        if reminder.notified(row, today):
-            continue
-        ok, _ = push(notifier.TITLE, tr("reminder.push.due", text=row.get("text", "")), key)
-        if ok:
-            reminder.mark_notified(row, today)
-            fired.append(row)
-    for row in found["warn"]:
-        if reminder.notified(row, today):
-            continue
-        ok, _ = push(notifier.TITLE, tr("reminder.push.warn", text=row.get("text", "")), key)
-        if ok:
-            reminder.mark_notified(row, today)
-            fired.append(row)
+    for rows, said in (
+        (found["due"], "reminder.push.due"),
+        (found["warn"], "reminder.push.warn"),
+    ):
+        for row in rows:
+            for hour in reminder.hours(row):
+                if not _covers(hour, moment) or reminder.notified(row, today, hour):
+                    continue
+                ok, _ = push(notifier.TITLE, tr(said, text=row.get("text", "")), key)
+                if ok:
+                    reminder.mark_notified(row, today, hour)
+                    if row not in fired:
+                        fired.append(row)
     return fired
+
+
+def _covers(hour: str, moment: datetime) -> bool:
+    """Whether THIS pass covers `hour` (`HH:MM`) — the marked minute and the
+    clock's cadence after it, and no later.
+
+    É o que faz "toca às 09:00" valer sem tocar o dia inteiro na primeira
+    passada, e o que faz uma hora que passou com o servidor fora simplesmente
+    não ser devida: a passada de meio-dia não cobre as onze.
+    """
+    start = int(hour[:2]) * 60 + int(hour[3:])
+    current = moment.hour * 60 + moment.minute
+    return start <= current < start + int(clock.CADENCE.total_seconds() // 60)
 
 
 # -------------------------------------------------------------- the scan ---

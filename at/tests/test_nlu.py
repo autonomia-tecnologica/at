@@ -435,6 +435,42 @@ class TheClock(RulerCase):
         self.assertEqual(value, datetime.now().date().isoformat())
 
 
+class TheHourOfDay(RulerCase):
+    """`time`: a hora sozinha, sem dia e sem fuso — o que o lembrete guarda.
+
+    É a MESMA expressão de relógio que o `instant` lê; o que muda é o que sai:
+    `18h` é `18:00`, e não um ponto em UTC com o dia de hoje pendurado — a data
+    de um lembrete mora noutro campo, e é o `freq`/`on_date` quem a diz.
+    """
+
+    def test_a_bare_hour_is_a_time_of_day(self):
+        for phrase, expected in (
+            ("18h", "18:00"), ("18h30", "18:30"), ("18:30", "18:30"),
+            ("duas", "02:00"), ("meia-noite", "00:00"), ("meio-dia", "12:00"),
+            ("duas e meia", "02:30"),
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertEqual(self.value(phrase, "time"), expected)
+
+    def test_english_reads_its_own_times(self):
+        for phrase, expected in (
+            ("2pm", "14:00"), ("12am", "00:00"), ("noon", "12:00"),
+            ("14:30", "14:30"), ("half past two", "02:30"),
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertEqual(self.value(phrase, "time", "en_US"), expected)
+
+    def test_an_hour_no_clock_has_is_refused(self):
+        with self.assertRaises(nlu.Refused):
+            self.value("25h", "time")
+
+    def test_a_time_has_no_day_to_hang_from_the_zone(self):
+        with self.zone("UTC"):
+            self.assertEqual(self.value("18h", "time"), "18:00")
+        with self.zone("BRT3"):
+            self.assertEqual(self.value("18h", "time"), "18:00")
+
+
 class TheLanguage(RulerCase):
     """The two grammars, and the active language choosing between them."""
 

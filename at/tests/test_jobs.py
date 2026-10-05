@@ -197,7 +197,9 @@ class TheDeclaration(JobCase):
         # A label is an `i18n` key and never the text (§4), so the declarations
         # are held to the blocks: the table's name, every field's label and every
         # closed value reads in the active language.
-        self.assertEqual(tables.table_name("job", many=True), "Trabalhos")
+        # `Jobs` é o nome do produto e não se traduz: a mesma palavra nas duas
+        # línguas (a pedido da pessoa, 2026-10-05).
+        self.assertEqual(tables.table_name("job", many=True), "Jobs")
         self.assertEqual(tables.label("job", jobs.STATUS), "Estado")
         self.assertEqual(tables.enum_label("job", jobs.STATUS, jobs.WAITING), "Esperando")
         with mock.patch.dict(os.environ, {"AT_LANG": "en_US"}):
@@ -546,7 +548,7 @@ class TheWords(JobCase):
         code, text = self.words("job", "approve", "99")
         self.assertEqual(code, 1)
         self.assertIn(
-            tr("table.error.unknown_row", id="99", table="Trabalhos"), text
+            tr("table.error.unknown_row", id="99", table="Jobs"), text
         )
         self.assertEqual(self.lines()[0][audit.STATUS], audit.REFUSED)
         self.assertEqual(self.lines()[0][audit.REASON], "table.error.unknown_row")

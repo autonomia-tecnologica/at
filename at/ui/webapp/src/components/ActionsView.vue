@@ -1,16 +1,17 @@
 <script setup lang="ts">
 // ActionsView — a árvore de Actions (TASK-189, fatia 4/4): o catálogo inteiro,
-// agrupado por VERBO, cada verbo com as entidades que o respondem, cada
-// entidade com os modificadores (flag/argumento) que o ato aceita, e a marca
-// de quais portas (terminal, web, frase) a alcançam.
+// agrupado por OBJETO, cada objeto com os verbos que o alcançam, cada verbo com
+// os modificadores (flag/argumento) que o ato aceita, e a marca de quais portas
+// (terminal, web, assist) o alcançam.
 //
 // É SÓ LEITURA. Nenhum controle aqui executa um ato — a árvore existe para
 // que uma pessoa veja o catálogo inteiro de uma vez, não para mover nada; quem
 // move um papel é RoleView, e é lá que o checkbox mora.
 //
 // O catálogo é lido do MESMO `/api/catalogue` que RoleView já lê, e o
-// agrupamento reaproveita `groupCatalogue` — o que muda é só o eixo: verbo
-// aqui, objeto lá. Nenhum dos dois é uma segunda cópia do catálogo.
+// agrupamento reaproveita `groupCatalogue` — os dois agrupam pelo OBJETO (o
+// cabeçalho é "Tarefas", e os verbos vêm abaixo); o que muda é só o que cada
+// linha mostra. Nenhum dos dois é uma segunda cópia do catálogo.
 
 import { onMounted, ref } from "vue";
 import { fetchCatalogue, groupCatalogue } from "../lib/catalogue";
@@ -26,8 +27,8 @@ async function load(): Promise<void> {
     catalogue.value = await fetchCatalogue();
     groups.value = groupCatalogue(
       catalogue.value,
-      entry => entry.action,
-      entry => entry.action_label,
+      entry => entry.object,
+      entry => entry.object_label,
     );
   } catch (err) {
     catalogue.value = [];
@@ -56,7 +57,7 @@ onMounted(load);
       <h3>{{ group.label }}</h3>
       <div class="row" v-for="entry in group.entries" :key="entry.key">
         <div>
-          <b>{{ entry.object_label }}</b>
+          <b>{{ entry.action_label }}</b>
           <div class="pop-note">{{ entry.key }}</div>
           <ul v-if="entry.modifiers.length">
             <li v-for="modifier in entry.modifiers" :key="modifier.name">

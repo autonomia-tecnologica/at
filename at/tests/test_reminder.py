@@ -35,7 +35,7 @@ import os
 import tempfile
 import unittest
 from contextlib import redirect_stdout
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from io import StringIO
 from pathlib import Path
 from unittest import mock
@@ -282,37 +282,49 @@ class TheDoor(ReminderCase):
 
 
 class TheNotified(ReminderCase):
-    """The round's own guard against firing every pass (TASK-145)."""
+    """The round's own guard, per (day, HOUR) (TASK-145)."""
+
+    def marked(self):
+        # Two hours in one day: the guard has to tell them apart.
+        return tables.create(
+            "reminder", row(freq="daily", text="Regar", at=["09:00", "18:00"])
+        )
 
     def test_a_row_never_marked_answers_false(self):
-        made = tables.create("reminder", row(freq="daily", text="Regar", at=["09:00"]))
-        self.assertFalse(reminder.notified(made, date(2026, 9, 28)))
+        made = self.marked()
+        self.assertFalse(reminder.notified(made, date(2026, 9, 28), "09:00"))
 
-    def test_marking_writes_the_day_and_notified_then_reads_it_true(self):
-        made = tables.create("reminder", row(freq="daily", text="Regar", at=["09:00"]))
-        reminder.mark_notified(made, date(2026, 9, 28))
+    def test_marking_writes_the_day_and_hour_and_reads_it_true(self):
+        made = self.marked()
+        reminder.mark_notified(made, date(2026, 9, 28), "09:00")
         held = store.find("reminder", store.number_of(made))
-        self.assertEqual(held.get("notified"), "2026-09-28")
-        self.assertTrue(reminder.notified(held, date(2026, 9, 28)))
+        self.assertEqual(held.get("notified"), ["2026-09-28 09:00"])
+        self.assertTrue(reminder.notified(held, date(2026, 9, 28), "09:00"))
+
+    def test_the_other_hour_of_the_same_day_is_not_notified(self):
+        made = self.marked()
+        reminder.mark_notified(made, date(2026, 9, 28), "09:00")
+        held = store.find("reminder", store.number_of(made))
+        self.assertFalse(reminder.notified(held, date(2026, 9, 28), "18:00"))
 
     def test_a_different_day_is_not_notified(self):
-        made = tables.create("reminder", row(freq="daily", text="Regar", at=["09:00"]))
-        reminder.mark_notified(made, date(2026, 9, 28))
+        made = self.marked()
+        reminder.mark_notified(made, date(2026, 9, 28), "09:00")
         held = store.find("reminder", store.number_of(made))
-        self.assertFalse(reminder.notified(held, date(2026, 9, 29)))
+        self.assertFalse(reminder.notified(held, date(2026, 9, 29), "09:00"))
 
     def test_marking_writes_no_line_and_no_actor_is_needed(self):
         # The engine's own bookkeeping (§3): the same posture `jobs.reschedule`
         # keeps for the one field the clock owns on a job's row.
-        made = tables.create("reminder", row(freq="daily", text="Regar", at=["09:00"]))
+        made = self.marked()
         before = [line for line in store.load("audit")]
-        reminder.mark_notified(made, date(2026, 9, 28))
+        reminder.mark_notified(made, date(2026, 9, 28), "09:00")
         self.assertEqual(store.load("audit"), before)
 
     def test_a_row_deleted_between_the_read_and_the_write_is_handed_back_untouched(self):
-        made = tables.create("reminder", row(freq="daily", text="Regar", at=["09:00"]))
+        made = self.marked()
         tables.delete("reminder", store.number_of(made))
-        same = reminder.mark_notified(made, date(2026, 9, 28))
+        same = reminder.mark_notified(made, date(2026, 9, 28), "09:00")
         self.assertEqual(same, made)
 
 
@@ -343,14 +355,31 @@ class TheRound(ReminderCase):
                 at=["09:00"]),
         )
         calls, push = self.sent()
-        fired = door.remind(date(2026, 10, 5), key=b"k" * 32, send=push)
+        fired = door.remind(datetime(2026, 10, 5, 9, 0), key=b"k" * 32, send=push)
         self.assertEqual(fired, [made])
         self.assertEqual(len(calls), 1)
         title, body, key = calls[0]
         self.assertIn("Regar a planta", body)
         self.assertEqual(key, b"k" * 32)
         held = store.find("reminder", store.number_of(made))
-        self.assertEqual(held.get("notified"), "2026-10-05")
+        self.assertEqual(held.get("notified"), ["2026-10-05 09:00"])
+
+    def test_a_hour_the_pass_does_not_cover_is_not_pushed(self):
+        tables.create("reminder", row(freq="daily", text="Regar", at=["09:00"]))
+        calls, push = self.sent()
+        # 09:00 é devida à passada que cobre o SEU minuto; a das 09:20 cobre o
+        # minuto 09:20, e o de 09:00 passou.
+        fired = door.remind(datetime(2026, 9, 28, 9, 20), send=push)
+        self.assertEqual(fired, [])
+        self.assertEqual(calls, [])
+
+    def test_each_hour_of_the_day_gets_its_own_push(self):
+        tables.create("reminder", row(freq="daily", text="Regar", at=["09:00", "18:00"]))
+        calls, push = self.sent()
+        self.assertEqual(len(door.remind(datetime(2026, 9, 28, 9, 0), send=push)), 1)
+        self.assertEqual(door.remind(datetime(2026, 9, 28, 9, 0), send=push), [])
+        self.assertEqual(len(door.remind(datetime(2026, 9, 28, 18, 0), send=push)), 1)
+        self.assertEqual(len(calls), 2)
 
     def test_a_warned_reminder_gets_its_own_text_and_is_marked(self):
         tables.create(
@@ -359,7 +388,7 @@ class TheRound(ReminderCase):
                 warn_days=[2], at=["09:00"]),
         )
         calls, push = self.sent()
-        fired = door.remind(date(2026, 10, 3), send=push)
+        fired = door.remind(datetime(2026, 10, 3, 9, 0), send=push)
         self.assertEqual(len(fired), 1)
         self.assertEqual(len(calls), 1)
         _, body, _ = calls[0]
@@ -368,14 +397,14 @@ class TheRound(ReminderCase):
             tr("reminder.push.warn", text="x"), tr("reminder.push.due", text="x")
         )
 
-    def test_a_reminder_already_notified_today_is_not_pushed_again(self):
+    def test_a_reminder_already_notified_this_hour_is_not_pushed_again(self):
         made = tables.create(
             "reminder",
             row(text="Regar a planta", freq="daily", at=["09:00"]),
         )
-        reminder.mark_notified(made, date(2026, 9, 28))
+        reminder.mark_notified(made, date(2026, 9, 28), "09:00")
         calls, push = self.sent()
-        fired = door.remind(date(2026, 9, 28), send=push)
+        fired = door.remind(datetime(2026, 9, 28, 9, 0), send=push)
         self.assertEqual(fired, [])
         self.assertEqual(calls, [])
 
@@ -385,7 +414,7 @@ class TheRound(ReminderCase):
             row(text="Regar a planta", freq="daily", at=["09:00"]),
         )
         calls, push = self.sent(ok=False)
-        fired = door.remind(date(2026, 9, 28), send=push)
+        fired = door.remind(datetime(2026, 9, 28, 9, 0), send=push)
         self.assertEqual(fired, [])
         self.assertEqual(len(calls), 1)
         held = store.find("reminder", 1)
@@ -393,7 +422,7 @@ class TheRound(ReminderCase):
 
     def test_nothing_due_or_warned_pushes_nothing(self):
         calls, push = self.sent()
-        fired = door.remind(date(2026, 1, 1), send=push)
+        fired = door.remind(datetime(2026, 1, 1, 9, 0), send=push)
         self.assertEqual(fired, [])
         self.assertEqual(calls, [])
 
@@ -404,7 +433,7 @@ class TheRound(ReminderCase):
         )
         calls, push = self.sent()
         with mock.patch.dict(os.environ, {files.ENV_READONLY: "1"}):
-            fired = door.remind(date(2026, 9, 28), send=push)
+            fired = door.remind(datetime(2026, 9, 28, 9, 0), send=push)
         self.assertEqual(fired, [])
         self.assertEqual(calls, [])
 
@@ -416,7 +445,7 @@ class TheRound(ReminderCase):
             "reminder",
             row(text="Regar a planta", freq="daily", at=["09:00"]),
         )
-        fired = door.remind(date(2026, 9, 28))
+        fired = door.remind(datetime(2026, 9, 28, 9, 0))
         self.assertEqual(fired, [])
 
 

@@ -25,7 +25,7 @@ import os
 import tempfile
 import unittest
 from contextlib import redirect_stdout
-from datetime import date
+from datetime import date, datetime
 from io import StringIO
 from pathlib import Path
 from unittest import mock
@@ -907,20 +907,20 @@ class TheNotificationGuardArrives(FolderCase):
         self.rewrite(self.declaration("reminder"), self.old_reminder())
         made = self.a_reminder()
         with self.assertRaises(tables.TableError):
-            reminder.mark_notified(made, date(2026, 9, 29))
+            reminder.mark_notified(made, date(2026, 9, 29), "09:00")
 
     def test_once_the_field_arrives_the_round_marks_and_the_push_stops(self):
         self.old_folder()
         self.caught_up()
         made = self.a_reminder()
         calls, push = self.sent()
-        day = date(2026, 9, 29)
-        self.assertEqual(door.remind(at=day, send=push), [made])
+        moment = datetime(2026, 9, 29, 9, 0)  # the pass that covers the 09:00 hour
+        self.assertEqual(door.remind(moment, send=push), [made])
         self.assertEqual(len(calls), 1)
         held = store.find("reminder", store.number_of(made))
-        self.assertEqual(held.get("notified"), "2026-09-29")
+        self.assertEqual(held.get("notified"), ["2026-09-29 09:00"])
         # O segundo passe não repete: é isto que a migração entrega.
-        self.assertEqual(door.remind(at=day, send=push), [])
+        self.assertEqual(door.remind(moment, send=push), [])
         self.assertEqual(len(calls), 1)
 
     def test_an_old_folder_gains_the_price_of_editing_a_role(self):
