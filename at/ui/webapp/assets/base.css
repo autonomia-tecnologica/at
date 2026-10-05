@@ -21,7 +21,7 @@
 
    A THEME DECLARES ONLY `:root`. This file declares every selector. */
 
-/* ===== the typefaces (2026-09-28, +2 on 2026-10-03) =====================
+/* ===== the typefaces (2026-09-28, +2 on 2026-10-03, swap→block on 2026-10-05)
    Nunito Sans for the body (`--font-sans`) and Quicksand for anything that
    has to carry weight on the page (`--font-display`: the brand mark, a
    page's own title, a stat's big number) — `at`'s own two.
@@ -31,27 +31,33 @@
    `--font-display` only, never the body — so they ride the door as a third
    and fourth NAME, not a new slot. Both were already vendored (pinned,
    installed) for `base-shared.css`'s five; migrating the two themes that
-   actually used them cost nothing but the two rules below. */
+   actually used them cost nothing but the two rules below.
+
+   `font-display: block` AND NOT `swap`: these files are HOSTED, same origin,
+   a few KB each — the fallback-then-swap `swap` buys is a flash with nothing
+   underneath it, the same FOUC the boot gate (`App.vue`, `booted`) exists to
+   kill one layer up. `block` holds the glyph invisible for its short window
+   instead of painting it twice. */
 @font-face { font-family: "Nunito Sans"; font-style: normal; font-weight: 400;
-             font-display: swap; src: url("/vendor/font-nunito-sans-400") format("woff2"); }
+             font-display: block; src: url("/vendor/font-nunito-sans-400") format("woff2"); }
 @font-face { font-family: "Nunito Sans"; font-style: normal; font-weight: 600;
-             font-display: swap; src: url("/vendor/font-nunito-sans-600") format("woff2"); }
+             font-display: block; src: url("/vendor/font-nunito-sans-600") format("woff2"); }
 @font-face { font-family: "Nunito Sans"; font-style: normal; font-weight: 700;
-             font-display: swap; src: url("/vendor/font-nunito-sans-700") format("woff2"); }
+             font-display: block; src: url("/vendor/font-nunito-sans-700") format("woff2"); }
 @font-face { font-family: "Nunito Sans"; font-style: normal; font-weight: 800;
-             font-display: swap; src: url("/vendor/font-nunito-sans-800") format("woff2"); }
+             font-display: block; src: url("/vendor/font-nunito-sans-800") format("woff2"); }
 @font-face { font-family: "Quicksand"; font-style: normal; font-weight: 500;
-             font-display: swap; src: url("/vendor/font-quicksand-500") format("woff2"); }
+             font-display: block; src: url("/vendor/font-quicksand-500") format("woff2"); }
 @font-face { font-family: "Quicksand"; font-style: normal; font-weight: 600;
-             font-display: swap; src: url("/vendor/font-quicksand-600") format("woff2"); }
+             font-display: block; src: url("/vendor/font-quicksand-600") format("woff2"); }
 @font-face { font-family: "Quicksand"; font-style: normal; font-weight: 700;
-             font-display: swap; src: url("/vendor/font-quicksand-700") format("woff2"); }
+             font-display: block; src: url("/vendor/font-quicksand-700") format("woff2"); }
 @font-face { font-family: "UnifrakturMaguntia"; font-style: normal; font-weight: 400;
-             font-display: swap; src: url("/vendor/font-unifrakturmaguntia") format("woff2"); }
+             font-display: block; src: url("/vendor/font-unifrakturmaguntia") format("woff2"); }
 @font-face { font-family: "Silkscreen"; font-style: normal; font-weight: 400;
-             font-display: swap; src: url("/vendor/font-silkscreen-400") format("woff2"); }
+             font-display: block; src: url("/vendor/font-silkscreen-400") format("woff2"); }
 @font-face { font-family: "Silkscreen"; font-style: normal; font-weight: 700;
-             font-display: swap; src: url("/vendor/font-silkscreen-700") format("woff2"); }
+             font-display: block; src: url("/vendor/font-silkscreen-700") format("woff2"); }
 
 * { box-sizing: border-box; }
 /* THE HAND, EVERYWHERE SOMETHING IS CLICKABLE — a DESIGN SYSTEM rule and not a

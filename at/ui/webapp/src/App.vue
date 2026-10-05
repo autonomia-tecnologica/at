@@ -15,6 +15,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import { api, whenRefused } from "./lib/api";
 import { enter, lost, session, signedIn } from "./lib/session";
 import { store, applyState, label, word, tableOf } from "./lib/store";
+import { ensureRenderer } from "./lib/markdown";
 import { nav, ui, isKind, viewFor, open, markPage, poke, resumePath, setTrail, CHAT_KEY, NLU_UI_ENABLED, ORPHANS_KEY, BOARD_KEY, FILE_PREFIX, PROJECT_PREFIX, WRITE_PREFIX } from "./lib/views";
 import { applyTheme, watchSystem } from "./lib/theme";
 import { applyMotion } from "./lib/motion";
@@ -184,10 +185,13 @@ function toggle(): void {
 }
 
 // THE SECOND STEP OF THE GATE. `signedIn` is the server saying WHO IS IN, and it
-// arrives with the words of the entrance — but not with the TABLES and not with
-// the page, which come in `/api/state` one answer later. Drawing the shell in
-// between paints it full-size and empty and fills it a moment after, the same
-// flash `js/boot.js` kills one screen earlier. So the gate waits for BOTH.
+// arrives with the words of the entrance — but not with the TABLES, not with
+// the page, and not with the MARKDOWN RENDERER, which land one or two answers
+// later (`/api/state`, `/vendor/marked`). Drawing the shell in between paints it
+// full-size and empty, or fills it with raw notation that reformats a moment
+// after — the same flash `js/boot.js` kills one screen earlier and the fonts'
+// own `font-display: block` kills one layer lower (`base.css`). So the gate
+// waits for ALL of it.
 const booted = ref(false);
 
 // THE BOOT, AND IT IS ONE PATH. Whoever has just proved a credential walks
@@ -199,7 +203,14 @@ async function load(): Promise<void> {
   // the shell with the PREVIOUS state's tables.
   booted.value = false;
   try {
-    applyState(await api<Record<string, unknown>>("/api/state"));
+    // The renderer rides ALONGSIDE the state fetch, not after it: the two have
+    // nothing to say to each other, and waiting for one before asking for the
+    // other would only make the gate stay shut longer than it has to.
+    const [state] = await Promise.all([
+      api<Record<string, unknown>>("/api/state"),
+      ensureRenderer(),
+    ]);
+    applyState(state);
     applyTheme();
     showSaved();
   } catch (err) {
@@ -295,12 +306,13 @@ defineExpose({ refresh });
 
 <template>
   <!-- NOTHING until the server has said who is in, AND NOTHING AGAIN until the
-       state it promised has arrived. The gate is now TWO steps: `signedIn`
-       false is the answer on its way and the page does not know it yet, and
-       `signedIn` true with `booted` false is the words of the entrance already
-       in but the TABLES and the page still one answer away (`/api/state`) —
-       drawing the shell in either gap would flash it empty, one screen before
-       the one `js/boot.js` already guards.
+       state and the renderer it promised have both arrived. The gate is TWO
+       steps: `signedIn` false is the answer on its way and the page does not
+       know it yet, and `signedIn` true with `booted` false is the words of
+       the entrance already in but the TABLES, the page and `/vendor/marked`
+       still an answer away (`load()`, `Promise.all`) — drawing the shell in
+       either gap would flash it empty, or flash its markdown unformatted, one
+       screen before the one `js/boot.js` already guards.
        THE WHOLE SHELL IS UNDER THE GATE, the balloon included: with no session
        the interpreter's switch is still its default, and a balloon flying over
        the entrance would be a box talking to nobody. -->
