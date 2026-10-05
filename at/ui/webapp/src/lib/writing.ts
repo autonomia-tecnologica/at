@@ -29,6 +29,12 @@ export const writingState = reactive({
   active: false,
   status: "",
   failed: false,
+  // THE BARRA DE STATUS'S OWN TWO FACTS (2026-10-05): an edit that is on the
+  // page but not yet on the disk (`dirty`), and a write that is in flight
+  // (`saving`). They are separate because the debounce means there is a moment
+  // where the page is ahead of the disk and nothing is being asked yet.
+  dirty: false,
+  saving: false,
 });
 
 export interface Saved {
@@ -59,6 +65,7 @@ export function useWriting(path: () => string) {
 
   async function run(): Promise<void> {
     const attempt = buffer;
+    writingState.saving = true;
     try {
       const answer = await saveFile(path(), attempt, revision.value);
       revision.value = answer.rev;
@@ -73,6 +80,9 @@ export function useWriting(path: () => string) {
           if (buffer !== saved) void run();
         }, SAVE_RETRY);
       }
+    } finally {
+      writingState.saving = false;
+      writingState.dirty = buffer !== saved;
     }
   }
 
@@ -85,12 +95,15 @@ export function useWriting(path: () => string) {
       buffer = text;
       saved = text;
       revision.value = rev;
+      writingState.dirty = false;
+      writingState.saving = false;
     },
 
     touch(text: string): void {
       buffer = text;
       writingState.active = true;
       window.clearTimeout(timer);
+      writingState.dirty = buffer !== saved;
       if (buffer === saved) {
         writingState.status = "";
         writingState.failed = false;
@@ -105,12 +118,16 @@ export function useWriting(path: () => string) {
     async flush(): Promise<void> {
       window.clearTimeout(timer);
       if (buffer === saved) return;
+      writingState.saving = true;
       try {
         const answer = await saveFile(path(), buffer, revision.value);
         revision.value = answer.rev;
         saved = buffer;
       } catch {
         // Leaving either way; the failure was already said on the line.
+      } finally {
+        writingState.saving = false;
+        writingState.dirty = buffer !== saved;
       }
     },
 

@@ -54,11 +54,11 @@ try {
   if (baseLink && id) {
     baseLink.setAttribute("href", "/base.css?theme=" + encodeURIComponent(id));
   }
-  // The collapsed PANEL enters through the SAME door: the rail is what the page
-  // wears, and it has to be on before the paint — otherwise the sidebar shows up
-  // whole and collapses later, which is the usual flash. The key and the classes
-  // are `nav.js`'s, and the ruler holds the pair. With no saved choice no class is
-  // set on purpose: the empty hands the decision back to the width (base.css §5).
+  // The PANEL enters through the SAME door: it is a drawer, shut unless a saved
+  // choice opens it, and that has to be known before the paint — otherwise it
+  // shows open for one frame and then slides shut, which is the usual flash. The
+  // key and the classes are `nav.ts`'s. With no saved choice no class is set on
+  // purpose: the empty IS shut, which is `base.css`'s own default for `nav`.
   const nav = JSON.parse(localStorage.getItem("at.nav"));
   if (nav && nav.state === "rail") {
     document.documentElement.classList.add("nav-rail");

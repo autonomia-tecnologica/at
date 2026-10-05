@@ -41,7 +41,11 @@ NAMES: dict[str, dict[str, str]] = {
     "shared": {"pt_BR": "Compartilhada", "en_US": "Shared"},
     # A pasta que sela sozinha (TASK-154) — irmã de `prose`, e não dentro dela:
     # o que entra aqui não é material solto, é o que a pessoa quer cifrado.
-    "cofre": {"pt_BR": "Cofre", "en_US": "Vault"},
+    # O nome interno é `strongbox` e não `cofre`: a palavra em português só
+    # sobrevive onde ela JÁ é dado, não identificador — o escopo da chave
+    # derivada (`at.core.strongbox.SCOPE`) e o fingerprint do `.enc`, os dois
+    # congelados porque já há arquivo selado com eles no disco de verdade.
+    "strongbox": {"pt_BR": "Cofre", "en_US": "Vault"},
     # Onde o `at/convert/` pousa o que gerou (TASK-165) — irmã de `prose` pela
     # mesma razão do Cofre: o que está aqui não é o material de origem, é o
     # produto de uma conversão, e não se mistura com `Arquivos/`.
@@ -259,14 +263,14 @@ def shared_dir() -> Path:
     return folder("shared")
 
 
-def cofre_dir() -> Path:
+def strongbox_dir() -> Path:
     """`Cofre/` — the folder that seals on its own (TASK-152, TASK-154).
 
     A sibling of `Arquivos/` and not a folder inside it: what a person drops
     here is not loose material, it is asking to be ciphered — the vigia watches
     it and the Cofre's own consumer is the one that answers.
     """
-    return folder("cofre")
+    return folder("strongbox")
 
 
 def convert_dir() -> Path:

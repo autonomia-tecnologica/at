@@ -32,7 +32,7 @@ from pathlib import Path
 from unittest import mock
 
 from at import i18n
-from at.core import backup, boot, cofre, files, paths, scanner, secrets, settings, tables, versioning
+from at.core import backup, boot, strongbox, files, paths, scanner, secrets, settings, tables, versioning
 from at.data import schema
 from at.encryption import vault
 from at.ui.cli import OK, REFUSED, USAGE, _backup, main
@@ -223,17 +223,17 @@ class TheMake(BackupCase):
         # TASK-154: o backup só leva o que carrega o fingerprint do `.enc` —
         # um `.enc` de outra origem, ou um claro ainda esperando o selo, ficam
         # de fora.
-        (paths.cofre_dir() / "alheio.enc").write_bytes(b"nao passou pelo cofre")
-        (paths.cofre_dir() / "esperando.txt").write_text("ainda nao selado", encoding="utf-8")
+        (paths.strongbox_dir() / "alheio.enc").write_bytes(b"nao passou pelo cofre")
+        (paths.strongbox_dir() / "esperando.txt").write_text("ainda nao selado", encoding="utf-8")
         names = self._archive_names(self.elsewhere())
         self.assertNotIn("./Cofre/alheio.enc", names)
         self.assertNotIn("./Cofre/esperando.txt", names)
 
     def test_a_genuinely_sealed_cofre_file_does_travel(self):
-        where = paths.cofre_dir() / "nota.txt"
+        where = paths.strongbox_dir() / "nota.txt"
         where.write_text("segredo", encoding="utf-8")
-        key = vault.derived_key(vault.vault_key(PHRASE), cofre.SCOPE)
-        sealed = cofre.seal_file(where, key)
+        key = vault.derived_key(vault.vault_key(PHRASE), strongbox.SCOPE)
+        sealed = strongbox.seal_file(where, key)
         names = self._archive_names(self.elsewhere())
         self.assertIn(f"./Cofre/{sealed.name}", names)
 

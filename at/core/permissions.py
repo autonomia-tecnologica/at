@@ -175,8 +175,10 @@ EXTRA: dict[str, tuple[str, ...]] = {
     "assist": ("ask",),
     # TASK-156: a seção lê a lista dos `.enc` — nada aqui edita nada, porque o
     # que entra em `Cofre/` sela sozinho (o vigia, TASK-154), e não por um
-    # gesto da página.
-    "cofre": ("read",),
+    # gesto da página. O objeto é `strongbox` e não `cofre`: o nome do código
+    # é inglês como todo o resto desta lista, e uma migração (vinte e cinco)
+    # renomeia o que já estava escrito em papéis existentes.
+    "strongbox": ("read",),
     # TASK-176, fatia 3/3: o WebApp lê o TÓPICO do notificador por dentro e é
     # disso que esta entrada é o teto — `notifier:read` é a rota que consome o
     # tópico, e nada mais. **O `read` é o ato inteiro dela**, e o objeto é o

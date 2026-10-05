@@ -7,6 +7,16 @@ container one scope's key at a time, base64'd, each in its own environment
 variable — the same shape `at.core.gate.GATE_ENV` and `at.core.paths.ROOT_ENV`
 already use to tell a container something the folder decided.
 
+**The hosted path has no `_webapp_env`, and the Vault's key cannot depend on
+it existing.** Neither the systemd unit (`at_deploy/host.py`) nor a loose
+`at-cli webapp` ever hands over `AT_STRONGBOX_KEY` — only the container path
+derives and delivers that variable. So `boot` derives the Vault's key itself,
+straight from this boot's Main Key — through the ONE door that reaches the
+Vault from the core's side, `core.secrets.key_of` (§4: no screen touches
+`vault` directly, and this is a screen). The scope is just a name, and the
+Main Key recovers the derived key on any path, not only the one that already
+has the variable.
+
 **A key is read from `os.environ` exactly once, at `boot`, and it is gone from
 there the moment it is.** `os.environ` is inherited for the whole life of the
 process — a child spawned later would see it forever if `boot` left it
@@ -28,6 +38,8 @@ import base64
 import os
 from pathlib import Path
 
+from at.core import secrets, strongbox
+
 # The two variables `at_deploy.environment._webapp_env` may hand this
 # container — named here because this is the module that READS them, the same
 # rule `gate.GATE_ENV` and `paths.ROOT_ENV` are named by their own readers
@@ -35,10 +47,11 @@ from pathlib import Path
 WEBAPP_KEY_ENV = "AT_WEBAPP_KEY"
 NOTIFIER_KEY_ENV = "AT_NOTIFIER_KEY"
 # TASK-154: o Cofre sela com a chave derivada do escopo `cofre`
-# (`at.core.cofre.SCOPE`), pela mesma porta.
-COFRE_KEY_ENV = "AT_COFRE_KEY"
+# (`at.core.strongbox.SCOPE` — o valor congelado continua `"cofre"`, só o
+# módulo e a variável abaixo são `strongbox`), pela mesma porta.
+STRONGBOX_KEY_ENV = "AT_STRONGBOX_KEY"
 
-_ENV_VARS = (WEBAPP_KEY_ENV, NOTIFIER_KEY_ENV, COFRE_KEY_ENV)
+_ENV_VARS = (WEBAPP_KEY_ENV, NOTIFIER_KEY_ENV, STRONGBOX_KEY_ENV)
 
 # A CHAVE PRINCIPAL que o WebApp guarda EM MEMÓRIA para a vida do processo.
 #
@@ -72,6 +85,13 @@ def boot() -> None:
     ambiente primeiro, o arquivo depois (`MAIN_KEY_FILE`). Um host que sobe
     sem nenhum dos dois não tem a Chave, e o que depende dela (o Cofre, o Jev)
     diz que não tem em vez de estourar.
+
+    **And the Vault's key is DERIVED here when nobody handed over a ready
+    one.** The container path already arrives with `AT_STRONGBOX_KEY` in the
+    environment (above); the hosted one has no such door and only has the
+    Main Key — so, missing the variable, it is derived straight from it
+    (`_derive_strongbox_key`), instead of leaving the Vault without a key
+    over an accident of which path raised the process.
     """
     keep_main_key(os.environ.pop(MAIN_KEY_ENV, None) or _main_key_from_file())
     for variable in _ENV_VARS:
@@ -82,6 +102,24 @@ def boot() -> None:
             _keys[variable] = base64.urlsafe_b64decode(raw.encode("ascii"))
         except (ValueError, UnicodeError):
             continue
+    _derive_strongbox_key()
+
+
+def _derive_strongbox_key() -> None:
+    """The Vault's key, straight from the Main Key, when no ready one arrived.
+
+    Only fills in what `_ENV_VARS` left empty: a container's
+    `AT_STRONGBOX_KEY` is never overwritten by a derivation nobody asked
+    for. A Main Key too short (or none at all, from a host with neither the
+    variable nor the file) leaves the key absent — the same answer a
+    process that never got one gives, never a boot that blows up.
+    """
+    if STRONGBOX_KEY_ENV in _keys or _main is None:
+        return
+    try:
+        _keys[STRONGBOX_KEY_ENV] = secrets.key_of(strongbox.SCOPE, _main)
+    except secrets.SecretsError:
+        pass
 
 
 def _main_key_from_file() -> str | None:
@@ -126,7 +164,7 @@ def notifier_key() -> bytes | None:
     return _keys.get(NOTIFIER_KEY_ENV)
 
 
-def cofre_key() -> bytes | None:
-    """The Cofre's derived key — what `core.cofre.Watcher.tick` seals a
+def strongbox_key() -> bytes | None:
+    """The Vault's derived key — what `core.strongbox.Watcher.tick` seals a
     settled write with — kept since `boot`, or `None`."""
-    return _keys.get(COFRE_KEY_ENV)
+    return _keys.get(STRONGBOX_KEY_ENV)

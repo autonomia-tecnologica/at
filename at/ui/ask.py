@@ -1017,7 +1017,7 @@ def assist_preview(text: str, *, language: str | None = None, main_key: str | No
     SENTENCE, so the `cli` and any surface that comes after it read the same
     one.
 
-    `main_key` is handed in rather than read here: the Cofre's credential is
+    `main_key` is handed in rather than read here: the Vault's credential is
     opened by `at.core.assist`, and a surface that read the vault itself
     would be a second door into it.
     """

@@ -1,0 +1,10 @@
+{
+  "pt_BR": {
+    "no_key": "O Cofre está sem a chave nesta subida — nada pode ser aberto agora.",
+    "unreadable": "A chave desta subida não abre este arquivo."
+  },
+  "en_US": {
+    "no_key": "The Strongbox has no key this boot — nothing can be opened right now.",
+    "unreadable": "This boot's key does not open this file."
+  }
+}

@@ -14,10 +14,13 @@ processo.** O mesmo desenho do WebApp e do notificador (§4, item 50,
 `at/ui/webapp/keys.py`): o caminho container deriva a chave do escopo
 `cofre` a partir da Chave Principal de quem sobe o ambiente
 (`at_deploy/environment.py:_webapp_env`) e a entrega por variável de
-ambiente; o processo a lê uma vez e a guarda — e um `tick` sem chave ainda
-varre (o retrato do vigia segue vivo), só não sela nada, porque um arquivo
-selado sem chave seria um envelope que este mesmo processo não saberia
-reabrir.
+ambiente; o hospedado não tem essa variável, e é por isso que `keys.boot`
+deriva a mesma chave sozinha, direto da Chave Principal desta subida, quando
+o ambiente não a entregou pronta. Os dois caminhos chegam no processo com a
+chave já pronta — o processo a lê (ou deriva) uma vez e a guarda —, e um
+`tick` sem chave ainda varre (o retrato do vigia segue vivo), só não sela
+nada, porque um arquivo selado sem chave seria um envelope que este mesmo
+processo não saberia reabrir.
 
 **O `.enc` carrega um FINGERPRINT, e é isso que o backup lê.** `seal_bytes`
 por si não tem cabeçalho — é só o nonce e o texto cifrado —, então nada
@@ -36,6 +39,14 @@ from at.encryption import vault
 
 # O escopo da chave derivada (§4) — um nome como o de qualquer serviço, e o
 # Cofre não guarda catálogo nenhum dele.
+#
+# **CONGELADO, para sempre — este valor NUNCA muda, mesmo que o módulo, a
+# rota ou qualquer outro nome ao redor mude.** `vault.derived_key(key,
+# SCOPE)` usa esta string como mensagem da derivação (§4: "dois nomes que
+# diferem numa letra são duas chaves") — trocar o valor troca a chave que
+# abre todo `.enc` já selado com o nome antigo, e o claro que ele guardava
+# fica irrecuperável por esta porta. O módulo virou `strongbox.py`; o
+# escopo continua `"cofre"`.
 SCOPE = "cofre"
 
 # A extensão do que o selo escreve, e o que o distingue do que ainda espera.
@@ -45,12 +56,16 @@ SUFFIX = ".enc"
 # segredo, é assinatura: o backup lê isto para saber se o arquivo é seu sem
 # abrir o envelope (`fingerprinted`), e a versão no nome é o que deixa um
 # formato futuro conviver com este sem confundir um pelo outro.
+#
+# **CONGELADO pela mesma razão de `SCOPE`**: é o prefixo que JÁ está escrito
+# em todo `.enc` existente, e `fingerprinted`/`open_file` comparam bytes a
+# bytes contra ele. Mudar o valor faz todo `.enc` já selado parecer alheio.
 FINGERPRINT = b"AT-COFRE-1\n"
 
 
 def folder() -> Path:
     """`Cofre/` — onde o Watcher vigia, por padrão."""
-    return paths.cofre_dir()
+    return paths.strongbox_dir()
 
 
 def sealed_name(path: Path) -> Path:

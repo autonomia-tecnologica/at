@@ -19,7 +19,7 @@ through.
 
 **The key is derived, never stored.** `secrets.key_of("backup", phrase)` is the
 very door `core.secrets` already opens for a row of the `secret` table, asked
-under its own scope — the Cofre keeps no catalogue of scopes, and a name here
+under its own scope — the Vault keeps no catalogue of scopes, and a name here
 is a name like any other's (§4). Nothing this module writes carries the phrase
 or the key: the archive is ciphered in a temporary folder OUTSIDE the Working
 Folder, exactly where `core.scanner`'s own report lands, and only the sealed
@@ -52,7 +52,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from at.core import cofre, files, paths, scanner, secrets, tables, versioning
+from at.core import files, paths, scanner, secrets, strongbox, tables, versioning
 from at.encryption import vault
 from at.i18n import tr
 
@@ -137,7 +137,7 @@ def make(phrase: Callable[[], str], destination: str) -> Report:
     with tempfile.TemporaryDirectory(prefix="at-backup-") as hold:
         archive = Path(hold) / "folder.tar.gz"
         with tarfile.open(archive, "w:gz") as opened:
-            opened.add(paths.working_folder(), arcname=".", filter=_cofre_filter)
+            opened.add(paths.working_folder(), arcname=".", filter=_strongbox_filter)
         sealed = Path(hold) / _named()
         sealed.write_bytes(vault.seal_bytes(archive.read_bytes(), key))
         ok = _send(sealed, destination, kind, resolved)
@@ -188,26 +188,26 @@ def restore(phrase: Callable[[], str], source: str) -> Report:
     return Report(RESTORED)
 
 
-def _cofre_prefix() -> str:
+def _strongbox_prefix() -> str:
     """`./Cofre/` como `tarfile` nomeia um membro dela — a partir de `.`, que
     é o `arcname` que `make` já usa para a pasta inteira."""
-    return f"./{cofre.folder().relative_to(paths.working_folder()).as_posix()}/"
+    return f"./{strongbox.folder().relative_to(paths.working_folder()).as_posix()}/"
 
 
-def _cofre_filter(info: tarfile.TarInfo) -> tarfile.TarInfo | None:
+def _strongbox_filter(info: tarfile.TarInfo) -> tarfile.TarInfo | None:
     """TASK-154: **o backup só leva o que carrega o fingerprint do `.enc`.**
 
     Fora de `Cofre/` — e a própria pasta, como entrada — nada muda: é o que a
     ausência do prefixo e `not info.isfile()` cobrem. DENTRO dela, um arquivo
     que não é `.enc`, ou que é e não carrega o fingerprint (um selo que uma
     escrita deixou pela metade, um arquivo de outra origem), não sobe — é a
-    mesma pergunta que `cofre.fingerprinted` responde, e ela não abre o
+    mesma pergunta que `strongbox.fingerprinted` responde, e ela não abre o
     envelope, então nenhuma Chave entra aqui para fazer essa pergunta.
     """
-    if not info.isfile() or not info.name.startswith(_cofre_prefix()):
+    if not info.isfile() or not info.name.startswith(_strongbox_prefix()):
         return info
     full = paths.working_folder() / info.name.removeprefix("./")
-    if full.suffix != cofre.SUFFIX or not cofre.fingerprinted(full):
+    if full.suffix != strongbox.SUFFIX or not strongbox.fingerprinted(full):
         return None
     return info
 

@@ -49,7 +49,7 @@ takes `propose` out of the core API before this module is ever reached, and
 turning this one off takes only the Jev fallback out, leaving the
 deterministic reading exactly as it was.
 
-**The credential lives in the Cofre, scoped to `jev.SERVICE`, and this module
+**The credential lives in the Vault, scoped to `jev.SERVICE`, and this module
 never seals one.** Sealing is `at.core.secrets.seal`'s own door, carried out
 once by whoever provisions the folder with a Main Key — the same three grades
 of §4 govern how a caller comes to hold the string. What THIS module does is
@@ -414,7 +414,7 @@ def _rewrite(text: str, guess: jev.Decision, language: str) -> str:
 
 
 def _credential(main_key: str | None) -> str | None:
-    """The Jev API key, opened from the Cofre with `main_key` — or `None` for
+    """The Jev API key, opened from the Vault with `main_key` — or `None` for
     every way there is nothing to open: no key was handed in, no row of
     `secret` is scoped `jev` yet, or the phrase does not open the one there
     is (`secrets.open_value`'s own three-ways-to-nothing)."""

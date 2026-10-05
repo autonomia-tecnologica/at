@@ -32,7 +32,7 @@ from types import SimpleNamespace
 from unittest import mock
 
 from at import i18n
-from at.core import actors, boot, cofre, files, tables
+from at.core import actors, boot, strongbox, files, tables
 from at.encryption import vault
 from at.services import caddy
 from at.ui.webapp import app as webapp
@@ -1443,14 +1443,14 @@ class TheWebappContainer(FolderCase):
             argv,
         )
 
-    def test_the_webapp_is_handed_the_cofres_derived_key_too(self):
+    def test_the_webapp_is_handed_the_strongboxs_derived_key_too(self):
         # TASK-154: a terceira porta, pela mesma regra — o escopo `cofre`.
         fake = self.up()
         argv = _call(fake, env.container(env.WEBAPP))
-        cofre_key = vault.derived_key(self.phrase_key(), cofre.SCOPE)
+        derived = vault.derived_key(self.phrase_key(), strongbox.SCOPE)
         self.assertIn(
-            f"{webapp_keys.COFRE_KEY_ENV}="
-            f"{base64.urlsafe_b64encode(cofre_key).decode()}",
+            f"{webapp_keys.STRONGBOX_KEY_ENV}="
+            f"{base64.urlsafe_b64encode(derived).decode()}",
             argv,
         )
 
@@ -1721,7 +1721,7 @@ class TheStorageOutOfReach(FolderCase):
     O `storage` do Caddy é PREENCHIDO pelo container enquanto ele está de pé, na
     cadência da renovação de certificado dele, e nenhuma subida passa por ali
     para selá-lo; e a Chave Principal não chega lá dentro, porque §7a diz que nenhum
-    processo de dentro do container abre o cofre. Sem um selo que o alcance, o
+    processo de dentro do container abre o strongbox. Sem um selo que o alcance, o
     que resta é DECLARAR o objeto fora do alcance do cofre, com o preço dito (a
     cópia da pasta leva a chave privada da CA), e é esta a declaração que a
     suíte segura: o `up` não escreve e não sela o que o container encheu. O modo
@@ -2136,7 +2136,7 @@ class TheRunDirectory(FolderCase):
     sendo a fonte, e ela é a que guarda o selo.
 
     A pergunta (2) da auditoria é respondida aqui, do lado de dentro: nenhum
-    processo do container abre o cofre. Quem o abre é o `up`, uma vez, com a
+    processo do container abre o strongbox. Quem o abre é o `up`, uma vez, com a
     Chave Principal, e o que os três leitores recebem é a cópia clara.
     """
 

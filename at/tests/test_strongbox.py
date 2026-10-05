@@ -11,7 +11,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from at.core import cofre
+from at.core import strongbox
 from at.encryption import vault
 
 PHRASE = "uma-frase-de-dezesseis-caracteres"
@@ -24,43 +24,43 @@ class TheSeal(unittest.TestCase):
         self.scratch = tempfile.TemporaryDirectory()
         self.folder = Path(self.scratch.name)
         self.addCleanup(self.scratch.cleanup)
-        self.key = vault.derived_key(vault.vault_key(PHRASE), cofre.SCOPE)
+        self.key = vault.derived_key(vault.vault_key(PHRASE), strongbox.SCOPE)
 
     def test_a_sealed_file_carries_the_fingerprint_and_the_name_grows_enc(self):
         where = self.folder / "nota.txt"
         where.write_text("segredo de verdade", encoding="utf-8")
-        sealed = cofre.seal_file(where, self.key)
+        sealed = strongbox.seal_file(where, self.key)
         self.assertEqual(sealed, self.folder / "nota.txt.enc")
         self.assertTrue(sealed.is_file())
         self.assertFalse(where.exists())
-        self.assertTrue(cofre.fingerprinted(sealed))
+        self.assertTrue(strongbox.fingerprinted(sealed))
 
     def test_the_clear_value_is_in_no_byte_of_the_sealed_file(self):
         where = self.folder / "nota.txt"
         where.write_text("um segredo bem específico e comprido", encoding="utf-8")
-        sealed = cofre.seal_file(where, self.key)
+        sealed = strongbox.seal_file(where, self.key)
         self.assertNotIn(b"um segredo bem espec", sealed.read_bytes())
 
     def test_open_file_answers_the_clear_it_sealed(self):
         where = self.folder / "nota.txt"
         where.write_bytes(b"conteudo binario \x00\x01")
-        sealed = cofre.seal_file(where, self.key)
-        self.assertEqual(cofre.open_file(sealed, self.key), b"conteudo binario \x00\x01")
+        sealed = strongbox.seal_file(where, self.key)
+        self.assertEqual(strongbox.open_file(sealed, self.key), b"conteudo binario \x00\x01")
 
     def test_open_file_with_the_wrong_key_answers_none(self):
         where = self.folder / "nota.txt"
         where.write_text("a", encoding="utf-8")
-        sealed = cofre.seal_file(where, self.key)
+        sealed = strongbox.seal_file(where, self.key)
         other = vault.derived_key(vault.vault_key(PHRASE), "outro-escopo")
-        self.assertIsNone(cofre.open_file(sealed, other))
+        self.assertIsNone(strongbox.open_file(sealed, other))
 
     def test_a_plain_file_is_not_fingerprinted(self):
         where = self.folder / "nota.txt.enc"
         where.write_bytes(b"nao passou por aqui")
-        self.assertFalse(cofre.fingerprinted(where))
+        self.assertFalse(strongbox.fingerprinted(where))
 
     def test_a_missing_file_is_not_fingerprinted(self):
-        self.assertFalse(cofre.fingerprinted(self.folder / "nao-existe.enc"))
+        self.assertFalse(strongbox.fingerprinted(self.folder / "nao-existe.enc"))
 
 
 class TheWatcher(unittest.TestCase):
@@ -70,10 +70,10 @@ class TheWatcher(unittest.TestCase):
         self.scratch = tempfile.TemporaryDirectory()
         self.folder = Path(self.scratch.name)
         self.addCleanup(self.scratch.cleanup)
-        self.key = vault.derived_key(vault.vault_key(PHRASE), cofre.SCOPE)
+        self.key = vault.derived_key(vault.vault_key(PHRASE), strongbox.SCOPE)
 
     def test_a_settled_write_is_sealed_after_one_full_tick_of_quiet(self):
-        watcher = cofre.Watcher(self.folder)
+        watcher = strongbox.Watcher(self.folder)
         where = self.folder / "nota.txt"
         where.write_text("a", encoding="utf-8")
         # A primeira rodada VÊ a escrita e a põe na fila — não sela ainda.
@@ -83,10 +83,10 @@ class TheWatcher(unittest.TestCase):
         settled = watcher.tick(self.key)
         self.assertEqual(settled, (self.folder / "nota.txt.enc",))
         self.assertFalse(where.exists())
-        self.assertTrue(cofre.fingerprinted(settled[0]))
+        self.assertTrue(strongbox.fingerprinted(settled[0]))
 
     def test_a_write_still_in_progress_is_not_sealed(self):
-        watcher = cofre.Watcher(self.folder)
+        watcher = strongbox.Watcher(self.folder)
         where = self.folder / "nota.txt"
         where.write_text("a", encoding="utf-8")
         watcher.tick(self.key)
@@ -98,7 +98,7 @@ class TheWatcher(unittest.TestCase):
         self.assertEqual(settled, (self.folder / "nota.txt.enc",))
 
     def test_with_no_key_the_watcher_still_scans_and_seals_nothing(self):
-        watcher = cofre.Watcher(self.folder)
+        watcher = strongbox.Watcher(self.folder)
         where = self.folder / "nota.txt"
         where.write_text("a", encoding="utf-8")
         watcher.tick(None)
@@ -111,9 +111,9 @@ class TheWatcher(unittest.TestCase):
     def test_an_already_sealed_file_is_never_resealed(self):
         where = self.folder / "nota.txt"
         where.write_text("a", encoding="utf-8")
-        sealed = cofre.seal_file(where, self.key)
+        sealed = strongbox.seal_file(where, self.key)
         before = sealed.read_bytes()
-        watcher = cofre.Watcher(self.folder)
+        watcher = strongbox.Watcher(self.folder)
         watcher.tick(self.key)
         watcher.tick(self.key)
         self.assertEqual(sealed.read_bytes(), before)
@@ -123,12 +123,12 @@ class TheWatcher(unittest.TestCase):
         # o arquivo esquecido para sempre.
         where = self.folder / "ja-estava.txt"
         where.write_text("a", encoding="utf-8")
-        watcher = cofre.Watcher(self.folder)
+        watcher = strongbox.Watcher(self.folder)
         settled = watcher.tick(self.key)
         self.assertEqual(settled, (self.folder / "ja-estava.txt.enc",))
 
     def test_a_file_removed_before_it_settles_is_dropped_quietly(self):
-        watcher = cofre.Watcher(self.folder)
+        watcher = strongbox.Watcher(self.folder)
         where = self.folder / "nota.txt"
         where.write_text("a", encoding="utf-8")
         watcher.tick(self.key)
@@ -137,7 +137,7 @@ class TheWatcher(unittest.TestCase):
         self.assertEqual(watcher.tick(self.key), ())
 
     def test_a_folder_that_does_not_exist_yet_seals_nothing_and_does_not_raise(self):
-        watcher = cofre.Watcher(self.folder / "ainda-nao-existe")
+        watcher = strongbox.Watcher(self.folder / "ainda-nao-existe")
         self.assertEqual(watcher.tick(self.key), ())
 
 

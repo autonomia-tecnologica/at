@@ -136,7 +136,7 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Callable
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, quote, urlparse
 
 from at import __version__, convert, i18n, nlu
 from at.core import (
@@ -145,7 +145,6 @@ from at.core import (
     assist,
     audit,
     clock,
-    cofre,
     files,
     gate,
     notifier,
@@ -156,6 +155,7 @@ from at.core import (
     push,
     risk,
     settings,
+    strongbox,
     tables,
     versioning,
 )
@@ -163,7 +163,7 @@ from at.data import schema, store
 from at.prose import listing as prose
 from at.services import authelia, caddy
 from at.ui import ask as door
-from at.ui.webapp import keys, session
+from at.ui.webapp import keys, session, strongbox_links
 
 HOST = "127.0.0.1"
 DEFAULT_PORT = 12345
@@ -257,6 +257,54 @@ _CONTENT_TYPES = {
     ".ico": "image/vnd.microsoft.icon",
     ".avif": "image/avif",
 }
+
+
+# What the Vault's clear may go out as a DOCUMENT — opened straight in a tab,
+# and not only inside an `<img>` this very page already trusts. **It is a
+# deliberate SUBSET of `_CONTENT_TYPES`, and the exclusion is the defence**:
+# the Vault holds whatever the PERSON dropped in there, never what this
+# product wrote, and a file's name proves nothing about what its bytes
+# carry. `.svg` is XML and may carry `<script>` — it is OUT here despite
+# being an image, because "is it an image" is not the right question; the
+# question is "does the browser run something when this opens as a
+# document", and the answer for SVG is yes. `.html`, `.js`, `.css` never
+# entered. Whatever `_STRONGBOX_INLINE_TYPES` does not name leaves as
+# `application/octet-stream` (`_strongbox_content`) — the browser downloads
+# instead of opening, and no extension's name can talk it out of that.
+_STRONGBOX_INLINE_TYPES = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+    ".bmp": "image/bmp",
+    ".ico": "image/vnd.microsoft.icon",
+    ".avif": "image/avif",
+    ".pdf": "application/pdf",
+}
+
+
+def _strongbox_content(name: str) -> tuple[str, str]:
+    """The Content-Type and the Content-Disposition for `name`, the original
+    name (with the `.enc` gone) — never read off the extension the `.enc`
+    itself carried, because the person wrote it, not this product.
+
+    What `_STRONGBOX_INLINE_TYPES` recognises opens `inline`: the browser
+    draws the image or the PDF exactly as it would one opened from anywhere
+    else. Everything else is `attachment` over `application/octet-stream` —
+    which is the decision and not a forgotten default: an `.html` or `.svg`
+    name that opened as what its name says would be a document running in
+    THIS origin, with the person's own session inside it. `quote` carries
+    the accented name whole in `filename*` (RFC 6266), and the plain
+    `filename` copy carries only what ASCII has, for the browser that does
+    not read the first.
+    """
+    ctype = _STRONGBOX_INLINE_TYPES.get(Path(name).suffix.lower())
+    kind = "inline" if ctype else "attachment"
+    ascii_name = name.encode("ascii", "replace").decode("ascii")
+    disposition = (f'{kind}; filename="{ascii_name}"; '
+                    f"filename*=UTF-8''{quote(name)}")
+    return ctype or "application/octet-stream", disposition
 
 
 # ------------------------------------------------------------------ look ---
@@ -487,7 +535,7 @@ PAGE_WORDS = (
     # came out with an empty one. The panel's `#brand` was drawing nothing all
     # along.
     "brand", "brand_name",
-    "tasks", "files", "cofre", "tables", "settings", "general", "appearance", "language",
+    "tasks", "files", "strongbox", "tables", "settings", "general", "appearance", "language",
     "dark_mode", "dark_system", "dark_light", "dark_dark",
     "motion", "themes", "no_project", "all_tasks", "board", "new_task", "new_project", "delete_project",
     "move_to_project", "records", "hidden", "no_records", "error", "filter",
@@ -501,8 +549,8 @@ PAGE_WORDS = (
     # The context menu's own items (TASK-120, fatia 1): what the row's menu
     # offers when the engine says `edit` is legal.
     "edit",
-    "back", "write", "leave_write", "saving",
-    "saved", "save_failed", "language_name", "language_flag",
+    "back", "write", "saving",
+    "saved", "save_failed", "chars", "words", "language_name", "language_flag",
     "ft_text", "ft_markdown", "ft_python", "ft_json", "ft_yaml", "ft_shell",
     "ft_dockerfile", "ft_binary", "ft_other",
     "bucket_code", "bucket_text", "bucket_data", "bucket_image", "bucket_other",
@@ -1501,6 +1549,11 @@ class Handler(BaseHTTPRequestHandler):
                 return
             self._post_convert()
             return
+        if segments == ["api", "strongbox", "open"]:
+            if not self._may("strongbox:read"):
+                return
+            self._post_strongbox_open()
+            return
         if segments == ["api", "ask"]:
             if not self._may("nlu:ask"):
                 return
@@ -1630,12 +1683,22 @@ class Handler(BaseHTTPRequestHandler):
             self._get_file_bytes(query.get("path", [""])[0])
             return
 
-        if rest == ["cofre"]:
+        if rest == ["strongbox"]:
             # TASK-156: a lista, e só — o que sela é o vigia (TASK-154), não
             # um gesto desta rota.
-            if not self._may("cofre:read"):
+            if not self._may("strongbox:read"):
                 return
-            self._json({"files": [{"path": path} for path in cofre.listed()]})
+            self._json({"files": [{"path": path} for path in strongbox.listed()]})
+            return
+
+        if rest == ["strongbox", "download"]:
+            # The link `_post_strongbox_open` minted, walked once. The same
+            # `strongbox:read` as above: a plain navigation carries the
+            # session cookie like any other, and the token by itself is not
+            # proof of WHO the person is — it is proof of WHICH file, once.
+            if not self._may("strongbox:read"):
+                return
+            self._get_strongbox_download(query.get("token", [""])[0])
             return
 
         if rest == ["notifications"]:
@@ -1819,6 +1882,64 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"error": f"read-only: {error.where}"}, 403)
             return
         self._json({"path": target.name})
+
+    def _post_strongbox_open(self) -> None:
+        """`{path}` → `{url}`: a one-time link to the clear of `path`.
+
+        **What this route hands back is an ADDRESS, never the content.**
+        Whoever confirmed they want the file open gets somewhere to navigate
+        to — the page sends the browser there (`window.location`, a link,
+        whatever the gesture is), and it is that navigation that spends the
+        link (`_get_strongbox_download`). Nothing here decrypts anything.
+
+        `path` has to be exactly one of the names `strongbox.listed()` hands
+        back — the SAME listing the page already reads to draw the tree: a
+        name not in it is refused here, before any link exists, because that
+        listing is the only catalogue of what belongs to the Vault.
+        """
+        payload = self._body()
+        if payload is None:
+            return
+        path = payload.get("path")
+        if not isinstance(path, str) or path not in strongbox.listed():
+            self._json({"error": "bad request"}, 400)
+            return
+        if keys.strongbox_key() is None:
+            self._json({"error": i18n.tr("strongbox.no_key")}, 503)
+            return
+        token = self.server.strongbox_links.open(path)
+        self._json({"url": f"/api/strongbox/download?token={token}"})
+
+    def _get_strongbox_download(self, token: str) -> None:
+        """The clear `token` opens — once, straight into the response, never
+        into a file. `strongbox.open_file` reads the `.enc` and hands back
+        bytes in memory; what leaves here is that very return, and nothing
+        along the way writes them to disk.
+
+        The check against `strongbox.listed()` runs again here
+        (`_post_strongbox_open` already ran the same one, at minting)
+        because the world may have changed between the two calls — a file
+        removed, resealed — and a token still alive is no proof that the
+        path it names is still one of the Vault's `.enc` files.
+        """
+        path = self.server.strongbox_links.take(token)
+        if path is None or path not in strongbox.listed():
+            self._not_found()
+            return
+        key = keys.strongbox_key()
+        if key is None:
+            self._json({"error": i18n.tr("strongbox.no_key")}, 503)
+            return
+        clear = strongbox.open_file(strongbox.folder() / path, key)
+        if clear is None:
+            self._json({"error": i18n.tr("strongbox.unreadable")}, 500)
+            return
+        name = Path(path).name.removesuffix(strongbox.SUFFIX)
+        ctype, disposition = _strongbox_content(name)
+        self._send(200, clear, ctype, {
+            "Content-Disposition": disposition,
+            "X-Content-Type-Options": "nosniff",
+        })
 
     def _post_ask(self) -> None:
         """One sentence through the interpreter's door: the proposal, and then.
@@ -2229,6 +2350,7 @@ class Server(ThreadingHTTPServer):
                  handler: type[BaseHTTPRequestHandler], asks: bool = True) -> None:
         super().__init__(address, handler)
         self.sessions = session.Sessions()
+        self.strongbox_links = strongbox_links.Links()
         self.asks = asks
 
 
@@ -2303,20 +2425,21 @@ def beat(times: int | None = None, pause: Callable[[float], None] = time.sleep) 
     boot with no key still rounds — `notifier.publish` answers `no_token`
     rather than sending an envelope nobody here could open.
 
-    **The Cofre's round shares the same guard, and its own `Watcher` is born
-    once, here** (TASK-154): a `cofre.Watcher` holds the pasta's retrato and
-    the writes still settling between two rounds, so it has to be the SAME
-    object across the whole rhythm and not one built fresh inside the loop —
-    a fresh one every round would never see a write settle, because settling
-    is read against the round before. It rounds on the job clock's own
-    cadence and not a faster one of its own: a Cofre is not a chat, and one
-    more thread with one more rhythm is a cost this fatia does not ask for.
+    **The Vault's round shares the same guard, and its own `Watcher` is born
+    once, here** (TASK-154): a `strongbox.Watcher` holds the pasta's retrato
+    and the writes still settling between two rounds, so it has to be the
+    SAME object across the whole rhythm and not one built fresh inside the
+    loop — a fresh one every round would never see a write settle, because
+    settling is read against the round before. It rounds on the job clock's
+    own cadence and not a faster one of its own: a Vault is not a chat, and
+    one more thread with one more rhythm is a cost this fatia does not ask
+    for.
 
     `times` and `pause` are the seams a test drives: the pass is proven with the
     instant handed to `at.ui.ask.tick`, and these are how the same pass is
     proven without the machine's hour and without sleeping through a cadence.
     """
-    watcher = cofre.Watcher()
+    watcher = strongbox.Watcher()
     done = 0
     while times is None or done < times:
         try:
@@ -2328,7 +2451,7 @@ def beat(times: int | None = None, pause: Callable[[float], None] = time.sleep) 
         except Exception as error:  # noqa: BLE001 — same guard, the other round
             print(i18n.tr("webapp.clock_failed", error=error))
         try:
-            watcher.tick(keys.cofre_key())
+            watcher.tick(keys.strongbox_key())
         except Exception as error:  # noqa: BLE001 — same guard, the third round
             print(i18n.tr("webapp.clock_failed", error=error))
         done += 1

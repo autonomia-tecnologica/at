@@ -51,7 +51,7 @@ not doing: it leaves no `audit` line, and the folder is not versioned for it.
 What the vault sealed is exempt BY CONSTRUCTION and not by an exclusion AT
 writes: the `secret` table's value is an envelope (`xsalsa20poly1305:<base64>`)
 and never a cleartext, so there is nothing in it for a scanner to find — which is
-the whole of what the cofre buys, and the reason the scan declares no rule of its
+the whole of what the Vault buys, and the reason the scan declares no rule of its
 own about it. **Measured** against the tool the person named, `gitleaks 8.30.1`
 with its default list: a folder carrying a sealed row scans CLEAN, so the
 exemption is a fact about the envelope and not a hope about the rules.

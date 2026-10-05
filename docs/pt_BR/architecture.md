@@ -51,6 +51,8 @@
 
 - A criptografia do AT parte de uma **Chave Principal**, que é o que a pessoa sabe e digita: no mínimo 16 caracteres, e é uma frase. "Mariazinha comeu todo o pudim", em minúsculas e sem espaços, é mais seguro que `Mariazinha@123`. Dela derivam as **chaves derivadas**, uma por serviço ou finalidade. A Chave Principal recupera qualquer chave derivada perdida.
 
+- **Não existe um segundo sistema de criptografia no AT.** Toda cifra do produto — o Cofre, o portão, o que cada serviço assina ou cifra para si — passa por esta mesma porta única: a Chave Principal e o que dela se deriva. Um caminho que cifrasse por fora dela, ou que guardasse uma chave pronta em vez de derivá-la da frase quando falta, seria uma criptografia própria que o AT não tem — mesmo chamada de outro nome, mesmo existindo só num dos caminhos de subida.
+
 - O escopo de uma chave derivada é um **nome** — o nome canônico de um serviço, ou uma finalidade escrita como um —, e o Cofre não guarda catálogo de nomes: os serviços são do §7 e dos plugins, e uma lista aqui seria o Cofre nomeando um mundo que não é dele. O que ele recusa é escopo que não é nome, e o que ele sustenta é que dois nomes que diferem numa letra são duas chaves.
 
 - É recomendado guardar a Chave Principal fora da máquina, em um local seguro. Imprimir e armazenar em documentos pessoais de difícil acesso, por exemplo.

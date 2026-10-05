@@ -45,11 +45,15 @@ export const TASKS_KEY = "tasks";
 export const FILES_KEY = "files";
 export const TABLES_KEY = "tables";
 
-// THE COFRE'S OWN SCREEN (TASK-156): a fourth fold, sibling of FILES — it
-// lists what the vigia-driven seal already sealed (`/api/cofre`), and reads
-// nothing else — the fold has no gesture of its own, because sealing is the
-// Watcher's (`at.core.cofre`) and never a click on this page.
-export const COFRE_KEY = "cofre";
+// THE STRONGBOX'S OWN SCREEN (TASK-156): a fourth fold, sibling of FILES — it
+// lists what the vigia-driven seal already sealed (`/api/strongbox`), and
+// reads nothing else — the fold has no gesture of its own, because sealing
+// is the Watcher's (`at.core.strongbox`) and never a click on this page.
+// THE KEY IS `strongbox` (2026-10-05), the English identifier the module and
+// the route already wear: the pt_BR screen still says "Cofre" and the en_US
+// one says "Strongbox", but the word is the CATALOG's and the key is the
+// code's — the address moved to `/strongbox` with the key.
+export const STRONGBOX_KEY = "strongbox";
 
 // The interpreter's chat, which is a view of the page like the others — and one
 // the page does not OFFER when the interpreter is off (`store.interpreter`),
@@ -61,6 +65,16 @@ export const CHAT_KEY = "chat";
 // section band reads the same two — one pair, not two that could drift apart.
 export const FILE_PREFIX = "file:";
 export const PROJECT_PREFIX = "project:";
+
+// THE WRITE TAB'S OWN KEY (2026-10-05): a file opens to READ in the panel it
+// was clicked from, and to WRITE in a page of its own, with no panel at all —
+// `App.vue` renders NOTHING else once this prefix is the view on screen, which
+// is what lets the field take the whole window instead of the card the panel
+// gives it. It is a view like `file:`'s, not a mode of it: a bookmark, a
+// link sent to a phone, or a browser's own "open in new tab" all have to land
+// on the one page that IS the field, the same way `file:kb/note.md` always
+// lands on the one page that reads it.
+export const WRITE_PREFIX = "write:";
 
 // THE WEBAPP'S OWN SURFACE FOR THE INTERPRETER IS BACK ON (2026-10-03). It was
 // off from 2026-09-27 while the feature stood unfinished — no real path to the
@@ -243,7 +257,10 @@ function note(): void {
   if (location.pathname !== path) history.replaceState(null, "", path);
 }
 
-function addressOf(view: string, id: number | null): string {
+// EXPORTED (2026-10-05): the write tab builds ITS OWN address from a view key
+// the same way a reload does, and a second copy of this arithmetic is the copy
+// that drifts the day a key's shape changes.
+export function addressOf(view: string, id: number | null): string {
   const pieces = view.split(":").join("/").split("/").map(encodeURIComponent);
   if (id !== null) pieces.push(String(id));
   return "/" + pieces.join("/");

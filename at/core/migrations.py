@@ -928,30 +928,69 @@ def _clock(ask: Ask | None) -> list[Report]:
 
 # O que a seção do Cofre (TASK-156) demanda, e nenhum papel nascido antes
 # desta versão teve a CHANCE de carregar — a mesma razão de `GROWN` e `ADDED`.
-COFRE_GRANTED = ("cofre:read",)
+#
+# **O valor acompanha o catálogo de HOJE, não o do dia em que esta migração
+# nasceu.** `_hand_over` já é "o papel alcança o que o catálogo tem agora" —
+# uma pasta que só roda esta migração nesta versão (uma que nunca tinha
+# chegado até aqui) tem de ganhar `strongbox:read`, porque é esse o nome que
+# o catálogo de hoje conhece. Uma pasta que já rodou esta migração sob o
+# nome antigo (`cofre:read`) não passa por aqui de novo — ela é a migração
+# vinte e cinco, abaixo, que resolve.
+STRONGBOX_GRANTED = ("strongbox:read",)
 
 
-def _cofre_permission(ask: Ask | None) -> list[Report]:
-    """Migration vinte: `cofre:read`, que a seção do Cofre (TASK-156) demanda.
+def _strongbox_permission(ask: Ask | None) -> list[Report]:
+    """Migration vinte: `strongbox:read`, que a seção do Cofre (TASK-156) demanda.
 
     A mesma forma de `_catalogue` e `_objects`: só o administrador, só o que
     falta, e não pergunta — o ganho é só leitura de uma lista de nomes.
     """
-    return _hand_over(COFRE_GRANTED)
+    return _hand_over(STRONGBOX_GRANTED)
 
 
-def _cofre_folder(ask: Ask | None) -> list[Report]:
+def _strongbox_folder(ask: Ask | None) -> list[Report]:
     """`Cofre/` — a pasta que sela sozinha, chega numa pasta que já existia
     (TASK-152, TASK-154).
 
     A mesma forma de `_harness_folder`: nasce nomeada e vazia, e o impacto de
     fora é nulo — nada aponta para ela ainda —, então não pergunta.
     """
-    target = paths.cofre_dir()
+    target = paths.strongbox_dir()
     if target.exists():
         return []
     target.mkdir(parents=True, exist_ok=True)
     return [("boot.migration.folders.born", {"names": target.name})]
+
+
+def _strongbox_permission_renamed(ask: Ask | None) -> list[Report]:
+    """Migration vinte e cinco: `cofre:read` → `strongbox:read`, em todo papel
+    que já carregava o nome antigo.
+
+    **Só o código mudou de nome — a pasta de quem já tinha o administrador
+    de pé continua com `cofre:read` escrito em `role.jsonl`,** porque a
+    migração vinte já rodou para ela sob esse nome e não roda de novo. Sem
+    este passo, o catálogo de hoje (que só conhece `strongbox:read`) deixa de
+    reconhecer o que o papel carrega, e a seção do Cofre, que a pessoa já
+    usava, fecharia para ela — não por decisão de ninguém, por um nome que o
+    código trocou por debaixo do papel.
+
+    Troca o token dentro da lista de permissões, nunca a lista inteira:
+    o que mais o papel carrega continua exatamente como estava.
+    """
+    renamed: list[str] = []
+    for row in store.load("role"):
+        carried = permissions.carried(row)
+        if "cofre:read" not in carried:
+            continue
+        number = store.number_of(row)
+        if number is None:
+            continue
+        updated = ["strongbox:read" if p == "cofre:read" else p for p in carried]
+        tables.edit("role", number, {"permissions": ",".join(updated)})
+        renamed.append(tables.title("role", row))
+    if not renamed:
+        return []
+    return [("boot.migration.strongbox.renamed", {"names": ", ".join(renamed)})]
 
 
 # O que o motor offline compara (TASK-162, fatia 1): o `edited_at` que a
@@ -988,7 +1027,7 @@ def _convert_folder(ask: Ask | None) -> list[Report]:
     """`Convertidos/` — onde o `at/convert/` pousa o que gerou, chega numa
     pasta que já existia (TASK-165).
 
-    Mesma forma de `_cofre_folder` e `_harness_folder`: nasce nomeada e vazia,
+    Mesma forma de `_strongbox_folder` e `_harness_folder`: nasce nomeada e vazia,
     e o impacto de fora é nulo — nada aponta para ela ainda —, então não
     pergunta.
     """
@@ -1081,12 +1120,13 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(16, _scanner),
     Migration(17, _tags),
     Migration(18, _clock),
-    Migration(19, _cofre_folder),
-    Migration(20, _cofre_permission),
+    Migration(19, _strongbox_folder),
+    Migration(20, _strongbox_permission),
     Migration(21, _edited_at),
     Migration(22, _convert_folder),
     Migration(23, _silent_additions),
     Migration(24, _project_desc_limit),
+    Migration(25, _strongbox_permission_renamed),
 )
 
 

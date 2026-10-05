@@ -16,10 +16,10 @@ import "./styles/app.css";
 import "./lib/offline";
 // A INSCRIÇÃO NO PUSH (Web Push) — a notificação do PWA, que substituiu o ntfy.
 import { register as registerPush } from "./lib/push";
-import { registerView, registerType, TASKS_KEY, FILES_KEY, COFRE_KEY, TABLES_KEY, BOARD_KEY } from "./lib/views";
+import { registerView, registerType, TASKS_KEY, FILES_KEY, STRONGBOX_KEY, TABLES_KEY, BOARD_KEY, WRITE_PREFIX } from "./lib/views";
 import TasksView from "./views/TasksView.vue";
 import FilesView from "./views/FilesView.vue";
-import CofreView from "./views/CofreView.vue";
+import StrongboxView from "./views/StrongboxView.vue";
 import TablesView from "./views/TablesView.vue";
 import BoardView from "./views/BoardView.vue";
 import SettingsView from "./views/SettingsView.vue";
@@ -27,6 +27,7 @@ import ChatView from "./views/ChatView.vue";
 import ProjectView from "./views/ProjectView.vue";
 import OrphansView from "./views/OrphansView.vue";
 import FileView from "./views/FileView.vue";
+import WriteView from "./views/WriteView.vue";
 import ActorView from "./views/ActorView.vue";
 import RoleView from "./views/RoleView.vue";
 
@@ -43,9 +44,9 @@ registerView(TASKS_KEY, TasksView);
 // THE OTHER TWO SECTIONS, one line each — which is the whole point of the key
 // being the fold's id.
 registerView(FILES_KEY, FilesView);
-// THE COFRE'S OWN SCREEN (TASK-156), a fourth line for the same reason: the
-// fold's id is the view's address (`/cofre`).
-registerView(COFRE_KEY, CofreView);
+// THE STRONGBOX'S OWN SCREEN (TASK-156), a fourth line for the same reason:
+// the fold's id is the view's address (`/strongbox`).
+registerView(STRONGBOX_KEY, StrongboxView);
 registerView(TABLES_KEY, TablesView);
 // THE BOARD: not a section's own fold, but the door right after ORPHANS in the
 // same tree (`Sidebar.vue`) — a view like any other, with an address of its
@@ -70,6 +71,9 @@ registerView("role", RoleView);
 // The ones that name a RECORD: the rest of the key is the id or the path.
 registerView("project:", ProjectView, "id");
 registerView("file:", FileView, "path");
+// THE WRITE TAB (2026-10-05): the same REST-of-the-key shape as `file:`'s own
+// (a path, not an id) — `App.vue` draws it alone, with no shell around it.
+registerView(WRITE_PREFIX, WriteView, "path");
 
 // And a table that declares the TYPE `project` is a PAGE, not a record in a
 // table: it is through this map that a reference to a project opens the project.

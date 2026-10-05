@@ -17,13 +17,13 @@
 
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { store, word } from "../lib/store";
-import { CHAT_KEY, NLU_UI_ENABLED, TASKS_KEY, FILES_KEY, COFRE_KEY, TABLES_KEY, BOARD_KEY, SETTINGS_KEY, isCurrent, open, countOf } from "../lib/views";
+import { CHAT_KEY, NLU_UI_ENABLED, TASKS_KEY, FILES_KEY, STRONGBOX_KEY, TABLES_KEY, BOARD_KEY, SETTINGS_KEY, isCurrent, open, countOf } from "../lib/views";
 import { byName } from "../lib/order";
-import { navRail, toggleNav } from "../lib/nav";
+import { toggleNav } from "../lib/nav";
 import Foldable from "./Foldable.vue";
 import ProjectsTree from "./ProjectsTree.vue";
 import FileTree from "./FileTree.vue";
-import CofreTree from "./CofreTree.vue";
+import StrongboxTree from "./StrongboxTree.vue";
 
 const foot = ref<HTMLElement | null>(null);
 let footWatcher: ResizeObserver | null = null;
@@ -122,10 +122,10 @@ onUnmounted(() => {
     <Foldable id="files" :label="word('files')" box-class="branch" :view="FILES_KEY">
       <FileTree />
     </Foldable>
-    <!-- THE COFRE, right after Arquivos — a fourth fold, the same shape as the
-         third (TASK-156): what it lists is what the vigia already sealed. -->
-    <Foldable id="cofre" :label="word('cofre')" box-class="branch" :view="COFRE_KEY">
-      <CofreTree />
+    <!-- THE STRONGBOX, right after Arquivos — a fourth fold, the same shape as
+         the third (TASK-156): what it lists is what the vigia already sealed. -->
+    <Foldable id="strongbox" :label="word('strongbox')" box-class="branch" :view="STRONGBOX_KEY">
+      <StrongboxTree />
     </Foldable>
     <Foldable id="tables" :label="word('tables')" box-class="kinds" :view="TABLES_KEY">
       <button v-for="kind in kinds" :key="kind.key" type="button"
@@ -161,33 +161,16 @@ onUnmounted(() => {
             :class="{ on: isCurrent(SETTINGS_KEY) }" @click="openSettings">
       <span>{{ word("settings") }}</span>
     </button>
-    <!-- THE LAST ROW OF THE FOOT, AND THE ONE THE RAIL CANNOT LOSE (2026-09-22).
-         The collapse button used to sit in the title strip, next to the name; it
-         lives HERE now, for the reason a foot exists at all: this box is always on
-         screen, so a person never has to SCROLL the tree to reach the control that
-         hides the tree. It is also the only target left once the panel IS the rail
-         — which is why the rail hides the foot's rows and not the foot (base.css).
-         The state it reads is `navRail`, the one answer both doors share.
-         IT CARRIES ITS OWN NAME (2026-09-22). It was a bare glyph with an
-         `aria-label` far away from it, which meant a sighted person had to guess
-         what `«` did — and no arrow can answer that: an arrow says WHICH WAY the
-         panel goes, never WHAT HAPPENS to it. The words say what happens. The GLYPH
-         stays as the `::before` of the rule, so the theme still sizes it
-         (`--nav-toggle-size`) and the two sides still swap by selector.
-         ON THE RAIL THE WORDS GO AND THE ARROW TURNS — 44px has no room for a
-         sentence, and the `aria-label` flips to the other verb so a screen reader
-         hears the ACTION and not the position. That flip is also what keeps the
-         accessible name matching the visible one where the visible one exists
-         (WCAG 2.5.3, and the reason the label is not a fixed "Painel"). -->
-    <!-- THE LINE ABOVE THE CONTROL. `hr.sep` is the separator this file already
-         uses to close the foot off from the tree, so the control is set apart by
-         the same mark and not by a second idiom invented here. -->
+    <!-- THE PANEL'S OWN CLOSE, BACK IN THE FOOT (2026-10-05). The corner button
+         (`App.vue`'s header) opens it from OUTSIDE; this is the door from the
+         INSIDE — reached without a hand leaving the panel that is already open,
+         which is the one the foot's own scroll-proof position (base.css) was
+         always FOR. It only ever shows while the panel is open, so there is
+         only one thing it can mean: unlike the corner button, no label/icon
+         swap is needed here at all. -->
     <hr class="sep">
-    <button id="nav-toggle" class="nav-toggle" type="button"
-            :aria-label="word(navRail.railed ? 'expand_menu' : 'collapse_menu')"
-            :aria-expanded="!navRail.railed"
-            @click="toggleNav">
-      <span class="t">{{ word("collapse_menu") }}</span>
+    <button class="file nav-toggle" type="button" @click="toggleNav">
+      <span>{{ word("collapse_menu") }}</span>
     </button>
   </div>
 </template>

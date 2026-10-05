@@ -11,7 +11,7 @@
 
    THE SELECTORS BELOW ARE A CONTRACT WITH THE COMPILED VUE APP, not a choice:
    the class names, the two breakpoints (960/640), the `nav-rail`/`nav-open`/
-   `shell`/`write-full`/`no-motion` classes, `#scrim`, `td[data-label]` and the
+   `shell`/`no-motion` classes, `#scrim`, `td[data-label]` and the
    three tokens TableView.vue reads by name (`--measure`, `--cell-pad`,
    `--page-pad-x`) are wiring, not look — the JS was compiled against them and
    changing a name here without changing the JS breaks the app. Everything
@@ -79,38 +79,25 @@ body {
 
 /* ===== shell: nav / main / header ===================================== */
 
+/* THE PANEL IS AN OVERLAY, ALWAYS (2026-10-05): it used to be a flex sibling
+   that reserved its own column — open at full width, or a rail of icons
+   nobody asked to see — and the rail cost a permanent strip of the window on
+   every page, at every width, whether a person ever opened it or not. It is
+   off the canvas by default now and asked for by ONE control, the corner
+   button in the header (`.menu-toggle`) — hidden until summoned, laid OVER
+   the page and not beside it, closed by that same button, the scrim, or
+   Escape, the same three doors every dialog in this file already answers to. */
 nav {
-  position: relative;
-  width: var(--nav-w); flex: 0 0 var(--nav-w);
+  position: fixed; top: 0; left: 0; bottom: 0; z-index: 25;
+  width: var(--nav-w);
   display: flex; flex-direction: column; overflow: hidden;
   background: var(--nav-bg);
-  box-shadow: var(--nav-edge);
-  transition: width var(--dur-base) var(--ease-out),
-              flex-basis var(--dur-base) var(--ease-out);
+  border-right: 1px solid var(--nav-border);
+  transform: translateX(-100%);
+  transition: transform var(--dur-base) var(--ease-out),
+              box-shadow var(--dur-base) var(--ease-out);
 }
-html.nav-rail nav { width: var(--nav-rail-w); flex-basis: var(--nav-rail-w); }
-html.nav-rail #kinds, html.nav-rail .brand, html.nav-rail .brand-name,
-html.nav-rail .side-foot > .file,
-html.nav-rail .side-foot > .sep {
-  opacity: 0; visibility: hidden;
-  transition: opacity var(--dur-fast) var(--ease-out), visibility 0s var(--dur-fast);
-}
-html.nav-rail .side-foot { width: var(--nav-rail-w); }
-html.nav-rail .brand { position: absolute; }
-html.nav-rail nav h1 { justify-content: center; padding-inline: 0; }
-/* THE FULL WIDTH, NOT JUST THE MARGIN (2026-09-28): `nav button`'s own
-   `width: calc(100% - 2 * var(--space-3))` and `margin-inline: var(--space-3)`
-   both inset the button from the rail — dropping only `margin-left` left the
-   button narrower AND still off-centre, so `justify-content: center` was
-   centering the icon in a box that was itself not centred. The rail was wide
-   enough that the drift hid in the slack; narrowed to fit the icon, it
-   became the icon hugging the edge. Both rules give the button the rail's
-   FULL width now, so centring it centres the icon in the rail, not in a box
-   inside it. */
-html.nav-rail .nav-toggle {
-  justify-content: center; padding-inline: 0; margin-inline: 0; width: 100%;
-}
-html.nav-rail .nav-toggle > .t { display: none; }
+html.nav-open nav { transform: translateX(0); box-shadow: var(--nav-edge); }
 
 /* THE TWO SCROLLERS SCROLL ONE WAY, AND ONLY ONE (2026-09-28). A horizontal bar
    is never welcome here and it is never possible: the table is `table-layout:
@@ -121,17 +108,15 @@ html.nav-rail .nav-toggle > .t { display: none; }
    it would break the thing being read. */
 #kinds {
   flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
-  width: var(--nav-w);
+  width: 100%;
   padding: var(--space-2) 0 var(--foot-space, 140px);
 }
 .side-foot {
   position: absolute; left: 0; right: 0; bottom: 0;
-  width: var(--nav-w);
+  width: 100%;
   padding: var(--space-2) 0 var(--space-3);
   background: var(--nav-bg);
 }
-#kinds, .brand, .side-foot { transition: opacity var(--dur-fast) var(--ease-out), visibility 0s; }
-
 /* THE CANVAS IS NOT A VOID (item 10). A page of the AT is mostly empty by
    design — a handful of rows on a large screen — and a flat field of grey is
    what makes that read as UNFINISHED rather than as calm. One soft wash of the
@@ -156,11 +141,33 @@ header {
   display: flex; align-items: center; gap: var(--space-3);
   min-height: var(--header-h);
   padding-inline: var(--space-6);
+  padding-inline-start: calc(var(--nav-rail-w) + var(--space-4));
   background: var(--surface-1);
   border-bottom: 1px solid var(--border-soft);
   color: var(--ink-2);
   position: relative; z-index: 1;
 }
+/* THE PANEL'S OWN DOOR (2026-10-05). `--nav-rail-w` is read again here, not as
+   a rail's width any more but as the one number it always was underneath —
+   WCAG 2.5.5's floor for a target a thumb has to land on — which makes it
+   exactly right for a button that IS the rail now. It sits in the header's
+   own corner in the markup (`App.vue`), but `fixed` and a z-index ABOVE the
+   panel's (25) take it out of the header's stacking context on purpose: the
+   open panel paints OVER the header like it paints over everything else
+   (full height, §nav above), and the one thing that has to survive that is
+   the control that closes it again. The glyph swaps with the state the same
+   way the old control did (`--i`, `html.nav-open`). */
+.menu-toggle {
+  position: fixed; z-index: 30;
+  top: calc((var(--header-h) - var(--nav-rail-w)) / 2); left: var(--space-4);
+  display: inline-flex; align-items: center; justify-content: center;
+  width: var(--nav-rail-w); height: var(--nav-rail-w);
+  background: none; border: 0; border-radius: var(--r-sm);
+  color: var(--ink-2);
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.menu-toggle:hover { background: var(--surface-2); color: var(--ink-1); }
+.menu-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* ONE SIZE, THE PANEL'S OWN (2026-09-28). The band used to carry THREE — the
    crumb's, the current step's own display face, and `#head-right .loc`'s —
    and the biggest of them read as a headline this row was never meant to be:
@@ -201,11 +208,14 @@ header b { color: var(--ink-1); font-weight: var(--weight-semibold); }
 
 #body { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 0; }
 
-.scrim {
-  display: none; position: fixed; inset: 0; z-index: 15;
-  background: color-mix(in srgb, var(--ink-1) 45%, transparent);
-  backdrop-filter: blur(2px);
-}
+/* NO DIM, NO BLUR (2026-10-05) — just the click-catcher that closes the
+   drawer when the page outside it is touched. A tint over the whole screen
+   read as a dialog's own veil, and the drawer is not a dialog: it is a
+   panel sliding over the page, gone the instant the button or Escape says
+   so, and the ONE motion in that gesture is the panel's own slide
+   (`transform`, above) — not a second layer fading in behind it. */
+.scrim { display: none; position: fixed; inset: 0; z-index: 15; }
+html.nav-open .scrim { display: block; }
 .veil {
   position: fixed; inset: 0; z-index: 30;
   background: color-mix(in srgb, var(--ink-1) 45%, transparent);
@@ -338,6 +348,15 @@ nav button.on {
 }
 nav .file { color: var(--nav-ink-2); }
 nav .entry { justify-content: flex-start; gap: var(--space-2); align-items: center; }
+/* A SEALED FILE IS A LEAF, NOT A DOOR (2026-10-05): it is not a `<button>` —
+   there is no reader to open (TASK-155) — but it keeps the button's BOX, so the
+   tree still reads as one column and the leaf does not collapse to the edge. */
+nav .entry.leaf {
+  display: flex; align-items: center; gap: var(--space-2);
+  width: calc(100% - 2 * var(--space-3)); margin-inline: var(--space-3);
+  padding: var(--space-2) var(--space-3); border-radius: var(--r-sm);
+  font-size: var(--text-sm);
+}
 
 /* ===== icons: the vendored sprite =======================================
    The shapes are iconoir's (MIT — `vendor/licenses/iconoir-LICENSE`), vendored
@@ -362,11 +381,11 @@ nav .entry .icon,
    is listed, and the foot's two rows are the foot's. */
 nav .folder[data-branch="tasks"]::before,
 nav .folder[data-branch="files"]::before,
-nav .folder[data-branch="cofre"]::before,
+nav .folder[data-branch="strongbox"]::before,
 nav .folder[data-branch="tables"]::before,
 nav .side-foot > .file::before,
 .caret::before,
-.nav-toggle::before,
+.menu-toggle::before,
 th .fbtn::before,
 .back::before,
 .balloon-bubble::before {
@@ -391,10 +410,13 @@ nav .entry[data-bucket="data"] .icon { --i: url("/icons/at2-data.svg"); }
 /* the panel's own doors: the three folds, and the three at the foot */
 nav .folder[data-branch="tasks"]::before { --i: url("/icons/at2-nav-tasks.svg"); }
 nav .folder[data-branch="files"]::before { --i: url("/icons/at2-nav-files.svg"); }
-nav .folder[data-branch="cofre"]::before { --i: url("/icons/at2-nav-cofre.svg"); }
+nav .folder[data-branch="strongbox"]::before { --i: url("/icons/at2-nav-strongbox.svg"); }
 nav .folder[data-branch="tables"]::before { --i: url("/icons/at2-nav-tables.svg"); }
 nav .side-foot > .file[data-view="settings"]::before { --i: url("/icons/at2-nav-settings.svg"); }
 nav .side-foot > .file[data-view="chat"]::before { --i: url("/icons/at2-nav-chat.svg"); }
+/* THE FOOT'S OWN CLOSE (2026-10-05): it only ever shows while the panel is
+   open, so the glyph never has to swap the way the corner button's does. */
+nav .side-foot > .file.nav-toggle::before { --i: url("/icons/at2-nav-close.svg"); }
 /* the two rows that were a word and a guess (`base-shared.css` has the long version) */
 .caret::before { --i: url("/icons/at2-caret.svg"); }
 th .fbtn::before { --i: url("/icons/at2-nav-filter.svg"); }
@@ -412,14 +434,11 @@ th .fbtn::before { --i: url("/icons/at2-nav-filter.svg"); }
    every tree in every file manager has drawn it for thirty years. */
 .caret { font-size: 0; order: 3; }
 .caret::before { width: 13px; height: 13px; }
-.nav-toggle { justify-content: flex-start; gap: var(--space-2); align-items: center; user-select: none; }
-.nav-toggle::before {
-  --i: url("/icons/at2-nav-collapse.svg");
-  /* The mark is the size the theme declares for it — the one number two
-     systems agreed on before either drew the arrow (`base-shared.css`). */
+.menu-toggle::before {
+  --i: url("/icons/at2-nav-menu.svg");
   width: var(--nav-toggle-size); height: var(--nav-toggle-size);
 }
-html.nav-rail .nav-toggle::before { --i: url("/icons/at2-nav-expand.svg"); }
+html.nav-open .menu-toggle::before { --i: url("/icons/at2-nav-close.svg"); }
 /* The rows that are a MARK AND A WORD — the ones with an icon. The file tree's
    own rows (`.entry`) are the exception twice over: their mark hangs on the
    `.icon` span they carry, and what they hold is the name alone. */
@@ -822,41 +841,20 @@ dd { margin: 4px 0 0; word-break: break-word; }
    mask. `--space-5` is the same figure the narrow breakpoint already gives
    this very rule further down: not a new number, the one this file already
    calls "enough" once the surface is worth being careful about. */
-.prose, .write-wrap, pre.text, .record-body {
+.prose, pre.text, .record-body {
   margin: var(--space-6) var(--space-6) 0;
   padding: var(--space-5); background: var(--surface-1); border-radius: var(--r-lg);
   box-shadow: var(--shadow-card);
 }
 .file-page, .record-page { display: flex; flex-direction: column; min-height: 100%; }
-/* THE FILE'S OWN ACTION MOVES INTO THE CARD'S OWN CORNER (2026-09-28). It used
-   to be a row of its own, above the card — the one control on the whole page,
-   alone in a strip as tall as the button plus a `--space-6` of nothing on
-   every side. A lone button in an empty room reads as louder than it is; the
-   corner is where an edit toggle sits when it belongs to the thing under it
-   and not to the page as a whole (`.page-actions.corner`, `FileView.vue`
-   only — a record's own step back stays a row, because it is read WITH the
-   count beside it, never alone). */
 .file-page { position: relative; }
-.page-actions.corner {
-  position: absolute; margin: 0; z-index: 1;
-  top: calc(var(--space-6) + var(--space-3));
-  right: calc(var(--space-6) + var(--space-5));
-}
-.page-actions.corner .btn {
-  padding: var(--space-2) var(--space-3); font-size: var(--text-sm);
-}
-/* THE ROOM THE CORNER BUTTON NEEDS, RESERVED — not guessed. Read mode gets
-   away without this (an `<h1>` already holds the line open), but a plain
-   file or the write field starts its first line at the card's ordinary
-   `--space-5`, which is shorter than the button sitting over it — the two
-   collided into the write field's own focus outline. The extra top padding
-   is exactly the button's own height plus its inset, so the first line
-   clears it at ANY content height, not just the one this was measured
-   against. */
-.page-actions.corner ~ .prose, .page-actions.corner ~ .write-wrap,
-.page-actions.corner ~ pre.text { padding-top: calc(var(--space-5) + var(--space-7)); }
-.file-page > .prose, .file-page > .write-wrap, .file-page > pre.text,
+.file-page > .prose, .file-page > pre.text,
 .file-page > .file-image, .record-page > .record-body { flex: 1 0 auto; }
+/* THE WHOLE SURFACE IS THE DOOR NOW (2026-10-05): there is no button to find
+   any more — a writable text file opens its write tab (`WriteView.vue`) on
+   one click/tap anywhere on the card, and the cursor is the only thing that
+   says so before the click lands. */
+.prose.writable, pre.text.writable { cursor: pointer; }
 pre.text { overflow-wrap: break-word; white-space: pre-wrap; word-break: break-word; font-size: var(--text-sm); }
 /* THE IMAGE (TASK-167): the same margin `pre.text`'s content area gets, and
    never bigger than the page it sits in — a photo dropped in `Arquivos/`
@@ -878,27 +876,71 @@ pre.text { overflow-wrap: break-word; white-space: pre-wrap; word-break: break-w
 .prose img { max-width: 100%; border-radius: var(--r-sm); }
 .prose.field-prose { margin: 0; padding: 0; background: none; border-radius: 0; box-shadow: none; }
 
-html.write-full .write-wrap { margin: 0; border-radius: 0; box-shadow: none; }
-.write { position: relative; }
-.write-field, .write-marks {
-  margin: 0; padding: 0; border: 0; box-sizing: border-box; width: 100%;
-  font: inherit; line-height: inherit; letter-spacing: inherit; word-spacing: inherit;
-  text-align: start; text-indent: 0; tab-size: 4; white-space: pre-wrap; overflow-wrap: break-word;
-  word-break: normal; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; color: var(--ink-1);
+/* ===== the write tab: the file alone (2026-10-05, `WriteView.vue`) =========
+   `App.vue` draws NOTHING else for this view — no `nav`, no `header`, no
+   card — and what it draws is deliberately BARE: the surface, the text, and a
+   thin status line. This is the one screen that is PURE EDITING; a rounded
+   section or a shadow around the field would be a box between the person and
+   the file.
+
+   `flex: 1` AND NOT A WIDTH: `#app` is `display: contents` (app.css), so this
+   box is a flex item DIRECTLY on `body` (`display: flex`, base.css) — and a
+   flex item with no grow shrinks to the width of its content, which for a
+   `textarea` is a column a few `cols` wide, the whole page marooned in a
+   strip. `min-width: 0` is the other half: it lets the item sit below its
+   content's own minimum instead of refusing to. */
+.write-page {
+  flex: 1; min-width: 0; height: 100vh; overflow-y: auto;
+  background: var(--surface-1); color: var(--ink-1);
 }
-.write-field { display: block; resize: none; overflow: hidden; background: none; touch-action: manipulation; }
-.write-field:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.write-marks { position: absolute; inset: 0; overflow: hidden; pointer-events: none; user-select: none; color: transparent; }
-.write-marks .mark { text-decoration: underline wavy var(--danger); text-decoration-skip-ink: none; text-decoration-thickness: 1px; }
+.write-page .text { margin: var(--space-6); white-space: pre-wrap; }
+.write-page-stage { position: relative; min-height: 100vh; padding-bottom: var(--space-7); box-sizing: border-box; }
+.write-highlight, .write-page-field {
+  margin: 0; border: 0; box-sizing: border-box; width: 100%;
+  padding: var(--space-5);
+  font: inherit; font-size: var(--text-lg); line-height: var(--leading-normal);
+  letter-spacing: inherit; word-spacing: inherit;
+  text-align: start; text-indent: 0; tab-size: 4; white-space: pre-wrap; overflow-wrap: break-word;
+  word-break: normal; -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
+}
+.write-page-field {
+  display: block; resize: none; overflow: hidden; background: none;
+  color: var(--ink-1); touch-action: manipulation;
+}
+.write-page-field:focus-visible { outline: none; }
+/* THE MIRROR, BEHIND A FIELD MADE TRANSPARENT (markdown only): a layer UNDER
+   the caret that reads the same characters, coloured, so what is TYPED stays a
+   plain `<textarea>` (the caret, the selection, the undo stack, all the
+   browser's own) and what is SEEN is the mirror's. */
+.write-highlight { position: absolute; inset: 0; overflow: hidden; pointer-events: none; user-select: none; }
+.write-page-stage.md .write-page-field { position: relative; color: transparent; caret-color: var(--ink-1); }
+.write-highlight .md-mark { color: var(--ink-3); }
+.write-highlight .md-heading { color: var(--ink-1); font-weight: var(--weight-semibold); }
+.write-highlight .md-quote { color: var(--ink-2); }
+.write-highlight .md-code, .write-highlight .md-code-block, .write-highlight .md-fence {
+  color: var(--ink-1); background: var(--surface-2); border-radius: 4px;
+}
+.write-highlight .md-strong { font-weight: var(--weight-semibold); color: var(--ink-1); }
+.write-highlight .md-em { font-style: italic; color: var(--ink-2); }
+.write-highlight .md-link { color: var(--accent); }
+
+/* A BARRA DE STATUS: fininha, presa ao pé da janela, e a única moldura desta
+   página. O estado da gravação à esquerda; o que está escrito à direita. */
+.write-status {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 1;
+  display: flex; align-items: center; gap: var(--space-4);
+  padding: var(--space-1) var(--space-5);
+  background: var(--surface-1); border-top: 1px solid var(--border-soft);
+  color: var(--ink-3); font-size: var(--text-xs);
+}
+.write-status .state { margin-inline-end: auto; }
+.write-status.bad .state { color: var(--danger); }
+.write-status .n { font-variant-numeric: tabular-nums; }
 
 .page-actions { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;
                 margin: var(--space-6) var(--space-6) 0; padding: 0; }
 .file-state { color: var(--ink-2); }
 .file-state.bad { color: var(--danger); }
-html.write-full nav, html.write-full .scrim { display: none; }
-html.write-full-os .page-actions .btn { display: none; }
-html.write-full-os .page-actions { display: none; }
-html.write-full-os .page-actions:has(.file-state.bad) { display: flex; }
 
 a.ref, a.url {
   color: var(--accent); text-decoration: none; border-bottom: 1px solid transparent;
@@ -1163,6 +1205,28 @@ a.ref:hover, a.url:hover { border-bottom-color: currentColor; background: var(--
 .row b { font-weight: var(--weight-semibold); }
 .row .n { margin-left: auto; color: var(--ink-3); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
 
+/* ===== the Strongbox page's tree ========================================
+   THE SAME NESTING THE PANEL DRAWS, DRESSED FOR A PAGE (2026-10-05). A folder
+   is a `Foldable` head (`.tree-dir`) and its box is `.tree-branch`, where the
+   indent lives; a sealed file is `.tree-leaf`. The `.row` above is for a list
+   read top to bottom — this is for one WALKED, one folder deep at a time. */
+.tree { display: flex; flex-direction: column; gap: 2px; }
+.tree .tree-dir {
+  display: flex; align-items: center; gap: var(--space-2); width: 100%;
+  padding: var(--space-3) var(--space-4); background: var(--surface-1);
+  border: 1px solid var(--border-soft); border-radius: var(--r-md);
+  color: var(--ink-1); font: inherit; font-size: var(--text-base); text-align: left;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+.tree .tree-dir:hover { background: var(--surface-2); }
+.tree .tree-dir .t { font-weight: var(--weight-medium); }
+.tree-branch { padding-left: var(--space-5); }
+.tree-leaf {
+  padding: var(--space-2) var(--space-5); color: var(--ink-2);
+  font-size: var(--text-sm); overflow-wrap: break-word;
+}
+
 /* O TOM DE CADA BALDE, e ele é do DESENHO e não do dado: os quatro baldes são
    uma lista fechada do motor (`prose.bucket`), como os status de uma tarefa —
    e o que a cor diz é de que espécie é o arquivo, não quanto ele vale. */
@@ -1293,44 +1357,20 @@ html.no-motion *, html.no-motion *::before, html.no-motion *::after {
   animation-duration: .001ms !important; transition-duration: .001ms !important;
 }
 
-/* ===== responsive: the two literal bands (contract with breakpoint.ts/nav.ts) */
+/* ===== responsive: the one literal band (contract with breakpoint.ts) ===== */
 
 @media (max-width: 960px) {
-  html.shell nav { position: fixed; z-index: 20; top: 0; bottom: 0; left: 0; }
-  html.shell main { margin-left: var(--nav-rail-w); }
-  html.shell:not(.nav-open) nav { width: var(--nav-rail-w); flex-basis: var(--nav-rail-w); }
-  /* THE SAME FOUR AS THE DESKTOP RAIL (`html.nav-rail`, above) — and it had
-     fallen out of step with it: `.brand-name` was missing here, so "Autonomia
-     Tecnológica" never faded, it just sat there at full opacity being
-     squeezed into 44px, clipped to "Auton" — on every narrow load, not only
-     mid-animation. Whatever the desktop rail hides, the narrow one hides
-     too. */
-  html.shell:not(.nav-open) #kinds, html.shell:not(.nav-open) .brand,
-  html.shell:not(.nav-open) .brand-name,
-  html.shell:not(.nav-open) .side-foot > .file, html.shell:not(.nav-open) .side-foot > .sep {
-    opacity: 0; visibility: hidden;
-    transition: opacity var(--dur-fast) var(--ease-out), visibility 0s var(--dur-fast);
-  }
-  html.shell:not(.nav-open) .side-foot { width: var(--nav-rail-w); }
-  html.shell:not(.nav-open) .brand { position: absolute; }
-  html.shell:not(.nav-open) nav h1 { justify-content: center; padding-inline: 0; }
-  /* THE SAME FULL-WIDTH FIX THE DESKTOP RAIL NEEDED (above): `margin-left: 0`
-     alone left `margin-right` standing and the button wide as ever, so
-     `justify-content: center` centred the icon in a box that was itself
-     shoved to the left. */
-  html.shell:not(.nav-open) .nav-toggle {
-    justify-content: center; padding-inline: 0; margin-inline: 0; width: 100%;
-  }
-  /* THE FIFTH THING THE DESKTOP RAIL HID AND THIS DID NOT: the word beside the
-     glyph. "Recolher menu" has no room in 44px either, and without this it
-     clipped exactly like the brand name did. */
-  html.shell:not(.nav-open) .nav-toggle > .t { display: none; }
-  html.shell.nav-open .scrim { display: block; }
-  html.write-full main { margin-left: 0; }
+  /* THE DRAWER LEAVES A STRIP OF THE PAGE (2026-10-05): at full width it left
+     NOTHING outside it to touch, so the only way to close it was the foot's
+     own button — the scrim's click (`#scrim`) and the corner toggle both sit
+     UNDER the 100vw panel and never got the touch. 80vw is the strip: enough
+     of the page stays visible to tap it shut, which is the gesture a drawer is
+     walked out of. */
+  nav { width: 80vw; border-right: 0; }
   #kinds, #body, .pop, .settings { scrollbar-width: none; }
   #kinds::-webkit-scrollbar, #body::-webkit-scrollbar, .pop::-webkit-scrollbar, .settings::-webkit-scrollbar { display: none; }
   #body table:not(.prose table) { margin: var(--space-4) 0 0; width: 100%; border-radius: var(--r-md); }
-  .prose, .write-wrap, pre.text, .record-body { margin: var(--space-4) var(--space-4) 0; }
+  .prose, pre.text, .record-body { margin: var(--space-4) var(--space-4) 0; }
   .groups { padding: var(--space-4); }
   .page-actions, .hidden-count { margin-left: var(--space-4); margin-right: var(--space-4); }
 }

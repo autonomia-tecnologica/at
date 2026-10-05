@@ -51,6 +51,8 @@
 
 - AT's encryption starts from a **Main Key**, which is what the person knows and types: at least 16 characters, and it is a phrase. "Mariazinha comeu todo o pudim", in lowercase and without spaces, is safer than `Mariazinha@123`. From it the **derived keys** derive, one per service or purpose. The Main Key recovers any lost derived key.
 
+- **There is no second cryptography system in AT.** Every cipher the product holds — the Vault, the gate, whatever each service signs or encrypts for itself — goes through this one door: the Main Key and what derives from it. A path that ciphered outside it, or that kept a ready-made key instead of deriving it from the phrase when one is missing, would be a cryptography of its own that AT does not have — even under another name, even if it only existed on one of the boot paths.
+
 - A derived key is scoped by a **name** — the canonical name of a service, or a purpose written as one — and the Vault keeps no catalogue of names: the services are §7's and the plugins', and a list here would be the Vault naming a world it does not own. What it refuses is a scope that is not a name, and what it holds is that two names a character apart are two keys.
 
 - It is recommended to keep the Main Key outside the machine, in a safe place. Printing it and storing it among personal documents that are hard to reach, for example.

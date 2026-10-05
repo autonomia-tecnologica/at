@@ -108,7 +108,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from at.core import actors, cofre, files, gate, paths, tables
+from at.core import actors, files, gate, paths, strongbox, tables
 from at.core.migrations import is_yes
 from at.encryption import vault
 from at.i18n import tr
@@ -709,8 +709,8 @@ def _webapp_env(key: bytes | None) -> tuple[tuple[str, str], ...]:
     has no derived key this boot (`at.ui.webapp.keys.get`'s own contract).
     When there IS a key, it never travels itself — only `vault.derived_key`'s
     answer does, one scope at a time: the WebApp's own (`WEBAPP`), and the
-    Cofre's (TASK-154, `at.core.cofre.SCOPE`), what `cofre.Watcher.tick` seals
-    a settled write in `Cofre/` with.
+    Vault's (TASK-154, `at.core.strongbox.SCOPE`), what
+    `strongbox.Watcher.tick` seals a settled write in `Cofre/` with.
     """
     env = [
         (GATE_ENV, f"{container(IDENTITY)}:{IDENTITY_PORT}"),
@@ -720,8 +720,9 @@ def _webapp_env(key: bytes | None) -> tuple[tuple[str, str], ...]:
     if key is not None:
         env.append((webapp_keys.WEBAPP_KEY_ENV, _derived_b64(key, WEBAPP)))
         # TASK-154: a terceira porta para o que já existe — a mesma chave,
-        # o escopo `cofre` (`at.core.cofre.SCOPE`), nenhum envelope resselado.
-        env.append((webapp_keys.COFRE_KEY_ENV, _derived_b64(key, cofre.SCOPE)))
+        # o escopo `cofre` (`at.core.strongbox.SCOPE` — o valor congelado
+        # continua `"cofre"`), nenhum envelope resselado.
+        env.append((webapp_keys.STRONGBOX_KEY_ENV, _derived_b64(key, strongbox.SCOPE)))
     return tuple(env)
 
 

@@ -15,12 +15,12 @@ import { computed, onMounted, watch } from "vue";
 import { api, whenRefused } from "./lib/api";
 import { enter, lost, session, signedIn } from "./lib/session";
 import { store, applyState, label, word, tableOf } from "./lib/store";
-import { nav, ui, isKind, viewFor, open, markPage, poke, resumePath, setTrail, CHAT_KEY, NLU_UI_ENABLED, ORPHANS_KEY, BOARD_KEY, FILE_PREFIX, PROJECT_PREFIX } from "./lib/views";
+import { nav, ui, isKind, viewFor, open, markPage, poke, resumePath, setTrail, CHAT_KEY, NLU_UI_ENABLED, ORPHANS_KEY, BOARD_KEY, FILE_PREFIX, PROJECT_PREFIX, WRITE_PREFIX } from "./lib/views";
 import { applyTheme, watchSystem } from "./lib/theme";
 import { applyMotion } from "./lib/motion";
 import { writingState } from "./lib/writing";
 import { offlineState } from "./lib/offline";
-import { applyNav, syncNav, toggleNav, watchNav } from "./lib/nav";
+import { applyNav, navRail, toggleNav } from "./lib/nav";
 import { watchNarrow } from "./lib/breakpoint";
 import { loadPrefs, SELECT_KEY } from "./lib/prefs";
 import { popState, closePop } from "./lib/pop";
@@ -92,6 +92,13 @@ const frame = computed(() => {
   }
   return null;
 });
+
+// THE WRITE TAB IS NOT IN THE SHELL (2026-10-05): no `nav`, no `header`, no
+// trail — `frame` alone, filling the window on its own terms
+// (`WriteView.vue`'s own CSS). A click that opens `/write/<path>` opens it in
+// a tab of its own (`FileView.vue`), so this is never the ONLY way in: it is
+// a fact of the VIEW, read the same way from a reload or a bookmark too.
+const isWrite = computed(() => Boolean(nav.current?.view.startsWith(WRITE_PREFIX)));
 
 // The page has ONE address, and it is a PATH. It is the view's own key with `/`
 // where the key has `:` — `/task` is the table, `/task/3` is the record open in
@@ -242,9 +249,6 @@ onMounted(async () => {
   // from disagreeing with the CSS after a reload.
   applyMotion();
   applyNav();
-  watchNav(() => {
-    syncNav();
-  });
   watchNarrow();
 
   // A 401 under a running page is the session gone — the server was restarted
@@ -282,6 +286,14 @@ defineExpose({ refresh });
        the interpreter's switch is still its default, and a balloon flying over
        the entrance would be a box talking to nobody. -->
   <template v-if="signedIn">
+    <!-- THE WRITE TAB OWNS THE WINDOW, ALONE (2026-10-05): no `nav`, no
+         `header`, nothing this shell would otherwise always draw — the one
+         page that is allowed to be the whole screen, because it is the one
+         screen a person opened FOR that (`views.ts`, `WRITE_PREFIX`). -->
+    <template v-if="isWrite">
+      <component :is="frame.component" v-if="frame" v-bind="frame.props" :key="frame.key" />
+    </template>
+    <template v-else>
     <nav>
       <!-- A MARCA E O NOME DELA, lado a lado: a telha é a sigla, e o que vem
            depois dela é o nome inteiro — quem chega não tem como saber o que
@@ -294,6 +306,16 @@ defineExpose({ refresh });
     </nav>
     <main>
       <header id="head">
+        <!-- THE PANEL'S DOOR, IN THE ONE CORNER IT NOW LIVES IN: the words flip
+             with the state the same way the old row-button's did, so a screen
+             reader hears the ACTION ("abrir"/"fechar") and not a position
+             nobody chose (WCAG 2.5.3 — the reason this is not a fixed
+             "Painel"). -->
+        <button id="nav-toggle" class="menu-toggle" type="button"
+                :aria-label="word(navRail.railed ? 'expand_menu' : 'collapse_menu')"
+                :aria-expanded="!navRail.railed"
+                @click="toggleNav">
+        </button>
         <span id="head-title">
           <!-- The separator is the TEXT's and not the layout's: this band is
                drawn by two design systems, and a `gap` that only one of them
@@ -352,6 +374,7 @@ defineExpose({ refresh });
     <!-- THE ESC-ARMED SHORTCUTS' HINT (TASK-126): a layer of its own too,
          mounted once so it stays reachable from `lib/shortcuts.ts` alone. -->
     <Hint />
+    </template>
   </template>
   <!-- A PRIMEIRA SUBIDA vem ANTES da entrada, e as duas são o mesmo `else`:
        uma pasta sem administrador não tem credencial nenhuma para conferir, e

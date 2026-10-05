@@ -431,7 +431,7 @@ class TheEntry(SecretCase):
         # derivada e o par `seal_bytes`/`unseal_bytes` entram por ele, e não pela
         # porta que sela linhas.
         #
-        # **O sexto é `core/cofre.py`** (TASK-154): a pasta que sela sozinha
+        # **O sexto é `core/strongbox.py`** (TASK-154): a pasta que sela sozinha
         # não guarda uma linha de tabela nem um arquivo do container — é um
         # arquivo qualquer que a pessoa largou —, e por isso o par
         # `seal_bytes`/`unseal_bytes` entra por ele também, com a chave do
@@ -473,7 +473,7 @@ class TheEntry(SecretCase):
         )
         self.assertEqual(callers, [
             "at/core/actors.py", "at/core/assist.py", "at/core/backup.py",
-            "at/core/cofre.py", "at/core/secrets.py", "at/core/tables.py",
+            "at/core/secrets.py", "at/core/strongbox.py", "at/core/tables.py",
             "at/services/caddy.py", "at_deploy/environment.py",
         ])
 

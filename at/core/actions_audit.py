@@ -70,7 +70,7 @@ WEB_PERMISSIONS: tuple[str, ...] = (
     "prose:edit",
     "nlu:ask",
     "assist:ask",
-    "cofre:read",
+    "strongbox:read",
     "notifier:read",
     "actor:create",
     "actor:edit",

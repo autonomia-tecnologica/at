@@ -32,7 +32,7 @@ from at.core import (
     assist,
     audit,
     boot,
-    cofre,
+    strongbox,
     jev,
     notifier,
     paths,
@@ -48,6 +48,7 @@ from at.encryption import vault
 from at.services import caddy
 from at.tests import POLL, drawn_gate
 from at.ui.webapp import app as webapp
+from at.ui.webapp import strongbox_links
 from at.ui.webapp import keys as webapp_keys
 
 
@@ -965,29 +966,130 @@ class TheConvertRoute(ServerCase):
         self.assertEqual(status, 404)
 
 
-class TheCofreDoor(ServerCase):
-    """`GET /api/cofre` — a lista dos `.enc`, e só (TASK-156, fatia 3/3).
+class TheStrongboxDoor(ServerCase):
+    """`GET /api/strongbox` — a lista dos `.enc`, e só (TASK-156, fatia 3/3).
 
     A recusa por permissão é a de `TheCeiling` (o mesmo teste que cobre TODA
-    rota de leitura, `/api/cofre` incluída) — aqui só o que a rota é dona de
+    rota de leitura, `/api/strongbox` incluída) — aqui só o que a rota é dona de
     provar: o que ela lista.
     """
 
     def test_the_listing_carries_every_enc_and_nothing_else(self):
-        (paths.cofre_dir() / "claro.txt").write_text("ainda nao selado", encoding="utf-8")
-        cofre.seal_file(paths.cofre_dir() / "claro.txt", b"k" * 32)
-        _, _, body = self.get("/api/cofre")
+        (paths.strongbox_dir() / "claro.txt").write_text("ainda nao selado", encoding="utf-8")
+        strongbox.seal_file(paths.strongbox_dir() / "claro.txt", b"k" * 32)
+        _, _, body = self.get("/api/strongbox")
         listing = json.loads(body)
         self.assertEqual([f["path"] for f in listing["files"]], ["claro.txt.enc"])
 
     def test_an_empty_cofre_answers_an_empty_list(self):
-        _, _, body = self.get("/api/cofre")
+        _, _, body = self.get("/api/strongbox")
         self.assertEqual(json.loads(body)["files"], [])
 
     def test_a_file_still_clear_does_not_show_up(self):
-        (paths.cofre_dir() / "claro.txt").write_text("ainda nao selado", encoding="utf-8")
-        _, _, body = self.get("/api/cofre")
+        (paths.strongbox_dir() / "claro.txt").write_text("ainda nao selado", encoding="utf-8")
+        _, _, body = self.get("/api/strongbox")
         self.assertEqual(json.loads(body)["files"], [])
+
+
+class TheStrongboxOpenDoor(ServerCase):
+    """`POST /api/strongbox/open` + `GET /api/strongbox/download` — the one-time
+    link that hands back the clear without ever writing it to disk.
+
+    `_held`/`addCleanup` follow the same care `setUp` already takes with
+    `keys._main`: the Vault's key is global to the PROCESS, and a test that
+    changes it has to hand back what was there before it ends.
+    """
+
+    KEY = b"k" * 32
+
+    def setUp(self):
+        super().setUp()
+        held = webapp_keys._keys.get(webapp_keys.STRONGBOX_KEY_ENV)
+        webapp_keys._keys[webapp_keys.STRONGBOX_KEY_ENV] = self.KEY
+        self.addCleanup(webapp_keys._keys.pop, webapp_keys.STRONGBOX_KEY_ENV, None)
+        if held is not None:
+            self.addCleanup(webapp_keys._keys.__setitem__,
+                            webapp_keys.STRONGBOX_KEY_ENV, held)
+
+    def seal(self, name: str, content: bytes, key: bytes | None = None) -> str:
+        where = paths.strongbox_dir() / name
+        where.parent.mkdir(parents=True, exist_ok=True)
+        where.write_bytes(content)
+        strongbox.seal_file(where, key if key is not None else self.KEY)
+        return f"{name}{strongbox.SUFFIX}"
+
+    def test_a_path_outside_the_listing_is_refused_before_any_link_exists(self):
+        status, answer = self.post("/api/strongbox/open", {"path": "../outside.enc"})
+        self.assertEqual(status, 400)
+        self.assertEqual(answer["error"], "bad request")
+
+    def test_with_no_key_this_boot_opening_is_refused(self):
+        path = self.seal("photo.png", b"image bytes")
+        webapp_keys._keys.pop(webapp_keys.STRONGBOX_KEY_ENV, None)
+        status, answer = self.post("/api/strongbox/open", {"path": path})
+        self.assertEqual(status, 503)
+        self.assertEqual(answer["error"], i18n.tr("strongbox.no_key"))
+
+    def test_a_minted_link_opens_the_clear_exactly_once(self):
+        clear = b"image bytes, nothing ciphered here"
+        path = self.seal("photo.png", clear)
+        status, opened = self.post("/api/strongbox/open", {"path": path})
+        self.assertEqual(status, 200)
+        url = opened["url"]
+        self.assertTrue(url.startswith("/api/strongbox/download?token="))
+
+        status, headers, body = self.get(url)
+        self.assertEqual(status, 200)
+        self.assertEqual(body, clear)  # the clear, never the `.enc`
+        self.assertEqual(headers["Content-Type"], "image/png")
+        self.assertIn('inline; filename="photo.png"', headers["Content-Disposition"])
+        self.assertEqual(headers["X-Content-Type-Options"], "nosniff")
+
+        # Walking the SAME link a second time finds nothing — the token was
+        # already spent by the first `take`, and the Vault keeps no copy of it.
+        status, _, _ = self.get(url)
+        self.assertEqual(status, 404)
+
+    def test_an_unlisted_extension_downloads_as_an_attachment(self):
+        # `.html` is the case the person raised: opening this as a document
+        # would run whatever is inside it in AT's own origin. It leaves as
+        # `octet-stream` and `attachment`, never as `text/html`.
+        path = self.seal("page.html", b"<script>alert(1)</script>")
+        _, opened = self.post("/api/strongbox/open", {"path": path})
+        _, headers, body = self.get(opened["url"])
+        self.assertEqual(headers["Content-Type"], "application/octet-stream")
+        self.assertIn('attachment; filename="page.html"', headers["Content-Disposition"])
+        self.assertEqual(body, b"<script>alert(1)</script>")
+
+    def test_an_svg_is_an_attachment_too_despite_being_an_image(self):
+        # SVG is XML and may carry `<script>`: "is it an image" is not the rule.
+        path = self.seal("drawing.svg", b"<svg onload='alert(1)'></svg>")
+        _, opened = self.post("/api/strongbox/open", {"path": path})
+        _, headers, _ = self.get(opened["url"])
+        self.assertEqual(headers["Content-Type"], "application/octet-stream")
+        self.assertIn("attachment", headers["Content-Disposition"])
+
+    def test_a_token_from_a_key_that_no_longer_opens_it_answers_500(self):
+        # The folder was sealed with a DIFFERENT key than this boot's — the
+        # same answer a wrong key gets at any door of the Vault.
+        path = self.seal("photo.png", b"bytes", key=b"o" * 32)
+        status, opened = self.post("/api/strongbox/open", {"path": path})
+        self.assertEqual(status, 200)
+        status, _, raw = self.get(opened["url"])
+        self.assertEqual(status, 500)
+        self.assertEqual(json.loads(raw)["error"], i18n.tr("strongbox.unreadable"))
+
+    def test_an_unknown_token_answers_not_found(self):
+        status, _, _ = self.get("/api/strongbox/download?token=never-existed")
+        self.assertEqual(status, 404)
+
+    def test_a_token_outside_its_ttl_answers_not_found(self):
+        path = self.seal("photo.png", b"bytes")
+        _, opened = self.post("/api/strongbox/open", {"path": path})
+        later = strongbox_links.time.monotonic() + strongbox_links.TTL + 1
+        with mock.patch.object(strongbox_links.time, "monotonic", return_value=later):
+            status, _, _ = self.get(opened["url"])
+        self.assertEqual(status, 404)
 
 
 class TheAskDoor(ServerCase):
@@ -1766,7 +1868,7 @@ class TheCeiling(ServerCase):
     # one that has to answer before anybody is in.
     READS = ("/api/state", "/api/projects", "/api/orphans", "/api/project/1",
              "/api/tree", "/api/file?path=nota.md", "/api/file/bytes?path=nota.md",
-             "/api/table/task", "/api/cofre")
+             "/api/table/task", "/api/strongbox", "/api/strongbox/download?token=x")
     WRITES = (
         ("/api/file", {"path": "nota.md", "text": "x", "base": ""}),
         ("/api/ask", {"text": "cria uma tarefa pra hoje"}),
@@ -1777,6 +1879,7 @@ class TheCeiling(ServerCase):
              "edited_at": "2030-01-01T00:00:00.000Z"},
         ]}),
         ("/api/convert", {"path": "nota.md", "to": "pdf"}),
+        ("/api/strongbox/open", {"path": "nao-existe.enc"}),
     )
 
     def setUp(self):
@@ -3118,30 +3221,65 @@ class TheDerivedKeys(unittest.TestCase):
     def test_boot_reads_every_variable_and_pops_them_from_the_environment(self):
         webapp_key = b"w" * 32
         notifier_key = b"n" * 32
-        cofre_key = b"c" * 32
+        strongbox_key = b"c" * 32
         env = {
             webapp_keys.WEBAPP_KEY_ENV: base64.urlsafe_b64encode(webapp_key).decode(),
             webapp_keys.NOTIFIER_KEY_ENV: base64.urlsafe_b64encode(notifier_key).decode(),
-            webapp_keys.COFRE_KEY_ENV: base64.urlsafe_b64encode(cofre_key).decode(),
+            webapp_keys.STRONGBOX_KEY_ENV: base64.urlsafe_b64encode(strongbox_key).decode(),
         }
         with mock.patch.dict(os.environ, env):
             webapp_keys.boot()
             self.assertNotIn(webapp_keys.WEBAPP_KEY_ENV, os.environ)
             self.assertNotIn(webapp_keys.NOTIFIER_KEY_ENV, os.environ)
-            self.assertNotIn(webapp_keys.COFRE_KEY_ENV, os.environ)
+            self.assertNotIn(webapp_keys.STRONGBOX_KEY_ENV, os.environ)
         self.assertEqual(webapp_keys.webapp_key(), webapp_key)
         self.assertEqual(webapp_keys.notifier_key(), notifier_key)
-        self.assertEqual(webapp_keys.cofre_key(), cofre_key)
+        self.assertEqual(webapp_keys.strongbox_key(), strongbox_key)
 
     def test_a_process_that_never_got_a_variable_has_no_key(self):
-        with mock.patch.dict(os.environ, {}, clear=False):
+        # Nem variável, nem Chave Principal (nem no ambiente, nem no arquivo da
+        # máquina) — isolado do que `~/.config/at/AT_MAIN_KEY` guarda de
+        # verdade em quem roda a suíte, senão o Cofre derivaria dali.
+        with mock.patch.dict(os.environ, {}, clear=False), \
+                mock.patch.object(webapp_keys, "_main_key_from_file", return_value=None):
+            os.environ.pop(webapp_keys.MAIN_KEY_ENV, None)
             os.environ.pop(webapp_keys.WEBAPP_KEY_ENV, None)
             os.environ.pop(webapp_keys.NOTIFIER_KEY_ENV, None)
-            os.environ.pop(webapp_keys.COFRE_KEY_ENV, None)
+            os.environ.pop(webapp_keys.STRONGBOX_KEY_ENV, None)
             webapp_keys.boot()
         self.assertIsNone(webapp_keys.webapp_key())
         self.assertIsNone(webapp_keys.notifier_key())
-        self.assertIsNone(webapp_keys.cofre_key())
+        self.assertIsNone(webapp_keys.strongbox_key())
+
+    def test_a_process_with_the_main_key_derives_the_strongbox_on_its_own(self):
+        # O caminho hospedado não tem `AT_STRONGBOX_KEY` pronta (só o container
+        # deriva por fora, em `_webapp_env`) — então, com a Chave Principal e
+        # sem a variável, `boot` deriva a chave do Cofre ela mesma.
+        main_key = "uma-frase-bem-longa-o-bastante"
+        with mock.patch.dict(os.environ, {webapp_keys.MAIN_KEY_ENV: main_key}):
+            os.environ.pop(webapp_keys.STRONGBOX_KEY_ENV, None)
+            webapp_keys.boot()
+        expected = vault.derived_key(vault.vault_key(main_key), strongbox.SCOPE)
+        self.assertEqual(webapp_keys.strongbox_key(), expected)
+
+    def test_a_container_scoped_variable_is_never_overridden_by_derivation(self):
+        # Um `AT_STRONGBOX_KEY` pronto é o do caminho container — a derivação só
+        # preenche o que `_ENV_VARS` deixou vazio, nunca o que já chegou.
+        main_key = "uma-frase-bem-longa-o-bastante"
+        given = b"c" * 32
+        env = {
+            webapp_keys.MAIN_KEY_ENV: main_key,
+            webapp_keys.STRONGBOX_KEY_ENV: base64.urlsafe_b64encode(given).decode(),
+        }
+        with mock.patch.dict(os.environ, env):
+            webapp_keys.boot()
+        self.assertEqual(webapp_keys.strongbox_key(), given)
+
+    def test_a_main_key_too_short_to_derive_leaves_the_cofre_without_one(self):
+        with mock.patch.dict(os.environ, {webapp_keys.MAIN_KEY_ENV: "curta"}):
+            os.environ.pop(webapp_keys.STRONGBOX_KEY_ENV, None)
+            webapp_keys.boot()
+        self.assertIsNone(webapp_keys.strongbox_key())
 
     def test_a_value_that_does_not_decode_is_skipped_and_not_raised(self):
         with mock.patch.dict(os.environ, {webapp_keys.WEBAPP_KEY_ENV: "not base64 at all!!"}):
