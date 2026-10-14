@@ -622,10 +622,12 @@ def _job(rest: list[str]) -> int:
 
 # The acts that are a TABLE's own — read the folder or the store and write no
 # row, so none of them walks `run` and none of them is one of `tables.ACTIONS`.
-# `secret scan` is the one item 51 gave; `reminder due` is item 29's first
-# slice. A third one is a third entry, not a third `if`.
+# `secret scan` is the one item 51 gave; `secret install_hooks` is its own
+# second act, writing two files and no row either; `reminder due` is item 29's
+# first slice. A fourth one is a fourth entry, not a fourth `if`.
 _OWN_ACTS: dict[tuple[str, str], Callable[[list[str]], tuple[int, str]]] = {
     (permissions.SECRET, permissions.SCAN): door.scan,
+    (permissions.SECRET, permissions.INSTALL_HOOKS): door.install_hooks,
     (permissions.REMINDER, permissions.DUE): door.reminder_due,
 }
 

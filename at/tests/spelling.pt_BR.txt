@@ -67,6 +67,7 @@ cli
 code
 comita
 commit
+commita
 commitada
 commitado
 completion
@@ -143,6 +144,8 @@ head
 headscale
 hello
 heroic
+hook
+hooks
 host
 hsts
 i

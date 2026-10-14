@@ -226,21 +226,33 @@ def named() -> str:
     return f"{BINARY} {spelled}" if spelled else BINARY
 
 
-def scan() -> Report:
+def scan(source: Path | None = None) -> Report:
     """Walk the folder, and answer what it carries that it should not.
 
     The order of the two questions is the one that decides: the tool first,
     because without it there is no walk at all — and its absence is a state of
     its own so the door can say the ways out instead of a dry refusal. The first
     question is also what unpacks the scanner, once, the first time it is asked.
+
+    `source` is where the WALK happens — `paths.working_folder()` when it is
+    left out, which is every caller this module had before this parameter
+    existed. It is not where the TOOL lives: `found()` always unpacks under
+    `paths.working_folder()` (the session's own `AT_ROOT`), so a caller that
+    scans a folder that is not meant to become a Working Folder — the git
+    hooks of `core.hooks`, scanning a foreign repository — never writes
+    `App/services/gitleaks/` into it. The split is also why `_modes` and
+    `_excluded` keep reading `paths.working_folder()` unconditionally: a
+    foreign `source` carries no versioning state THIS session drives and no
+    generated path THIS session wrote, so neither question is about it.
     """
     if found() is None:
         return Report(NO_TOOL, BINARY)
     name = named()
+    root = source if source is not None else paths.working_folder()
     findings: list[Finding] = []
     with tempfile.TemporaryDirectory(prefix="at-scan-") as hold:
         for index, mode in enumerate(_modes()):
-            walked = _walk(mode, Path(hold) / f"{index}.json")
+            walked = _walk(mode, Path(hold) / f"{index}.json", root)
             if walked is None:
                 return Report(FAILED, name)
             findings += walked
@@ -279,7 +291,7 @@ def _modes() -> tuple[tuple[str, ...], ...]:
     return (FILES,)
 
 
-def _walk(mode: tuple[str, ...], report: Path) -> list[Finding] | None:
+def _walk(mode: tuple[str, ...], report: Path, root: Path) -> list[Finding] | None:
     """One walk, and what it found — or `None` when the tool refused.
 
     The report is written where AT tells the tool to write it, and read back
@@ -290,7 +302,7 @@ def _walk(mode: tuple[str, ...], report: Path) -> list[Finding] | None:
     done = run([
         *mode,
         "--source",
-        paths.working_folder(),
+        root,
         "--report-format",
         FORMAT,
         "--report-path",
@@ -301,7 +313,7 @@ def _walk(mode: tuple[str, ...], report: Path) -> list[Finding] | None:
         return [] if done.returncode in QUIET else None
     history = mode == HISTORY
     return [
-        _finding(entry, history) for entry in loaded if isinstance(entry, dict)
+        _finding(entry, history, root) for entry in loaded if isinstance(entry, dict)
     ]
 
 
@@ -314,7 +326,7 @@ def _parsed(where: Path) -> list | None:
     return raw if isinstance(raw, list) else None
 
 
-def _finding(entry: dict, history: bool) -> Finding:
+def _finding(entry: dict, history: bool, root: Path) -> Finding:
     """One entry of the report, with the VALUE left where it is.
 
     The fields `Secret` and `Match` are the leak itself, and neither is read
@@ -325,7 +337,7 @@ def _finding(entry: dict, history: bool) -> Finding:
     line = entry.get("StartLine")
     return Finding(
         rule=_text(entry.get("RuleID")),
-        where=_relative(_text(entry.get("File"))),
+        where=_relative(_text(entry.get("File")), root),
         line=line if isinstance(line, int) and not isinstance(line, bool) else 0,
         commit=(_text(entry.get("Commit")) or None) if history else None,
     )
@@ -336,14 +348,14 @@ def _text(value: object) -> str:
     return value.strip() if isinstance(value, str) else ""
 
 
-def _relative(where: str) -> str:
+def _relative(where: str, root: Path) -> str:
     """The path as a person reads it in the folder, when the tool answered one
     that is absolute — the report of the two walks says it differently."""
     path = Path(where)
     if not where or not path.is_absolute():
         return where
     try:
-        return path.relative_to(paths.working_folder()).as_posix()
+        return path.relative_to(root).as_posix()
     except ValueError:
         return where
 

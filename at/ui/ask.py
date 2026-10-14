@@ -98,6 +98,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from datetime import date, datetime
+from pathlib import Path
 from typing import Callable
 
 from at import i18n, nlu
@@ -108,6 +109,7 @@ from at.core import (
     audit,
     clock,
     files,
+    hooks,
     jev,
     jobs,
     notifier,
@@ -981,6 +983,35 @@ def _shown(finding: scanner.Finding) -> str:
             commit=finding.commit[:7],
         )
     return tr("secrets.scan.finding", rule=finding.rule, where=where)
+
+
+def install_hooks(args: list[str]) -> tuple[int, str]:
+    """`secret install_hooks` — the varredura becomes `git`'s own portão.
+
+    **The act is the table's own, and it does not walk `run`.** It writes two
+    files into a repository's own `.git/hooks/` and no row of any table, so it
+    is no `create`, no `edit` and no `cancel` — `core.hooks` is composed the
+    same way `core.scanner` already is.
+
+    `--repo <path>` is the one argument: left out, the repository protected is
+    the Working Folder running this command (an AT user's own data); said, it
+    is ANY repository — chiefly a product checkout, which §3 never lets become
+    a Working Folder, so there has to be a way to point this act at one that
+    is not.
+    """
+    repo: Path | None = None
+    rest = list(args)
+    if rest[:1] == ["--repo"]:
+        if len(rest) != 2 or not rest[1]:
+            return USAGE, rejected(permissions.INSTALL_HOOKS)
+        repo = Path(rest[1])
+        rest = []
+    if rest:
+        return USAGE, rejected(permissions.INSTALL_HOOKS)
+    report = hooks.install(repo)
+    if report.state == hooks.NOT_A_REPO:
+        return REFUSED, tr("secrets.hooks.not_a_repo", where=str(report.target))
+    return OK, tr("secrets.hooks.installed", where=str(report.target))
 
 
 # ----------------------------------------------------------- the reminder ---

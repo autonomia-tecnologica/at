@@ -88,6 +88,12 @@ SECRET = "secret"
 # `NARROWED` and nowhere else, exactly as the `job`'s own three acts are.
 SCAN = "scan"
 
+# The SECRET's second own act — `at-cli secret install_hooks`: the varredura
+# becomes the `pre-commit`/`pre-push` of a repository's own `.git/hooks/`
+# (`core.hooks`). It writes two files and reads nothing of any table, so it is
+# an act of its own exactly the way `SCAN` is, and not one of the engine's six.
+INSTALL_HOOKS = "install_hooks"
+
 # The name of the `reminder` object, and the act that is its OWN — `at-cli
 # reminder due` (item 29's first slice). `REMINDER` is read off the table
 # module and not spelled a second time here, because the two constants this
@@ -132,9 +138,11 @@ NARROWED: dict[str, dict[str, tuple[str, ...]]] = {
     },
     # `secret scan` reads the folder and reports what it found — it writes no
     # row, so it is a read on §4's scale and it is nobody's approval but the
-    # administrator's. There is no second act under this object, and a closing
-    # and a deletion stay the two permissions the table does not have.
-    SECRET: {SCAN: (SCAN,)},
+    # administrator's. `secret install_hooks` WRITES — two files, in a
+    # repository's own `.git/hooks/` — so it sits beside `scan` as the
+    # object's second own act, and a closing and a deletion stay the two
+    # permissions the table does not have.
+    SECRET: {SCAN: (SCAN,), INSTALL_HOOKS: (INSTALL_HOOKS,)},
     # `reminder` keeps every one of the engine's six under its own name — the
     # table does not narrow itself, so this is the identity a table with no
     # declaration of its own already answers with — and adds `due`, the one act
@@ -272,6 +280,9 @@ MODIFIERS: dict[str, tuple[Modifier, ...]] = {
         Modifier("destino", "permission.modifier.backup.destination", ARGUMENT),
     ),
     f"{SECRET}:{SCAN}": (),
+    f"{SECRET}:{INSTALL_HOOKS}": (
+        Modifier("--repo", "permission.modifier.secret.install_hooks.repo", FLAG),
+    ),
     "job:run": (Modifier("id", "permission.modifier.job.id", ARGUMENT),),
     "job:approve": (Modifier("id", "permission.modifier.job.id", ARGUMENT),),
     "job:refuse": (Modifier("id", "permission.modifier.job.id", ARGUMENT),),
@@ -325,6 +336,10 @@ RISK_BY_ACTION: dict[str, float] = {
     # The scan READS the folder: it reports what it found and corrects nothing
     # (`secrets scan`), so it is a read like a listing and it moves no ceiling.
     "scan": RISK_READ,
+    # `secret install_hooks` WRITES two files into a repository's own
+    # `.git/hooks/` — the same reason `make`/`convert` sit at this number, and
+    # not above it: it changes nothing of what the system ALLOWS.
+    "install_hooks": RISK_WRITE,
     # `due` READS the store: it says which reminders a day is about and writes
     # no row, the same reason `scan` is a read and not a write.
     "due": RISK_READ,

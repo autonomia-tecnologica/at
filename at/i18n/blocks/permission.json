@@ -21,6 +21,7 @@
     "action.approve": "Aprovar",
     "action.refuse": "Recusar",
     "action.scan": "Varrer",
+    "action.install_hooks": "Instalar hooks",
     "action.make": "Fazer",
     "action.restore": "Restaurar",
     "action.admin": "Administrar",
@@ -32,7 +33,8 @@
     "modifier.webapp.host": "Nome ou endereço que o AT atende",
     "modifier.webapp.no_caddy": "Mantém no loop, sem o Caddy embutido",
     "modifier.backup.destination": "Para onde a cópia vai, ou de onde ela volta",
-    "modifier.job.id": "O trabalho que espera"
+    "modifier.job.id": "O trabalho que espera",
+    "modifier.secret.install_hooks.repo": "O repositório git a proteger"
   },
   "en_US": {
     "line": "{object}: {action}",
@@ -56,6 +58,7 @@
     "action.approve": "Approve",
     "action.refuse": "Refuse",
     "action.scan": "Scan",
+    "action.install_hooks": "Install hooks",
     "action.make": "Make",
     "action.restore": "Restore",
     "action.admin": "Administer",
@@ -67,6 +70,7 @@
     "modifier.webapp.host": "Name or address AT answers on",
     "modifier.webapp.no_caddy": "Keeps it on the loop, without the bundled Caddy",
     "modifier.backup.destination": "Where the copy goes, or where it comes back from",
-    "modifier.job.id": "The job that waits"
+    "modifier.job.id": "The job that waits",
+    "modifier.secret.install_hooks.repo": "The git repository to protect"
   }
 }

@@ -34,6 +34,7 @@ caddyfile
 chave
 cli
 comeu
+committer
 concorda
 configurado
 configurações

@@ -1242,6 +1242,24 @@ def _once_needs_a_day(ask: Ask | None) -> list[Report]:
     return _extend(ONCE_NEEDS_A_DAY)
 
 
+# The permission THIS release grows the catalogue by — what migration
+# twenty-nine grants. It is the `secret`'s second own act
+# (`permissions.NARROWED`), the same shape migration sixteen already handed
+# over for `secret:scan`: a role born before this swap carries none of it,
+# because it was built from the catalogue of its own day.
+HOOKS_PERMISSIONS = ("secret:install_hooks",)
+
+
+def _hooks(ask: Ask | None) -> list[Report]:
+    """Migração vinte e nove: `secret install_hooks`, e o teto sobre ele.
+
+    A mesma razão da dezesseis: a linha é do AT, e a troca só ADICIONA
+    (`_hand_over`). Nada mais na pasta muda — o ato escreve dois arquivos fora
+    de qualquer tabela, num `.git/hooks/` que nem é parte da pasta.
+    """
+    return _hand_over(HOOKS_PERMISSIONS)
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, _legacy_instance),
     Migration(2, _capitalized_instance),
@@ -1271,6 +1289,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(26, _services_under_their_house),
     Migration(27, _reminder_hour),
     Migration(28, _once_needs_a_day),
+    Migration(29, _hooks),
 )
 
 

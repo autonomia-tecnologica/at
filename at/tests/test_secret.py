@@ -350,11 +350,13 @@ class ThePermissions(SecretCase):
     """What the table declares to the engine, and the name a route demands."""
 
     def test_the_table_answers_read_and_edit(self):
-        # And the seventh act of its own — `secret scan` — which is not one of
-        # the engine's six and is declared where every act of an object's own is
-        # (`permissions.NARROWED`). It is measured in `test_scanner.py`.
+        # And the two acts of its own — `secret scan` and `secret
+        # install_hooks` — which are not of the engine's six and are declared
+        # where every act of an object's own is (`permissions.NARROWED`). Both
+        # are measured in `test_scanner.py`/`test_hooks.py`.
         self.assertEqual(
-            permissions.catalogue().get("secret"), ("read", "edit", "scan")
+            permissions.catalogue().get("secret"),
+            ("read", "edit", "scan", "install_hooks"),
         )
         self.assertTrue(permissions.is_known("secret:read"))
         self.assertTrue(permissions.is_known("secret:edit"))
@@ -378,7 +380,7 @@ class ThePermissions(SecretCase):
         node = next(node for node in tree.table_nodes() if node.name == "secret")
         self.assertEqual(
             [child.name for child in node.children],
-            ["list", "view", "create", "edit", "scan"],
+            ["list", "view", "create", "edit", "scan", "install_hooks"],
         )
 
     def test_the_closing_and_the_deletion_are_not_words_of_this_table(self):
@@ -389,8 +391,9 @@ class ThePermissions(SecretCase):
 
     def test_the_administrator_carries_both(self):
         # The role is built from the catalogue, and the catalogue is what says
-        # the table answers these two — and the scan of item 51, which is the
-        # third `secret:` entry the catalogue names today.
+        # the table answers these two — and the scan of item 51 and the
+        # install_hooks beside it, the third and fourth `secret:` entries the
+        # catalogue names today.
         role = actors.role_for_admin()
         self.assertEqual(
             sorted(
@@ -398,7 +401,7 @@ class ThePermissions(SecretCase):
                 for name in permissions.carried(role)
                 if name.startswith("secret:")
             ),
-            ["secret:edit", "secret:read", "secret:scan"],
+            ["secret:edit", "secret:install_hooks", "secret:read", "secret:scan"],
         )
 
     def test_a_read_is_a_read_and_a_write_is_a_write(self):

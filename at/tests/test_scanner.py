@@ -75,6 +75,7 @@ VALUE = "chave-supersecreta-que-nao-pode-sair"
 # message added without its line here is a message nobody checks.
 SAID = (
     "permission.action.scan",
+    "permission.action.install_hooks",
     "secrets.scan.rules",
     "secrets.scan.clean",
     "secrets.scan.found",
@@ -233,18 +234,27 @@ class TheWord(ScannerCase):
 
     def test_the_catalogue_names_the_seventh_act(self):
         self.assertEqual(
-            permissions.catalogue().get("secret"), ("read", "edit", "scan")
+            permissions.catalogue().get("secret"),
+            ("read", "edit", "scan", "install_hooks"),
         )
         self.assertTrue(permissions.is_known("secret:scan"))
         # It is a read: it reports and corrects nothing, so it moves no ceiling.
         self.assertEqual(permissions.risk("secret:scan"), permissions.RISK_READ)
         self.assertEqual(permissions.needed("secret", "scan"), "secret:scan")
+        # The eighth act WRITES — two files, in a repository's own
+        # `.git/hooks/` — and it moves no ceiling of what the SYSTEM allows,
+        # which is why it sits beside `convert`/`make` and not above them.
+        self.assertTrue(permissions.is_known("secret:install_hooks"))
+        self.assertEqual(permissions.risk("secret:install_hooks"), permissions.RISK_WRITE)
+        self.assertEqual(
+            permissions.needed("secret", "install_hooks"), "secret:install_hooks"
+        )
 
     def test_the_tree_offers_it_beside_the_engine_s_acts(self):
         node = next(node for node in tree.table_nodes() if node.name == "secret")
         self.assertEqual(
             [child.name for child in node.children],
-            ["list", "view", "create", "edit", "scan"],
+            ["list", "view", "create", "edit", "scan", "install_hooks"],
         )
         # The KEY of an act the engine does not have is the catalogue's block,
         # never the engine's: a `Node.about` is an i18n key, and drawing the
@@ -562,9 +572,10 @@ class TheMigration(ScannerCase):
             sorted(
                 name for name in permissions.carried(role) if name.startswith("secret:")
             ),
-            ["secret:edit", "secret:read", "secret:scan"],
+            ["secret:edit", "secret:install_hooks", "secret:read", "secret:scan"],
         )
         self.assertIn(16, migrations.applied())
+        self.assertIn(29, migrations.applied())
 
 
 if __name__ == "__main__":
