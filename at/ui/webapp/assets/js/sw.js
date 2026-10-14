@@ -102,8 +102,6 @@ self.addEventListener("push", event => {
   event.waitUntil(
     self.registration.showNotification(title, {
       body,
-      tag: "at-notification",
-      renotify: true,
       data: { url: "/" },
     }),
   );
