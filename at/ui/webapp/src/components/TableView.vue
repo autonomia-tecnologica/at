@@ -21,13 +21,17 @@ import { store, label, word } from "../lib/store";
 import { COLUMNS_KEY, FILTERS_KEY, loadPrefs, savePrefs } from "../lib/prefs";
 import { openPop, closePop, isPopOpen } from "../lib/pop";
 import { openContextMenu, vContextMenu, type MenuItem } from "../lib/menu";
-import { leave, markPage, setLiveCount } from "../lib/views";
+import { leave, markPage, setLiveCount, poke } from "../lib/views";
 import { narrow } from "../lib/breakpoint";
 import { plainText, rendererReady, ensureRenderer } from "../lib/markdown";
+import { ask } from "../lib/confirm";
+import { post } from "../lib/api";
+import { toast } from "../lib/toast";
 import FieldValue from "./FieldValue.vue";
 import FilterPop from "./pops/FilterPop.vue";
 import ColumnsPop from "./pops/ColumnsPop.vue";
 import CreatePop from "./pops/CreatePop.vue";
+import ClosePop from "./pops/ClosePop.vue";
 import type { FieldSpec, RecordField, RecordRef, RecordRow } from "../lib/record";
 
 const props = withDefaults(
@@ -363,12 +367,44 @@ function openHeaderMenu(ev: MouseEvent): void {
 // long-press — `v-context-menu` either way): what it offers is exactly what
 // the engine said was legal (`props.actions`), and nothing this component
 // invents.
+//
+// `cancel` and `delete` (TASK-122, fatia 3/7) join `edit` here, each with the
+// confirmation it owes BEFORE the write reaches the server: a closing asks
+// for the reason in its own panel (`ClosePop`, since a table may require
+// one), a deletion asks the plain yes/no (`lib/confirm`) because it takes
+// nothing else — and a refusal either one meets (the engine's own words, a
+// line a reference still names) is shown as the server worded it, in a
+// toast, never a stack trace.
 function openRowMenu(ev: MouseEvent, rec: RecordRow): void {
+  const point = { x: ev.clientX, y: ev.clientY };
   const items: MenuItem[] = [];
   if (props.actions.includes("edit")) {
     items.push({ label: word("edit"), action: () => openRecord(rec) });
   }
+  if (props.actions.includes("cancel")) {
+    items.push({ label: word("close"), action: () => openClose(rec, point) });
+  }
+  if (props.actions.includes("delete")) {
+    items.push({ label: word("delete"), action: () => deleteRow(rec) });
+  }
   openContextMenu(ev, items);
+}
+
+function openClose(rec: RecordRow, point: { x: number; y: number }): void {
+  openPop("close:" + props.entity + ":" + rec.id, ClosePop,
+          { entity: props.entity, id: rec.id, title: rec.title || String(rec.id) },
+          { point });
+}
+
+async function deleteRow(rec: RecordRow): Promise<void> {
+  const name = rec.title || String(rec.id);
+  if (!(await ask(word("delete_confirm").replace("{name}", name)))) return;
+  try {
+    await post("/api/table/" + encodeURIComponent(props.entity), { action: "delete", id: rec.id });
+    poke();
+  } catch (err) {
+    toast((err as Error).message);
+  }
 }
 
 // A closure PER ROW, made in script and not in the template: the directive's

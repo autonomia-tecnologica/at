@@ -236,12 +236,29 @@ EVENTS_HEARTBEAT = 20.0
 # stranger's stream from becoming this process's memory.
 MAX_BODY = 64 * 1024
 
-# The two actions the table write answers. The engine has six (`tables.ACTIONS`)
-# and the page has the doors for these two: a closing and a deletion come with
-# the screens that ask for the confirmation they owe. It is the ROUTE's
-# vocabulary, and it is what says which permission a write demands — the action
-# is part of the permission, and this is the list of actions that may become one.
-TABLE_WRITES = ("create", "edit")
+# The four actions the table write answers (TASK-122, fatia 3/7 grew it from
+# two to four). The engine has six (`tables.ACTIONS`); `list` and `view` are
+# reads and have their own route. `cancel` and `delete` come with the
+# confirmation the row menu asks before either reaches here — the row's own
+# screen, never a second route: the permission ceiling below is already the
+# ACTION's, read from the catalogue, so a closing and a deletion are refused
+# the same way an edit is. It is the ROUTE's vocabulary, and it is what says
+# which permission a write demands — the action is part of the permission, and
+# this is the list of actions that may become one.
+#
+# **`_post_offline_sync` does NOT read this one** — it has its own
+# (`OFFLINE_WRITES`), below, and growing this tuple must never widen that
+# route's own.
+TABLE_WRITES = ("create", "edit", "cancel", "delete")
+
+# The two the OFFLINE QUEUE answers — `offline.QueueEntry`'s own closed list
+# (TASK-162), and narrower than `TABLE_WRITES` on purpose: `offline.reconcile`
+# has no branch for a `cancel` or a `delete`, and an entry of either shape
+# would fall into its `edit` branch and silently reconcile as one — a closing
+# or a deletion that reached the server as a no-op write. The row menu's two
+# new doors (TASK-122) do not go through the fila: they write ONLINE, through
+# `_post_table`, the moment the person confirms.
+OFFLINE_WRITES = ("create", "edit")
 
 HERE = Path(__file__).resolve().parent
 ASSETS = HERE / "assets"
@@ -570,6 +587,9 @@ PAGE_WORDS = (
     # The context menu's own items (TASK-120, fatia 1): what the row's menu
     # offers when the engine says `edit` is legal.
     "edit",
+    # TASK-122, fatia 3/7: the row menu's other two — a closing and a deletion,
+    # each with the confirmation it owes before either reaches the server.
+    "close", "close_confirm", "close_reason", "delete", "delete_confirm",
     "back", "confirm_cancel", "confirm_ok", "write", "saving",
     "saved", "save_failed", "chars", "words", "language_name", "language_flag",
     "ft_text", "ft_markdown", "ft_python", "ft_json", "ft_yaml", "ft_shell",
@@ -1324,12 +1344,23 @@ class Handler(BaseHTTPRequestHandler):
         TABLE — no table here narrows a permission by which row it is — so
         "what this row allows" and "what this table allows this actor" are the
         same question. `view` is implicit in the row already being listed,
-        and `create` (TASK-121) joins `edit` here; `cancel`/`delete` are a
-        later fatia of the same item (TASK-122) — a menu is not the place to
-        offer a door the server does not have yet.
+        and `create` (TASK-121) joins `edit` here.
+
+        **`cancel` and `delete` (TASK-122, fatia 3/7) carry a SECOND question,
+        beside the permission.** A role may carry `actor:cancel` — the engine's
+        six are a permission each, whether or not the table ever answers the
+        act — while `actor` declares no `lifecycle` at all; offering the door
+        there would be one `tables.cancel` refuses the moment it is pushed
+        (`error.no_lifecycle`). So the two ask the STRUCTURAL question first —
+        `tables.lifecycle` for a closing, `tables.deletable` for a deletion —
+        and only then the same ceiling `create`/`edit` already ask.
         """
-        return [action for action in ("create", "edit")
-                if self._legal(permissions.needed(table, action))]
+        return [
+            action for action in ("create", "edit", "cancel", "delete")
+            if (action != "cancel" or tables.lifecycle(table))
+            and (action != "delete" or tables.deletable(table))
+            and self._legal(permissions.needed(table, action))
+        ]
 
     def _project_actions(self) -> list[str]:
         """Which of `create`/`edit` this actor may reach on `project` — the
@@ -2385,8 +2416,8 @@ class Handler(BaseHTTPRequestHandler):
 
         A conflict is resolved by `offline.reconcile` itself (last-write-wins,
         by `edited_at`); this route's own job is the permission ceiling every
-        other write already answers to (`_may`, TABLE_WRITES) — a queue built
-        offline carries no session of its own to have already proved it.
+        other write already answers to (`_may`) — a queue built offline
+        carries no session of its own to have already proved it.
         """
         payload = self._body()
         if payload is None:
@@ -2399,7 +2430,7 @@ class Handler(BaseHTTPRequestHandler):
         actions: set[str] = set()
         for raw in raw_entries:
             action = raw.get("action") if isinstance(raw, dict) else None
-            if action not in TABLE_WRITES:
+            if action not in OFFLINE_WRITES:
                 self._json({"error": f"unknown action: {action}"}, 400)
                 return
             actions.add(action)

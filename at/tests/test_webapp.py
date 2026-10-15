@@ -609,6 +609,57 @@ class TheWrites(ServerCase):
             self.assertEqual(self.status("/api/table/task", method=method), 405, method)
 
 
+class TheRowClosingAndDeletion(ServerCase):
+    """TASK-122, fatia 3/7: `cancel` and `delete` through the SAME route the
+    create and the edit already walk (`TABLE_WRITES` grown, no new route) —
+    the row menu's two new doors."""
+
+    def test_a_cancel_through_the_page_closes_with_a_reason(self):
+        status, answer = self.post(
+            "/api/table/task", {"action": "cancel", "id": 1, "set": {"reason": "não cabe mais"}},
+        )
+        self.assertEqual(status, 200)
+        by_name = {field["name"]: field for field in answer["record"]["fields"]}
+        self.assertEqual(by_name["status"]["raw"], "cancelled")
+
+    def test_a_cancel_with_no_reason_is_refused_when_the_table_requires_one(self):
+        status, answer = self.post("/api/table/task", {"action": "cancel", "id": 1, "set": {}})
+        self.assertEqual(status, 400)
+        self.assertIn("error", answer)
+
+    def test_a_delete_through_the_page_reaches_the_store(self):
+        status, _ = self.post("/api/table/task", {"action": "delete", "id": 1})
+        self.assertEqual(status, 200)
+        self.assertEqual(tables.rows("task"), [])
+
+    def test_a_delete_refused_by_a_referrer_is_answered_not_crashed(self):
+        with redirect_stdout(io.StringIO()):
+            parent = tables.create("project", {"name": "Autonomia", "status": "active"})
+            tables.create(
+                "project",
+                {"name": "Autonomia — subprojeto", "status": "active",
+                 "parent": str(store.number_of(parent))},
+            )
+        status, answer = self.post(
+            "/api/table/project", {"action": "delete", "id": store.number_of(parent)},
+        )
+        self.assertEqual(status, 400)
+        self.assertIn("error", answer)
+        self.assertIsNotNone(tables.find("project", store.number_of(parent)))
+
+    def test_the_offline_sync_route_still_refuses_a_delete_entry(self):
+        # `offline.reconcile` has no branch for it (TASK-162's own scope is
+        # `create`/`edit`) — the row menu's two new doors write ONLINE, never
+        # through the fila, and this route must keep refusing the word it
+        # cannot reconcile instead of silently folding it into an edit.
+        status, answer = self.post("/api/offline/sync", {"entries": [
+            {"action": "delete", "id": 1, "values": {}, "edited_at": "2026-01-01T00:00:00.000Z"},
+        ]})
+        self.assertEqual(status, 400)
+        self.assertIn("error", answer)
+        self.assertEqual(len(tables.rows("task")), 1)
+
+
 class TheOfflineSync(ServerCase):
     """The fila the Service Worker built without a network, reconciled in ONE
     round trip (TASK-162, fatia 2/2) — `at.core.offline.reconcile` (fatia 1),
@@ -2220,7 +2271,10 @@ class TheContextMenuActions(ServerCase):
         self.assertEqual(status, 200)
         return {"Cookie": headers["Set-Cookie"].split(";")[0]}
 
-    def test_the_administrator_sees_create_and_edit_without_any_role_narrowing_it(self):
+    def test_the_administrator_sees_the_full_set_the_table_structurally_allows(self):
+        # TASK-122, fatia 3/7: `task` declares BOTH a `lifecycle` (a closing)
+        # and no `deletable: false` (a deletion), so the administrator — who
+        # carries the whole catalogue — sees the full four.
         status, headers, _ = self.post_full(
             "/api/session",
             {"name": self.ADMIN, "credential": self.ADMIN_CREDENTIAL},
@@ -2228,7 +2282,7 @@ class TheContextMenuActions(ServerCase):
         self.assertEqual(status, 200)
         cookie = {"Cookie": headers["Set-Cookie"].split(";")[0]}
         _, _, body = self.get("/api/table/task", headers=cookie)
-        self.assertEqual(json.loads(body)["actions"], ["create", "edit"])
+        self.assertEqual(json.loads(body)["actions"], ["create", "edit", "cancel", "delete"])
 
     def test_a_role_that_carries_edit_sees_it(self):
         self.person("task:list,task:edit")
@@ -2255,6 +2309,28 @@ class TheContextMenuActions(ServerCase):
         self.person("")
         code = self.status("/api/table/task", headers=self.cookie())
         self.assertEqual(code, 403)
+
+    def test_a_role_that_carries_cancel_and_delete_sees_them(self):
+        self.person("task:list,task:cancel,task:delete")
+        _, _, body = self.get("/api/table/task", headers=self.cookie())
+        self.assertEqual(json.loads(body)["actions"], ["cancel", "delete"])
+
+    def test_cancel_never_shows_on_a_table_with_no_lifecycle_even_when_carried(self):
+        # `actor` declares no `lifecycle` at all — the permission is legal in
+        # the catalogue (the engine's six are a permission each by default),
+        # but the engine has no closing to perform. The structural question
+        # comes BEFORE the ceiling, so a role carrying `actor:cancel` still
+        # does not see it — the door the server would refuse never opens.
+        self.person("actor:list,actor:cancel,actor:edit")
+        _, _, body = self.get("/api/table/actor", headers=self.cookie())
+        self.assertEqual(json.loads(body)["actions"], ["edit"])
+
+    def test_delete_never_shows_on_a_table_the_declaration_marks_not_deletable(self):
+        # `audit` declares `deletable: false` — the same structural refusal,
+        # read off `tables.deletable` the way `cancel`'s reads `lifecycle`.
+        self.person("audit:read")
+        _, _, body = self.get("/api/table/audit", headers=self.cookie())
+        self.assertEqual(json.loads(body)["actions"], [])
 
     def test_the_project_page_answers_the_same_way(self):
         with redirect_stdout(io.StringIO()):
