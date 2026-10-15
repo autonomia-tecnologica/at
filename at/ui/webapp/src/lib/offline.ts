@@ -16,7 +16,7 @@
 // made — and back.
 
 import { reactive } from "vue";
-import { post } from "./api";
+import { post, whenNetwork } from "./api";
 import { poke } from "./views";
 
 const DB_NAME = "at-offline";
@@ -43,10 +43,13 @@ interface Resolution {
   record: unknown;
 }
 
-// WHAT THE SHELL DRAWS WITH. `online` is `navigator.onLine`, reasserted by the
-// two events a browser fires on the way in and out of a network; `pending` is
-// the fila's own length, so a banner reading it needs no IndexedDB call of its
-// own — this module is the one place that counts.
+// WHAT THE SHELL DRAWS WITH. `online` starts at `navigator.onLine`, but that
+// is the ADAPTER's word, not the SERVER's: a Wi-Fi up with a VPN/Tailscale
+// down is still "online" to the browser, and the only proof otherwise is a
+// request that never got an answer (`api.ts`'s `whenNetwork`, fed by every
+// `api`/`post` call). `pending` is the fila's own length, so a banner reading
+// it needs no IndexedDB call of its own — this module is the one place that
+// counts.
 export const offlineState = reactive({
   online: navigator.onLine,
   pending: 0,
@@ -153,6 +156,14 @@ window.addEventListener("online", () => {
 });
 window.addEventListener("offline", () => {
   offlineState.online = false;
+});
+
+// A REQUISIÇÃO É QUEM SABE DE VERDADE. O adaptador pode dizer "online" com a
+// Tailscale fora do ar; o que muda o aviso aqui é o que `api`/`post` de fato
+// conseguiram, ou não, trocar com o servidor.
+whenNetwork(ok => {
+  offlineState.online = ok;
+  if (ok) void sync();
 });
 
 void countPending();

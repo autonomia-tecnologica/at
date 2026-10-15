@@ -91,13 +91,28 @@ class Scratch(unittest.TestCase):
         return code, output.getvalue()
 
     def act_directly(self, rest: tuple[str, ...] = (),
-                     shell: str = "bash") -> tuple[str, str]:
-        """The core door, for the cases the `cli` cannot express."""
+                     shell: str = "bash", platform: str | None = None,
+                     artifact: str | None = None) -> tuple[str, str]:
+        """The core door, for the cases the `cli` cannot express — and the one
+        a test reaches for whenever the platform is not the real one: `cli`
+        never passes `platform`, so a Windows case has to call `act` itself."""
         flag = rest[1] if rest[:1] == ("--bin",) else None
         output = io.StringIO()
         with redirect_stdout(output):
-            outcome = install.act(paths.ARTIFACT, paths.artifact_file(),
-                                  tree.completion(), bin_flag=flag, shell=shell)
+            outcome = install.act(paths.ARTIFACT, artifact or paths.artifact_file(),
+                                  tree.completion(), bin_flag=flag, shell=shell,
+                                  platform=platform)
+        return outcome, output.getvalue()
+
+    def undo_directly(self, rest: tuple[str, ...] = (),
+                      shell: str = "bash", platform: str | None = None,
+                      artifact: str | None = None) -> tuple[str, str]:
+        """`undo`'s own version of `act_directly`, for the same reason."""
+        flag = rest[1] if rest[:1] == ("--bin",) else None
+        output = io.StringIO()
+        with redirect_stdout(output):
+            outcome = install.undo(paths.ARTIFACT, artifact or paths.artifact_file(),
+                                   bin_flag=flag, shell=shell, platform=platform)
         return outcome, output.getvalue()
 
     def link(self, word: str = "at-cli") -> Path:
@@ -444,6 +459,86 @@ class TheUndo(Scratch):
             with self.assertRaises(files.ReadOnly):
                 install.undo(paths.ARTIFACT, paths.artifact_file(), bin_flag=str(self.bin))
         self.assertTrue(self.link().is_symlink())
+
+
+class TheWindowsShim(Scratch):
+    """The word on Windows: a `.cmd` shim instead of a symlink.
+
+    The platform is INJECTED — never read off the real `sys.platform` — so
+    this class proves what `install` would do on Windows without needing a
+    Windows machine, and without the answer depending on the one running the
+    suite. Linux and macOS do not change a line (Ressalvas): every other test
+    in this file still runs the symlink the way it always has.
+    """
+
+    WIN = "win32"
+
+    def setUp(self):
+        super().setUp()
+        self.exe = self.root / "at-cli.exe"
+        self.exe.write_text("", encoding="utf-8")
+
+    def shim(self) -> Path:
+        return self.bin / "at-cli.cmd"
+
+    def install(self, bin_flag: Path | None = None) -> tuple[str, str]:
+        return self.act_directly(("--bin", str(bin_flag or self.bin)),
+                                 platform=self.WIN, artifact="at-cli.exe")
+
+    def uninstall(self, bin_flag: Path | None = None) -> tuple[str, str]:
+        return self.undo_directly(("--bin", str(bin_flag or self.bin)),
+                                  platform=self.WIN, artifact="at-cli.exe")
+
+    def test_install_writes_a_cmd_shim_forwarding_to_the_artifact(self):
+        outcome, text_ = self.install()
+        self.assertEqual(outcome, install.DONE)
+        self.assertTrue(self.shim().is_file())
+        self.assertFalse(self.shim().is_symlink())
+        self.assertFalse((self.bin / "at-cli").exists())
+        content = self.shim().read_text(encoding="utf-8")
+        self.assertIn(f'"{self.exe}"', content)
+        self.assertIn("%*", content)
+        self.assertIn(str(self.exe), text_)
+
+    def test_the_shim_quotes_a_path_with_a_space(self):
+        spaced = Path(self.scratch.name) / "com espaço"
+        spaced.mkdir()
+        (spaced / "at-cli.exe").write_text("", encoding="utf-8")
+        with mock.patch.dict(os.environ, {"AT_ROOT": str(spaced)}):
+            outcome, _ = self.act_directly(("--bin", str(self.bin)),
+                                           platform=self.WIN, artifact="at-cli.exe")
+        self.assertEqual(outcome, install.DONE)
+        content = self.shim().read_text(encoding="utf-8")
+        self.assertIn(f'"{spaced / "at-cli.exe"}"', content)
+
+    def test_running_it_again_recognizes_its_own_shim_and_updates(self):
+        self.install()
+        outcome, text_ = self.install()
+        self.assertEqual(outcome, install.DONE)
+        self.assertEqual(sorted(path.name for path in self.bin.iterdir()), ["at-cli.cmd"])
+        self.assertIn(i18n.tr("install.already", word="at-cli",
+                              link=self.shim(), target=self.exe), text_)
+
+    def test_a_file_that_is_not_ats_is_not_overwritten(self):
+        self.shim().write_text("the person's own script\n", encoding="utf-8")
+        outcome, text_ = self.install()
+        self.assertEqual(outcome, install.HELD)
+        self.assertEqual(self.shim().read_text(encoding="utf-8"),
+                         "the person's own script\n")
+        self.assertIn(str(self.shim()), text_)
+
+    def test_uninstall_removes_the_shim_it_wrote(self):
+        self.install()
+        outcome, text_ = self.uninstall()
+        self.assertEqual(outcome, install.REMOVED)
+        self.assertFalse(self.shim().exists())
+        self.assertIn(str(self.shim()), text_)
+
+    def test_uninstall_keeps_a_file_that_is_not_ats(self):
+        self.shim().write_text("the person's own script\n", encoding="utf-8")
+        outcome, text_ = self.uninstall()
+        self.assertEqual(outcome, install.HELD)
+        self.assertTrue(self.shim().exists())
 
 
 class TheRule(unittest.TestCase):

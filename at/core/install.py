@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -79,6 +80,15 @@ COMPLETIONS: dict[str, tuple[str, ...]] = {
 
 BASH = "bash"
 ZSH = "zsh"
+
+# Windows has no `symlink` a person's own account can write without asking an
+# administrator, so the word there is not a link but a tiny `.cmd` that
+# forwards to the artifact — written fresh every run and never a copy of the
+# binary (§3: nothing is copied). The extension is not a choice: it is what
+# makes the file a command `cmd.exe` runs at all.
+WIN32 = "win32"
+CMD_EXTENSION = ".cmd"
+CMD_COMMENT = "::"
 
 # The outcomes, the way `environment` and `versioning` have them: this module
 # speaks and answers, and the `cli` decides what an exit code is.
@@ -169,6 +179,7 @@ def act(
     words: Words,
     bin_flag: str | None = None,
     shell: str | None = None,
+    platform: str | None = None,
 ) -> str:
     """Put the artifact where commands are found, and say what it did.
 
@@ -176,9 +187,15 @@ def act(
     the folder it points at — two names, because they are two different names:
     the command is what a person types and the file is what the release
     publishes, and on Windows they differ by the `.exe`.
+
+    `platform` is `sys.platform`, read once here and nowhere else in this
+    module: a test injects it so the suite's own answer never depends on the
+    machine running it, and every call below reads the `windows` this resolves
+    to and never the module global again.
     """
+    windows = (platform or sys.platform) == WIN32
     into = where(word, bin_flag)
-    link = into / word
+    link = into / (word + CMD_EXTENSION if windows else word)
     artifact_at = target(artifact)
 
     if not artifact_at.is_file():
@@ -189,25 +206,31 @@ def act(
                  folder=paths.working_folder(), word=word))
         return MISSING
 
-    obstacle = _obstacle(link, artifact)
+    obstacle = _obstacle(link, artifact, word)
     if obstacle is not None:
         key, values = obstacle
         print(tr(key, **values))
         return HELD
 
-    already = _same(link, artifact_at)
+    shim = _shim_text(word, artifact_at) if windows else None
+    already = _same(link, artifact_at, shim)
 
     files.guard(link)
     try:
         into.mkdir(parents=True, exist_ok=True)
-        # Written BESIDE the link and renamed onto it, the way every text this
-        # product rewrites is (`files.atomic_write_text`): a crash in the middle
-        # leaves the link that was already there, never a link pointing nowhere
-        # — which on a `PATH` is a command that stopped working.
-        temporary = link.with_name(link.name + ".tmp")
-        temporary.unlink(missing_ok=True)
-        os.symlink(artifact_at, temporary)
-        os.replace(temporary, link)
+        if windows:
+            # No copy here either: the shim is a few lines that forward to the
+            # artifact, written fresh every run — never the binary itself.
+            files.atomic_write_text(link, shim)
+        else:
+            # Written BESIDE the link and renamed onto it, the way every text this
+            # product rewrites is (`files.atomic_write_text`): a crash in the middle
+            # leaves the link that was already there, never a link pointing nowhere
+            # — which on a `PATH` is a command that stopped working.
+            temporary = link.with_name(link.name + ".tmp")
+            temporary.unlink(missing_ok=True)
+            os.symlink(artifact_at, temporary)
+            os.replace(temporary, link)
     except OSError:
         # A directory that cannot be written — a permission, a read-only mount.
         # The install does not bring the machine down over its own directory.
@@ -233,7 +256,7 @@ def act(
     return DONE
 
 
-def _obstacle(link: Path, artifact: str) -> tuple[str, dict] | None:
+def _obstacle(link: Path, artifact: str, word: str) -> tuple[str, dict] | None:
     """What stands in the way, when it is not AT's to move.
 
     The test is the NAME the link points at, and it answers two cases at once:
@@ -242,10 +265,14 @@ def _obstacle(link: Path, artifact: str) -> tuple[str, dict] | None:
     the link is still AT's because AT is the only thing that writes a link named
     after its own artifact. In a collision the person's edit rules (§3): a file,
     or a link aimed somewhere else, is not touched and the install says so.
+
+    `_mine` answers for a symlink; `_marked` answers for the Windows shim, which
+    is a plain file and carries the mark inside it instead. Asking both is what
+    lets this one check serve either platform without knowing which it is on.
     """
     if not link.is_symlink() and not link.exists():
         return None
-    if _mine(link, artifact):
+    if _mine(link, artifact) or _marked(link, word):
         return None
     if link.is_symlink():
         return "install.held.link", {"link": link, "other": link.readlink()}
@@ -257,11 +284,39 @@ def _mine(link: Path, artifact: str) -> bool:
     return link.is_symlink() and link.readlink().name == artifact
 
 
-def _same(link: Path, artifact_at: Path) -> bool:
+def _same(link: Path, artifact_at: Path, shim: str | None = None) -> bool:
+    """Whether the link (or the shim) already says what this run would say.
+
+    A symlink answers by where it points; the Windows shim is a plain file, so
+    it answers by whether its CONTENT is already the one this run would write
+    — `shim` is `None` on every platform but that one.
+    """
+    if shim is not None:
+        try:
+            return link.read_text(encoding="utf-8") == shim
+        except OSError:
+            return False
     try:
         return link.resolve() == artifact_at.resolve()
     except OSError:
         return False
+
+
+def _shim_text(word: str, artifact_at: Path) -> str:
+    """The `.cmd`'s own content: forward every argument, and come back with
+    the ARTIFACT's exit code and not the shim's own.
+
+    Quoted, because the artifact sits inside the Working Folder and that
+    folder's name is the person's to pick — spaces and all. `%*` is `cmd.exe`'s
+    own way of saying "everything that was typed after me," already carrying
+    whatever quoting the person typed it with.
+    """
+    return (
+        "@echo off\n"
+        f"{mark(word, CMD_COMMENT)}"
+        f'"{artifact_at}" %*\n'
+        "exit /b %ERRORLEVEL%\n"
+    )
 
 
 # --------------------------------------------------------------- the memory ---
@@ -301,7 +356,7 @@ def _announce(word: str, into: Path, link: Path) -> None:
     person's and two names can live in two directories for as long as they want
     to. What nobody can read off a file they did not write is which one wins.
     """
-    other = _foreign(word, link)
+    other = _foreign(link.name, link)
     here = _order(into)
     if other is None:
         if here is None:
@@ -337,15 +392,19 @@ def _order(directory: Path) -> int | None:
     return None
 
 
-def _foreign(word: str, link: Path) -> Path | None:
-    """The first command of that name on the PATH that is not AT's own link.
+def _foreign(name: str, link: Path) -> Path | None:
+    """The first command of that FILE name on the PATH that is not AT's own link.
 
     Scanned and not asked of `which`, because `which` answers with the winner
     and what this has to name is the LOSER: the tool that AT shadows, which is
     the one a person looking at their PATH order would not find.
+
+    `name` is `link.name` and not the command word: on Windows that is
+    `at-cli.cmd`, and a scan for the extensionless `at-cli` would never find
+    what actually answers to the typed command there.
     """
     for entry in _path_entries():
-        candidate = entry / word
+        candidate = entry / name
         if _is(candidate, link):
             continue
         if (candidate.is_symlink() or candidate.is_file()) and os.access(candidate, os.X_OK):
@@ -456,16 +515,24 @@ def fpath_needed(word: str) -> Path | None:
     return directory
 
 
-def mark(word: str) -> str:
-    """The line that makes a completion file AT's.
+MARK_TEXT = "{word}: written by `{word} install`; an edit here is overwritten"
+
+
+def mark(word: str, comment: str = "#") -> str:
+    """The line that makes a completion file — or the Windows shim — AT's.
 
     NOT translated, and deliberately: this is a MARK and not a sentence — the
     same kind of thing as the `OWNER` written inside the repository AT created
     —, and what reads it is `uninstall` deciding whether the file is AT's to
     take back. A mark that moved with the language would be a file the next
     language could not recognise, which is the one thing a mark may not be.
+
+    `comment` is the one thing that DOES change with the file: `#` is a
+    comment to bash and zsh, and a `.cmd` reads it only behind `::`. `_marked`
+    looks for the bare text and never for one comment style, so both still
+    answer to the same mark.
     """
-    return f"# {word}: written by `{word} install`; an edit here is overwritten\n"
+    return f"{comment} {MARK_TEXT.format(word=word)}\n"
 
 
 def completion_text(word: str, words: Words, shell: str) -> str:
@@ -527,6 +594,7 @@ def undo(
     artifact: str,
     bin_flag: str | None = None,
     shell: str | None = None,
+    platform: str | None = None,
 ) -> str:
     """Take back what the install put there, and only that.
 
@@ -535,15 +603,17 @@ def undo(
     is not AT's has no record and still has to be undoable.
 
     Every candidate is checked before it goes, and that check is the whole rule
-    one more time: a link aimed at the artifact's own name is AT's, and a
-    completion carrying AT's mark is AT's. Anything else is the person's, and it
-    stays — with a sentence saying so, because "nothing happened" and "I refused
-    to touch your file" are different answers.
+    one more time: a link aimed at the artifact's own name is AT's, a completion
+    carrying AT's mark is AT's, and so is the Windows shim, which carries the
+    very same mark for the very same reason. Anything else is the person's, and
+    it stays — with a sentence saying so, because "nothing happened" and "I
+    refused to touch your file" are different answers.
     """
+    windows = (platform or sys.platform) == WIN32
     files.guard(where(word, bin_flag))
 
     candidates = [Path(path) for path in _written(word)]
-    link = where(word, bin_flag) / word
+    link = where(word, bin_flag) / (word + CMD_EXTENSION if windows else word)
     if link not in candidates:
         candidates.append(link)
     name = shell_name() if shell is None else shell
@@ -577,8 +647,10 @@ def _written(word: str) -> list[str]:
 
 
 def _marked(path: Path, word: str) -> bool:
-    """Whether that file carries AT's mark — the completion's own evidence."""
+    """Whether that file carries AT's mark — the completion's own evidence,
+    and the Windows shim's: a `.cmd` is not a symlink `_mine` can read, so the
+    mark inside it is the only thing that says the file is AT's."""
     try:
-        return path.is_file() and mark(word).strip() in path.read_text(encoding="utf-8")
+        return path.is_file() and MARK_TEXT.format(word=word) in path.read_text(encoding="utf-8")
     except OSError:
         return False

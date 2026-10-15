@@ -9,10 +9,22 @@ export interface NetTrouble extends Error {
   network?: boolean;
 }
 
+// `navigator.onLine` SÓ SABE DO ADAPTADOR, e não do SERVIDOR: um Wi-Fi ligado
+// com a Tailscale desligada ainda é "online" para o navegador, e um pedido que
+// nunca chega é a única prova de que ESTE servidor, e não a rede em geral,
+// está fora de alcance. Por isso o aviso de offline (`lib/offline.ts`) escuta
+// também esta chamada, e não só o evento do navegador.
+let heardNetwork: ((ok: boolean) => void) | null = null;
+
+export function whenNetwork(handler: (ok: boolean) => void): void {
+  heardNetwork = handler;
+}
+
 export function offTheAir(err: unknown): NetTrouble {
   const message = err instanceof Error ? err.message : "network";
   const trouble: NetTrouble = new Error(message);
   trouble.network = true;
+  heardNetwork?.(false);
   return trouble;
 }
 
@@ -39,6 +51,7 @@ export async function api<T = unknown>(path: string): Promise<T> {
   } catch (err) {
     throw offTheAir(err);
   }
+  heardNetwork?.(true);
   if (!response.ok) {
     refused(response.status);
     // The SERVER's message when it sent one, the same way the write door reads
@@ -66,6 +79,7 @@ export async function post<T = unknown>(path: string, body: unknown): Promise<T>
   } catch (err) {
     throw offTheAir(err);
   }
+  heardNetwork?.(true);
   const data = await response.json().catch(() => null);
   if (!response.ok) {
     refused(response.status);
