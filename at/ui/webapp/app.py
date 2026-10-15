@@ -550,6 +550,10 @@ PAGE_WORDS = (
     "tasks", "files", "strongbox", "tables", "settings", "general", "appearance", "language",
     "dark_mode", "dark_system", "dark_light", "dark_dark",
     "motion", "themes", "no_project", "all_tasks", "board", "new_task", "new_project", "delete_project",
+    # A ÁRVORE DE PROJETOS, O CRUD (TASK-135): o subprojeto que `new_project`
+    # não nomeia, o verbo genérico de renomear, o rótulo do campo de nome do
+    # formulário inline, e a opção "sem pai" do seletor de mover.
+    "new_subproject", "rename", "name", "no_parent",
     # A TELA DE LEMBRETES (TASK-164): a seção, as duas metades, e o que uma
     # pasta sem lembrete e um dia sem aviso dizem.
     "reminders", "reminders_coming", "reminders_rang", "reminders_none", "reminders_quiet",
@@ -1325,6 +1329,20 @@ class Handler(BaseHTTPRequestHandler):
         return [action for action in ("edit",)
                 if self._legal(permissions.needed(table, action))]
 
+    def _project_actions(self) -> list[str]:
+        """Which of `create`/`edit` this actor may reach on `project` — the
+        projects tree's own context menu (TASK-135), asked the same way
+        `_table_actions` asks for a table's row menu.
+
+        Named apart from `_table_actions` because the tree's occasion offers a
+        DIFFERENT pair: `create` (a project or a subproject), never offered by
+        the generic row menu yet (TASK-121), and `edit` (a rename or a move,
+        the SAME permission — `narrowed` does not split a table's six by what
+        field changes).
+        """
+        return [action for action in ("create", "edit")
+                if self._legal(permissions.needed(projects.PROJECT, action))]
+
     def _actor(self) -> dict | None:
         """The row this request proved, or `None` — the session's own hop back to
         the store.
@@ -1657,7 +1675,13 @@ class Handler(BaseHTTPRequestHandler):
         if rest == ["projects"]:
             if not self._may("project:list"):
                 return
-            self._json(projects.tree() if projects.available() else [])
+            self._json({
+                "tree": projects.tree() if projects.available() else [],
+                # The projects TREE's own context menu (TASK-135) — the same
+                # engine question `_table_actions` asks, over the pair this
+                # occasion offers.
+                "actions": self._project_actions() if projects.available() else [],
+            })
             return
 
         if rest == ["orphans"]:

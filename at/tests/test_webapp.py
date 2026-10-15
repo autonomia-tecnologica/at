@@ -764,7 +764,7 @@ class TheProjectBranch(ServerCase):
 
     def test_the_tree_carries_a_line_per_project_and_the_orphans_last(self):
         _, _, body = self.get("/api/projects")
-        rows = json.loads(body)
+        rows = json.loads(body)["tree"]
         self.assertEqual([row["title"] for row in rows],
                          ["Autonomia", "Site", "Sem projeto"])
         self.assertIsNone(rows[0]["parent"])
@@ -775,7 +775,7 @@ class TheProjectBranch(ServerCase):
         # Not the subtree: the number says how much of the day is under that
         # name, and what the subtree holds is what the PAGE is for.
         _, _, body = self.get("/api/projects")
-        rows = {row["title"]: row["tasks"] for row in json.loads(body)}
+        rows = {row["title"]: row["tasks"] for row in json.loads(body)["tree"]}
         self.assertEqual(rows["Autonomia"], 1)
         self.assertEqual(rows["Site"], 1)
 
@@ -784,7 +784,7 @@ class TheProjectBranch(ServerCase):
             done = tables.create("project", {"name": "Encerrado", "status": "done"})
             tables.create("task", {"text": "de um projeto fechado", "project": str(done["id"])})
         _, _, body = self.get("/api/projects")
-        titles = [row["title"] for row in json.loads(body)]
+        titles = [row["title"] for row in json.loads(body)["tree"]]
         self.assertNotIn("Encerrado", titles)
         # And the task it would have claimed falls to the "no project" node —
         # its project is not on screen either, so nobody claims it.
@@ -2262,6 +2262,18 @@ class TheContextMenuActions(ServerCase):
         self.person("task:list,task:edit")
         _, _, body = self.get("/api/orphans", headers=self.cookie())
         self.assertEqual(json.loads(body)["actions"], ["edit"])
+
+    def test_the_projects_tree_offers_create_and_edit_when_carried(self):
+        # TASK-135: a DIFFERENT pair from the row menu's — `create` (a project
+        # or a subproject) alongside `edit` (a rename or a move).
+        self.person("project:list,project:create,project:edit")
+        _, _, body = self.get("/api/projects", headers=self.cookie())
+        self.assertEqual(json.loads(body)["actions"], ["create", "edit"])
+
+    def test_the_projects_tree_offers_nothing_the_role_does_not_carry(self):
+        self.person("project:list")
+        _, _, body = self.get("/api/projects", headers=self.cookie())
+        self.assertEqual(json.loads(body)["actions"], [])
 
 
 class TheRbacScreens(ServerCase):

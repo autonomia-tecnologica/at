@@ -25,17 +25,22 @@ export interface ProjectLine {
 
 const kids = ref<Map<string, ProjectLine[]>>(new Map());
 const error = ref("");
+// What the ENGINE says this actor may do to a PROJECT (TASK-135) — the
+// tree's own context menu, never this component's invention. Role-level, one
+// list for the whole tree, the same shape `TableView`'s `actions` prop is.
+const actions = ref<string[]>([]);
 
 async function load(): Promise<void> {
   try {
-    const rows = await api<ProjectLine[]>("/api/projects");
+    const answer = await api<{ tree: ProjectLine[]; actions: string[] }>("/api/projects");
     const map = new Map<string, ProjectLine[]>();
-    for (const row of rows) {
+    for (const row of answer.tree) {
       const key = row.parent ? String(row.parent) : "";
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(row);
     }
     kids.value = map;
+    actions.value = answer.actions;
   } catch (err) {
     error.value = `${word("error")} ${(err as Error).message}`;
   }
@@ -49,5 +54,5 @@ watch(() => nav.tick, load);
 
 <template>
   <div v-if="error" class="empty">{{ error }}</div>
-  <ProjectTreeNode v-else :kids="kids" parent="" />
+  <ProjectTreeNode v-else :kids="kids" :actions="actions" parent="" />
 </template>
