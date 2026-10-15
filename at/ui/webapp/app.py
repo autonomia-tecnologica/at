@@ -583,6 +583,10 @@ PAGE_WORDS = (
     # THE FILE TREE'S FIRST CONTEXT MENU (TASK-165, fatia 4/4): the two
     # actions and the toast that follows one.
     "convert_pdf", "convert_docx", "convert_toast",
+    # THE FILE TREE'S OWN CRUD (TASK-120, fatia 5/7): create, over the two
+    # shapes `Arquivos/` holds. `rename`/`delete`/`name`/`delete_confirm` are
+    # already above, shared with the project tree and the table row.
+    "new_file", "new_folder",
     "columns", "refers", "panel", "collapse_menu", "expand_menu",
     # The context menu's own items (TASK-120, fatia 1): what the row's menu
     # offers when the engine says `edit` is legal.
@@ -1617,6 +1621,21 @@ class Handler(BaseHTTPRequestHandler):
                 return
             self._post_file()
             return
+        if segments == ["api", "file", "create"]:
+            if not self._may("prose:edit"):
+                return
+            self._post_file_create()
+            return
+        if segments == ["api", "file", "rename"]:
+            if not self._may("prose:edit"):
+                return
+            self._post_file_rename()
+            return
+        if segments == ["api", "file", "delete"]:
+            if not self._may("prose:edit"):
+                return
+            self._post_file_delete()
+            return
         if segments == ["api", "convert"]:
             if not self._may("prose:read"):
                 return
@@ -2030,6 +2049,48 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"error": "bad request"}, 400)
             return
         status, answer = prose.write(rel, text, base)
+        self._json(_worded(answer), status)
+
+    def _post_file_create(self) -> None:
+        """`{path, dir}` → a new empty file or folder in `Arquivos/` (TASK-120,
+        fatia 5/7). `dir` tells the two apart — the one thing `prose.create`
+        cannot read off the path alone.
+        """
+        payload = self._body()
+        if payload is None:
+            return
+        rel, is_dir = payload.get("path"), payload.get("dir")
+        if not isinstance(rel, str) or not isinstance(is_dir, bool):
+            self._json({"error": "bad request"}, 400)
+            return
+        status, answer = prose.create(rel, is_dir)
+        self._json(_worded(answer), status)
+
+    def _post_file_rename(self) -> None:
+        """`{path, to}` → `path` under its new name or place (TASK-120, fatia 5/7)."""
+        payload = self._body()
+        if payload is None:
+            return
+        rel, to = payload.get("path"), payload.get("to")
+        if not all(isinstance(value, str) for value in (rel, to)):
+            self._json({"error": "bad request"}, 400)
+            return
+        status, answer = prose.rename(rel, to)
+        self._json(_worded(answer), status)
+
+    def _post_file_delete(self) -> None:
+        """`{path}` → `path` removed from `Arquivos/`, whole if it is a folder
+        (TASK-120, fatia 5/7). The page asks the person first (`lib/confirm`);
+        the server asks nothing a second time.
+        """
+        payload = self._body()
+        if payload is None:
+            return
+        rel = payload.get("path")
+        if not isinstance(rel, str):
+            self._json({"error": "bad request"}, 400)
+            return
+        status, answer = prose.delete(rel)
         self._json(_worded(answer), status)
 
     def _post_convert(self) -> None:

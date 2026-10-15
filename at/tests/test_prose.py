@@ -139,6 +139,96 @@ class TheWriting(unittest.TestCase):
         self.assertEqual(self.where.read_text(encoding="utf-8"), "primeiro\n")
 
 
+class TheCrud(unittest.TestCase):
+    """Create, rename, delete (TASK-120, fatia 5/7) — the same door `write`
+    already walks (`inside`, `files.guard`), never a rule of their own."""
+
+    def setUp(self):
+        self.scratch = tempfile.TemporaryDirectory()
+        self.env = mock.patch.dict(os.environ, {"AT_ROOT": self.scratch.name})
+        self.env.start()
+        (prose.root()).mkdir(parents=True)
+        self.where = prose.root() / "nota.md"
+        self.where.write_text("primeiro\n", encoding="utf-8")
+
+    def tearDown(self):
+        self.env.stop()
+        self.scratch.cleanup()
+
+    def test_a_file_is_created_empty(self):
+        status, answer = prose.create("nova.md", False)
+        self.assertEqual(status, 200)
+        self.assertEqual(answer["path"], "nova.md")
+        self.assertEqual((prose.root() / "nova.md").read_text(encoding="utf-8"), "")
+
+    def test_a_folder_is_created(self):
+        status, _ = prose.create("sub", True)
+        self.assertEqual(status, 200)
+        self.assertTrue((prose.root() / "sub").is_dir())
+
+    def test_creating_over_a_taken_name_is_refused(self):
+        status, answer = prose.create("nota.md", False)
+        self.assertEqual(status, 409)
+        self.assertEqual(answer["error"], "prose.exists")
+        self.assertEqual(self.where.read_text(encoding="utf-8"), "primeiro\n")
+
+    def test_a_name_that_escapes_is_refused(self):
+        status, answer = prose.create("../fora.md", False)
+        self.assertEqual(status, 400)
+        self.assertEqual(answer["error"], "prose.invalid_name")
+
+    def test_a_file_is_renamed(self):
+        status, answer = prose.rename("nota.md", "nova.md")
+        self.assertEqual(status, 200)
+        self.assertEqual(answer["path"], "nova.md")
+        self.assertFalse(self.where.exists())
+        self.assertEqual((prose.root() / "nova.md").read_text(encoding="utf-8"), "primeiro\n")
+
+    def test_renaming_onto_a_taken_name_is_refused(self):
+        (prose.root() / "outra.md").write_text("x", encoding="utf-8")
+        status, answer = prose.rename("nota.md", "outra.md")
+        self.assertEqual(status, 409)
+        self.assertEqual(answer["error"], "prose.exists")
+        self.assertTrue(self.where.exists())
+
+    def test_renaming_what_does_not_exist_is_refused(self):
+        status, answer = prose.rename("nao-existe.md", "nova.md")
+        self.assertEqual(status, 404)
+        self.assertEqual(answer["error"], "prose.not_served")
+
+    def test_a_file_is_deleted(self):
+        status, answer = prose.delete("nota.md")
+        self.assertEqual(status, 200)
+        self.assertEqual(answer["path"], "nota.md")
+        self.assertFalse(self.where.exists())
+
+    def test_a_folder_is_deleted_whole(self):
+        (prose.root() / "sub").mkdir()
+        (prose.root() / "sub" / "dentro.md").write_text("x", encoding="utf-8")
+        status, _ = prose.delete("sub")
+        self.assertEqual(status, 200)
+        self.assertFalse((prose.root() / "sub").exists())
+
+    def test_deleting_what_does_not_exist_is_refused(self):
+        status, answer = prose.delete("nao-existe.md")
+        self.assertEqual(status, 404)
+        self.assertEqual(answer["error"], "prose.not_served")
+
+    def test_the_read_only_switch_refuses_create_rename_and_delete(self):
+        with mock.patch.dict(os.environ, {"AT_READONLY": "1"}):
+            status, answer = prose.create("nova.md", False)
+            self.assertEqual(status, 403)
+            self.assertEqual(answer["error"], "prose.read_only")
+            status, answer = prose.rename("nota.md", "nova.md")
+            self.assertEqual(status, 403)
+            self.assertEqual(answer["error"], "prose.read_only")
+            status, answer = prose.delete("nota.md")
+            self.assertEqual(status, 403)
+            self.assertEqual(answer["error"], "prose.read_only")
+        self.assertTrue(self.where.exists())
+        self.assertFalse((prose.root() / "nova.md").exists())
+
+
 class TheCeiling(unittest.TestCase):
     def test_a_nul_byte_in_the_head_makes_it_a_binary(self):
         self.assertTrue(prose.is_text(b"texto comum"))

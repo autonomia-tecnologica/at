@@ -12,7 +12,10 @@
     "ignore.kept": "Esta pasta já tinha um `.gitignore`: o AT não o sobrescreveu, e o que fica de fora da versão é o que já estava lá.",
     "commit.started": "O AT pôs a pasta sob versionamento.",
     "commit.migrated": "As migrações do AT: {ids}.",
-    "commit.file": "{path} escrito."
+    "commit.file": "{path} escrito.",
+    "commit.created": "{path} criado.",
+    "commit.renamed": "{frm} renomeado para {path}.",
+    "commit.deleted": "{path} apagado."
   },
   "en_US": {
     "ignore.body": "# Written by AT. What is derived or regenerates on its own stays out —\nnever what you wrote.\n\n# AT's binary and at-deploy's: updating is replacing them in the folder.\n{artifacts}\n\n# What AT extracted to run, and what a service rebuilds.\n{generated}\n\n# Caches, and what the writer leaves when a process dies mid-way.\n__pycache__/\n*.py[cod]\n*.tmp\n",
@@ -27,6 +30,9 @@
     "ignore.kept": "This folder already had a `.gitignore`: AT did not overwrite it, and what stays out of the version is what was already there.",
     "commit.started": "AT put the folder under versioning.",
     "commit.migrated": "AT's migrations: {ids}.",
-    "commit.file": "{path} written."
+    "commit.file": "{path} written.",
+    "commit.created": "{path} created.",
+    "commit.renamed": "{frm} renamed to {path}.",
+    "commit.deleted": "{path} deleted."
   }
 }

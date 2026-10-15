@@ -8,7 +8,9 @@
     "empty_write": "Uma escrita vazia foi recusada: nada seria salvo.",
     "too_large": "Grande demais para editar aqui.",
     "changed_on_disk": "O arquivo mudou no disco desde que você o abriu.",
-    "read_only": "Modo somente leitura: nada foi escrito."
+    "read_only": "Modo somente leitura: nada foi escrito.",
+    "invalid_name": "Nome inválido.",
+    "exists": "Já existe um arquivo ou pasta com este nome."
   },
   "en_US": {
     "welcome.filename": "Welcome.md",
@@ -19,6 +21,8 @@
     "empty_write": "An empty write was refused: nothing would be saved.",
     "too_large": "Too large to edit here.",
     "changed_on_disk": "The file changed on disk since you opened it.",
-    "read_only": "Read-only mode: nothing was written."
+    "read_only": "Read-only mode: nothing was written.",
+    "invalid_name": "Invalid name.",
+    "exists": "A file or folder with this name already exists."
   }
 }

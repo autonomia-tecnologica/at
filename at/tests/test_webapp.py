@@ -995,6 +995,66 @@ class TheProseDoors(ServerCase):
         self.assertFalse(answer["error"].startswith(("prose.", "webapp.")))
 
 
+class TheProseCrudRoutes(ServerCase):
+    """`POST /api/file/{create,rename,delete}` — the tree's own CRUD (TASK-120,
+    fatia 5/7), over the same door `prose.inside` already enforces."""
+
+    def setUp(self):
+        super().setUp()
+        (paths.prose_dir()).mkdir(exist_ok=True)
+        (paths.prose_dir() / "nota.md").write_text("# oi\n", encoding="utf-8")
+
+    def test_a_file_is_created(self):
+        status, answer = self.post("/api/file/create", {"path": "nova.md", "dir": False})
+        self.assertEqual(status, 200)
+        self.assertEqual(answer["path"], "nova.md")
+        self.assertTrue((paths.prose_dir() / "nova.md").is_file())
+
+    def test_a_folder_is_created(self):
+        status, _ = self.post("/api/file/create", {"path": "sub", "dir": True})
+        self.assertEqual(status, 200)
+        self.assertTrue((paths.prose_dir() / "sub").is_dir())
+
+    def test_creating_over_a_taken_name_speaks_the_catalogue(self):
+        status, answer = self.post("/api/file/create", {"path": "nota.md", "dir": False})
+        self.assertEqual(status, 409)
+        self.assertEqual(answer["error"], i18n.tr("prose.exists"))
+
+    def test_a_path_that_escapes_is_refused(self):
+        status, _ = self.post("/api/file/create", {"path": "../fora.md", "dir": False})
+        self.assertEqual(status, 400)
+
+    def test_a_file_is_renamed(self):
+        status, answer = self.post("/api/file/rename", {"path": "nota.md", "to": "nova.md"})
+        self.assertEqual(status, 200)
+        self.assertEqual(answer["path"], "nova.md")
+        self.assertFalse((paths.prose_dir() / "nota.md").exists())
+        self.assertTrue((paths.prose_dir() / "nova.md").is_file())
+
+    def test_renaming_what_does_not_exist_speaks_the_catalogue(self):
+        status, answer = self.post("/api/file/rename", {"path": "nao-existe.md", "to": "nova.md"})
+        self.assertEqual(status, 404)
+        self.assertEqual(answer["error"], i18n.tr("prose.not_served"))
+
+    def test_a_file_is_deleted(self):
+        status, answer = self.post("/api/file/delete", {"path": "nota.md"})
+        self.assertEqual(status, 200)
+        self.assertEqual(answer["path"], "nota.md")
+        self.assertFalse((paths.prose_dir() / "nota.md").exists())
+
+    def test_a_folder_is_deleted_whole(self):
+        (paths.prose_dir() / "sub").mkdir()
+        (paths.prose_dir() / "sub" / "dentro.md").write_text("x", encoding="utf-8")
+        status, _ = self.post("/api/file/delete", {"path": "sub"})
+        self.assertEqual(status, 200)
+        self.assertFalse((paths.prose_dir() / "sub").exists())
+
+    def test_deleting_what_does_not_exist_speaks_the_catalogue(self):
+        status, answer = self.post("/api/file/delete", {"path": "nao-existe.md"})
+        self.assertEqual(status, 404)
+        self.assertEqual(answer["error"], i18n.tr("prose.not_served"))
+
+
 class TheBroadcaster(unittest.TestCase):
     """`events.Broadcaster`, isolado — sem servidor, sem rede."""
 
@@ -2074,6 +2134,9 @@ class TheCeiling(ServerCase):
              "/api/table/task", "/api/strongbox", "/api/strongbox/download?token=x")
     WRITES = (
         ("/api/file", {"path": "nota.md", "text": "x", "base": ""}),
+        ("/api/file/create", {"path": "nova.md", "dir": False}),
+        ("/api/file/rename", {"path": "nota.md", "to": "nova.md"}),
+        ("/api/file/delete", {"path": "nota.md"}),
         ("/api/ask", {"text": "cria uma tarefa pra hoje"}),
         ("/api/table/task", {"action": "create", "set": {"text": "x"}}),
         ("/api/table/task", {"action": "edit", "id": 1, "set": {"text": "x"}}),

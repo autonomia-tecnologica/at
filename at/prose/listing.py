@@ -16,6 +16,7 @@ its whole sandbox, which had no such split to make.
 from __future__ import annotations
 
 import hashlib
+import shutil
 import threading
 from pathlib import Path
 
@@ -227,3 +228,82 @@ def write(rel: str, text: str, base: str) -> tuple[int, dict]:
     # reads `git log` would look for.
     versioning.commit_file(rel)
     return 200, answer
+
+
+def create(rel: str, is_dir: bool) -> tuple[int, dict]:
+    """A new, empty file or folder at `rel` (TASK-120, fatia 5/7).
+
+    Creating is never an overwrite — that is what `write` is for — so a name
+    already taken is refused rather than clobbered.
+    """
+    where = inside(rel)
+    if where is None:
+        return 400, {"error": "prose.invalid_name"}
+    with _LOCK:
+        if where.exists():
+            return 409, {"error": "prose.exists"}
+        try:
+            if is_dir:
+                files.guard(where)
+                where.mkdir(parents=True)
+                files.mark_write()
+            else:
+                files.atomic_write_text(where, "")
+        except files.ReadOnly as refused:
+            return 403, {"error": "prose.read_only", "where": str(refused.where)}
+        except OSError as error:
+            return 500, {"error": str(error)}
+    versioning.commit_created(rel)
+    return 200, {"path": rel}
+
+
+def rename(rel: str, new_rel: str) -> tuple[int, dict]:
+    """`rel` under a new name or place, as long as `new_rel` is free.
+
+    Both ends walk `inside`: a rename is still a write inside `prose/`, never
+    a door to move something out of it or in from outside it.
+    """
+    where = inside(rel)
+    dest = inside(new_rel)
+    if where is None or dest is None:
+        return 400, {"error": "prose.invalid_name"}
+    with _LOCK:
+        if not where.exists():
+            return 404, {"error": "prose.not_served"}
+        if dest.exists():
+            return 409, {"error": "prose.exists"}
+        try:
+            files.guard(where)
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            where.rename(dest)
+            files.mark_write()
+        except files.ReadOnly as refused:
+            return 403, {"error": "prose.read_only", "where": str(refused.where)}
+        except OSError as error:
+            return 500, {"error": str(error)}
+    versioning.commit_renamed(rel, new_rel)
+    return 200, {"path": new_rel}
+
+
+def delete(rel: str) -> tuple[int, dict]:
+    """`rel` removed — the whole folder, with what is inside it, when it is one.
+    """
+    where = inside(rel)
+    if where is None:
+        return 400, {"error": "prose.invalid_name"}
+    with _LOCK:
+        if not where.exists():
+            return 404, {"error": "prose.not_served"}
+        try:
+            files.guard(where)
+            if where.is_dir():
+                shutil.rmtree(where)
+            else:
+                where.unlink()
+            files.mark_write()
+        except files.ReadOnly as refused:
+            return 403, {"error": "prose.read_only", "where": str(refused.where)}
+        except OSError as error:
+            return 500, {"error": str(error)}
+    versioning.commit_deleted(rel)
+    return 200, {"path": rel}

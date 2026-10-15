@@ -462,7 +462,30 @@ def commit_file(rel: str) -> bool:
     relative to its root, and a version that said `nota.md` would name a file
     the reader cannot find.
     """
-    return commit(tr("versioning.commit.file", path=f"{paths.prose_dir().name}/{rel}"))
+    return commit(tr("versioning.commit.file", path=_prose_path(rel)))
+
+
+def _prose_path(rel: str) -> str:
+    return f"{paths.prose_dir().name}/{rel}"
+
+
+def commit_created(rel: str) -> bool:
+    """A file or folder was BORN in the prose folder (TASK-120, fatia 5/7) —
+    distinct from `commit_file`'s "written", which a birth is not.
+    """
+    return commit(tr("versioning.commit.created", path=_prose_path(rel)))
+
+
+def commit_renamed(frm: str, rel: str) -> bool:
+    """A file or folder of the prose folder changed name or place."""
+    return commit(tr(
+        "versioning.commit.renamed", frm=_prose_path(frm), path=_prose_path(rel)
+    ))
+
+
+def commit_deleted(rel: str) -> bool:
+    """A file or folder LEFT the prose folder."""
+    return commit(tr("versioning.commit.deleted", path=_prose_path(rel)))
 
 
 def reset() -> None:
