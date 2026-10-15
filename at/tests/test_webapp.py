@@ -8,14 +8,17 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import http.client
 import io
 import json
 import os
+import queue
 import re
 import socket
 import sys
 import tempfile
 import threading
+import time
 import unittest
 import urllib.error
 import urllib.request
@@ -48,7 +51,7 @@ from at.encryption import vault
 from at.services import caddy
 from at.tests import POLL, drawn_gate
 from at.ui.webapp import app as webapp
-from at.ui.webapp import strongbox_links
+from at.ui.webapp import events, strongbox_links
 from at.ui.webapp import keys as webapp_keys
 
 
@@ -939,6 +942,85 @@ class TheProseDoors(ServerCase):
         _, answer = self.post("/api/file", {"path": "nota.md", "text": "", "base": rev})
         self.assertTrue(answer["error"])
         self.assertFalse(answer["error"].startswith(("prose.", "webapp.")))
+
+
+class TheBroadcaster(unittest.TestCase):
+    """`events.Broadcaster`, isolado — sem servidor, sem rede."""
+
+    def test_a_fresh_broadcaster_has_no_subscriber(self):
+        self.assertEqual(len(events.Broadcaster()), 0)
+
+    def test_a_publish_puts_a_signal_in_every_subscribed_queue(self):
+        made = events.Broadcaster()
+        first, second = made.subscribe(), made.subscribe()
+        made.publish()
+        self.assertIsNone(first.get_nowait())
+        self.assertIsNone(second.get_nowait())
+
+    def test_an_unsubscribed_queue_does_not_hear_the_next_publish(self):
+        made = events.Broadcaster()
+        gone = made.subscribe()
+        made.unsubscribe(gone)
+        self.assertEqual(len(made), 0)
+        made.publish()
+        self.assertTrue(gone.empty())
+
+    def test_unsubscribing_an_unknown_queue_does_nothing(self):
+        made = events.Broadcaster()
+        made.unsubscribe(queue.Queue())  # não estoura
+
+
+class TheEvents(ServerCase):
+    """`/api/events` — a escrita em `Arquivos/` chega à aba aberta, sem
+    recarregar (TASK-128, fatia 2/3).
+
+    O vigia que varre de verdade vive em `beat()` (provado em `test_clock.py`);
+    aqui o que se prova é o FIO — o que uma conexão recebe quando ALGUÉM
+    publica no `Broadcaster` do servidor, sem precisar do relógio de pé.
+    """
+
+    def open(self) -> tuple[http.client.HTTPConnection, http.client.HTTPResponse]:
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        self.addCleanup(conn.close)
+        conn.request("GET", "/api/events")
+        return conn, conn.getresponse()
+
+    def test_the_connection_opens_as_an_event_stream(self):
+        _, answer = self.open()
+        self.assertEqual(answer.status, 200)
+        self.assertEqual(answer.getheader("Content-Type"), "text/event-stream; charset=utf-8")
+        self.assertEqual(answer.fp.readline(), b": connected\n")
+        self.assertEqual(answer.fp.readline(), b"\n")
+
+    def test_a_publish_reaches_every_open_connection(self):
+        _, first = self.open()
+        _, second = self.open()
+        for answer in (first, second):
+            answer.fp.readline()
+            answer.fp.readline()
+        self.server.events.publish()
+        for answer in (first, second):
+            self.assertEqual(answer.fp.readline(), b"data: changed\n")
+            self.assertEqual(answer.fp.readline(), b"\n")
+
+    def test_closing_the_connection_unsubscribes_it(self):
+        conn, answer = self.open()
+        answer.fp.readline()
+        answer.fp.readline()
+        self.assertEqual(len(self.server.events), 1)
+        answer.close()
+        conn.close()
+        # A thread só nota a aba fechada ao TENTAR escrever — o que o próximo
+        # `keep-alive` faria sozinho, só que até `EVENTS_HEARTBEAT` segundos
+        # depois. Publicar repete a tentativa sem esperar: a PRIMEIRA escrita
+        # depois do `close()` ainda pode sair sem erro (o SO só devolve o
+        # `RST` numa tentativa seguinte), então o teste insiste algumas vezes.
+        for _ in range(100):
+            self.server.events.publish()
+            time.sleep(0.01)
+            if len(self.server.events) == 0:
+                break
+        self.assertEqual(len(self.server.events), 0)
 
 
 class TheConvertRoute(ServerCase):
@@ -1936,7 +2018,8 @@ class TheCeiling(ServerCase):
     # `_get_api` and the writes of `do_POST`, minus the entrance, which is the
     # one that has to answer before anybody is in.
     READS = ("/api/state", "/api/projects", "/api/orphans", "/api/project/1",
-             "/api/tree", "/api/file?path=nota.md", "/api/file/bytes?path=nota.md",
+             "/api/tree", "/api/events", "/api/file?path=nota.md",
+             "/api/file/bytes?path=nota.md",
              "/api/table/task", "/api/strongbox", "/api/strongbox/download?token=x")
     WRITES = (
         ("/api/file", {"path": "nota.md", "text": "x", "base": ""}),

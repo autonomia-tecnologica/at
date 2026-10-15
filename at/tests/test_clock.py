@@ -602,6 +602,50 @@ class TheProcess(ClockCase):
                 webapp.beat(times=1)
         self.assertIn("quebrou", output.getvalue())
 
+    def test_with_no_server_the_page_vigia_round_does_not_run(self):
+        # TASK-128, fatia 2/3: sem `server` não há `Broadcaster` para publicar,
+        # e a rodada simplesmente não nasce — o mesmo `beat()` de sempre, das
+        # chamadas acima, que nunca passam um servidor. O `Watcher` do Cofre
+        # cria o SEU PRÓPRIO `vigia.Vigia` (por `strongbox.Cofre/`)
+        # incondicionalmente — o que esta rodada NÃO cria é um segundo, para
+        # `Arquivos/`.
+        with mock.patch.object(door, "tick"), mock.patch.object(door, "remind"), \
+                mock.patch.object(strongbox.Watcher, "tick"), \
+                mock.patch.object(webapp.vigia, "Vigia") as made:
+            webapp.beat(times=1, pause=lambda seconds: None)
+        self.assertNotIn(mock.call(paths.prose_dir()), made.call_args_list)
+
+    def test_the_page_vigia_round_publishes_when_arquivos_changes(self):
+        # A pasta vigiada é `Arquivos/` (`paths.prose_dir()`) — a mesma que
+        # `FileTree.vue` relê hoje ao cutucar. A PRIMEIRA varredura é muda
+        # (`vigia.Vigia`'s own docstring), então a escrita entra ENTRE a
+        # primeira e a segunda rodada — é para isso que `pause` existe aqui.
+        server = mock.Mock()
+        target = paths.prose_dir() / "nota.txt"
+
+        def write_between_rounds(seconds: float) -> None:
+            target.write_text("a", encoding="utf-8")
+
+        with mock.patch.object(door, "tick"), mock.patch.object(door, "remind"), \
+                mock.patch.object(strongbox.Watcher, "tick"):
+            webapp.beat(server, times=2, pause=write_between_rounds)
+        server.events.publish.assert_called_once()
+
+    def test_a_page_vigia_pass_that_raises_does_not_take_the_clock_down(self):
+        output = StringIO()
+        server = mock.Mock()
+        server.events.publish.side_effect = RuntimeError("quebrou")
+        target = paths.prose_dir() / "nota.txt"
+
+        def write_between_rounds(seconds: float) -> None:
+            target.write_text("a", encoding="utf-8")
+
+        with mock.patch.object(door, "tick"), mock.patch.object(door, "remind"), \
+                mock.patch.object(strongbox.Watcher, "tick"):
+            with redirect_stdout(output):
+                webapp.beat(server, times=2, pause=write_between_rounds)
+        self.assertIn("quebrou", output.getvalue())
+
     def test_a_pass_that_raises_does_not_take_the_clock_down(self):
         output = StringIO()
         with mock.patch.object(door, "tick", side_effect=RuntimeError("quebrou")), \
@@ -619,7 +663,9 @@ class TheProcess(ClockCase):
         server = mock.Mock()
         server.server_address = ("127.0.0.1", 0)
         with mock.patch.object(webapp, "make_server", return_value=server):
-            with mock.patch.object(webapp, "beat", side_effect=reached.set):
+            with mock.patch.object(
+                webapp, "beat", side_effect=lambda *_a, **_kw: reached.set()
+            ):
                 with redirect_stdout(StringIO()):
                     webapp.run(0, include_caddy=False)
         self.assertTrue(reached.wait(timeout=5))

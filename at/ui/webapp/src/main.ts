@@ -14,6 +14,10 @@ import "./styles/app.css";
 // file runs, which is the earliest a queued edit from a past session can
 // leave.
 import "./lib/offline";
+// A ESCUTA DO VIGIA (TASK-128, fatia 2/3) — abre a conexão `/api/events` e
+// poka a página a cada aviso; o mesmo motivo do `offline` acima, o quanto
+// antes este arquivo roda é o quanto antes uma escrita de fora da aba chega.
+import "./lib/events";
 // A INSCRIÇÃO NO PUSH (Web Push) — a notificação do PWA, que substituiu o ntfy.
 import { register as registerPush } from "./lib/push";
 import { registerView, registerType, TASKS_KEY, FILES_KEY, TABLES_KEY, REMINDERS_KEY, BOARD_KEY, WRITE_PREFIX } from "./lib/views";

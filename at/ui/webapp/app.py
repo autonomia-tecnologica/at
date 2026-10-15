@@ -128,6 +128,7 @@ import hashlib
 import ipaddress
 import json
 import os
+import queue
 import secrets
 import threading
 import time
@@ -159,12 +160,13 @@ from at.core import (
     strongbox,
     tables,
     versioning,
+    vigia,
 )
 from at.data import schema, store
 from at.prose import listing as prose
 from at.services import authelia, caddy
 from at.ui import ask as door
-from at.ui.webapp import keys, session, strongbox_links
+from at.ui.webapp import events, keys, session, strongbox_links
 
 HOST = "127.0.0.1"
 DEFAULT_PORT = 12345
@@ -218,6 +220,15 @@ CSP = "default-src 'self'"
 # no name is a thread nobody can find: a person reading a dump of the process,
 # and the test that proves the RAW server does not start one.
 CLOCK_THREAD = "at-clock"
+
+# Quanto tempo uma conexão `/api/events` fica sem escrever nada antes de
+# mandar um comentário de keep-alive (TASK-128, fatia 2/3). `EventSource`
+# ignora toda linha que começa com `:` — não dispara `onmessage` —, então o
+# keep-alive não é um evento, é só o que mantém a conexão viva através de um
+# proxy (o Caddy) que fecharia um socket ocioso por tempo demais, e o que
+# deixa este processo notar uma aba que fechou sem esperar a próxima escrita
+# na pasta vigiada.
+EVENTS_HEARTBEAT = 20.0
 
 # How much a write may carry. A table row is small; the ceiling is what stops a
 # stranger's stream from becoming this process's memory.
@@ -1682,6 +1693,15 @@ class Handler(BaseHTTPRequestHandler):
             })
             return
 
+        if rest == ["events"]:
+            # A MESMA PERMISSÃO DE `tree` (TASK-128, fatia 2/3): o que este
+            # canal avisa é "algo mudou em `Arquivos/`", e quem já pode ler a
+            # árvore é quem já pode saber que ela mudou.
+            if not self._may("prose:read"):
+                return
+            self._get_events()
+            return
+
         if rest == ["file"]:
             if not self._may("prose:read"):
                 return
@@ -1766,6 +1786,47 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         self._not_found()
+
+    def _get_events(self) -> None:
+        """A conexão fica de pé: a cada escrita em `Arquivos/`, uma linha sai
+        (TASK-128, fatia 2/3).
+
+        **O corpo nunca diz QUAL arquivo mudou.** A aba que recebe o aviso
+        relê a página inteira (`poke()`, do lado do navegador) — dizer o
+        caminho aqui seria um campo que ninguém lê, a mesma razão de
+        `vigia.Event` carregar só o caminho e nada além dele.
+
+        **Uma fila por conexão, e não um vigia por aba** (`events.Broadcaster`):
+        o vigia que varre `Arquivos/` vive uma vez só, no relógio (`beat()`),
+        e publica uma vez por rodada — é o `Broadcaster` que copia esse aviso
+        para a fila de toda aba aberta.
+
+        Sem `Content-Length`: o corpo não tem fim conhecido, e é isso que
+        `text/event-stream` pede — a conexão fecha quando a aba fecha, não
+        quando um tamanho se esgota.
+        """
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        made = self.server.events.subscribe()
+        try:
+            self.wfile.write(b": connected\n\n")
+            self.wfile.flush()
+            while True:
+                try:
+                    made.get(timeout=EVENTS_HEARTBEAT)
+                    payload = b"data: changed\n\n"
+                except queue.Empty:
+                    payload = b": keep-alive\n\n"
+                self.wfile.write(payload)
+                self.wfile.flush()
+        except (BrokenPipeError, ConnectionError, OSError):
+            # A aba fechou — não é uma falha deste processo, é o fim de uma
+            # conexão que nunca prometeu durar.
+            pass
+        finally:
+            self.server.events.unsubscribe(made)
 
     def _get_project(self, asked: str) -> None:
         number = tables.number_of("project", asked)
@@ -2418,13 +2479,23 @@ class Server(ThreadingHTTPServer):
     which ask as the bundle does — a test that wants the dev answer asks for it
     out loud (`make_server(asks=False)`), which is what keeps every other test's
     refusals exactly what they were.
+
+    **`daemon_threads = True`** (TASK-128, fatia 2/3): uma conexão `/api/events`
+    fica de pé por uma aba inteira, às vezes mais do que o processo — e uma
+    thread não-daemon é uma thread que o interpretador espera no fim, mesmo
+    depois do servidor ter fechado. É a mesma razão do relógio ser DAEMON
+    (`beat`'s own docstring): o que fica de pé morre com o processo, e nada
+    tem de derrubá-lo à mão.
     """
+
+    daemon_threads = True
 
     def __init__(self, address: tuple[str, int],
                  handler: type[BaseHTTPRequestHandler], asks: bool = True) -> None:
         super().__init__(address, handler)
         self.sessions = session.Sessions()
         self.strongbox_links = strongbox_links.Links()
+        self.events = events.Broadcaster()
         self.asks = asks
 
 
@@ -2476,7 +2547,8 @@ def make_server(port: int = DEFAULT_PORT, host: str = HOST, asks: bool = True) -
     return Server((host, port), Handler, asks=asks)
 
 
-def beat(times: int | None = None, pause: Callable[[float], None] = time.sleep) -> None:
+def beat(server: "Server | None" = None, times: int | None = None,
+         pause: Callable[[float], None] = time.sleep) -> None:
     """The clock's rhythm: one pass, then the cadence, over and over (§4, item 24).
 
     **The WebApp is where the clock lives, and it is the process AT already
@@ -2509,11 +2581,25 @@ def beat(times: int | None = None, pause: Callable[[float], None] = time.sleep) 
     one more thread with one more rhythm is a cost this fatia does not ask
     for.
 
+    **A quarta rodada é o vigia da página, e só existe com um `server`**
+    (TASK-128, fatia 2/3): o que ele vigia é `Arquivos/`
+    (`paths.prose_dir()`) — a mesma pasta que `FileTree.vue` relê hoje ao
+    cutucar —, e o que ele faz ao ver uma escrita é publicar no
+    `Broadcaster` do servidor (`server.events`), que repassa para toda aba
+    com uma conexão `/api/events` aberta. `server` é `None` nos testes que
+    só provam as outras rodadas (`TheProcess`, abaixo) — sem servidor não há
+    `Broadcaster` para publicar em, e a rodada simplesmente não nasce, como
+    sempre foi antes desta fatia.
+
     `times` and `pause` are the seams a test drives: the pass is proven with the
     instant handed to `at.ui.ask.tick`, and these are how the same pass is
     proven without the machine's hour and without sleeping through a cadence.
     """
     watcher = strongbox.Watcher()
+    page_vigia = None
+    if server is not None:
+        page_vigia = vigia.Vigia(paths.prose_dir())
+        page_vigia.watch(lambda event: server.events.publish())
     done = 0
     while times is None or done < times:
         try:
@@ -2528,6 +2614,11 @@ def beat(times: int | None = None, pause: Callable[[float], None] = time.sleep) 
             watcher.tick(keys.strongbox_key())
         except Exception as error:  # noqa: BLE001 — same guard, the third round
             print(i18n.tr("webapp.clock_failed", error=error))
+        if page_vigia is not None:
+            try:
+                page_vigia.scan()
+            except Exception as error:  # noqa: BLE001 — same guard, the fourth round
+                print(i18n.tr("webapp.clock_failed", error=error))
         done += 1
         if times is None or done < times:
             pause(_rest(clock.CADENCE.total_seconds()))
@@ -2810,8 +2901,10 @@ def run(port: int = DEFAULT_PORT, public_port: int | None = None,
         print(tr("webapp.source_open"))
     # The clock, kept by the process that is already up (§4, item 24). It is a
     # DAEMON: it dies with the server, and nothing has to stop it — the folder
-    # that is idle is exactly the one it is here for.
-    threading.Thread(target=beat, daemon=True, name=CLOCK_THREAD).start()
+    # that is idle is exactly the one it is here for. `server` travels with it
+    # now (TASK-128, fatia 2/3): it is what lets the clock's own page-vigia
+    # round reach the `Broadcaster` every open tab's `/api/events` subscribed to.
+    threading.Thread(target=beat, args=(server,), daemon=True, name=CLOCK_THREAD).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
