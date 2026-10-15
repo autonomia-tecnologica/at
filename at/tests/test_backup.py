@@ -28,14 +28,35 @@ import tarfile
 import tempfile
 import unittest
 from contextlib import redirect_stdout
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest import mock
 
 from at import i18n
-from at.core import backup, boot, strongbox, files, paths, scanner, secrets, settings, tables, versioning
-from at.data import schema
+from at.core import (
+    actors,
+    audit,
+    backup,
+    boot,
+    clock,
+    jobs,
+    notifier,
+    paths,
+    scanner,
+    secrets,
+    settings,
+    strongbox,
+    tables,
+    versioning,
+    files,
+)
+from at.data import schema, store
+from at.i18n import tr
 from at.encryption import vault
+from at.ui import ask as door
 from at.ui.cli import OK, REFUSED, USAGE, _backup, main
+from at.ui.webapp import app as webapp
+from at.ui.webapp import keys as webapp_keys
 
 PHRASE = "uma-frase-de-dezesseis"
 OTHER_PHRASE = "outra-frase-tambem-longa"
@@ -367,6 +388,221 @@ class TheCLIWord(BackupCase):
 
     def test_main_dispatches_the_word(self):
         self.assertEqual(main(["backup", "make"]), USAGE)
+
+
+class TheAutomaticCopy(BackupCase):
+    """O relógio dispara o backup sozinho — a rodada, a cadência e o aviso
+    (TASK-133, §4 item 24).
+
+    **The clock and the key are INJECTED.** `clock.now` is the module's one
+    seam, and this suite points it at a fixed instant it advances by hand; the
+    Main Key is put in the WebApp's in-memory slot (`webapp_keys.keep_main_key`),
+    the same door the notifier's own test uses. No test here reads the machine's
+    hour, reaches the network or holds a real Main Key.
+    """
+
+    # The instant the suite's clock reads, handed in and never taken from the
+    # machine: a test that reads the clock twice disagrees with itself.
+    AT = datetime(2026, 9, 27, 12, 0, tzinfo=timezone.utc)
+
+    def setUp(self):
+        super().setUp()
+        self.moment = self.AT
+        self.ticking = mock.patch.object(clock, "now", side_effect=lambda: self.moment)
+        self.ticking.start()
+        self.addCleanup(self.ticking.stop)
+
+    # -- the doors a test reads as what it does -----------------------------
+
+    def owner(self) -> dict:
+        with redirect_stdout(io.StringIO()):
+            return actors.create_admin("Rafael", PHRASE)
+
+    def declare(
+        self, owner: dict | None = None, when: datetime | None = None, action: str | None = None
+    ) -> dict:
+        """The scheduled row, built where a boot will one day build it — the job
+        that DECLARES it being the WebApp's (`_declare_backup`)."""
+        with redirect_stdout(io.StringIO()):
+            return tables.create(
+                jobs.JOB,
+                {
+                    jobs.WHAT: jobs.what(backup.OBJECT, action or backup.MAKE),
+                    jobs.TABLE: backup.OBJECT,
+                    jobs.ARGUMENTS: [],
+                    jobs.ACTOR: store.number_of(owner or self.owner()),
+                    jobs.WHEN: tables.utc(when or self.AT - timedelta(minutes=1)),
+                    jobs.STATUS: jobs.SCHEDULED,
+                },
+            )
+
+    def job_row(self, number: int = 1) -> dict:
+        return store.find(jobs.JOB, number) or {}
+
+    def choose(self, where: Path) -> None:
+        settings.save({**settings.load(), backup.DESTINATION_KEY: str(where)})
+
+    def give_key(self, value: str | None = PHRASE) -> None:
+        webapp_keys.keep_main_key(value)
+        self.addCleanup(webapp_keys.keep_main_key, None)
+
+    def tick(self, at: datetime | None = None) -> list[dict]:
+        self.moment = at or self.moment
+        with redirect_stdout(io.StringIO()):
+            return door.tick(self.moment)
+
+    def sealed(self, destination: Path) -> list[Path]:
+        return [entry for entry in destination.iterdir() if entry.name.endswith(backup.SUFFIX)]
+
+    # -- the reading the round is built on ----------------------------------
+
+    def test_the_destination_is_the_one_the_folder_declared(self):
+        self.assertEqual(backup.destination(), "")
+        where = self.elsewhere()
+        self.choose(where)
+        self.assertEqual(backup.destination(), str(where))
+
+    def test_the_cadence_defaults_to_a_day_and_a_strange_value_reads_as_the_default(self):
+        self.assertEqual(backup.interval(), backup.DEFAULT_INTERVAL)
+        self.assertEqual(backup.DEFAULT_INTERVAL, 1440.0)
+        settings.save({**settings.load(), backup.INTERVAL_KEY: "ontem"})
+        self.assertEqual(backup.interval(), backup.DEFAULT_INTERVAL)
+        settings.save({**settings.load(), backup.INTERVAL_KEY: 30})
+        self.assertEqual(backup.interval(), 30.0)
+
+    def test_a_folder_that_never_copied_owes_the_first_copy(self):
+        self.assertTrue(backup.due(self.AT))
+        backup.attempted(self.AT)
+        self.assertFalse(backup.due(self.AT))
+        self.assertTrue(backup.due(self.AT + timedelta(days=1)))
+
+    # -- the round ----------------------------------------------------------
+
+    def test_the_declared_job_copies_the_folder_on_its_own(self):
+        where = self.elsewhere()
+        self.choose(where)
+        self.give_key()
+        self.declare()
+        with mock.patch.object(notifier, "publish") as pushed:
+            rounded = self.tick()
+        self.assertEqual(len(rounded), 1)
+        # A cópia saiu, e um sucesso não é assunto de celular.
+        self.assertEqual(len(self.sealed(where)), 1)
+        pushed.assert_not_called()
+        # E o job VIVE: segue scheduled, com o instante movido.
+        row = self.job_row()
+        self.assertEqual(row[jobs.STATUS], jobs.SCHEDULED)
+        self.assertEqual(row[jobs.WHEN], clock.next_instant(self.AT))
+
+    def test_a_copy_within_the_interval_is_not_made_again(self):
+        where = self.elsewhere()
+        self.choose(where)
+        self.give_key()
+        backup.attempted(self.AT)
+        self.declare()
+        with mock.patch.object(notifier, "publish") as pushed:
+            self.tick(self.AT + timedelta(minutes=1))
+        pushed.assert_not_called()
+        self.assertEqual(list(where.iterdir()), [])
+
+    def test_a_round_without_a_destination_does_nothing_and_says_nothing(self):
+        # Sem destino a pasta não tem para onde copiar: a rodada é silêncio, e
+        # o backup começa a valer sozinho no minuto em que a pessoa declarar um.
+        self.give_key()
+        self.declare()
+        with mock.patch.object(notifier, "publish") as pushed:
+            self.tick()
+        pushed.assert_not_called()
+
+    def test_a_boot_without_the_main_key_does_not_copy_and_says_so_once(self):
+        where = self.elsewhere()
+        self.choose(where)
+        self.declare()
+        with mock.patch.object(notifier, "publish", return_value=(True, "")) as pushed:
+            self.tick()
+            # Uma segunda rodada, um minuto depois, está DENTRO do intervalo: o
+            # aviso sai uma vez por intervalo e não a cada minuto.
+            self.tick(self.AT + timedelta(minutes=1))
+        pushed.assert_called_once()
+        body = pushed.call_args.args[1]
+        self.assertIn(tr("backup.make.no_key"), body)
+        self.assertEqual(list(where.iterdir()), [])
+        self.assertEqual(self.job_row()[jobs.STATUS], jobs.SCHEDULED)
+
+    def test_a_copy_the_scan_blocked_reaches_the_phone_in_the_words_of_the_cli(self):
+        where = self.elsewhere()
+        self.choose(where)
+        self.give_key()
+        self.declare()
+        with mock.patch.object(backup.scanner, "scan", return_value=_found()), \
+                mock.patch.object(notifier, "publish", return_value=(True, "")) as pushed:
+            self.tick()
+        pushed.assert_called_once()
+        body = pushed.call_args.args[1]
+        self.assertIn(tr("backup.make.blocked"), body)
+        self.assertEqual(list(where.iterdir()), [])
+        self.assertEqual(self.job_row()[jobs.STATUS], jobs.SCHEDULED)
+
+    def test_a_restore_that_someone_scheduled_is_refused(self):
+        # `restore` troca a pasta inteira pelo que o arquivo guardava, e um ato
+        # desses disparado sem ninguém seria a perda que o backup evita.
+        with redirect_stdout(io.StringIO()):
+            code, answer, *_ = door.run(
+                "backup", "restore", [str(self.elsewhere())],
+                actor=self.owner(), via=audit.ENGINE,
+            )
+        self.assertEqual(code, USAGE)
+
+
+class TheDeclaration(BackupCase):
+    """O job nasce na SUBIDA, enquanto a `cli` de declarar (TASK-139) não existe."""
+
+    def declared(self) -> list[dict]:
+        return store.load(jobs.JOB)
+
+    def test_the_boot_declares_the_backup_job_once_for_the_admin(self):
+        with redirect_stdout(io.StringIO()):
+            owner = actors.create_admin("Rafael", PHRASE)
+        webapp._declare_backup()
+        webapp._declare_backup()  # idempotente: uma linha, nunca duas
+        rows = self.declared()
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        self.assertEqual(row[jobs.WHAT], jobs.what(backup.OBJECT, backup.MAKE))
+        self.assertEqual(row[jobs.STATUS], jobs.SCHEDULED)
+        self.assertEqual(row[jobs.ACTOR], store.number_of(owner))
+
+    def test_a_folder_with_no_admin_declares_nothing(self):
+        # §4: o job roda com a autoridade de quem o possui, e sem pessoa nenhuma
+        # não há a quem dar o job.
+        webapp._declare_backup()
+        self.assertEqual(self.declared(), [])
+
+    def test_a_job_a_person_turned_off_is_not_recreated(self):
+        # A subida não briga com a pessoa: uma linha de `backup:make` que já
+        # existe não é tocada, seja qual for o estado em que ela a deixou.
+        # (Desligar de verdade é o verbo da TASK-139, não desta subida.)
+        with redirect_stdout(io.StringIO()):
+            actors.create_admin("Rafael", PHRASE)
+            webapp._declare_backup()
+            tables.edit(jobs.JOB, 1, {jobs.STATUS: jobs.REFUSED})
+            webapp._declare_backup()
+        self.assertEqual(len(self.declared()), 1)
+        self.assertEqual(self.job_row(1)[jobs.STATUS], jobs.REFUSED)
+
+    def job_row(self, number: int) -> dict:
+        return store.find(jobs.JOB, number) or {}
+
+    def test_the_webapp_boot_declares_it(self):
+        with redirect_stdout(io.StringIO()):
+            actors.create_admin("Rafael", PHRASE)
+        server = mock.Mock()
+        server.server_address = ("127.0.0.1", 0)
+        with mock.patch.object(webapp, "make_server", return_value=server), \
+                mock.patch.object(webapp, "beat"):
+            with redirect_stdout(io.StringIO()):
+                webapp.run(0, include_caddy=False)
+        self.assertEqual(len(self.declared()), 1)
 
 
 if __name__ == "__main__":  # pragma: no cover

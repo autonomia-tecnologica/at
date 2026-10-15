@@ -42,6 +42,7 @@ first path they share, and `_fresh` is what makes clearing it lose nothing.
 
 from __future__ import annotations
 
+import math
 import re
 import shutil
 import subprocess
@@ -52,7 +53,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from at.core import files, paths, scanner, secrets, strongbox, tables, versioning
+from at.core import files, paths, scanner, secrets, settings, strongbox, tables, versioning
 from at.encryption import vault
 from at.i18n import tr
 
@@ -65,6 +66,14 @@ RESTORE = "restore"
 # The scope a derived key is asked under (§4): a name like any other service's
 # or purpose's, and the Cofre keeps no catalogue to check it against.
 SCOPE = "backup"
+
+# This module's OBJECT in the Actions catalogue (§5, `permissions`): the key
+# `permissions.CATALOGUE` and the `cli` tree already call "backup", and the one
+# `jobs.what` spells to name the act a scheduled job holds (`backup:make`). It
+# is a name of its own and not a second `SCOPE`, even where the two agree: the
+# scope is what the Vault derives a key under, and the object is what the
+# catalogue prices a demand by.
+OBJECT = "backup"
 
 # What a sealed archive is named, and the whole of what says one is: a tar,
 # gzipped, then sealed whole — never a base64 envelope, because this is a FILE
@@ -186,6 +195,117 @@ def restore(phrase: Callable[[], str], source: str) -> Report:
     versioning.commit(tr("backup.restore.commit"))
     path.unlink()
     return Report(RESTORED)
+
+
+# --------------------------------------- the round that nobody types (§4, 24) ---
+#
+# **The copy that depends on remembering does not happen**, so the AT fires it
+# itself: `backup:make` is the `what` of a `scheduled` job (§4, item 24), and
+# the clock brings it round every minute. What would be wrong is the copy going
+# out on EVERY round — the folder is written to disk on every edit, and sixty
+# ciphered archives an hour is not a backup — so the BACKUP's own cadence is a
+# reading of its own, in the pattern of the versioning's (`versioning.interval`):
+# it looks at how long ago the last attempt was and only lets the copy leave
+# once the interval has passed.
+#
+# **The destination and the interval are settings** (§4): what `backup make
+# <destino>` used to say at the terminal the round nobody types cannot say, so
+# the folder keeps them. The cadence is read in MINUTES and compared in seconds,
+# like the versioning's, and the comparison lives in one place.
+
+# The two adjustments, named from `core.settings`, which owns the file's keys —
+# the two homes are one — and `DEFAULT_INTERVAL` is what a folder that never
+# chose is copied at: once a DAY, because the copy carries the whole folder and
+# is worth a day, and a finer interval would spend the destination's bandwidth
+# and history for nothing. `0` is a cadence like any other — the folder that
+# wants the copy on every round, and the round is the clock's minute.
+DESTINATION_KEY = settings.BACKUP_DESTINATION
+INTERVAL_KEY = settings.BACKUP_INTERVAL
+DEFAULT_INTERVAL = 1440.0
+
+# When the automatic copy was last ATTEMPTED, in `App/` the way the migration's
+# own stamp is (`migrations.stamp_file`): it is AT's state and never a person's
+# adjustment, and it is what makes the cadence read the LAST copy instead of
+# firing every round.
+STAMP = "backup"
+
+# The seconds in a minute, for the one comparison this cadence makes: the
+# interval is READ in minutes and COMPARED in seconds, and the conversion lives
+# here and nowhere else.
+_MINUTE = 60.0
+
+
+def stamp_file() -> Path:
+    """`App/backup` — when the automatic copy was last attempted."""
+    return paths.instance_dir() / STAMP
+
+
+def destination() -> str:
+    """The destination the folder DECLARED (§4, item 24) — the same one `backup
+    make <destino>` types, kept so the round nobody types has one.
+
+    Empty when the folder never chose: with nowhere to copy to, the round does
+    not pretend it copied. It reads and never invents, the way every AT setting
+    does.
+    """
+    value = settings.get(DESTINATION_KEY, "")
+    return value.strip() if isinstance(value, str) else ""
+
+
+def interval() -> float:
+    """The backup's cadence, in MINUTES — the reading of its own (§4, item 24).
+
+    A value that is not a number is a choice that was never made, and the folder
+    answers the `DEFAULT` — never a copy that fires every minute, never one that
+    quietly stops — the way `versioning.interval` answers its own. Zero is not
+    that strange value: it is the cadence of a folder that wants the copy on
+    every round.
+    """
+    value = settings.get(INTERVAL_KEY, DEFAULT_INTERVAL)
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return DEFAULT_INTERVAL
+    if not math.isfinite(value) or value < 0:
+        return DEFAULT_INTERVAL
+    return float(value)
+
+
+def last() -> float | None:
+    """When the automatic copy was last attempted, in seconds — the stamp's own
+    reading, or `None` for a folder that never tried.
+
+    A stamp nobody can read answers `None`, the rule failing the safe way, the
+    same one `versioning.last_version` keeps: a folder whose last copy cannot be
+    placed copies now.
+    """
+    try:
+        raw = stamp_file().read_text(encoding="utf-8").strip()
+        return float(raw) if raw else None
+    except (OSError, ValueError):
+        return None
+
+
+def attempted(at: datetime) -> None:
+    """Mark that the automatic copy was ATTEMPTED now — the stamp the cadence
+    reads on the next round.
+
+    It is written even when the copy did NOT go out, and that is the whole point:
+    it is what makes a notice of "não aconteceu" reach the phone once per
+    interval instead of every minute — the same "not in a loop, but not given up
+    on either" a failed reminder already keeps.
+    """
+    files.atomic_write_text(stamp_file(), f"{at.timestamp()}\n")
+
+
+def due(at: datetime) -> bool:
+    """Whether the backup's own cadence has passed since the last attempt.
+
+    The JOB's cadence is the clock's minute; this one is the backup's, and it is
+    what keeps `backup:make` from copying on every round. A folder that never
+    tried owes the first copy by definition: the first is not something a
+    cadence postpones.
+    """
+    moment = last()
+    return moment is None or at.timestamp() - moment >= interval() * _MINUTE
 
 
 def _strongbox_prefix() -> str:

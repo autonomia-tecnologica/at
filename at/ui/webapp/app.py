@@ -145,9 +145,11 @@ from at.core import (
     actors,
     assist,
     audit,
+    backup,
     clock,
     files,
     gate,
+    jobs,
     notifier,
     offline,
     paths,
@@ -2571,6 +2573,48 @@ def make_server(port: int = DEFAULT_PORT, host: str = HOST, asks: bool = True) -
     return Server((host, port), Handler, asks=asks)
 
 
+def _declare_backup() -> None:
+    """O job do backup, pré-declarado UMA vez, na subida do processo que mantém
+    o relógio (§4, item 24; TASK-133).
+
+    **É pré-declarado aqui porque a `cli` que declara um job agendado ainda não
+    existe** (TASK-139): enquanto ela não chega, quem põe a linha é a subida, e
+    ela é idempotente — uma linha de `backup:make` que já exista NÃO é tocada
+    nem recriada, seja qual for o estado em que uma pessoa a tenha deixado
+    (desligar de verdade é o verbo da TASK-139, não desta subida).
+
+    **O dono é o primeiro administrador.** §4 diz que o job roda com a autoridade
+    de quem o possui, e uma pasta sem pessoa nenhuma não tem a quem dar o job —
+    então ela não declara nada, e nada se perde: sem administrador não há a quem
+    avisar de um backup que não saiu.
+
+    O `when` inicial é AGORA, e o relógio o reescreve a cada rodada; quem decide
+    se a cópia sai é a cadência própria do backup (`backup.due`), nunca o `when`.
+    """
+    if files.readonly():
+        return
+    owner = actors.first_admin()
+    if owner is None:
+        return
+    declared = jobs.what(backup.OBJECT, backup.MAKE)
+    if any(
+        isinstance(row, dict) and row.get(jobs.WHAT) == declared
+        for row in store.load(jobs.JOB)
+    ):
+        return
+    tables.create(
+        jobs.JOB,
+        {
+            jobs.WHAT: declared,
+            jobs.TABLE: backup.OBJECT,
+            jobs.ARGUMENTS: [],
+            jobs.ACTOR: store.number_of(owner),
+            jobs.WHEN: tables.utc(clock.now()),
+            jobs.STATUS: jobs.SCHEDULED,
+        },
+    )
+
+
 def beat(server: "Server | None" = None, times: int | None = None,
          pause: Callable[[float], None] = time.sleep) -> None:
     """The clock's rhythm: one pass, then the cadence, over and over (§4, item 24).
@@ -2928,6 +2972,9 @@ def run(port: int = DEFAULT_PORT, public_port: int | None = None,
     # that is idle is exactly the one it is here for. `server` travels with it
     # now (TASK-128, fatia 2/3): it is what lets the clock's own page-vigia
     # round reach the `Broadcaster` every open tab's `/api/events` subscribed to.
+    # And the backup's own job is declared before it beats once (TASK-133): the
+    # round that copies the folder on its own has no other door to be born by.
+    _declare_backup()
     threading.Thread(target=beat, args=(server,), daemon=True, name=CLOCK_THREAD).start()
     try:
         server.serve_forever()

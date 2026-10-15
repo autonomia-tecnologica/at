@@ -73,6 +73,15 @@ BY_ACTION = "risk_by_action"
 # version is taken.
 VERSIONING = "versioning_interval"
 
+# The two adjustments of the AUTOMATIC backup (§4, item 24; TASK-133): where the
+# copy goes (`DESTINATION` — the very destination `backup make <destino>` types,
+# kept so the round that nobody types has one) and how many MINUTES may pass
+# between two copies (`INTERVAL`). The keys are named here because the door's
+# list spells them; what each means — and what a folder that never chose gets —
+# is `at.core.backup`'s, which is where the copy is decided.
+BACKUP_DESTINATION = "backup_destination"
+BACKUP_INTERVAL = "backup_interval"
+
 # The keys the product READS, in the order the door hands them over. A key the
 # folder carries and this tuple does not name is still shown — the file is the
 # person's — and it comes after these, by name.
@@ -99,6 +108,8 @@ KNOWN = (
     BY_ACTION,
     "authenticator",
     VERSIONING,
+    BACKUP_DESTINATION,
+    BACKUP_INTERVAL,
     "folders",
     "schema",
 )

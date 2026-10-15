@@ -247,28 +247,11 @@ def _backup(rest: list[str], secret: Ask | None = None) -> int:
         print(tr("backup.error.io", reason=str(error)))
         return REFUSED
 
-    print(_backup_message(action, outcome, target))
+    # The wording lives in the door (`ask.backup_message`) because the clock's
+    # own round reads it too — the terminal line and the phone's notice are the
+    # same fact and must not be two sentences.
+    print(door.backup_message(action, outcome, target))
     return OK if outcome.state in (backup.MADE, backup.RESTORED) else REFUSED
-
-
-def _backup_message(action: str, outcome: backup.Report, target: str) -> str:
-    """The sentence one act of `backup` ends in — composed here, and not in
-    `core.backup`, which answers in facts (a state, a tool) and not in words."""
-    if action == backup.MAKE:
-        if outcome.state == backup.MADE:
-            return tr("backup.make.done", destination=target)
-        if outcome.state == backup.BLOCKED:
-            return tr("backup.make.blocked")
-        if outcome.state == backup.NO_TOOL:
-            return tr("backup.make.no_tool", tool=outcome.tool)
-        return tr("backup.make.failed", tool=outcome.tool, destination=target)
-    if outcome.state == backup.RESTORED:
-        return tr("backup.restore.done")
-    if outcome.state == backup.NOT_FOUND:
-        return tr("backup.restore.not_found", where=target)
-    if outcome.state == backup.NOT_FRESH:
-        return tr("backup.restore.not_fresh")
-    return tr("backup.restore.wrong_key")
 
 
 # --------------------------------------------------------------- the convert ---

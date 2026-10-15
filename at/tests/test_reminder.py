@@ -267,7 +267,14 @@ class TheDoor(ReminderCase):
     def test_lists_what_lands_on_a_given_day(self):
         tables.create(
             "reminder",
-            {"text": "Regar a planta", "freq": "once", "on_date": "2026-10-05", "at": "09:00"},
+            {
+                # `since` is the floor (the module's own rule, and the sibling
+                # test below does the same): without it the row's default is
+                # `today`, and a fixed `on_date` stops landing the day the
+                # machine's clock passes it.
+                "text": "Regar a planta", "freq": "once",
+                "on_date": "2026-10-05", "since": "2020-01-01", "at": "09:00",
+            },
         )
         code, text = self.cli("--at", "2026-10-05")
         self.assertEqual(code, 0)
