@@ -1323,12 +1323,12 @@ class Handler(BaseHTTPRequestHandler):
         shortcut**: the ceiling `actors.may` reads is the ROLE's, over the
         TABLE — no table here narrows a permission by which row it is — so
         "what this row allows" and "what this table allows this actor" are the
-        same question. `edit` is the only door named today: `view` is
-        implicit in the row already being listed, and `create`/`cancel`/
-        `delete` are later fatias of the same item (121, 122) — a menu is not
-        the place to offer a door the server does not have yet.
+        same question. `view` is implicit in the row already being listed,
+        and `create` (TASK-121) joins `edit` here; `cancel`/`delete` are a
+        later fatia of the same item (TASK-122) — a menu is not the place to
+        offer a door the server does not have yet.
         """
-        return [action for action in ("edit",)
+        return [action for action in ("create", "edit")
                 if self._legal(permissions.needed(table, action))]
 
     def _project_actions(self) -> list[str]:

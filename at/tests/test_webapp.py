@@ -2220,7 +2220,7 @@ class TheContextMenuActions(ServerCase):
         self.assertEqual(status, 200)
         return {"Cookie": headers["Set-Cookie"].split(";")[0]}
 
-    def test_the_administrator_sees_edit_without_any_role_narrowing_it(self):
+    def test_the_administrator_sees_create_and_edit_without_any_role_narrowing_it(self):
         status, headers, _ = self.post_full(
             "/api/session",
             {"name": self.ADMIN, "credential": self.ADMIN_CREDENTIAL},
@@ -2228,12 +2228,20 @@ class TheContextMenuActions(ServerCase):
         self.assertEqual(status, 200)
         cookie = {"Cookie": headers["Set-Cookie"].split(";")[0]}
         _, _, body = self.get("/api/table/task", headers=cookie)
-        self.assertEqual(json.loads(body)["actions"], ["edit"])
+        self.assertEqual(json.loads(body)["actions"], ["create", "edit"])
 
     def test_a_role_that_carries_edit_sees_it(self):
         self.person("task:list,task:edit")
         _, _, body = self.get("/api/table/task", headers=self.cookie())
         self.assertEqual(json.loads(body)["actions"], ["edit"])
+
+    def test_a_role_that_carries_create_sees_it(self):
+        # TASK-121: `create` joins `edit` in the SAME generic row menu, read
+        # off the SAME ceiling — a role that carries one and not the other
+        # sees only the one it carries.
+        self.person("task:list,task:create")
+        _, _, body = self.get("/api/table/task", headers=self.cookie())
+        self.assertEqual(json.loads(body)["actions"], ["create"])
 
     def test_a_role_that_does_not_carry_edit_sees_nothing(self):
         self.person("task:list")

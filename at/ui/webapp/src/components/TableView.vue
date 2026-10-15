@@ -27,6 +27,7 @@ import { plainText, rendererReady, ensureRenderer } from "../lib/markdown";
 import FieldValue from "./FieldValue.vue";
 import FilterPop from "./pops/FilterPop.vue";
 import ColumnsPop from "./pops/ColumnsPop.vue";
+import CreatePop from "./pops/CreatePop.vue";
 import type { FieldSpec, RecordField, RecordRef, RecordRow } from "../lib/record";
 
 const props = withDefaults(
@@ -335,14 +336,27 @@ function openColumns(anchor: HTMLElement | null): void {
           { anchor });
 }
 
+// A RULE VIEW HAS AN IMPLICIT FIELD ITS FORM CANNOT KNOW (the project a task
+// lives under, `hide: ["project", "orphans"]`): creating there would write an
+// orphan silently, the same mismatch `TaskBoard.vue`'s own quick-add avoids by
+// staying out of it. So `create`, like `columns`, stays off a rule view.
+function openCreate(anchor: HTMLElement | null): void {
+  openPop("create:" + props.entity, CreatePop, { entity: props.entity, schema: fields.value },
+          { anchor });
+}
+
 // THE HEADER'S RIGHT CLICK, THROUGH THE ONE DOOR (TASK-120, fatia 1): a menu
-// opens at the pointer, and its one item calls the SAME `openColumns` the
-// header always called — the anchor is captured HERE, at open time, and not
-// read off the menu item's own click later.
+// opens at the pointer, with "columns" and — when the engine says this actor
+// may (TASK-121) — "create" beside it. The anchor is captured HERE, at open
+// time, and not read off the menu item's own click later.
 function openHeaderMenu(ev: MouseEvent): void {
   if (props.rule) return;
   const anchor = ev.currentTarget as HTMLElement;
-  openContextMenu(ev, [{ label: word("columns"), action: () => openColumns(anchor) }]);
+  const items: MenuItem[] = [{ label: word("columns"), action: () => openColumns(anchor) }];
+  if (props.actions.includes("create")) {
+    items.push({ label: word("create"), action: () => openCreate(anchor) });
+  }
+  openContextMenu(ev, items);
 }
 
 // A ROW'S RIGHT CLICK (and the context-menu key, Shift+F10, and a touch
