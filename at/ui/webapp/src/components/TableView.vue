@@ -344,9 +344,8 @@ function openColumns(anchor: HTMLElement | null): void {
 // lives under, `hide: ["project", "orphans"]`): creating there would write an
 // orphan silently, the same mismatch `TaskBoard.vue`'s own quick-add avoids by
 // staying out of it. So `create`, like `columns`, stays off a rule view.
-function openCreate(anchor: HTMLElement | null): void {
-  openPop("create:" + props.entity, CreatePop, { entity: props.entity, schema: fields.value },
-          { anchor });
+function openCreate(at: { anchor?: HTMLElement | null; point?: { x: number; y: number } }): void {
+  openPop("create:" + props.entity, CreatePop, { entity: props.entity, schema: fields.value }, at);
 }
 
 // THE HEADER'S RIGHT CLICK, THROUGH THE ONE DOOR (TASK-120, fatia 1): a menu
@@ -358,9 +357,21 @@ function openHeaderMenu(ev: MouseEvent): void {
   const anchor = ev.currentTarget as HTMLElement;
   const items: MenuItem[] = [{ label: word("columns"), action: () => openColumns(anchor) }];
   if (props.actions.includes("create")) {
-    items.push({ label: word("create"), action: () => openCreate(anchor) });
+    items.push({ label: word("create"), action: () => openCreate({ anchor }) });
   }
   openContextMenu(ev, items);
+}
+
+// THE EMPTY TABLE'S RIGHT CLICK (TASK-137, fatia 6/7): there is no header and
+// no row to anchor on, so `create` opens AT THE POINTER — the same `point` a
+// row's close/delete already uses. The rule view's `create` is already
+// refused above (`openHeaderMenu`'s early return); here there is no row menu
+// to refuse it from, so the check is this function's own.
+function openEmptyMenu(ev: MouseEvent): void {
+  if (props.rule || !props.actions.includes("create")) return;
+  openContextMenu(ev, [
+    { label: word("create"), action: () => openCreate({ point: { x: ev.clientX, y: ev.clientY } }) },
+  ]);
 }
 
 // A ROW'S RIGHT CLICK (and the context-menu key, Shift+F10, and a touch
@@ -532,7 +543,7 @@ function openRecord(rec: RecordRow): void {
 </script>
 
 <template>
-  <div v-if="!records.length" class="empty">{{ word("no_records") }}</div>
+  <div v-if="!records.length" class="empty" v-context-menu="openEmptyMenu">{{ word("no_records") }}</div>
   <template v-else>
     <!-- THE COUNT OF THE COLUMNS THAT STEPPED ASIDE IS NOT A COLUMN: it is a MARK
          PINNED TO THE CORNER, drawn over the box instead of inside it, so the grid

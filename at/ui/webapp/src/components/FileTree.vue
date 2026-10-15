@@ -6,9 +6,13 @@
 // keeps no extension table of its own.
 
 import { ref, watch, onMounted } from "vue";
-import { api } from "../lib/api";
+import { api, post } from "../lib/api";
 import { word } from "../lib/store";
-import { nav } from "../lib/views";
+import { nav, poke } from "../lib/views";
+import { openContextMenu, vContextMenu, type MenuItem } from "../lib/menu";
+import { openPop } from "../lib/pop";
+import { toast } from "../lib/toast";
+import NamePop from "./pops/NamePop.vue";
 import FileTreeNode from "./FileTreeNode.vue";
 
 export interface FileNode {
@@ -56,10 +60,37 @@ async function load(): Promise<void> {
 onMounted(load);
 // A file that was born or went away has to show up without a reload.
 watch(() => nav.tick, load);
+
+// THE TREE'S OWN RIGHT CLICK, when there is nothing in it (TASK-137, fatia
+// 6/7): the same pair `FileTreeNode`'s folder menu already offers
+// (`new_file`/`new_folder`), landing at the ROOT — there is no node here to
+// hold the pattern, so it is repeated at this one, narrower door.
+function openNamePop(ev: MouseEvent, onSubmit: (value: string) => void): void {
+  openPop("file-name", NamePop, { initial: "", onSubmit },
+          { point: { x: ev.clientX, y: ev.clientY } });
+}
+
+async function createEntry(isDir: boolean, name: string): Promise<void> {
+  try {
+    await post("/api/file/create", { path: rootPath.value ? rootPath.value + "/" + name : name, dir: isDir });
+    poke();
+  } catch (err) {
+    toast((err as Error).message);
+  }
+}
+
+function openEmptyMenu(ev: MouseEvent): void {
+  const items: MenuItem[] = [
+    { label: word("new_file"), action: () => openNamePop(ev, value => void createEntry(false, value)) },
+    { label: word("new_folder"), action: () => openNamePop(ev, value => void createEntry(true, value)) },
+  ];
+  openContextMenu(ev, items);
+}
 </script>
 
 <template>
   <div v-if="error" class="empty">{{ error }}</div>
-  <div v-else-if="!tree.dirs.size && !tree.files.length" class="empty">{{ word("no_records") }}</div>
+  <div v-else-if="!tree.dirs.size && !tree.files.length" class="empty"
+       v-context-menu="openEmptyMenu">{{ word("no_records") }}</div>
   <FileTreeNode v-else :node="tree" :prefix="rootPath" />
 </template>
