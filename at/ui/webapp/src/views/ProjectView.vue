@@ -11,12 +11,17 @@
 // parent's line is the way up.
 
 import { ref, computed, watch, onMounted } from "vue";
-import { api } from "../lib/api";
+import { api, post } from "../lib/api";
 import { store, setFields, word } from "../lib/store";
-import { nav, markPage, leave, open, openRef, setTrail, showError } from "../lib/views";
+import { nav, markPage, leave, open, openRef, setTrail, showError, poke } from "../lib/views";
+import { openContextMenu, vContextMenu, type MenuItem } from "../lib/menu";
+import { openPop } from "../lib/pop";
+import { ask } from "../lib/confirm";
+import { toast } from "../lib/toast";
 import TaskBoard from "../components/TaskBoard.vue";
 import RecordView from "../components/RecordView.vue";
 import ProseField from "../components/ProseField.vue";
+import ClosePop from "../components/pops/ClosePop.vue";
 import type { FieldSpec, RecordRow } from "../lib/record";
 
 interface Child {
@@ -39,7 +44,11 @@ interface ProjectPayload {
   // the TASKS the page draws, and this one is the project the page IS. It is
   // where the body of an item arrives: the `desc` the table declares
   // `markdown`, which is what a backlog item keeps its why and its decided in.
-  project: { fields: FieldSpec[]; record: RecordRow };
+  // `actions` here is the ENGINE's own word on the project record itself
+  // (TASK-137, fatia 7/7) — `_table_actions("project")` on the server, the
+  // same door a table's row menu already asks, and never the tree's
+  // `_project_actions` (create/edit only).
+  project: { fields: FieldSpec[]; record: RecordRow; actions: string[] };
 }
 
 const props = defineProps<{ id: string }>();
@@ -97,6 +106,44 @@ function go(id: number): void {
   markPage("project:" + id, null);
 }
 
+// THE PAGE'S OWN RIGHT CLICK (TASK-137, fatia 7/7): close and delete, the
+// same two the row menu already offers a table (`TableView.vue`'s
+// `openRowMenu`) — and never `edit`, because this page already IS the
+// project's form. What shows is exactly what the engine allowed
+// (`payload.project.actions`), nothing this page invents.
+function openProjectMenu(ev: MouseEvent): void {
+  if (!payload.value) return;
+  const point = { x: ev.clientX, y: ev.clientY };
+  const items: MenuItem[] = [];
+  if (payload.value.project.actions.includes("cancel")) {
+    items.push({ label: word("close"), action: () => openCloseProject(point) });
+  }
+  if (payload.value.project.actions.includes("delete")) {
+    items.push({ label: word("delete"), action: () => deleteProject() });
+  }
+  openContextMenu(ev, items);
+}
+
+function openCloseProject(point: { x: number; y: number }): void {
+  if (!payload.value) return;
+  const rec = payload.value.project.record;
+  openPop("close:project:" + rec.id, ClosePop,
+          { entity: "project", id: rec.id, title: rec.title || payload.value.title },
+          { point });
+}
+
+async function deleteProject(): Promise<void> {
+  if (!payload.value) return;
+  const name = payload.value.title;
+  if (!(await ask(word("delete_confirm").replace("{name}", name)))) return;
+  try {
+    await post("/api/table/project", { action: "delete", id: payload.value.project.record.id });
+    poke();
+  } catch (err) {
+    toast((err as Error).message);
+  }
+}
+
 onMounted(load);
 watch(() => nav.tick, load);
 watch(() => props.id, () => {
@@ -108,7 +155,13 @@ watch(() => props.id, () => {
 <template>
   <RecordView v-if="record" :record="record" :total="payload?.records.length ?? 0"
               :page="page" :entity="store.types.task" @ref="openRef" />
-  <div v-else-if="payload">
+  <!-- THE PAGE'S OWN RIGHT CLICK (TASK-137, fatia 7/7): anchored on the whole
+       body, because the page has no header of its own to carry it on — the
+       title lives in the shell's trail band, not here. `TaskBoard` offers no
+       row menu of its own yet, so a right click anywhere on this page — the
+       prose, a task card, the board's empty room — reaches this one, about
+       the PROJECT itself. -->
+  <div v-else-if="payload" v-context-menu="openProjectMenu">
     <!-- The parent's line is the way up, and it is the tree the page lives in —
          not a "back" the page keeps of its own. -->
     <div v-if="payload.parent" class="back" @click="go(payload.parent.id)">

@@ -1921,6 +1921,11 @@ class Handler(BaseHTTPRequestHandler):
         payload["project"] = {
             "fields": _schema_payload("project"),
             "record": _record("project", payload.pop("row")),
+            # The project's OWN row menu (TASK-137, fatia 7/7): the same door
+            # `_table_actions` already asks for any table's row, over the
+            # project record itself — never `_project_actions`, which is the
+            # TREE's different pair (create/edit, never cancel/delete).
+            "actions": self._table_actions(projects.PROJECT),
         }
         self._json(payload)
 

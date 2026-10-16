@@ -2405,6 +2405,20 @@ class TheContextMenuActions(ServerCase):
         _, _, body = self.get("/api/project/1", headers=self.cookie("Editor"))
         self.assertEqual(json.loads(body)["actions"], ["edit"])
 
+    def test_the_project_page_carries_the_project_s_own_menu(self):
+        # TASK-137, fatia 7/7: the project's OWN row menu — close and delete —
+        # is `payload["project"]["actions"]`, read off the SAME door
+        # (`_table_actions`) a table's row menu already asks, over the
+        # project record itself and never the tree's `_project_actions`.
+        with redirect_stdout(io.StringIO()):
+            tables.create("project", {"name": "Autonomia", "status": "active"})
+        self.person("task:list,project:view")
+        _, _, body = self.get("/api/project/1", headers=self.cookie())
+        self.assertEqual(json.loads(body)["project"]["actions"], [])
+        self.person("task:list,project:view,project:cancel,project:delete", "Editor")
+        _, _, body = self.get("/api/project/1", headers=self.cookie("Editor"))
+        self.assertEqual(json.loads(body)["project"]["actions"], ["cancel", "delete"])
+
     def test_the_orphans_page_answers_the_same_way(self):
         self.person("task:list,task:edit")
         _, _, body = self.get("/api/orphans", headers=self.cookie())
