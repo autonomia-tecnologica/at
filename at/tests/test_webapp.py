@@ -37,6 +37,7 @@ from at.core import (
     boot,
     strongbox,
     jev,
+    jobs,
     notifier,
     paths,
     permissions,
@@ -658,6 +659,72 @@ class TheRowClosingAndDeletion(ServerCase):
         self.assertEqual(status, 400)
         self.assertIn("error", answer)
         self.assertEqual(len(tables.rows("task")), 1)
+
+
+class TheJobDoor(ServerCase):
+    """O relógio, fatia 3/3: o menu de contexto ganha `declare`/`disable`, e a
+    escrita anda por `/api/job` — a porta de `jobs.ACTS`/`jobs.DECLARE`, nunca
+    `/api/table/job` (`_post_table` só conhece o engine's six)."""
+
+    def test_the_job_table_offers_its_own_acts_and_the_declarable_picker(self):
+        status, _, body = self.get("/api/table/job")
+        self.assertEqual(status, 200)
+        answer = json.loads(body)
+        self.assertIn("declare", answer["actions"])
+        self.assertIn("disable", answer["actions"])
+        by_key = {entry["key"]: entry for entry in answer["declarable"]}
+        self.assertIn("task", by_key)
+        self.assertNotIn("job", by_key)
+        task_actions = {entry["action"]: entry for entry in by_key["task"]["actions"]}
+        self.assertFalse(task_actions["create"]["requires_id"])
+        self.assertTrue(task_actions["edit"]["requires_id"])
+        self.assertIn("text", {field["name"] for field in task_actions["create"]["fields"]})
+
+    def test_a_declare_through_the_page_births_a_scheduled_job(self):
+        status, answer = self.post("/api/job", {
+            "action": "declare", "table": "task", "act": "create",
+            "when": "2026-01-01T10:00:00.000Z", "set": {"text": "via relógio"},
+        })
+        self.assertEqual(status, 200, answer)
+        [row] = tables.rows(jobs.JOB)
+        self.assertEqual(jobs.state(row), jobs.SCHEDULED)
+        self.assertEqual(jobs.release(row), ("task", "create"))
+
+    def test_a_declare_with_no_when_is_refused(self):
+        status, answer = self.post("/api/job", {
+            "action": "declare", "table": "task", "act": "create", "set": {},
+        })
+        self.assertEqual(status, 400)
+        self.assertIn("error", answer)
+        self.assertEqual(tables.rows(jobs.JOB), [])
+
+    def _job_row(self, status: str) -> dict:
+        with redirect_stdout(io.StringIO()):
+            return tables.create(jobs.JOB, {
+                jobs.WHAT: jobs.what("task", "create"),
+                jobs.TABLE: "task",
+                jobs.ARGUMENTS: [],
+                jobs.ACTOR: None,
+                jobs.WHEN: "2026-01-01T10:00:00.000Z",
+                jobs.STATUS: status,
+            })
+
+    def test_a_disable_through_the_page_turns_a_scheduled_job_refused(self):
+        row = self._job_row(jobs.SCHEDULED)
+        status, answer = self.post("/api/job", {"action": "disable", "id": store.number_of(row)})
+        self.assertEqual(status, 200, answer)
+        self.assertEqual(jobs.state(tables.find(jobs.JOB, store.number_of(row))), jobs.REFUSED)
+
+    def test_disabling_a_job_that_is_not_scheduled_is_refused(self):
+        row = self._job_row(jobs.DONE)
+        status, answer = self.post("/api/job", {"action": "disable", "id": store.number_of(row)})
+        self.assertEqual(status, 400)
+        self.assertIn("error", answer)
+
+    def test_an_unknown_action_is_refused(self):
+        status, answer = self.post("/api/job", {"action": "scan"})
+        self.assertEqual(status, 400)
+        self.assertIn("error", answer)
 
 
 class TheOfflineSync(ServerCase):

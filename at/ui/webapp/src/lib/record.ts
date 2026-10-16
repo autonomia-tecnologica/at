@@ -36,6 +36,19 @@ export interface RecordRow {
   has_credential?: boolean;
 }
 
+export interface DeclarableAction {
+  action: string;
+  label: string;
+  requires_id: boolean;
+  fields: FieldSpec[];
+}
+
+export interface DeclarableTable {
+  key: string;
+  name: string;
+  actions: DeclarableAction[];
+}
+
 export interface TablePayload {
   key: string;
   name: string;
@@ -49,6 +62,11 @@ export interface TablePayload {
   // invented by the page (TASK-120). Row-independent: the ceiling is the
   // role's, over the table, so one list answers for every record.
   actions: string[];
+  // The `declare` panel's own picker (relógio, fatia 3/3) — present only on
+  // the `job` table's payload, because it is the only one with a `declare`
+  // act to offer: every table's own writes this actor may reach directly,
+  // with the fields a scheduled `create`/`edit` would take.
+  declarable?: DeclarableTable[];
 }
 
 export type { FieldSpec, Labels };

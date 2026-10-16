@@ -79,5 +79,6 @@ watch(() => props.view, () => {
               @ref="openRef" />
   <TableView v-else-if="payload" :entity="view" :records="payload.records"
              :schema="payload.fields" :defaults="payload.columns" :page="view"
-             :actions="payload.actions" @ref="openRef" />
+             :actions="payload.actions" :declarable="payload.declarable"
+             @ref="openRef" />
 </template>

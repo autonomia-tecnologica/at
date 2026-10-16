@@ -594,6 +594,11 @@ PAGE_WORDS = (
     # TASK-122, fatia 3/7: the row menu's other two — a closing and a deletion,
     # each with the confirmation it owes before either reaches the server.
     "close", "close_confirm", "close_reason", "delete", "delete_confirm",
+    # O RELÓGIO, FATIA 3/3: os dois atos próprios do `job` que o menu de
+    # contexto passa a oferecer — declarar um job novo e desligar um que já
+    # está `scheduled` — e as palavras do painel de declarar.
+    "disable", "disable_confirm", "declare", "declare_table", "declare_act",
+    "declare_when", "declare_id",
     "back", "confirm_cancel", "confirm_ok", "write", "saving",
     "saved", "save_failed", "chars", "words", "language_name", "language_flag",
     "ft_text", "ft_markdown", "ft_python", "ft_json", "ft_yaml", "ft_shell",
@@ -1020,6 +1025,34 @@ def table_payload(table: str, show_all: bool) -> dict:
     }
 
 
+def _declare_args(payload: dict) -> list[str] | None:
+    """The body of a `declare` POST, spelled the way `ask._declared` already
+    parses an argument list — the ONE parser, read by the `cli` and by this
+    route alike, and never a second one invented here (relógio, fatia 3/3).
+
+    `--when` first, then the table and the act being scheduled, then the
+    act's own row id when it needs one (`edit`/`cancel`/`delete`), then a
+    `--set` pair per value the chosen act's fields carry. `_pulled`/`_sets`
+    read a flag wherever it sits, so the order here is a choice and not a
+    requirement — this is simply the one `_declared`'s own docstring reads.
+    """
+    table = payload.get("table")
+    act = payload.get("act")
+    when = payload.get("when")
+    if not isinstance(table, str) or not isinstance(act, str) or not isinstance(when, str):
+        return None
+    args = [table, act]
+    row_id = payload.get("id")
+    if row_id is not None and str(row_id).strip():
+        args.append(str(row_id))
+    args += ["--when", when]
+    values = payload.get("set")
+    if isinstance(values, dict):
+        for name, value in values.items():
+            args += ["--set", f"{name}={value}"]
+    return args
+
+
 # ------------------------------------------------------------- handler ---
 
 # What the session of the request being served starts as: nobody asked yet. It
@@ -1339,9 +1372,13 @@ class Handler(BaseHTTPRequestHandler):
         row = self._actor()
         return row is not None and actors.may(row, permission)
 
-    def _table_actions(self, table: str) -> list[str]:
-        """Which of the engine's own actions this actor may reach on `table` —
-        the truth a context menu shows instead of inventing one (TASK-120).
+    def _crud_actions(self, table: str) -> list[str]:
+        """Which of the engine's own FOUR writes this actor may reach on
+        `table` — the half of `_table_actions` that is a CRUD question, kept
+        apart because the DECLARE picker (relógio, fatia 3/3) only ever offers
+        THESE: an own act scheduled through the clock's road (`ask._acted`)
+        falls into its last branch and is run as an `edit`, so a table's own
+        act has no business being something a person can schedule this way.
 
         **Row-independent, and that is the system's own shape and not a
         shortcut**: the ceiling `actors.may` reads is the ROLE's, over the
@@ -1366,6 +1403,24 @@ class Handler(BaseHTTPRequestHandler):
             and self._legal(permissions.needed(table, action))
         ]
 
+    def _table_actions(self, table: str) -> list[str]:
+        """Which actions this actor may reach on `table` — the truth a context
+        menu shows instead of inventing one (TASK-120), the engine's own four
+        (`_crud_actions`) AND the object's OWN acts, when it declares any
+        (relógio, fatia 3/3): `job` narrows itself to `run`/`approve`/
+        `refuse`/`declare`/`disable` (`permissions.NARROWED`), none of which is
+        one of `tables.ACTIONS`, and this is the one place that reads them
+        back into the same list a menu already trusted — a table with no own
+        act (every table but `job` today) answers exactly what it always did,
+        because `permissions.actions` falls back to `tables.ACTIONS` itself
+        and the filter below then keeps nothing.
+        """
+        return self._crud_actions(table) + [
+            action for action in permissions.actions(table)
+            if action not in tables.ACTIONS
+            and self._legal(permissions.needed(table, action))
+        ]
+
     def _project_actions(self) -> list[str]:
         """Which of `create`/`edit` this actor may reach on `project` — the
         projects tree's own context menu (TASK-135), asked the same way
@@ -1379,6 +1434,49 @@ class Handler(BaseHTTPRequestHandler):
         """
         return [action for action in ("create", "edit")
                 if self._legal(permissions.needed(projects.PROJECT, action))]
+
+    def _declarable_payload(self) -> list[dict]:
+        """What the `declare` panel may offer to schedule — every declared
+        table whose CRUD this actor already reaches directly, each with the
+        writes legal to it and, for `create`/`edit`, the fields a row of it
+        takes (relógio, fatia 3/3).
+
+        **`_crud_actions` and not `_table_actions`, on purpose.** The clock's
+        own round (`ask._acted`) only ever runs `create`/`edit`/`cancel`/
+        `delete` for a table — an own act has no branch there and falls into
+        the `edit` one by accident — so offering one here would let a person
+        schedule a `scan` that silently becomes an `edit`. `job` itself is
+        left out: declaring a job that declares a job is not a round the
+        clock is built to run, and the picker is not the place to find out.
+
+        **This is the picker's own honesty, not the ceiling.** §4's "the
+        owner's ceiling, read again on every round" (`ask._ceiling`) is what
+        actually guards every round the clock fires, whoever declared it —
+        this list only keeps the picker from offering what would refuse on
+        the spot, every single time, for THIS actor.
+        """
+        found = []
+        for declared in schema.declared():
+            table = declared.get("id")
+            if not isinstance(table, str) or table == jobs.JOB:
+                continue
+            writes = self._crud_actions(table)
+            if not writes:
+                continue
+            found.append({
+                "key": table,
+                "name": tables.table_name(table, many=True),
+                "actions": [
+                    {
+                        "action": action,
+                        "label": permissions.action_label(action),
+                        "requires_id": action != "create",
+                        "fields": _schema_payload(table) if action in ("create", "edit") else [],
+                    }
+                    for action in writes
+                ],
+            })
+        return found
 
     def _actor(self) -> dict | None:
         """The row this request proved, or `None` — the session's own hop back to
@@ -1667,6 +1765,9 @@ class Handler(BaseHTTPRequestHandler):
         if len(segments) == 3 and segments[0] == "api" and segments[1] == "table":
             self._post_table(segments[2])
             return
+        if segments == ["api", "job"]:
+            self._post_job()
+            return
         if segments == ["api", "offline", "sync"]:
             self._post_offline_sync()
             return
@@ -1858,6 +1959,11 @@ class Handler(BaseHTTPRequestHandler):
                 return
             payload = table_payload(table, show_all="all" in query)
             payload["actions"] = self._table_actions(table)
+            if table == jobs.JOB:
+                # The `declare` panel's own picker (relógio, fatia 3/3) — only
+                # the job table has anything to offer it, and the other
+                # tables answer every request without this leg existing.
+                payload["declarable"] = self._declarable_payload()
             self._json(payload)
             return
 
@@ -2474,6 +2580,64 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"held": True, "answer": answer})
             return
         self._json({"record": _record(table, row)})
+
+    def _post_job(self) -> None:
+        """One act on a `job` — the page's own door to `at.ui.ask.job`
+        (relógio, fatia 3/3), beside `_post_table` and never through it.
+
+        `declare` and `disable` (and `run`/`approve`/`refuse`, read the same
+        way for whichever fatia wires a button to them) are the object's OWN
+        acts (`jobs.ACTS`, `jobs.DECLARE`) — none of them rewrites a field of
+        a row through `tables.edit`, so none of them walks `door.run`, and
+        `door.job` is the one door that already knows how to run each, write
+        its line and version it, exactly as the `cli` does.
+        """
+        payload = self._body()
+        if payload is None:
+            return
+        action = payload.get("action")
+        if action != jobs.DECLARE and action not in jobs.ACTS:
+            self._json({"error": f"unknown action: {action}"}, 400)
+            return
+        # The permission is read off the catalogue like every other write's,
+        # and never composed: `job` narrows `declare` and `disable` to their
+        # own names (`permissions.NARROWED`), so this is the same door
+        # `_post_table` already asks.
+        needed = permissions.needed(jobs.JOB, action)
+        actor = self._actor()
+        if not self._may(
+            needed,
+            owing=lambda: door.denied(
+                jobs.JOB,
+                action,
+                actor=actor,
+                via=audit.WEBAPP,
+                reason=audit.DENIED,
+                saying=i18n.tr(
+                    "permission.denied", permission=permissions.label(needed)
+                ),
+            ),
+        ):
+            return
+        if action == jobs.DECLARE:
+            args = _declare_args(payload)
+            if args is None:
+                self._json({"error": "bad arguments"}, 400)
+                return
+        else:
+            args = [str(payload.get("id"))]
+        try:
+            code, answer = door.job(action, args, actor=actor, via=audit.WEBAPP)
+        except tables.TableError as error:
+            self._json({"error": str(error)}, 400)
+            return
+        except files.ReadOnly as error:
+            self._json({"error": f"read-only: {error.where}"}, 403)
+            return
+        if code != door.OK:
+            self._json({"error": answer}, 400)
+            return
+        self._json({"answer": answer})
 
     def _post_offline_sync(self) -> None:
         """The fila the Service Worker built offline, reconciled in ONE round

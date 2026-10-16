@@ -32,7 +32,8 @@ import FilterPop from "./pops/FilterPop.vue";
 import ColumnsPop from "./pops/ColumnsPop.vue";
 import CreatePop from "./pops/CreatePop.vue";
 import ClosePop from "./pops/ClosePop.vue";
-import type { FieldSpec, RecordField, RecordRef, RecordRow } from "../lib/record";
+import DeclarePop from "./pops/DeclarePop.vue";
+import type { DeclarableTable, FieldSpec, RecordField, RecordRef, RecordRow } from "../lib/record";
 
 const props = withDefaults(
   defineProps<{
@@ -56,9 +57,13 @@ const props = withDefaults(
     // (TASK-120, fatia 1) — the context menu's own content, and never this
     // component's invention. Row-independent: one list for the whole table.
     actions?: string[];
+    // O PAINEL DE DECLARAR (relógio, fatia 3/3): o que há para agendar,
+    // presente só no payload da tabela `job` — nas demais `actions` nunca
+    // traz `declare`, e o menu nem lê este prop.
+    declarable?: DeclarableTable[];
   }>(),
   { schema: () => [], viewKey: null, page: null, rule: false, defaults: null,
-    actions: () => [] },
+    actions: () => [], declarable: () => [] },
 );
 
 const emit = defineEmits<{
@@ -348,6 +353,13 @@ function openCreate(at: { anchor?: HTMLElement | null; point?: { x: number; y: n
   openPop("create:" + props.entity, CreatePop, { entity: props.entity, schema: fields.value }, at);
 }
 
+// O PAINEL DE DECLARAR (relógio, fatia 3/3) — ao lado de `openCreate` e pelo
+// mesmo motivo: `declare` só chega em `props.actions` para a tabela `job`
+// (`_table_actions`), e é `props.declarable` que traz o que há para agendar.
+function openDeclare(at: { anchor?: HTMLElement | null; point?: { x: number; y: number } }): void {
+  openPop("declare:" + props.entity, DeclarePop, { declarable: props.declarable }, at);
+}
+
 // THE HEADER'S RIGHT CLICK, THROUGH THE ONE DOOR (TASK-120, fatia 1): a menu
 // opens at the pointer, with "columns" and — when the engine says this actor
 // may (TASK-121) — "create" beside it. The anchor is captured HERE, at open
@@ -359,6 +371,9 @@ function openHeaderMenu(ev: MouseEvent): void {
   if (props.actions.includes("create")) {
     items.push({ label: word("create"), action: () => openCreate({ anchor }) });
   }
+  if (props.actions.includes("declare")) {
+    items.push({ label: word("declare"), action: () => openDeclare({ anchor }) });
+  }
   openContextMenu(ev, items);
 }
 
@@ -368,10 +383,16 @@ function openHeaderMenu(ev: MouseEvent): void {
 // refused above (`openHeaderMenu`'s early return); here there is no row menu
 // to refuse it from, so the check is this function's own.
 function openEmptyMenu(ev: MouseEvent): void {
-  if (props.rule || !props.actions.includes("create")) return;
-  openContextMenu(ev, [
-    { label: word("create"), action: () => openCreate({ point: { x: ev.clientX, y: ev.clientY } }) },
-  ]);
+  if (props.rule) return;
+  const point = { x: ev.clientX, y: ev.clientY };
+  const items: MenuItem[] = [];
+  if (props.actions.includes("create")) {
+    items.push({ label: word("create"), action: () => openCreate({ point }) });
+  }
+  if (props.actions.includes("declare")) {
+    items.push({ label: word("declare"), action: () => openDeclare({ point }) });
+  }
+  if (items.length) openContextMenu(ev, items);
 }
 
 // A ROW'S RIGHT CLICK (and the context-menu key, Shift+F10, and a touch
@@ -398,6 +419,14 @@ function openRowMenu(ev: MouseEvent, rec: RecordRow): void {
   if (props.actions.includes("delete")) {
     items.push({ label: word("delete"), action: () => deleteRow(rec) });
   }
+  // O RELÓGIO, FATIA 3/3: `disable` É O JOB's OWN ACT, do mesmo jeito
+  // `cancel`/`delete` já são — row-independent, como todo este menu (o
+  // DOCSTRING de `_table_actions` é a regra): tentar desligar um job que já
+  // não está `scheduled` chega ao mesmo lugar que cancelar um já cancelado
+  // chega hoje, um toast com a recusa do motor.
+  if (props.actions.includes("disable")) {
+    items.push({ label: word("disable"), action: () => disableRow(rec) });
+  }
   openContextMenu(ev, items);
 }
 
@@ -412,6 +441,20 @@ async function deleteRow(rec: RecordRow): Promise<void> {
   if (!(await ask(word("delete_confirm").replace("{name}", name)))) return;
   try {
     await post("/api/table/" + encodeURIComponent(props.entity), { action: "delete", id: rec.id });
+    poke();
+  } catch (err) {
+    toast((err as Error).message);
+  }
+}
+
+// `disable` NÃO ANDA POR `/api/table` (relógio, fatia 3/3): é um ato PRÓPRIO
+// do `job` (`jobs.ACTS`), e a porta é a sua, `/api/job` — a mesma distinção
+// que já vale no servidor (`_post_job`, nunca `_post_table`).
+async function disableRow(rec: RecordRow): Promise<void> {
+  const name = rec.title || String(rec.id);
+  if (!(await ask(word("disable_confirm").replace("{name}", name)))) return;
+  try {
+    await post("/api/job", { action: "disable", id: rec.id });
     poke();
   } catch (err) {
     toast((err as Error).message);
