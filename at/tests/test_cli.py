@@ -1,8 +1,12 @@
 """Dispatch: which word reaches what, and what an unknown one costs.
 
-`at-cli` with no word prints the help — the Control Panel is a screen for whoever
-does not type commands, and it is not built yet. So there is no path here that
-can pop a window, and the suite that runs on a build machine stays awake.
+`at-cli` with no word opens the Control Panel (§5, TASK-169 fatia 1/3) — the
+browser, on the app itself. The module under test here is dispatch, not the
+local mode's own server/browser/idle-death machinery (`test_webapp_local.py`
+is that), so every test that reaches the wordless path replaces
+`local.run` the same way `TheWebappWords` already replaces `webapp.run` — no
+path here pops a real window, and the suite that runs on a build machine
+stays awake.
 """
 
 from __future__ import annotations
@@ -19,6 +23,7 @@ from at import __version__, i18n
 from at.core import boot, paths
 from at.ui.cli import OK, USAGE, _lang, _webapp, main, tree
 from at.ui.webapp import app as webapp
+from at.ui.webapp import local
 
 
 class Dispatch(unittest.TestCase):
@@ -55,10 +60,12 @@ class Dispatch(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn(__version__, text)
 
-    def test_no_word_at_all_answers_with_the_help(self):
-        code, text = self.run_words()
-        self.assertEqual(code, 0)
-        self.assertIn(i18n.tr("cli.help.title", version=__version__), text)
+    def test_no_word_at_all_opens_the_local_app(self):
+        with mock.patch.object(local, "run", return_value=OK) as started:
+            code, text = self.run_words()
+        self.assertEqual(code, OK)
+        started.assert_called_once_with()
+        self.assertEqual(text, "")
 
     def test_an_unknown_word_is_a_usage_error(self):
         code, text = self.run_words("nowhere")

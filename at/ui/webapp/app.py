@@ -207,6 +207,13 @@ BASIC_KEY = "basic_auth"
 # every language (§3: the brand is not translated).
 REALM = "AT"
 
+# The cookie the LOCAL MODE's one-time token becomes, once a request has shown
+# it (TASK-169, fatia 1/3; `at.ui.webapp.local`). It is its OWN cookie and not
+# `session.COOKIE`: that one answers for an ACTOR Forms proved, and the local
+# mode proves no actor at all — Forms is off in it — it proves the MACHINE,
+# once, with a value drawn at boot and never written to disk.
+LOCAL_COOKIE = "at_local"
+
 # The header the gate asserts the identity on. It is the provider's own word for
 # it (Authelia's answer to the Caddy's `forward_auth`, copied onto the request
 # by the Caddy's `copy_headers`) and it is a MACHINE word, like the realm: it
@@ -525,6 +532,19 @@ def basic_pair(value: str) -> tuple[str, str] | None:
         return None
     name, found, credential = raw.partition(":")
     return (name, credential) if found else None
+
+
+def _cookie_named(header: str | None, name: str) -> str | None:
+    """A cookie's value by NAME, read by hand — the same guard `session.token_of`
+    already keeps (a stranger's `Cookie` header is never let raise), for the one
+    more cookie this file owns (`LOCAL_COOKIE`)."""
+    if not header:
+        return None
+    for piece in header.split(";"):
+        key, _, value = piece.strip().partition("=")
+        if key == name:
+            return value.strip() or None
+    return None
 
 
 # ------------------------------------------------------------------ api ---
@@ -1068,6 +1088,11 @@ class Handler(BaseHTTPRequestHandler):
     # The session of the request being served, until `_in` computes it.
     _held: object = _UNASKED
 
+    # The `Set-Cookie` the LOCAL MODE's token earns this request, if any — see
+    # `_local_gate`. `None` for every request outside that mode, which is every
+    # request `at-cli webapp` ever serves.
+    _local_cookie: str | None = None
+
     def handle_one_request(self) -> None:
         """One request — and the session of THAT one starts empty.
 
@@ -1079,6 +1104,7 @@ class Handler(BaseHTTPRequestHandler):
         is where the emptying belongs, whatever the protocol does later.
         """
         self._held = _UNASKED
+        self._local_cookie = None
         super().handle_one_request()
 
     # ------------------------------------------------------------ output --
@@ -1092,6 +1118,12 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         for name, value in (extra or {}).items():
             self.send_header(name, value)
+        if self._local_cookie:
+            # A SEGUNDA linha de `Set-Cookie` que uma resposta pode levar — a
+            # primeira é a `extra` acima, que nenhuma rota do modo local usa
+            # (o Forms está desligado nele). Duas linhas do mesmo nome são o
+            # jeito certo de um cabeçalho HTTP carregar mais de um cookie.
+            self.send_header("Set-Cookie", self._local_cookie)
         self.end_headers()
         if self.command != "HEAD":
             self.wfile.write(body)
@@ -1134,6 +1166,48 @@ class Handler(BaseHTTPRequestHandler):
 
     def _not_found(self) -> None:
         self._text("not found\n", status=404)
+
+    # ------------------------------------------------------------ local mode --
+
+    def _local_gate(self) -> bool:
+        """The LOCAL MODE's own portão (TASK-169, fatia 1/3) — answering, when
+        it does not open.
+
+        Outside that mode `self.server.local_token` is `None` and the question
+        is not even asked: this is `at-cli webapp`'s server, with the entrance
+        of §3 and nothing of this file's. INSIDE it, Forms is off by the mode's
+        own decision — nobody is asked who they are — so this is the one guard
+        standing between the loopback and whoever else is on the machine: the
+        token the process sorteou at boot, and only the browser the process
+        itself opened ever saw it.
+
+        It runs BEFORE `_gate`, over EVERY request this handler answers — the
+        page, the look and the API alike, which is a wider reach than `_gate`'s
+        own (§3's page is public on purpose; this mode has no public page to
+        be, because the whole point of the token is that no OTHER process on
+        this machine gets to ask it anything at all.
+
+        The token travels twice and differently: in the URL's `?k=`, the one
+        time the browser is handed it (the boot's own `webbrowser.open`), and
+        from then on in a cookie THIS request earns the moment it proves the
+        query carried the right value — `_send` is what writes it out, because
+        a refusal answered here never reaches that far. A cookie already
+        correct skips the query — asking the query again on every request
+        would be a URL this page would have to keep rewriting into every link
+        it draws.
+        """
+        token = self.server.local_token
+        if token is None:
+            return True
+        carried = _cookie_named(self.headers.get("Cookie"), LOCAL_COOKIE)
+        if carried is not None and secrets.compare_digest(carried, token):
+            return True
+        given = parse_qs(urlparse(self.path).query).get("k", [None])[0]
+        if given is not None and secrets.compare_digest(given, token):
+            self._local_cookie = f"{LOCAL_COOKIE}={token}; Path=/; HttpOnly; SameSite=Strict"
+            return True
+        self._json({"error": i18n.tr("webapp.local_denied")}, 403)
+        return False
 
     # ---------------------------------------------------------- the entrance --
 
@@ -1614,6 +1688,8 @@ class Handler(BaseHTTPRequestHandler):
     # -------------------------------------------------------------- verbs --
 
     def do_GET(self) -> None:  # noqa: N802 — the name http.server dispatches on
+        if not self._local_gate():
+            return
         try:
             self._route()
         except tables.TableError as refused:
@@ -1696,6 +1772,8 @@ class Handler(BaseHTTPRequestHandler):
         self._page(UI_DIR / "index.html")
 
     def do_POST(self) -> None:  # noqa: N802
+        if not self._local_gate():
+            return
         segments = [part for part in urlparse(self.path).path.split("/") if part]
         # The entrance first, and above the gate: it is the write that OPENS a
         # session, so it is the one write that cannot already have one.
@@ -2773,17 +2851,23 @@ class Server(ThreadingHTTPServer):
     depois do servidor ter fechado. É a mesma razão do relógio ser DAEMON
     (`beat`'s own docstring): o que fica de pé morre com o processo, e nada
     tem de derrubá-lo à mão.
+
+    **`local_token` é do MODO LOCAL** (TASK-169, fatia 1/3; `at.ui.webapp.local`)
+    e `None` em toda outra subida — é o que `Handler._local_gate` pergunta antes
+    de qualquer outra coisa, e com ele ausente a pergunta nem se faz.
     """
 
     daemon_threads = True
 
     def __init__(self, address: tuple[str, int],
-                 handler: type[BaseHTTPRequestHandler], asks: bool = True) -> None:
+                 handler: type[BaseHTTPRequestHandler], asks: bool = True,
+                 local_token: str | None = None) -> None:
         super().__init__(address, handler)
         self.sessions = session.Sessions()
         self.strongbox_links = strongbox_links.Links()
         self.events = events.Broadcaster()
         self.asks = asks
+        self.local_token = local_token
 
 
 def loopback(name: str) -> bool:
@@ -2830,8 +2914,9 @@ def chosen_host() -> str:
     return held.strip() if isinstance(held, str) and held.strip() else HOST
 
 
-def make_server(port: int = DEFAULT_PORT, host: str = HOST, asks: bool = True) -> Server:
-    return Server((host, port), Handler, asks=asks)
+def make_server(port: int = DEFAULT_PORT, host: str = HOST, asks: bool = True,
+                 local_token: str | None = None) -> Server:
+    return Server((host, port), Handler, asks=asks, local_token=local_token)
 
 
 def _declare_backup() -> None:
@@ -2874,6 +2959,19 @@ def _declare_backup() -> None:
             jobs.STATUS: jobs.SCHEDULED,
         },
     )
+
+
+def start_clock(server: "Server") -> None:
+    """O relógio, de pé — o backup pré-declarado e a THREAD daemon que
+    `beat` roda nela (§4, item 24).
+
+    **Uma função só porque duas subidas precisam das duas mesmas linhas**:
+    `run`, e o modo local (`at.ui.webapp.local`, TASK-169, fatia 1/3) — as
+    duas erguem o MESMO relógio, pelo mesmo motivo, e repeti-lo seria a cópia
+    que um dia diverge.
+    """
+    _declare_backup()
+    threading.Thread(target=beat, args=(server,), daemon=True, name=CLOCK_THREAD).start()
 
 
 def beat(server: "Server | None" = None, times: int | None = None,
@@ -3235,8 +3333,7 @@ def run(port: int = DEFAULT_PORT, public_port: int | None = None,
     # round reach the `Broadcaster` every open tab's `/api/events` subscribed to.
     # And the backup's own job is declared before it beats once (TASK-133): the
     # round that copies the folder on its own has no other door to be born by.
-    _declare_backup()
-    threading.Thread(target=beat, args=(server,), daemon=True, name=CLOCK_THREAD).start()
+    start_clock(server)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

@@ -2923,6 +2923,48 @@ class TheDevServer(ServerCase):
         self.assertEqual(len(tables.rows("task")), 2)
 
 
+class TheLocalGate(ServerCase):
+    """The LOCAL MODE's own portão (TASK-169, fatia 1/3): the one-time token,
+    and the cookie it earns.
+
+    `asks=False` here is NOT the dev server's own loophole (`TheDevServer`) —
+    it is the mode's decision that Forms is off (`at.ui.webapp.local`). What
+    this class proves is the guard ABOVE that: `local_token` closes the whole
+    server, page and API alike, to anybody who never showed the token.
+    """
+
+    server_args = {"asks": False, "local_token": "s3cr3t-token"}
+
+    def test_a_request_with_neither_token_nor_cookie_is_refused(self):
+        status, _, body = self.get("/")
+        self.assertEqual(status, 403)
+        self.assertIn(i18n.tr("webapp.local_denied"), body.decode("utf-8"))
+
+    def test_the_api_is_refused_the_same_way(self):
+        self.assertEqual(self.status("/api/state"), 403)
+
+    def test_a_wrong_token_is_refused(self):
+        self.assertEqual(self.status("/?k=not-it"), 403)
+
+    def test_the_right_token_opens_the_door_and_hands_back_a_cookie(self):
+        status, headers, _ = self.get("/?k=s3cr3t-token")
+        self.assertEqual(status, 200)
+        self.assertIn("at_local=s3cr3t-token", headers.get("Set-Cookie", ""))
+
+    def test_the_cookie_alone_opens_every_following_request(self):
+        self.assertEqual(
+            self.status("/api/state", headers={"Cookie": "at_local=s3cr3t-token"}),
+            200,
+        )
+
+    def test_a_write_is_gated_before_it_even_reaches_the_entrance(self):
+        # `do_POST` opens with `/api/session` and `/api/first`, two writes that
+        # normally answer with NO session at all — and the local gate sits
+        # ABOVE both, so a stranger with no token reaches neither.
+        status, _ = self.post("/api/session", {"name": "x", "credential": "y"})
+        self.assertEqual(status, 403)
+
+
 class TheArtifact(unittest.TestCase):
     """The switch between the checkout and the bundle — `paths.source`.
 

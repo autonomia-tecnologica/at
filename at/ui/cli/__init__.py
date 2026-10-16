@@ -60,12 +60,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         return REFUSED
 
     if not words:
-        # The Control Panel is a screen for whoever does not type commands, and
-        # it is not built yet: the wordless command answers with the help, which
-        # is the shape §5 already declares for it. Managing AT stays in the
-        # `cli`, where a person and a machine reach the same door.
-        print(tree.as_text())
-        return OK
+        # The Control Panel is a screen for whoever does not type commands
+        # (§5) — and it is this one now (TASK-169, fatia 1/3): the wordless
+        # command opens the browser on the app itself, on a port nobody
+        # types and behind a token nobody but that browser ever saw.
+        # Managing AT stays in the `cli`, where a person and a machine reach
+        # the same door — `help` still prints the tree this used to.
+        from at.ui.webapp import local
+
+        return local.run()
 
     word, rest = words[0], words[1:]
 
