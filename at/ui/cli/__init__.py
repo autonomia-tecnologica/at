@@ -56,9 +56,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     if words[:1] in (["install"], ["uninstall"]):
         return _installed(words[0], words[1:])
 
-    if not boot.ensure_working_folder():
-        return REFUSED
-
     if not words:
         # The Control Panel is a screen for whoever does not type commands
         # (§5) — and it is this one now (TASK-169, fatia 1/3): the wordless
@@ -66,9 +63,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         # types and behind a token nobody but that browser ever saw.
         # Managing AT stays in the `cli`, where a person and a machine reach
         # the same door — `help` still prints the tree this used to.
+        #
+        # **And it runs BEFORE `ensure_working_folder`, on purpose** (TASK-169,
+        # fatia 2/3): that gate asks in the TERMINAL, and the wordless command
+        # is exactly the one with none to ask in. A folder that does not exist
+        # yet is not refused here — the browser asks instead, the same
+        # question, on the one screen this mode has (`webapp.entry_payload`'s
+        # `folder`, `/api/folder`).
         from at.ui.webapp import local
 
         return local.run()
+
+    if not boot.ensure_working_folder():
+        return REFUSED
 
     word, rest = words[0], words[1:]
 

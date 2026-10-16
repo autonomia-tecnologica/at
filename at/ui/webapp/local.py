@@ -1,6 +1,15 @@
 """O modo LOCAL: `at-cli` sem palavra sobe o app numa porta efêmera, abre o
 navegador e morre com ele (TASK-169, fatia 1/3).
 
+**E sobe SEM pasta nenhuma, se for o caso** (TASK-169, fatia 2/3): o que
+pedia um terminal — `boot.ensure_working_folder` — não corre antes deste
+modo, que não tem um. A pergunta é a MESMA, só que feita na própria tela
+(`webapp.entry_payload`'s `folder`, `POST /api/folder`): confirmando, a
+pasta nasce (`boot.create_working_folder`) e a navegação segue para onde já
+seguia; recusando, nada é escrito e a janela se fecha — a terceira morte
+deste módulo, ao lado das duas de baixo (`folder_cancelled`, em
+`_end_on_cancel` e no fim de `_idle_watch`).
+
 **Forms nasce desligado neste modo** — é a decisão já tomada no backlog, e é
 o que faz `run` chamar `webapp.make_server(asks=False, ...)`: não há ator a
 provar, e a tela de entrada nunca é desenhada. O que protege a porta não é
@@ -118,10 +127,20 @@ def _idle_watch(server: "webapp.Server", timeout: float,
     O sinal de vida É a conexão `/api/events` de uma aba aberta
     (`webapp.events.Broadcaster`, `len(server.events)`); nada aqui lê o
     conteúdo de um aviso, só se existe alguém ouvindo.
+
+    **E a RECUSA da pergunta da pasta é uma terceira morte** (TASK-169,
+    fatia 2/3): sem moldura não há processo nenhum para fechar — a aba é uma
+    aba do navegador padrão —, então é esta rodada que confere
+    `server.folder_cancelled`. `getattr` porque `TheIdleWatch`, abaixo, prova
+    esta função com um `_Server` de mentira que não carrega o campo — e um
+    servidor de verdade sempre carrega.
     """
     quiet_since: float | None = None
     while True:
         pause(poll)
+        cancelled = getattr(server, "folder_cancelled", None)
+        if cancelled is not None and cancelled.is_set():
+            return
         if len(server.events) > 0:
             quiet_since = None
             continue
@@ -130,6 +149,16 @@ def _idle_watch(server: "webapp.Server", timeout: float,
             quiet_since = now
         elif now - quiet_since >= timeout:
             return
+
+
+def _end_on_cancel(server: "webapp.Server", process: subprocess.Popen) -> None:
+    """Fecha a janela com moldura quando a pergunta da pasta é recusada na
+    própria tela (TASK-169, fatia 2/3) — a MESMA morte que fechá-la por fora
+    já era, só que avisada de dentro. Dorme no evento; numa pasta confirmada
+    ele nunca é marcado, e esta thread (daemon) morre com o processo sem
+    jamais acordar."""
+    server.folder_cancelled.wait()
+    process.terminate()
 
 
 def run(opener: Callable[[str], Opened] = open_browser,
@@ -157,6 +186,12 @@ def run(opener: Callable[[str], Opened] = open_browser,
     try:
         if opened is not None:
             process, _profile = opened
+            # A RECUSA NA PRÓPRIA TELA (TASK-169, fatia 2/3): pode chegar
+            # antes de qualquer pasta existir, e fechar a janela do mesmo
+            # jeito que o X dela já fechava — daemon, então morre sozinha se
+            # a pasta for confirmada e a janela só fechar depois, por fora.
+            threading.Thread(target=_end_on_cancel, args=(server, process),
+                              daemon=True, name="at-local-cancel").start()
             try:
                 process.wait()
             except KeyboardInterrupt:

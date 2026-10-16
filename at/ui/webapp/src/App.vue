@@ -39,6 +39,7 @@ import StrongboxViewer from "./components/StrongboxViewer.vue";
 import KindView from "./views/KindView.vue";
 import LoginView from "./views/LoginView.vue";
 import SetupView from "./views/SetupView.vue";
+import FolderView from "./views/FolderView.vue";
 
 // WHEN THE BALLOON FLIES. The first two are not the page's to decide: the CORE's
 // switch is on (`store.interpreter` — off, there is no function at all), and this
@@ -483,6 +484,11 @@ defineExpose({ refresh });
     <StrongboxViewer v-if="viewer.file" />
     </template>
   </template>
+  <!-- A PASTA vem ANTES de tudo (TASK-169, fatia 2/3): sem ela não há admin,
+       não há tabela, não há nada — e é por isso que `session.folder` é
+       conferido ANTES de `session.first` abaixo, embora os dois nunca
+       estejam juntos (sem pasta o servidor não conta admin nenhum). -->
+  <FolderView v-else-if="!signedIn && session.ready && session.folder" />
   <!-- A PRIMEIRA SUBIDA vem ANTES da entrada, e as duas são o mesmo `else`:
        uma pasta sem administrador não tem credencial nenhuma para conferir, e
        a entrada desenhada ali seria um formulário que ninguém poderia ganhar.

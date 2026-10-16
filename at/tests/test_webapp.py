@@ -1715,7 +1715,8 @@ class TheEntrance(ServerCase):
         answer = json.loads(body)
         self.assertEqual(
             sorted(set(answer)
-                   - {"auth", "first", "actor", "lang", "labels", "version"}), [])
+                   - {"auth", "first", "folder", "actor", "lang", "labels",
+                      "version"}), [])
 
     def test_the_words_of_the_entrance_arrive_in_both_languages(self):
         # The first screen AT ever shows speaks the active language, and it
@@ -3641,6 +3642,108 @@ class TheFirstRun(ServerCase):
         dev = webapp.entry_payload(None, asks=False)
         self.assertIs(dev["first"], False)
         self.assertIs(dev["auth"], False)
+
+
+class TheFolderConfirmation(unittest.TestCase):
+    """A pasta que ainda não existe — a pergunta que o terminal faz
+    (`boot.ensure_working_folder`), feita pela página porque o modo local não
+    tem terminal nenhum para fazê-la (TASK-169, fatia 2/3).
+
+    Sem `boot.create_working_folder()` nenhum no `setUp`, de propósito: é
+    exatamente o estado que esta classe prova.
+    """
+
+    def setUp(self):
+        self.scratch = tempfile.TemporaryDirectory()
+        self.root = Path(self.scratch.name)
+        self.env = mock.patch.dict(
+            os.environ, {"AT_ROOT": str(self.root), "AT_LANG": "pt_BR"}
+        )
+        self.env.start()
+        i18n.reset()
+        self.server = webapp.make_server(0, asks=False)
+        self.port = self.server.server_address[1]
+        self.thread = threading.Thread(
+            target=self.server.serve_forever,
+            kwargs={"poll_interval": POLL}, daemon=True,
+        )
+        self.thread.start()
+
+    def tearDown(self):
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join(timeout=5)
+        self.env.stop()
+        i18n.reset()
+        self.scratch.cleanup()
+
+    def url(self, path: str) -> str:
+        return f"http://127.0.0.1:{self.port}{path}"
+
+    def get(self, path: str) -> tuple[int, bytes]:
+        request = urllib.request.Request(self.url(path))
+        with urllib.request.urlopen(request) as answer:
+            return answer.status, answer.read()
+
+    def post(self, path: str, payload: object) -> tuple[int, dict]:
+        body = json.dumps(payload).encode("utf-8")
+        request = urllib.request.Request(
+            self.url(path), data=body, method="POST",
+            headers={"Content-Type": "application/json"},
+        )
+        try:
+            with urllib.request.urlopen(request) as answer:
+                return answer.status, json.loads(answer.read())
+        except urllib.error.HTTPError as error:
+            raw = error.read()
+            error.close()
+            return error.code, json.loads(raw)
+
+    def test_the_entry_says_there_is_no_folder_yet(self):
+        _, body = self.get("/api/session")
+        answer = json.loads(body)
+        self.assertIs(answer["folder"], True)
+        # Sem pasta não há admin a contar, e o modo local não pergunta quem
+        # entra de qualquer forma — as duas ficam falsas pelo mesmo motivo
+        # que já valiam antes desta fatia.
+        self.assertIs(answer["auth"], False)
+        self.assertIs(answer["first"], False)
+
+    def test_the_entry_carries_the_terminals_own_sentence(self):
+        _, body = self.get("/api/session")
+        labels = json.loads(body)["labels"]
+        self.assertIn(
+            str(paths.working_folder()),
+            labels["boot.first_run.notice"]["pt_BR"],
+        )
+
+    def test_confirming_creates_the_folder(self):
+        status, answer = self.post("/api/folder", {"confirm": True})
+        self.assertEqual(status, 200)
+        self.assertTrue(answer["created"])
+        self.assertTrue(settings.exists())
+        _, body = self.get("/api/session")
+        self.assertIs(json.loads(body)["folder"], False)
+
+    def test_refusing_writes_nothing_and_marks_the_server_cancelled(self):
+        status, answer = self.post("/api/folder", {"confirm": False})
+        self.assertEqual(status, 200)
+        self.assertTrue(answer["cancelled"])
+        self.assertFalse(settings.exists())
+        self.assertTrue(self.server.folder_cancelled.is_set())
+
+    def test_anything_short_of_an_explicit_confirm_is_a_refusal(self):
+        # Fail-closed, como §3 já é: só `True` explícito escreve algo.
+        status, answer = self.post("/api/folder", {})
+        self.assertEqual(status, 200)
+        self.assertTrue(answer["cancelled"])
+        self.assertFalse(settings.exists())
+
+    def test_a_folder_that_already_exists_refuses_the_route(self):
+        with redirect_stdout(io.StringIO()):
+            boot.create_working_folder()
+        status, _ = self.post("/api/folder", {"confirm": True})
+        self.assertEqual(status, 400)
 
 
 class TheDerivedKeys(unittest.TestCase):

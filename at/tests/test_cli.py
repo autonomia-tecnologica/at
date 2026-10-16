@@ -67,6 +67,18 @@ class Dispatch(unittest.TestCase):
         started.assert_called_once_with()
         self.assertEqual(text, "")
 
+    def test_no_word_at_all_never_asks_the_terminal_for_the_folder(self):
+        # TASK-169, fatia 2/3: o modo local não tem terminal, e é por isso
+        # que ele corre ANTES de `ensure_working_folder` — mesmo numa pasta
+        # que ainda não existe (o `boot.create_working_folder` do `setUp`
+        # desta classe fica sem efeito aqui, porque este caminho nem olha
+        # para ele).
+        with mock.patch.object(boot, "ensure_working_folder") as asked, \
+             mock.patch.object(local, "run", return_value=OK):
+            code, _ = self.run_words()
+        self.assertEqual(code, OK)
+        asked.assert_not_called()
+
     def test_an_unknown_word_is_a_usage_error(self):
         code, text = self.run_words("nowhere")
         self.assertEqual(code, 2)

@@ -8,18 +8,21 @@ suíte abre um navegador de verdade, nem espera minutos por um timeout real.
 from __future__ import annotations
 
 import io
+import json
 import os
 import re
 import socket
 import tempfile
+import threading
 import time
 import unittest
+import urllib.request
 from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
 
 from at import i18n
-from at.core import boot
+from at.core import boot, settings
 from at.ui.webapp import local
 
 
@@ -28,9 +31,13 @@ class _FakeProcess:
 
     def __init__(self) -> None:
         self.waited = False
+        self.terminated = False
 
     def wait(self) -> None:
         self.waited = True
+
+    def terminate(self) -> None:
+        self.terminated = True
 
 
 class TheRun(unittest.TestCase):
@@ -91,6 +98,66 @@ class TheRun(unittest.TestCase):
         self.assertTrue(captured["url"].startswith("http://127.0.0.1:"))
 
 
+class TheRunWithoutAFolder(unittest.TestCase):
+    """O modo local sobe MESMO SEM pasta nenhuma (TASK-169, fatia 2/3): quem
+    pergunta é a própria tela, pela porta `/api/folder` — sem
+    `boot.create_working_folder()` nenhum no `setUp`, de propósito.
+    """
+
+    def setUp(self) -> None:
+        self.scratch = tempfile.TemporaryDirectory()
+        self.env = mock.patch.dict(
+            os.environ, {"AT_ROOT": self.scratch.name, "AT_LANG": "pt_BR"},
+        )
+        self.env.start()
+        i18n.reset()
+
+    def tearDown(self) -> None:
+        self.env.stop()
+        i18n.reset()
+        self.scratch.cleanup()
+
+    def _confirm(self, url: str, confirm: bool) -> None:
+        # O TOKEN de uso único (fatia 1/3) guarda toda rota deste modo,
+        # `/api/folder` incluída — a query carrega o `?k=` que a própria
+        # tela usaria. `url` é `http://host:porta/?k=...`, e o `/` antes do
+        # `?` é exatamente onde `api/folder` entra no lugar do vazio.
+        root, _, query = url.partition("?")
+        body = json.dumps({"confirm": confirm}).encode("utf-8")
+        request = urllib.request.Request(
+            f"{root}api/folder?{query}", data=body,
+            method="POST", headers={"Content-Type": "application/json"},
+        )
+        urllib.request.urlopen(request).close()
+
+    def test_confirming_through_the_page_creates_the_folder(self) -> None:
+        process = _FakeProcess()
+        profile = tempfile.mkdtemp()
+
+        def opener(url: str):
+            self._confirm(url, True)
+            return process, profile
+
+        with redirect_stdout(io.StringIO()):
+            code = local.run(opener=opener)
+        self.assertEqual(code, 0)
+        self.assertTrue(settings.exists())
+
+    def test_refusing_through_the_page_ends_the_framed_window(self) -> None:
+        process = _FakeProcess()
+        profile = tempfile.mkdtemp()
+
+        def opener(url: str):
+            self._confirm(url, False)
+            return process, profile
+
+        with redirect_stdout(io.StringIO()):
+            code = local.run(opener=opener)
+        self.assertEqual(code, 0)
+        self.assertFalse(settings.exists())
+        self.assertTrue(process.terminated)
+
+
 class TheIdleWatch(unittest.TestCase):
     """`_idle_watch` alone: no server, no process, just the broadcaster's own
     count of open tabs."""
@@ -105,6 +172,34 @@ class TheIdleWatch(unittest.TestCase):
     class _Server:
         def __init__(self, count: int) -> None:
             self.events = TheIdleWatch._Events(count)
+
+    def test_a_refused_folder_ends_the_watch_too(self) -> None:
+        # A terceira morte (TASK-169, fatia 2/3): sem moldura não há processo
+        # para fechar, e é esta rodada que confere a recusa.
+        server = self._Server(0)
+        server.folder_cancelled = threading.Event()
+        server.folder_cancelled.set()
+        ticks = {"n": 0}
+
+        def pause(seconds: float) -> None:
+            ticks["n"] += 1
+
+        local._idle_watch(server, timeout=10, pause=pause, poll=0.01)
+        self.assertEqual(ticks["n"], 1)
+
+    def test_a_fake_server_with_no_such_field_is_untouched(self) -> None:
+        # Os testes acima, que já existiam, não carregam `folder_cancelled` —
+        # e a conferência tem de deixá-los exatamente como estavam.
+        server = self._Server(1)
+        ticks = {"n": 0}
+
+        def pause(seconds: float) -> None:
+            ticks["n"] += 1
+            if ticks["n"] >= 2:
+                server.events.count = 0
+
+        local._idle_watch(server, timeout=0.02, pause=pause, poll=0.01)
+        self.assertGreaterEqual(ticks["n"], 2)
 
     def test_it_returns_once_the_quiet_outlasts_the_timeout(self) -> None:
         server = self._Server(0)
@@ -131,6 +226,40 @@ class TheIdleWatch(unittest.TestCase):
 
         local._idle_watch(server, timeout=0.02, pause=pause, poll=0.01)
         self.assertGreater(calls["n"], 2)
+
+
+class TheCancelWatch(unittest.TestCase):
+    """`_end_on_cancel`: a recusa da pasta fecha a janela com moldura
+    (TASK-169, fatia 2/3) — a mesma morte que o X dela já era."""
+
+    class _Server:
+        def __init__(self) -> None:
+            self.folder_cancelled = threading.Event()
+
+    class _Process:
+        def __init__(self) -> None:
+            self.terminated = False
+
+        def terminate(self) -> None:
+            self.terminated = True
+
+    def test_the_event_already_set_terminates_at_once(self) -> None:
+        server, process = self._Server(), self._Process()
+        server.folder_cancelled.set()
+        local._end_on_cancel(server, process)
+        self.assertTrue(process.terminated)
+
+    def test_a_folder_confirmed_never_wakes_this_thread(self) -> None:
+        # Sem marcar o evento, `_end_on_cancel` fica dormindo — é o que a
+        # thread daemon de `run` faz na vida inteira de uma pasta confirmada.
+        server, process = self._Server(), self._Process()
+        watcher = threading.Thread(
+            target=local._end_on_cancel, args=(server, process), daemon=True
+        )
+        watcher.start()
+        watcher.join(timeout=0.05)
+        self.assertFalse(process.terminated)
+        self.assertTrue(watcher.is_alive())
 
 
 class TheChromiumDetection(unittest.TestCase):

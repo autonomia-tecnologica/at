@@ -27,6 +27,7 @@ export interface Actor {
 export interface Entry {
   auth: boolean;
   first: boolean;
+  folder: boolean;
   actor: Actor | null;
   lang: string;
   labels: Record<string, Labels>;
@@ -40,6 +41,11 @@ export const session = reactive({
   // responde a isso é a que CRIA o primeiro, e não a que pede a credencial de
   // alguém que não existe.
   first: false,
+  // A PASTA QUE AINDA NÃO EXISTE (TASK-169, fatia 2/3): um passo ANTES da
+  // primeira subida — sem pasta não há admin, não há tabela, não há nada. O
+  // modo local é o único que chega aqui sem ter perguntado nada antes (ele
+  // não pede terminal), e a tela que responde é a que CONFIRMA a pasta.
+  folder: false,
   actor: null as Actor | null,
 });
 
@@ -55,6 +61,7 @@ export const session = reactive({
 export const signedIn = computed(
   () =>
     session.ready &&
+    !session.folder &&
     !session.first &&
     (!session.auth || session.actor !== null),
 );
@@ -64,6 +71,7 @@ export const signedIn = computed(
 export function applyEntry(entry: Entry): void {
   session.auth = entry.auth === true;
   session.first = entry.first === true;
+  session.folder = entry.folder === true;
   session.actor = entry.actor || null;
   if (entry.lang) store.lang = entry.lang;
   // The words enter the SAME store every other screen reads, and in the same
@@ -102,6 +110,16 @@ export async function firstRun(
 ): Promise<void> {
   await post("/api/first", { name, credential, again });
   await enter();
+}
+
+// A PASTA (TASK-169, fatia 2/3): confirmando, o servidor cria o Working
+// Folder e `enter()` lê o que vem depois — `first` ou já a casca, a mesma
+// estrada que já existia. Recusando, não há nada mais a perguntar: o
+// servidor marca a recusa (é o que fecha a janela do outro lado) e esta tela
+// não chama `enter()` de novo — não há pasta para a próxima pergunta ler.
+export async function confirmFolder(confirm: boolean): Promise<void> {
+  await post("/api/folder", { confirm });
+  if (confirm) await enter();
 }
 
 // THE SESSION IS GONE. A 401 under a running page means the server was

@@ -146,6 +146,7 @@ from at.core import (
     assist,
     audit,
     backup,
+    boot,
     clock,
     files,
     gate,
@@ -696,6 +697,32 @@ def _first_words() -> dict:
     return found
 
 
+# As palavras da CONFIRMAÇÃO DA PASTA (TASK-169, fatia 2/3) — o mesmo bloco
+# `boot` que o terminal já lê (`ensure_working_folder`), e não uma segunda
+# frase: quem chega no modo local sem pasta nenhuma lê a MESMA pergunta, só
+# que na tela. `first_run.confirm` fica de fora — é "[s/N]", o prompt do
+# terminal, e a tela pergunta com dois botões (`confirm_ok`/`confirm_cancel`,
+# que já existem, da casa).
+FOLDER_WORDS = ("first_run.notice", "first_run.cancelled")
+
+
+def _folder_words() -> dict:
+    """As palavras da pasta, com o CAMINHO já embutido — a mesma substituição
+    que `_first_words` já faz pelo piso do Cofre, aqui pelo caminho que
+    `ensure_working_folder` imprimiria no terminal."""
+    folder = str(paths.working_folder())
+    found = {}
+    for key in FOLDER_WORDS:
+        name = f"boot.{key}"
+        rendered = {}
+        for lang, text in i18n.labels(name).items():
+            if key == "first_run.notice":
+                text = text.format(folder=folder)
+            rendered[lang] = text
+        found[name] = rendered
+    return found
+
+
 def entry_payload(open_session: session.Session | None, asks: bool = True) -> dict:
     """Who is in, and the words the entrance needs before anybody is.
 
@@ -736,16 +763,24 @@ def entry_payload(open_session: session.Session | None, asks: bool = True) -> di
     return {
         "auth": asks and actors.can_expose(),
         "first": asks and not actors.admins(),
+        # **A PASTA É ANTES DE TUDO ISSO** (TASK-169, fatia 2/3), e por isso
+        # NÃO depende de `asks`: o modo local não pergunta quem entra, mas
+        # ainda pergunta SE HÁ ONDE entrar — sem pasta não há admin, não há
+        # tabela, não há nada para o resto deste payload descrever. O gate do
+        # terminal é `boot.is_configured()`, e é o mesmo aqui.
+        "folder": not boot.is_configured(),
         "actor": {"name": open_session.name} if open_session else None,
         "lang": i18n.active_code(),
         "version": __version__,
         # The WHOLE language each word, like `/api/state` hands them: the page
         # picks by the language on screen and the server keeps owning the words.
         # The `admin.*` block rides beside them, and it is the same store the
-        # entrance reads (`_first_words`).
+        # entrance reads (`_first_words`). `_folder_words` is its sibling, for
+        # the question one step before it.
         "labels": {
             **{key: i18n.labels(f"webapp.{key}") for key in ENTRY_WORDS},
             **_first_words(),
+            **_folder_words(),
         },
     }
 
@@ -1578,6 +1613,38 @@ class Handler(BaseHTTPRequestHandler):
         """
         return loopback(self.client_address[0])
 
+    def _post_folder(self) -> None:
+        """A confirmação da Pasta de Trabalho, pela página (TASK-169, fatia
+        2/3) — a MESMA pergunta que `boot.ensure_working_folder` faz no
+        terminal, feita aqui porque o modo local não tem um terminal para
+        fazê-la.
+
+        **Acima do portão, como `_post_session` e `_post_first`**: não há
+        sessão nenhuma a exigir de quem a pasta ainda nem existe para
+        guardar — e é a MESMA razão, um passo antes da deles.
+
+        **Confirmando, `boot.create_working_folder()` — sem `ask`.** É a
+        mesma chamada que `at-cli` já faz sem terminal: a única pergunta que
+        ela poderia fazer (a falta do `git`) já responde sozinha que não há
+        onde perguntar, e nada trava por isso.
+
+        **Recusando, nada é escrito.** O que marca a recusa é
+        `server.folder_cancelled` — o sinal que `local.run` já espera para
+        encerrar a janela, a mesma morte que fechá-la por fora já era.
+        """
+        if boot.is_configured():
+            self._json({"error": "bad request"}, 400)
+            return
+        payload = self._body()
+        if payload is None:
+            return
+        if payload.get("confirm") is not True:
+            self.server.folder_cancelled.set()
+            self._json({"cancelled": True})
+            return
+        boot.create_working_folder()
+        self._json({"created": True})
+
     def _post_first(self) -> None:
         """A primeira subida: o formulário da página cria o primeiro admin.
 
@@ -1775,6 +1842,12 @@ class Handler(BaseHTTPRequestHandler):
         if not self._local_gate():
             return
         segments = [part for part in urlparse(self.path).path.split("/") if part]
+        # A PASTA, antes até da entrada (TASK-169, fatia 2/3): sem ela não há
+        # sessão, nem admin, nem nada — é a mesma razão que põe `/api/session`
+        # e `/api/first` acima do portão, um passo antes das duas.
+        if segments == ["api", "folder"]:
+            self._post_folder()
+            return
         # The entrance first, and above the gate: it is the write that OPENS a
         # session, so it is the one write that cannot already have one.
         if segments == ["api", "session"]:
@@ -2855,6 +2928,12 @@ class Server(ThreadingHTTPServer):
     **`local_token` é do MODO LOCAL** (TASK-169, fatia 1/3; `at.ui.webapp.local`)
     e `None` em toda outra subida — é o que `Handler._local_gate` pergunta antes
     de qualquer outra coisa, e com ele ausente a pergunta nem se faz.
+
+    **`folder_cancelled` é a RECUSA da pergunta da pasta** (TASK-169, fatia
+    2/3): `_post_folder` o marca quando a página recusa, e `local.run` é
+    quem dorme nele — é o sinal que fecha a janela do mesmo jeito que
+    fechá-la por fora já fechava. Sempre um `Event` novo, numa pasta
+    confirmada ou não: marcá-lo onde não há ninguém esperando não custa nada.
     """
 
     daemon_threads = True
@@ -2868,6 +2947,7 @@ class Server(ThreadingHTTPServer):
         self.events = events.Broadcaster()
         self.asks = asks
         self.local_token = local_token
+        self.folder_cancelled = threading.Event()
 
 
 def loopback(name: str) -> bool:
