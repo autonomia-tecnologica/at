@@ -566,9 +566,10 @@ def _ask(rest: list[str]) -> int:
 # ------------------------------------------------------------------ the job ---
 
 def _job(rest: list[str]) -> int:
-    """`at-cli job list|view|run|approve|refuse` — the demand that waits (§4).
+    """`at-cli job list|view|run|approve|refuse|declare|disable` — the demand
+    that waits, and the round the clock drives on its own (§4, item 24).
 
-    The five words are the object's OWN, read from the catalogue the way a
+    The seven words are the object's OWN, read from the catalogue the way a
     table's actions are (`permissions.actions`) and not written here, so a word
     the help offers is a word the dispatch accepts and the other way round. What
     they answer is `at.ui.ask.job`, which is the door: the line, the version and

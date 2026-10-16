@@ -87,11 +87,20 @@ DONE = "done"
 SCHEDULED = "scheduled"
 STATES = (WAITING, APPROVED, REFUSED, DONE, SCHEDULED)
 
-# The three acts, in the order the tree offers them.
+# The acts, in the order the tree offers them. `DECLARE` is NOT one of `ACTS`:
+# it takes no single id — it takes the act to declare and the `when` it starts
+# at — and the door reaches it by its own name before `ACTS` is even asked
+# (item 24's fatia 2/3). The other four each answer to ONE row: `RUN` performs
+# the act it holds, `APPROVE`/`REFUSE` are the person's word over a demand that
+# waited, and `DISABLE` is the person's word over a round that was still
+# `scheduled` — the verb `declare`'s own docstring already named as owed
+# (`at.ui.webapp.app._declare_backup`).
 RUN = "run"
 APPROVE = "approve"
 REFUSE = "refuse"
-ACTS = (RUN, APPROVE, REFUSE)
+DECLARE = "declare"
+DISABLE = "disable"
+ACTS = (RUN, APPROVE, REFUSE, DISABLE)
 
 
 class JobError(Exception):
@@ -186,6 +195,40 @@ def hold(
     )
 
 
+def declare(
+    table: str,
+    action: str,
+    leftovers: list[str],
+    values: dict,
+    when: str,
+    *,
+    actor: dict | None = None,
+) -> dict:
+    """The job a person DECLARES, born `scheduled` and never `waiting` —
+    item 24's "a job declared with a when comes round on its own".
+
+    It shares every column `hold` writes, through the same door
+    (`tables.create`), for the same reason: a row is a row. The one thing
+    `hold` computes and this does not is `when` — `hold` carries the instant a
+    demand ARRIVED, which the engine always knows; a declaration carries the
+    instant a person TYPED, which only the schema's own `instant` type can
+    tell apart from a day, a bare word, or nonsense, and refuse by name when
+    it is none of those (`tables._instant`). This module does not parse a
+    second time what the engine already refuses correctly.
+    """
+    return tables.create(
+        JOB,
+        {
+            WHAT: what(table, action),
+            TABLE: table,
+            ARGUMENTS: arguments(leftovers, values),
+            ACTOR: audit.actor_of(actor),
+            WHEN: when,
+            STATUS: SCHEDULED,
+        },
+    )
+
+
 # ------------------------------------------------------------- the life ---
 
 
@@ -266,6 +309,18 @@ def released(row: dict) -> None:
         )
 
 
+def scheduled(row: dict) -> None:
+    """The guard the DISABLE passes: a round the clock still drives, and
+    nothing else — a row that already answered an outcome, or that never
+    was `scheduled`, is refused by name, with the state it is in."""
+    if state(row) != SCHEDULED:
+        raise JobError(
+            "error.not_scheduled",
+            id=shown(row),
+            status=tables.enum_label(JOB, STATUS, state(row)),
+        )
+
+
 def shown(row: dict) -> str:
     """The id a person reads and types back — `JOB-3`, like every other row."""
     number = store.number_of(row)
@@ -291,6 +346,21 @@ def refuse(row: dict) -> dict:
     a record that vanished when it was answered would be a log with holes.
     """
     waiting(row)
+    return tables.edit(JOB, store.number_of(row), {STATUS: REFUSED})
+
+
+def disable(row: dict) -> dict:
+    """The job a person turns OFF: `scheduled` becomes `refused`.
+
+    No sixth state is added for it. `refused` already means "a person said
+    no to this round ever running", which is exactly what turning a
+    schedule off is — reusing it is the one-model rule item 15 already
+    gives `waiting`/`refused`, read for a second kind of row instead of a
+    second value the schema's enum would carry forever. The clock's own gate
+    (`_driven`) is what then keeps it from ever being found by `clock.due`
+    again, the same way a `waiting` row never is.
+    """
+    scheduled(row)
     return tables.edit(JOB, store.number_of(row), {STATUS: REFUSED})
 
 

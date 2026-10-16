@@ -135,6 +135,13 @@ NARROWED: dict[str, dict[str, tuple[str, ...]]] = {
         "run": ("run",),
         "approve": ("approve",),
         "refuse": ("refuse",),
+        # Item 24's fatia 2/3: `declare` writes the row born `scheduled` — a
+        # write like `run`'s, and not the person's word over a demand that
+        # already waited, which is what the two above are. `disable` IS that
+        # word, over a round instead of a demand, so it is priced and guarded
+        # beside `approve`/`refuse` and not beside `declare`.
+        "declare": ("declare",),
+        "disable": ("disable",),
     },
     # `secret scan` reads the folder and reports what it found — it writes no
     # row, so it is a read on §4's scale and it is nobody's approval but the
@@ -286,6 +293,10 @@ MODIFIERS: dict[str, tuple[Modifier, ...]] = {
     "job:run": (Modifier("id", "permission.modifier.job.id", ARGUMENT),),
     "job:approve": (Modifier("id", "permission.modifier.job.id", ARGUMENT),),
     "job:refuse": (Modifier("id", "permission.modifier.job.id", ARGUMENT),),
+    "job:disable": (Modifier("id", "permission.modifier.job.id", ARGUMENT),),
+    "job:declare": (
+        Modifier("--when", "permission.modifier.job.when", FLAG),
+    ),
 }
 
 
@@ -372,6 +383,16 @@ RISK_BY_ACTION: dict[str, float] = {
     # dearer, which is the reason §3 keeps `audit:read` from a machine.
     "approve": RISK_ALLOW,
     "refuse": RISK_ALLOW,
+    # `declare` WRITES a row, the same way `create`/`run` do — it does not
+    # itself bypass the filter: a round the clock rounds under it still faces
+    # the bar, every time, exactly as any other round does.
+    "declare": RISK_WRITE,
+    # `disable` REMOVES what existed — not the row (it stays, `refused`, for
+    # the reason a refusal never deletes), but the schedule's only reason to
+    # be: the rounds it would still have had. The same number `restore`
+    # carries for the same reason, and the one above `declare`'s on purpose —
+    # undoing a schedule is not priced like making one.
+    "disable": RISK_REMOVE,
 }
 
 # The objects whose change is "what the system allows". A read of one of them is

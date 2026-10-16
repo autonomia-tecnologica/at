@@ -594,6 +594,8 @@ def job(
         return code, text
     if action == "view":
         return _viewing(jobs.JOB, args)
+    if action == jobs.DECLARE:
+        return _declared(args, actor=actor, via=via)
     if action not in jobs.ACTS or len(args) != 1:
         return USAGE, tr("job.error.arguments")
 
@@ -614,11 +616,8 @@ def job(
         if action == jobs.RUN:
             return _ran(row)
         _approval(action, actor)
-        settled = jobs.approve(row) if action == jobs.APPROVE else jobs.refuse(row)
-        saying = tr(
-            "job.approved" if action == jobs.APPROVE else "job.refused",
-            id=jobs.shown(settled),
-        )
+        settled = _SETTLED[action](row)
+        saying = tr(_SAID[action], id=jobs.shown(settled))
     except jobs.JobError as refused:
         _line(
             jobs.JOB, action, actor, via, audit.REFUSED, refused.key, str(refused),
@@ -627,6 +626,70 @@ def job(
         return REFUSED, str(refused)
     _line(jobs.JOB, action, actor, via, audit.OK, None, saying, threshold=bar)
     return OK, saying
+
+
+# The person's word over a row, by action — `APPROVE`/`REFUSE` over a demand
+# that waited, `DISABLE` over a round that was still `scheduled`. One map and
+# not a chain of `if`s, so a third word of this shape is a third entry and not
+# a third branch.
+_SETTLED: dict[str, Callable[[dict], dict]] = {
+    jobs.APPROVE: jobs.approve,
+    jobs.REFUSE: jobs.refuse,
+    jobs.DISABLE: jobs.disable,
+}
+
+_SAID: dict[str, str] = {
+    jobs.APPROVE: "job.approved",
+    jobs.REFUSE: "job.refused",
+    jobs.DISABLE: "job.disabled",
+}
+
+
+def _declared(
+    args: list[str], *, actor: dict | None, via: str
+) -> tuple[int, str]:
+    """`job declare <table> <action> [...] [--set field=value ...] --when
+    <instant>` — the row born `scheduled`, through `jobs.declare`.
+
+    `--when` is pulled out first, wherever it sits, because it is not the
+    underlying act's own argument — it is the JOB's, the one thing a
+    declaration adds over the act it holds. What is left is read the way
+    every table act already is (`_sets`): the first two leftovers name the
+    table and the action, and the rest travel on as the act's own.
+    """
+    when, rest = _pulled("--when", args)
+    values, leftovers = _sets(rest)
+    if when is None or len(leftovers) < 2:
+        return USAGE, tr("job.error.arguments")
+    table, action, leftovers = leftovers[0], leftovers[1], leftovers[2:]
+    bar = _arrival()
+    try:
+        row = jobs.declare(table, action, leftovers, values, when, actor=actor)
+    except tables.TableError as error:
+        _line(
+            jobs.JOB, jobs.DECLARE, actor, via, audit.REFUSED, f"table.{error.key}",
+            str(error), threshold=bar,
+        )
+        raise
+    saying = tr("job.declared", id=jobs.shown(row))
+    _line(jobs.JOB, jobs.DECLARE, actor, via, audit.OK, None, saying, threshold=bar)
+    return OK, saying
+
+
+def _pulled(flag: str, args: list[str]) -> tuple[str | None, list[str]]:
+    """One `flag value` pair taken out of `args`, wherever it sits — the rest,
+    in the order it arrived, and `None` for the flag when it was not there."""
+    rest: list[str] = []
+    found: str | None = None
+    position = 0
+    while position < len(args):
+        if args[position] == flag and position + 1 < len(args):
+            found = args[position + 1]
+            position += 2
+            continue
+        rest.append(args[position])
+        position += 1
+    return found, rest
 
 
 def _approval(action: str, actor: dict | None) -> None:

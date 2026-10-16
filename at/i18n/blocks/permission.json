@@ -20,6 +20,8 @@
     "action.run": "Executar",
     "action.approve": "Aprovar",
     "action.refuse": "Recusar",
+    "action.declare": "Declarar",
+    "action.disable": "Desligar",
     "action.scan": "Varrer",
     "action.install_hooks": "Instalar hooks",
     "action.make": "Fazer",
@@ -34,6 +36,7 @@
     "modifier.webapp.no_caddy": "Mantém no loop, sem o Caddy embutido",
     "modifier.backup.destination": "Para onde a cópia vai, ou de onde ela volta",
     "modifier.job.id": "O trabalho que espera",
+    "modifier.job.when": "O instante em que o trabalho começa a rodar",
     "modifier.secret.install_hooks.repo": "O repositório git a proteger"
   },
   "en_US": {
@@ -57,6 +60,8 @@
     "action.run": "Run",
     "action.approve": "Approve",
     "action.refuse": "Refuse",
+    "action.declare": "Declare",
+    "action.disable": "Disable",
     "action.scan": "Scan",
     "action.install_hooks": "Install hooks",
     "action.make": "Make",
@@ -71,6 +76,7 @@
     "modifier.webapp.no_caddy": "Keeps it on the loop, without the bundled Caddy",
     "modifier.backup.destination": "Where the copy goes, or where it comes back from",
     "modifier.job.id": "The job that waits",
+    "modifier.job.when": "The instant the job starts rounding",
     "modifier.secret.install_hooks.repo": "The git repository to protect"
   }
 }

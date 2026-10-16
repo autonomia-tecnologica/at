@@ -45,6 +45,7 @@ from at.core import (
     actors,
     audit,
     boot,
+    clock,
     jobs,
     migrations,
     paths,
@@ -209,18 +210,20 @@ class TheDeclaration(JobCase):
 
 
 class TheCatalogue(JobCase):
-    """The object in the catalogue: four permissions, and five words."""
+    """The object in the catalogue: six permissions, and seven words."""
 
-    def test_it_answers_a_read_a_run_and_the_two_halves_of_the_approval(self):
+    def test_it_answers_a_read_a_run_the_approval_and_the_schedule(self):
         self.assertEqual(
             permissions.catalogue().get("job"),
-            ("read", "run", "approve", "refuse"),
+            ("read", "run", "approve", "refuse", "declare", "disable"),
         )
         for name, known in (
             ("job:read", True),
             ("job:run", True),
             ("job:approve", True),
             ("job:refuse", True),
+            ("job:declare", True),
+            ("job:disable", True),
             # The engine's six are NOT the job's: nothing creates a job by hand,
             # and nothing edits or deletes one — the row is the engine's record.
             ("job:list", False),
@@ -237,22 +240,28 @@ class TheCatalogue(JobCase):
         self.assertEqual(permissions.needed("job", "view"), "job:read")
         self.assertEqual(permissions.needed("job", "run"), "job:run")
         self.assertEqual(permissions.needed("job", "approve"), "job:approve")
+        self.assertEqual(permissions.needed("job", "declare"), "job:declare")
+        self.assertEqual(permissions.needed("job", "disable"), "job:disable")
 
-    def test_the_tree_offers_the_five_words(self):
+    def test_the_tree_offers_the_seven_words(self):
         node = next(node for node in tree.table_nodes() if node.name == "job")
         self.assertEqual(
             [child.name for child in node.children],
-            ["list", "view", "run", "approve", "refuse"],
+            ["list", "view", "run", "approve", "refuse", "declare", "disable"],
         )
-        # The four the engine does not have are named by the catalogue's block
+        # The six the engine does not have are named by the catalogue's block
         # and not by the engine's: a `Node.about` is an i18n KEY, and a key the
         # block does not carry would be drawn as the key itself.
         about = {child.name: child.about for child in node.children}
         self.assertEqual(about["run"], "permission.action.run")
         self.assertEqual(about["approve"], "permission.action.approve")
         self.assertEqual(about["refuse"], "permission.action.refuse")
+        self.assertEqual(about["declare"], "permission.action.declare")
+        self.assertEqual(about["disable"], "permission.action.disable")
         self.assertEqual(about["list"], "table.action.list")
         self.assertEqual(tr(about["approve"]), "Aprovar")
+        self.assertEqual(tr(about["declare"]), "Declarar")
+        self.assertEqual(tr(about["disable"]), "Desligar")
 
     def test_a_machine_actor_does_not_carry_the_approval(self):
         # §4: "nenhum ator de máquina carrega `job:approve` nem `job:refuse`",
@@ -266,20 +275,26 @@ class TheCatalogue(JobCase):
 
     def test_only_the_administrator_carries_the_approval(self):
         role = actors.role_for_admin()
-        for name in ("job:read", "job:run", "job:approve", "job:refuse"):
+        for name in (
+            "job:read", "job:run", "job:approve", "job:refuse",
+            "job:declare", "job:disable",
+        ):
             with self.subTest(permission=name):
                 self.assertIn(name, permissions.carried(role))
 
     def test_the_run_is_a_write_and_the_approval_is_the_ceiling_s(self):
-        # The four numbers the catalogue declares, on §4's own scale: `run` is an
-        # act that writes, and approving or refusing is the person's word over a
-        # demand the bar held — "the bar does not lower itself".
+        # The numbers the catalogue declares, on §4's own scale: `run` and
+        # `declare` are acts that write, approving or refusing is the person's
+        # word over a demand the bar held — "the bar does not lower itself" —
+        # and disabling removes what a schedule's rounds would still have been.
         self.assertEqual(permissions.risk("job:read"), permissions.RISK_READ)
         self.assertEqual(permissions.risk("job:run"), permissions.RISK_WRITE)
         self.assertEqual(permissions.risk("job:approve"), permissions.RISK_ALLOW)
         self.assertEqual(permissions.risk("job:refuse"), permissions.RISK_ALLOW)
-        # And the two are priced TOGETHER: a cheaper refusal would be a way of
-        # learning about a dearer approval.
+        self.assertEqual(permissions.risk("job:declare"), permissions.RISK_WRITE)
+        self.assertEqual(permissions.risk("job:disable"), permissions.RISK_REMOVE)
+        # And approving/refusing are priced TOGETHER: a cheaper refusal would be
+        # a way of learning about a dearer approval.
         for name in permissions.all_permissions():
             with self.subTest(permission=name):
                 self.assertLess(permissions.risk(name), risk.CEILING)
@@ -674,6 +689,101 @@ class TheApproval(JobCase):
             code, text = self.words("job", "approve", "1")
         self.assertEqual(code, 0)
         self.assertEqual(text.strip(), "JOB-1 approved.")
+
+
+class TheSchedule(JobCase):
+    """The row a person DECLARES, and the one a person turns OFF (item 24,
+    fatia 2/3) — the declaration's own `when`, and the clock that stops
+    finding what was turned off."""
+
+    def test_declaring_creates_a_row_born_scheduled(self):
+        self.person()
+        code, text = self.words(
+            "job", "declare", "task", "create", "--set", "text=lembrete",
+            "--when", "2026-10-20T09:00",
+        )
+        self.assertEqual(code, 0)
+        self.assertEqual(text.strip(), tr("job.declared", id="JOB-1"))
+        row = self.job_row()
+        self.assertEqual(row[jobs.STATUS], jobs.SCHEDULED)
+        self.assertEqual(row[jobs.WHAT], "task:create")
+        self.assertEqual(row[jobs.TABLE], "task")
+        self.assertEqual(row[jobs.ARGUMENTS], ["--set", "text=lembrete"])
+        self.assertTrue(INSTANT.match(row[jobs.WHEN]))
+
+    def test_the_declared_row_shows_up_in_the_listing_as_scheduled(self):
+        self.person()
+        self.words("job", "declare", "task", "create", "--when", "now")
+        code, text = self.words("job", "list")
+        self.assertEqual(code, 0)
+        self.assertIn(tr("table.job.field.status.scheduled"), text)
+
+    def test_declaring_leaves_one_line_and_one_version(self):
+        admin = self.person()
+        self.words("job", "declare", "task", "create", "--when", "now")
+        self.assertEqual(len(self.lines()), 1)
+        line = self.lines()[0]
+        self.assertEqual(line[audit.WHAT], "job:declare")
+        self.assertEqual(line[audit.TABLE], jobs.JOB)
+        self.assertEqual(line[audit.STATUS], audit.OK)
+        self.assertEqual(line[audit.VIA], audit.CLI)
+        self.assertEqual(line[audit.ACTOR], store.number_of(admin))
+
+    def test_declaring_with_no_when_is_a_usage_error(self):
+        self.person()
+        code, _ = self.words("job", "declare", "task", "create")
+        self.assertEqual(code, 2)
+
+    def test_declaring_with_a_when_that_is_not_an_instant_is_refused(self):
+        self.person()
+        code, _ = self.words(
+            "job", "declare", "task", "create", "--when", "não é data",
+        )
+        self.assertEqual(code, 1)
+        self.assertEqual(self.held(), [])
+
+    def test_disabling_turns_a_scheduled_job_into_a_refused_one(self):
+        self.person()
+        self.words("job", "declare", "task", "create", "--when", "now")
+        code, text = self.words("job", "disable", "1")
+        self.assertEqual(code, 0)
+        self.assertEqual(text.strip(), tr("job.disabled", id="JOB-1"))
+        self.assertEqual(self.job_row()[jobs.STATUS], jobs.REFUSED)
+        # Not a deletion, for the same reason a refusal never is one.
+        self.assertEqual(len(self.held()), 1)
+
+    def test_disabling_stops_the_clock_from_finding_it(self):
+        self.person()
+        self.words("job", "declare", "task", "create", "--when", "now")
+        self.assertEqual(len(clock.due(jobs.SCHEDULED)), 1)
+        self.words("job", "disable", "1")
+        self.assertEqual(clock.due(jobs.SCHEDULED), [])
+
+    def test_disabling_a_job_that_is_not_scheduled_is_refused_by_name(self):
+        self.person()
+        self.words("job", "declare", "task", "create", "--when", "now")
+        self.words("job", "disable", "1")
+        code, text = self.words("job", "disable", "1")
+        self.assertEqual(code, 1)
+        self.assertEqual(
+            text.strip(),
+            tr(
+                "job.error.not_scheduled",
+                id="JOB-1",
+                status=tr("table.job.field.status.refused"),
+            ),
+        )
+
+    def test_a_machine_is_refused_the_disable_too(self):
+        # §4's reason for `approve`/`refuse` is the same for `disable`: the
+        # word over a round is a presence, and a machine is the absence of one.
+        self.person()
+        self.words("job", "declare", "task", "create", "--when", "now")
+        machine = self.machine()
+        with redirect_stdout(StringIO()):
+            code, _ = door.job("disable", ["1"], actor=machine, via=audit.CLI)
+        self.assertEqual(code, 1)
+        self.assertEqual(self.job_row()[jobs.STATUS], jobs.SCHEDULED)
 
 
 class TheRun(JobCase):
