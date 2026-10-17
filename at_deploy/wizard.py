@@ -3,33 +3,31 @@
 §6 says this artifact is a `cli` and a Wizard, and that HERE the Wizard is the
 natural front, because deploying is a SEQUENCE and not a sentence: it checks the
 requirements, brings one thing up, moves on to the next. This file is that
-sequence, and it is made of the `cli`'s own words — `up`, `credential`,
-`switch` — walked one screen at a time.
+sequence, made of the `cli`'s own words — `up`, `credential`, `switch` —
+walked one step at a time. **It draws nothing itself** (TASK-169, fatia 3/3):
+the Tkinter window that used to walk it died with the rest of the Tkinter in
+the product, and what shows this sequence to a person is TASK-130's, still to
+come.
 
 **A step is a word (and, since 2026-09-28, an optional fixed tail after it), and
 nothing else.** `run_step` spells the argv a person would type and hands it to
 the same dispatch the command line walks (`cli.services`), so §5's one-way rule
 is not a promise written here but a property of the file: a step whose word the
 `cli` did not take would not compile into an argv, and neither would one whose
-tail (`Step.argv`) is not a shape `cli.services` accepts. And the window writes
-no sentence of its own for what a step did — what the person reads under the
-step is what the word PRINTED, captured and drawn in the window. That is the
-whole reason the readers are the window's (`ask`, `secret`) instead of the
-terminal's: the same act, the same words, on a screen.
+tail (`Step.argv`) is not a shape `cli.services` accepts. And whatever shows a
+step writes no sentence of its own for what it did — what the person reads is
+what the word PRINTED, captured and handed back as text. That is the whole
+reason the readers (`ask`, `secret`) are injected rather than fixed to a
+terminal: the same act, the same words, wherever they end up drawn.
 
 **A step that did not close does not open the next one**, and "closed" is not the
 exit code: the two ways out of a machine with no Podman (§7a), and a refused
 elevation, EXIT `0` — nothing failed — and leave the environment standing
 nowhere. So the two environment steps ask the folder (`environment.standing`,
-`gate.on_gate`) and the rest read the code. The screen never invents a second
-sentence for a failure: every act already has its own (`services.no_podman.*`,
+`gate.on_gate`) and the rest read the code. No step invents a second sentence
+for a failure: every act already has its own (`services.no_podman.*`,
 `services.elevation.*`, `services.switch.*`), and they are the ones the word
 printed.
-
-**The no-display answer is `at-cli`'s own sentence** (`wizard.unavailable`): a
-machine without a display is a legitimate place to run the deploy — §5's one-way
-rule is what makes that not a loss — and what it is owed is to be told so and
-handed the words (`cli.main` prints the help after it).
 
 **A credential of the phone's own does not appear here** (TASK-187): the edge
 fronts the site, and the SAME Chave Principal the person already types for it
@@ -43,15 +41,14 @@ from collections.abc import Callable, Sequence
 from contextlib import redirect_stdout
 from dataclasses import dataclass
 
-from at.core import gate, paths
+from at.core import gate
 from at.i18n import tr
-from at.ui.wizard import app as at_window
 
 from at_deploy import cli, environment
 
 # What a person answers with, injected the way every surface here injects its
-# own readers: the window hands over a dialog, a test hands over a lambda, and
-# nothing but the window needs a `Tk` to exist.
+# own readers: whatever draws this sequence hands over a pair of readers, a
+# test hands over a lambda, and nothing here needs any toolkit to exist.
 Ask = Callable[[str], str]
 
 # The exit code the `cli` answers a word with, named here so the steps read as
@@ -78,18 +75,18 @@ def _up_settled(code: int) -> bool:
 
 def _switch_settled(code: int) -> bool:
     """Whether §6's switch committed — read off the folder's own record, which
-    is the one `at-cli` reads too (`gate.mode`), so the screen and the app cannot
-    disagree about which path this folder is on.
+    is the one `at-cli` reads too (`gate.mode`), so whatever shows this sequence
+    and the app cannot disagree about which path this folder is on.
     """
     return code == OK and gate.on_gate()
 
 
 @dataclass(frozen=True)
 class Step:
-    """One screen of §7: the `cli` word it runs, and what it owes the next one.
+    """One step of §7: the `cli` word it runs, and what it owes the next one.
 
     `required` is §7's own marking — a, b and c are required, d, e and f are not
-    — and it is what the Next button reads: a required step that did not close
+    — and it is what the next step reads: a required step that did not close
     holds the sequence, while an optional one may be left for later. What a
     required step OWES is not always its exit code, which is what `settled` is
     for; the whole of it comes down to the two environment steps.
@@ -137,14 +134,14 @@ def run_step(word: str, ask: Ask | None = None, secret: Ask | None = None,
 
     **The step IS the `cli`'s word**, reached through the door the command line
     reaches it through: what is spelled here are the words a person would type
-    at `at-deploy`'s own root, and the window's readers stand in
-    for the terminal's. Everything the word prints comes back as text — the
-    screen draws it and adds nothing, which is §5's one-way rule visible in the
-    code instead of promised in a comment.
+    at `at-deploy`'s own root, and the caller's own readers stand in
+    for the terminal's. Everything the word prints comes back as text — whatever
+    draws it adds nothing, which is §5's one-way rule visible in the code instead
+    of promised in a comment.
 
-    `name` is for the one word that takes an argument: when it is not given, the
-    window asks for it first, and a name nobody gave is left for the word's OWN
-    sentence to answer (`deploy.credential.ask`) rather than a second one
+    `name` is for the one word that takes an argument: when it is not given,
+    `ask` is asked for it first, and a name nobody gave is left for the word's
+    OWN sentence to answer (`deploy.credential.ask`) rather than a second one
     written here. `argv` is a step's fixed trailing words (`Step.argv`) — the
     part of the line that is not the argument door, and not a name either.
     """
@@ -164,12 +161,12 @@ def run_step(word: str, ask: Ask | None = None, secret: Ask | None = None,
 class Walk:
     """The sequence, and the rule that holds it back.
 
-    The state lives apart from the drawing for the one reason that matters: a
-    suite can walk every step of §7 without ever opening a window, which is what
-    keeps a `Tk` test from being a hung suite.
+    The state lives apart from whatever draws it, for the one reason that
+    matters: a suite can walk every step of §7 without a front to draw it.
     """
 
-    # What `advance` answers, and the window is what turns each one into a button.
+    # What `advance` answers, and whatever draws this is what turns each one
+    # into an action.
     NEXT = "next"       # there is a step after this one
     FINISH = "finish"   # this was the last one
     BLOCKED = "blocked"  # a required step that did not close
@@ -213,132 +210,3 @@ class Walk:
         self.index += 1
         self.closed = False
         return self.NEXT
-
-
-def build(root: object, ask: Ask | None = None, secret: Ask | None = None) -> Walk:
-    """Draw the window on an existing `Tk` root, and answer with its `Walk`.
-
-    Separate from `open_wizard` so a test can build the window and destroy it
-    without entering the event loop — and the `Walk` comes back so that a test
-    can drive the sequence without asking a widget anything.
-    """
-    import tkinter as tk
-
-    walk = Walk()
-    if ask is None or secret is None:
-        ask, secret = _readers(root)
-
-    root.title(tr("deploy.wizard.title"))
-    root.minsize(560, 400)
-
-    head = tk.Frame(root, padx=16, pady=12)
-    head.pack(fill="x")
-    # The folder first: the deploy is what writes `App/services/` inside it, and
-    # which folder that is is the one thing a person has to be able to see.
-    tk.Label(head, text=tr("deploy.wizard.folder", folder=paths.working_folder()),
-             anchor="w").pack(fill="x")
-    where = tk.Label(head, anchor="w")
-    where.pack(fill="x")
-    what = tk.Label(head, anchor="w", justify="left")
-    what.pack(fill="x")
-    note = tk.Label(head, anchor="w", justify="left", foreground="gray")
-    note.pack(fill="x")
-
-    # What the step PRINTED, and nothing else: replaced on every run — this
-    # box only ever holds the last run's own text.
-    said = tk.Text(root, height=14, width=72, wrap="word")
-    said.pack(fill="both", expand=True, padx=16)
-
-    foot = tk.Frame(root, padx=16, pady=12)
-    foot.pack(fill="x")
-
-    def show() -> None:
-        """Redraw what belongs to the current step — its name, its sentence, and
-        whether the next one may start."""
-        where.config(text=tr(
-            "deploy.wizard.step.required" if walk.step.required
-            else "deploy.wizard.step.optional",
-            n=walk.index + 1, total=len(walk.steps),
-            word=" ".join((walk.step.word, *walk.step.argv))))
-        what.config(text=tr(walk.step.about))
-        note.config(text=tr("deploy.wizard.held") if walk.held() else "")
-        forward.config(
-            text=tr("deploy.wizard.finish") if walk.last
-            else tr("deploy.wizard.next"),
-            state="disabled" if walk.held() else "normal",
-        )
-
-    def on_run() -> None:
-        _, text = walk.run(ask, secret)
-        said.delete("1.0", "end")
-        said.insert("end", text)
-        show()
-
-    def on_forward() -> None:
-        if walk.advance() == Walk.FINISH:
-            root.destroy()
-            return
-        said.delete("1.0", "end")
-        show()
-
-    tk.Button(foot, text=tr("deploy.wizard.run"), command=on_run).pack(side="left")
-    forward = tk.Button(foot, text=tr("deploy.wizard.next"), command=on_forward)
-    forward.pack(side="right")
-    tk.Button(foot, text=tr("deploy.wizard.close"),
-              command=root.destroy).pack(side="right", padx=(0, 8))
-
-    show()
-    return walk
-
-
-def _readers(root: object) -> tuple[Ask, Ask]:
-    """The window's two readers, and they are ONE door.
-
-    `ask` is what a terminal would read with `input` and `secret` is what it
-    would read with `getpass`: the same question, and the second one hides what
-    is typed — the screen's way of saying that a credential is not for whoever is
-    looking at the screen, which is the rule every credential door here follows.
-
-    The yes/no questions travel through the same door, so the person answers them
-    the way the terminal words them — `s` or `n`. A dialog that was dismissed is
-    an empty answer, and an empty answer is a refusal everywhere it lands.
-    """
-    def one(question: str, hidden: bool) -> str:
-        from tkinter import simpledialog
-
-        answer = simpledialog.askstring(tr("deploy.wizard.title"), question,
-                                        parent=root,
-                                        show="*" if hidden else None)
-        return "" if answer is None else answer
-
-    return (lambda question: one(question, False),
-            lambda question: one(question, True))
-
-
-def open_wizard() -> bool:
-    """Open the window and hold the process until it closes.
-
-    `False` when there is no graphical interface to open — a machine with no
-    display is a legitimate place to run the deploy, and it must be told so
-    plainly instead of by a traceback. The sentence is `at-cli`'s own: the Control
-    Panel is one thing with two fronts, and a refusal that read differently on
-    each artifact would be two.
-    """
-    try:
-        import tkinter as tk
-    except ImportError as error:
-        print(tr("wizard.unavailable", error=error))
-        return False
-
-    try:
-        root = tk.Tk()
-    except tk.TclError as error:
-        print(tr("wizard.unavailable", error=error))
-        return False
-
-    try:
-        build(root)
-        root.mainloop()
-    finally:
-        at_window.destroy(root, tk)
-    return True

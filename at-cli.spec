@@ -6,8 +6,9 @@ Build it from the repository root, with the PyInstaller version the README pins:
     .venv/bin/pyinstaller --clean --noconfirm at-cli.spec
 
 **There are two artifacts and two specs**, and this is the one that carries the
-folder and the app: the tables, the prose, the interpreter, the WebApp and the
-Wizard. The environment of §7 — Podman, the VPN, the containers, the switch and
+folder and the app: the tables, the prose, the interpreter and the WebApp — the
+Control Panel is the WebApp now, with no Wizard beside it (TASK-169, fatia
+3/3). The environment of §7 — Podman, the VPN, the containers, the switch and
 the only elevation in the product — left this file and is built by
 `at-deploy.spec`, and what keeps it out is the import graph and not a list:
 `at` imports nothing of `at_deploy`, so PyInstaller never reaches it. The
@@ -27,8 +28,11 @@ never `npm run build` yields a binary that answers 500 on the front page.
 `--onefile` is a distribution choice, not a correctness one: `sys.executable` is
 the launched binary under `--onedir` too, so `paths.working_folder()` resolves the
 Working Folder to the binary's own folder either way (§3). One file is what
-§3 promises, and its price is that the whole payload — Tcl/Tk included —
-is re-extracted on every launch.
+§3 promises, and its price is that the whole payload is re-extracted on every
+launch — Tcl/Tk is not part of it (TASK-169, fatia 3/3): the Tkinter window
+`at-cli` opened with no word is gone, replaced by the browser panel
+(`at.ui.webapp.local`), so this binary carries no `tkinter` import for
+PyInstaller to collect.
 """
 
 import sys

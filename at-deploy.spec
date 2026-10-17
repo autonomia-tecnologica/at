@@ -28,22 +28,19 @@ them. The `vocabulary` — the interpreter's word list — is `at`'s too: the de
 neither reads a sentence nor proposes one. A payload left out of a build fails
 silently, so each one left out is named here rather than omitted in silence.
 
-**Tcl/Tk does NOT travel here, and it is the Wizard's absence.** The deploy's
-Wizard (`at_deploy/wizard.py`) is the front §6 declares for this artifact, and
-the `Tk` stepped aside for now — the same decision `at-cli` took in item 9, and
-for the same reason: the door is the `cli`, which §5's one-way rule leaves whole
-on its own, and the screen is only how somebody who does not type reaches it.
+**Tcl/Tk does NOT travel here, and it is permanent** (TASK-169, fatia 3/3).
+§6 declares a Wizard as this artifact's front — the sequence of §7 walked one
+step at a time, over the words the `cli` already has (`at_deploy/wizard.py`)
+— and that sequence has no Tkinter left to draw it: the window that used to
+walk it died, in both artifacts, and what will draw this sequence next is
+TASK-130's, still to come.
 
 A Tkinter window needs the interpreter's toolchain — `_tkinter` and the Tcl/Tk
 libraries beside it, some tens of megabytes extracted on every launch of a
-`--onefile` binary — and that is the payload of a caller this release does not
-have. It is also a payload that COSTS: the Tk/X11 chain needs a newer glibc for
-the artifact (`libexpat`), and what the release promises it must hold.
-
-The payload is out, and it is said here for the reason above: a payload decided
-by silence is a payload nobody can read. When the `Tk` comes back it comes back
-HERE, and `release/builder.json` gains the builder package and the promised
-payload with it.
+`--onefile` binary — and that payload COST more than the screen it drew: the
+Tk/X11 chain needs a newer glibc for the artifact (`libexpat`), and what the
+release promises it must hold. The payload is out, and it is said here for the
+reason above: a payload decided by silence is a payload nobody can read.
 """
 
 import sys
@@ -98,10 +95,10 @@ a = Analysis(
     # table, and the hashed field's derivation is `libsodium`'s — so the same
     # hand-named payload travels here.
     #
-    # `tkinter` was named here, and it is NOT any more: the `Tk` stepped aside
-    # (the docstring says why), and what the release does not carry it does not
-    # promise. Naming a payload the artifact has no caller for would be paying
-    # the megabytes and the glibc for a window nobody opens.
+    # `tkinter` was named here, and it is NOT any more: the `Tk` is gone for
+    # good (the docstring says why), and what the release does not carry it does
+    # not promise. Naming a payload the artifact has no caller for would be
+    # paying the megabytes and the glibc for a window nobody opens.
     hiddenimports=["_cffi_backend"],
     hookspath=[],
     hooksconfig={},

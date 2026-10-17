@@ -1,20 +1,22 @@
 # 5. Interfaces [normative]
 
-### Command line (`cli`), web application (WebApp) and Tkinter interface (Wizard)
+### Command line (`cli`) and web application (WebApp)
 
-- When opening AT, whether on the command line or straight through the graphical interface, we have the "Control Panel". It is a Tkinter interface, the Wizard. Here the "guts" of AT's environment are configured, its first layer being the web application.
+- When AT opens with no word at all, the binary brings the app itself up — the way `at-cli webapp` does — and opens the browser on it: the "Control Panel" is the WebApp, on an ephemeral port and behind a one-time token the process draws at boot. There is no Tkinter interface any more: what the person sees is the same page `at-cli webapp` serves, only opened by the binary itself, with nobody typing a port or a URL.
 
-- Calling the binary straight from the terminal loads the Tkinter interface. Any other parameter passed makes the program act as a `cli`. `at-cli ajuda`, or `at-cli help`, shows how to use the cli completely. You can change it in the settings so that `at-cli` with no word opens the help instead of Tkinter.
+- Calling the binary straight from the terminal, with no word, loads this Panel in the browser. Any other parameter passed makes the program act as a `cli`. `at-cli help` shows how to use the cli completely.
 
 - The command line works for everything in AT. Any functionality it exposes, whether in the REST API (used by the WebApp frontend) or in the WebApp itself, is reachable from the command line.
 
-- The Wizard is a screen that allows more critical configurations of AT that I did not want to leave available on the network. It has roles that do not move: the **first start**, where the Working Folder is confirmed and the first admin is created; the **installation of services**, and only it installs; the **return to Forms mode**, when the authentication gate falls; and the management of the Main Key in advanced mode.
+- This wordless Panel, on `at-cli`, comes up with Forms switched off — there is no actor to prove, and it is the token, not the gate, that separates "the person" from "the machine" on the loopback door. It keeps roles that do not move and that stay off the network for being too critical for it: today the **first start**, where the Working Folder is confirmed and the first admin is created. What else draws in there — what is enabled, what is running, what is installed — is TASK-130's, born as a page.
 
-- **The first start happens in the PAGE**, and no longer only at the terminal: in a folder with no administrator at all, the WebApp serves the form that creates the first one — name and Main Key (16+, one phrase) —, and only on the loop (§3, [Access and exposure](rules.md#access-and-exposure)). The `cli` keeps the same door, and it is this section's rule that everything of the `Wizard` is reachable from it: `at-cli admin` asks for the name and reads the Key with no echo, and the two say the SAME strings — the form's are the catalog's `admin` block, and not a second sentence that could drift. The Wizard does not lose the role — the first admin's screen is its own.
+- **The first start happens in the PAGE**, and no longer only at the terminal: in a folder with no administrator at all, the WebApp serves the form that creates the first one — name and Main Key (16+, one phrase) —, and only on the loop (§3, [Access and exposure](rules.md#access-and-exposure)). The `cli` keeps the same door, and it is this section's rule that everything of the Panel is reachable from it: `at-cli admin` asks for the name and reads the Key with no echo, and the two say the SAME strings — the form's are the catalog's `admin` block, and not a second sentence that could drift.
 
-- The `cli` runs only locally, except when it is communicating with external APIs for the due configuration. And it is it, or the Wizard, that returns AT to Forms mode: both are local surfaces, and that is why the return exists.
+- `at-deploy` carries its own Panel — the sequence of §7 (`up`, `credential`, `switch`) that installs the environment, returns AT to Forms mode and reads the Main Key when the gate restarts (`at_deploy/wizard.py`) — and lost its window the same way: the sequence stays in the code, with no screen drawing it, until the screen TASK-130 brings for it too.
 
-- Role and permission are **not** the Wizard's business: that is a WebApp screen, and the friction of doing admin there does not pay off. The Wizard keeps what only it can do.
+- The `cli` runs only locally, except when it is communicating with external APIs for the due configuration. And it is it, through the same words either Panel walks, that returns AT to Forms mode.
+
+- Role and permission are **not** either Panel's business: that is a WebApp screen, and the friction of doing admin there does not pay off. Each Panel keeps what only it can do, off the network.
 
 ### The interpretation layer
 

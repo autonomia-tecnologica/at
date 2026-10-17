@@ -103,6 +103,7 @@ diff
 dmz
 dns
 docker
+efêmera
 ei
 embaixo
 encrypt
@@ -171,6 +172,7 @@ locale
 log
 logado
 login
+loopback
 m
 mac
 macos

@@ -71,17 +71,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         return REFUSED
 
     if not words:
-        # THE `Tk` STEPS ASIDE FOR NOW, and it is the same decision `at-cli` took
-        # in item 9. The Wizard of §7 is a screen for whoever does not type
-        # commands, and it is the least urgent of the slices: the door is the
-        # `cli` — §5's one-way rule says everything of the screen is reachable
-        # from here — and the screen is how somebody who does not type reaches it.
-        #
-        # So `at_deploy/wizard.py` stays in the code with NO CALLER until the
-        # slice that brings the `Tk` back, and what a wordless command answers is
-        # the help, exactly like the other artifact. Until then, a machine with
-        # no display and a machine with one behave the same way, which is the
-        # point: nothing here opens a window.
+        # THE `Tk` IS GONE, for good (TASK-169, fatia 3/3) — the same decision
+        # `at-cli` took for its own Wizard in item 9, made permanent. The
+        # sequence of §7 is still here (`at_deploy/wizard.py`), with NO CALLER:
+        # it is what TASK-130's own front — still to come — will walk, and
+        # until then a wordless command answers the help. A machine with no
+        # display and a machine with one behave the same way, because nothing
+        # here opens a window.
         print(tree.as_text())
         return OK
 

@@ -81,6 +81,7 @@ lan
 languagetool
 llm
 llms
+loopback
 lookup
 macos
 magicdns

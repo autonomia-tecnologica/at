@@ -1,20 +1,22 @@
 # 5. Interfaces [normativo]
 
-### Linha de comando (`cli`), aplicação web (WebApp) e interface Tkinter (Wizard)
+### Linha de comando (`cli`) e aplicação web (WebApp)
 
-- Ao abrir o AT, seja em linha de comando, seja direto pela interface gráfica, temos o "Painel de Controle". É uma interface em Tkinter, o Wizard. Aqui são configuradas as "entranhas" do ambiente do AT, sendo sua primeira camada a aplicação web.
+- Ao abrir o AT sem nenhuma palavra, o binário sobe o próprio app — como `at-cli webapp` — e abre o navegador nele: o "Painel de Controle" é o WebApp, numa porta efêmera e por trás de um token de uso único que o processo sorteia no boot. Não existe mais uma interface em Tkinter: o que a pessoa vê é a mesma página que `at-cli webapp` serve, só que aberta por ela mesma, sem ninguém digitar porta nem URL.
 
-- Chamar o binário direto do terminal carrega a interface Tkinter. Qualquer outro parâmetro passado faz o programa agir como uma `cli`. `at-cli ajuda`, ou `at-cli help`, mostra como usar a cli completamente. Você pode modificar nas configurações para o `at-cli` sem palavra abrir a ajuda em vez do Tkinter.
+- Chamar o binário direto do terminal, sem palavra, carrega esse Painel no navegador. Qualquer outro parâmetro passado faz o programa agir como uma `cli`. `at-cli ajuda`, ou `at-cli help`, mostra como usar a cli completamente.
 
 - A linha de comando funciona para tudo do AT. Qualquer funcionalidade que ele exponha, seja na API REST (utilizada pelo frontend do WebApp), seja no WebApp em si, é acessível pela linha de comando.
 
-- O Wizard é uma tela que permite realizar configurações mais críticas do AT que eu não queria deixar disponível na rede. Ele tem papéis que não se mudam de lugar: a **primeira subida**, em que a Pasta de Trabalho é confirmada e o primeiro admin é criado; a **instalação de serviços**, e só ele instala; a **volta ao modo Forms**, quando o portão de autenticação cai; e a gestão da Chave Principal no modo avançado.
+- Esse Painel sem palavra, no `at-cli`, nasce com Forms desligado — não há ator a provar, e é o token, não o portão, que separa "a pessoa" de "a máquina" na porta de loopback. Ele guarda papéis que não se mudam de lugar e que ficam fora da rede por serem críticos demais para ela: hoje a **primeira subida**, em que a Pasta de Trabalho é confirmada e o primeiro admin é criado. O desenho do que mais entra aí — o que está habilitado, o que está rodando, o que está instalado — é o TASK-130, que nasce como página.
 
-- **A primeira subida acontece na PÁGINA**, e não mais só no terminal: numa pasta sem administrador nenhum, o WebApp serve o formulário que cria o primeiro — nome e Chave Principal (16+, uma frase) —, e só no laço (§3, [Acesso e exposição](rules.md#acesso-e-exposição)). A `cli` mantém a mesma porta, e é a regra desta seção que tudo do `Wizard` seja alcançável por ela: `at-cli admin` pergunta o nome e lê a Chave sem eco, e as duas dizem as MESMAS strings — a do formulário é a do bloco `admin` do catálogo, e não uma segunda frase que possa divergir. O Wizard não perde o papel — a tela do primeiro admin é dele.
+- **A primeira subida acontece na PÁGINA**, e não mais só no terminal: numa pasta sem administrador nenhum, o WebApp serve o formulário que cria o primeiro — nome e Chave Principal (16+, uma frase) —, e só no laço (§3, [Acesso e exposição](rules.md#acesso-e-exposição)). A `cli` mantém a mesma porta, e é a regra desta seção que tudo do Painel seja alcançável por ela: `at-cli admin` pergunta o nome e lê a Chave sem eco, e as duas dizem as MESMAS strings — a do formulário é a do bloco `admin` do catálogo, e não uma segunda frase que possa divergir.
 
-- O `cli` executa apenas localmente, em exceção quando está comunicando com APIs externas para devida configuração. E é ele, ou o Wizard, que devolve o AT ao modo Forms: as duas são superfícies locais, e é por isso que a volta existe.
+- O `at-deploy` tem o seu próprio Painel — a sequência de §7 (`up`, `credential`, `switch`) que instala o ambiente, devolve o AT ao modo Forms e passa a Chave Principal no reinício do portão (`at_deploy/wizard.py`) — e perdeu a janela do mesmo jeito: a sequência fica no código, sem nenhuma tela que a desenhe, até a tela que o TASK-130 trouxer para ela também.
 
-- Papel e permissão **não** são assunto do Wizard: isso é tela do WebApp, e o atrito de fazer admin por lá não se paga. O Wizard fica com o que só ele pode fazer.
+- O `cli` executa apenas localmente, em exceção quando está comunicando com APIs externas para devida configuração. E é ele, pelas mesmas palavras que os dois Painéis andam por dentro, que devolve o AT ao modo Forms.
+
+- Papel e permissão **não** são assunto de nenhum dos dois Painéis: isso é tela do WebApp em rede, e o atrito de fazer admin por lá não se paga. Cada Painel fica com o que só ele pode fazer, fora da rede.
 
 ### A camada de interpretação
 
