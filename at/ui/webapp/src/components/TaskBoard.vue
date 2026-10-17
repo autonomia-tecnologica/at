@@ -7,16 +7,18 @@
 // (`fields.status.enum`) — never a list written here, the same rule
 // `TasksView.vue` already keeps for its counts.
 //
-// A CARD OPENS THE RECORD, the same gesture a table's row already is
-// (`TableView.vue`'s `openRecord`): the board leaves no record of its own, and
-// the step back lands where the card was.
+// A CARD OPENS THE RECORD AS A FLOATING PANEL (TASK-173), over the board
+// itself — the same door a task row in `TableView.vue` now opens through —
+// so the board never leaves the screen for it.
 
 import { computed, ref } from "vue";
 import { label, word } from "../lib/store";
 import { post } from "../lib/api";
-import { leave, markPage, showError, poke } from "../lib/views";
+import { showError, poke } from "../lib/views";
+import { openPop } from "../lib/pop";
 import { OFFLINE_TABLE, offlineState, writeTask } from "../lib/offline";
 import FieldValue from "./FieldValue.vue";
+import RecordPop from "./pops/RecordPop.vue";
 import type { FieldSpec, RecordField, RecordRef, RecordRow } from "../lib/record";
 
 const props = withDefaults(
@@ -89,9 +91,13 @@ const deadlineText = (rec: RecordRow): string => {
   return field && field.raw !== null && field.raw !== undefined ? field.value : "";
 };
 
+// A CARD OPENS AS A FLOATING PANEL (TASK-173), over the board itself, instead
+// of swapping the whole page for it — the board is tasks and only tasks, so
+// every card here takes this door.
 function openCard(rec: RecordRow): void {
-  leave();
-  markPage(props.page, rec.id);
+  openPop("record:" + props.entity + ":" + rec.id, RecordPop,
+          { entity: props.entity, page: props.page, id: rec.id, records: () => props.records },
+          { attrs: { class: "record-pop" } });
 }
 
 // --- dragging one card between columns ------------------------------------

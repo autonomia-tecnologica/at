@@ -25,7 +25,7 @@ import { offlineState } from "./lib/offline";
 import { applyNav, navRail, toggleNav } from "./lib/nav";
 import { watchNarrow } from "./lib/breakpoint";
 import { loadPrefs, SELECT_KEY } from "./lib/prefs";
-import { popState, closePop } from "./lib/pop";
+import { popStack, closePop } from "./lib/pop";
 import { viewer } from "./lib/strongbox";
 import { balloonOn } from "./lib/balloon";
 import { shortcutsState, arm, disarm, act, isTyping } from "./lib/shortcuts";
@@ -318,7 +318,7 @@ onMounted(async () => {
   // half-pressed.
   document.addEventListener("keydown", ev => {
     if (ev.key === "Escape") {
-      if (popState.key) { closePop(); return; }
+      if (popStack.length) { closePop(); return; }
       if (isTyping(ev.target)) return;
       if (shortcutsState.armed) disarm(); else arm();
       return;

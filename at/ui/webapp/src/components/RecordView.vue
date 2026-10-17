@@ -19,9 +19,14 @@ const props = defineProps<{
   total?: number;
   page: string;    // what a reload returns to (`at.select`)
   entity: string;  // the table the record IS
+  // HOSTED IN THE FLOATING PANEL (TASK-173), over the list it was clicked
+  // from, instead of being the whole page: the step back CLOSES the panel
+  // instead of walking the path, and the field's own pick opens OVER it
+  // (`nest`, `lib/pop.ts`) instead of taking its place.
+  popup?: boolean;
 }>();
 
-const emit = defineEmits<{ ref: [ref: RecordRef] }>();
+const emit = defineEmits<{ ref: [ref: RecordRef]; close: [] }>();
 
 const spec = (name: string): FieldSpec | null =>
   store.fields.find(field => field.name === name) || null;
@@ -39,12 +44,15 @@ function openPick(ev: Event, field: RecordField): void {
   openPop(pickKey(field.name), PickPop,
           { field, spec: spec(field.name), entity: props.entity, record: props.record },
           { anchor: ev.currentTarget as HTMLElement,
-            attrs: { role: "listbox", "aria-label": label(spec(field.name)?.labels) || field.name } });
+            attrs: { role: "listbox", "aria-label": label(spec(field.name)?.labels) || field.name },
+            nest: props.popup });
 }
 
 // The step back: the page behind it, or — with no path — the list the record
-// belongs to.
+// belongs to. HOSTED IN THE PANEL, there is no path to walk: the gesture
+// CLOSES it, back to exactly the list it floats over.
 function goBack(): void {
+  if (props.popup) { emit("close"); return; }
   back(() => markPage(props.page, null));
 }
 </script>
@@ -54,9 +62,13 @@ function goBack(): void {
     <div class="page-actions">
       <!-- `btn-quiet`: the step back is a way OUT of the page and not its
            action, and a system that fills every button by default (base.css)
-           has to be told which one is not the action. -->
+           has to be told which one is not the action. HOSTED IN THE PANEL
+           (TASK-173) the gesture is the same door, worded as a close. -->
       <button type="button" class="btn btn-quiet" @click="goBack"
-              >← {{ record.shown_id }} · {{ total }} {{ word("records") }}</button>
+              :aria-label="popup ? word('close') : undefined">
+        <template v-if="popup">× {{ record.shown_id }}</template>
+        <template v-else>← {{ record.shown_id }} · {{ total }} {{ word("records") }}</template>
+      </button>
     </div>
     <dl class="record-body">
       <template v-for="field in record.fields" :key="field.name">

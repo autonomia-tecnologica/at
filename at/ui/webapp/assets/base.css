@@ -613,6 +613,20 @@ button.opt { background: none; border: 0; font: inherit; width: 100%; text-align
   border: 1px solid var(--border-soft); border-radius: var(--r-sm);
 }
 
+/* THE RECORD PANEL (TASK-173): the one `.pop` that is not anchored to a
+   control — no `anchor`, no `point` reaches `placeAt` for it — so it keeps
+   this fixed, centred spot instead of `position: absolute`'s default (which
+   would otherwise place it at the document's origin, never moved). */
+.pop.record-pop {
+  position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: min(640px, calc(100vw - 2 * var(--space-6)));
+  max-height: calc(100vh - 2 * var(--space-6));
+  padding: 0;
+}
+.record-pop .record-page { min-height: 0; }
+.record-pop .page-actions { margin: var(--space-4) var(--space-4) 0; }
+.record-pop .record-body { margin: var(--space-4); }
+
 .pick { display: inline-flex; align-items: center; gap: 5px; background: none; border: 0;
         color: var(--ink-1); font: inherit; text-align: left; cursor: pointer;
         transition: color var(--dur-fast) var(--ease-out); }

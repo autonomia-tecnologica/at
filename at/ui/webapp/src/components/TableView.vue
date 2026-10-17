@@ -33,6 +33,7 @@ import ColumnsPop from "./pops/ColumnsPop.vue";
 import CreatePop from "./pops/CreatePop.vue";
 import ClosePop from "./pops/ClosePop.vue";
 import DeclarePop from "./pops/DeclarePop.vue";
+import RecordPop from "./pops/RecordPop.vue";
 import type { DeclarableTable, FieldSpec, RecordField, RecordRef, RecordRow } from "../lib/record";
 
 const props = withDefaults(
@@ -579,7 +580,16 @@ onMounted(async () => {
   if (fields.value.some(field => field.type === "markdown")) await ensureRenderer();
 });
 
+// A TASK OPENS AS A FLOATING PANEL (TASK-173), over this very table, instead
+// of swapping the whole page for it — the person asked for this in the TASKS
+// part, and every other table keeps the page swap it always had.
 function openRecord(rec: RecordRow): void {
+  if (props.entity === store.types.task) {
+    openPop("record:" + props.entity + ":" + rec.id, RecordPop,
+            { entity: props.entity, page: page.value, id: rec.id, records: () => props.records },
+            { attrs: { class: "record-pop" } });
+    return;
+  }
   leave(); // the table is where this record is being read from
   markPage(page.value, rec.id);
 }
