@@ -8,13 +8,21 @@
 
 import { ref, computed, watch, onMounted, nextTick } from "vue";
 import { api } from "../lib/api";
-import { setFields, kindLabel } from "../lib/store";
+import { setFields, kindLabel, store } from "../lib/store";
 import { nav, openRef, setTrail, showError, pageReadsOnItsOwn, pageLoaded } from "../lib/views";
 import TableView from "../components/TableView.vue";
 import RecordView from "../components/RecordView.vue";
 import type { TablePayload } from "../lib/record";
 
-const props = defineProps<{ view: string }>();
+const props = defineProps<{ view: string; section?: "tables" | "tasks" }>();
+
+// O MODO DA TABELA (TASK-175): `section` chega explícito só de
+// `TablesTaskView.vue` — a segunda porta de `task`. Sem ele, só `task` por
+// `/task` (a árvore de projetos) cai no popup da TASK-173; qualquer outra
+// tabela vista aqui só tem UMA porta, a da seção Tabelas, e já nasce planilha.
+const section = computed<"tables" | "tasks">(
+  () => props.section || (props.view === store.types.task ? "tasks" : "tables"),
+);
 
 // THIS PAGE READS FOR ITSELF, and the boot has to know: the rows come from
 // `/api/table/<view>` on mount, so without this the shell would reveal over an
@@ -79,6 +87,6 @@ watch(() => props.view, () => {
               @ref="openRef" />
   <TableView v-else-if="payload" :entity="view" :records="payload.records"
              :schema="payload.fields" :defaults="payload.columns" :page="view"
-             :actions="payload.actions" :declarable="payload.declarable"
+             :actions="payload.actions" :declarable="payload.declarable" :section="section"
              @ref="openRef" />
 </template>

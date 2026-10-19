@@ -20,7 +20,7 @@ import "./lib/offline";
 import "./lib/events";
 // A INSCRIÇÃO NO PUSH (Web Push) — a notificação do PWA, que substituiu o ntfy.
 import { register as registerPush } from "./lib/push";
-import { registerView, registerType, TASKS_KEY, FILES_KEY, TABLES_KEY, REMINDERS_KEY, BOARD_KEY, WRITE_PREFIX } from "./lib/views";
+import { registerView, registerType, TASKS_KEY, FILES_KEY, TABLES_KEY, TABLES_TASK_KEY, REMINDERS_KEY, BOARD_KEY, WRITE_PREFIX } from "./lib/views";
 import TasksView from "./views/TasksView.vue";
 import FilesView from "./views/FilesView.vue";
 import TablesView from "./views/TablesView.vue";
@@ -34,6 +34,7 @@ import FileView from "./views/FileView.vue";
 import WriteView from "./views/WriteView.vue";
 import ActorView from "./views/ActorView.vue";
 import RoleView from "./views/RoleView.vue";
+import TablesTaskView from "./views/TablesTaskView.vue";
 
 // The pages that are a SINGLE key (no rest): the section screens, the chat,
 // Settings and the "no project". The chat has an address like every other view,
@@ -53,6 +54,11 @@ registerView(FILES_KEY, FilesView);
 // o leitor de um arquivo selado — abre por cima de QUALQUER tela
 // (`StrongboxViewer`), então a seção é só a dobra que cresce no painel.
 registerView(TABLES_KEY, TablesView);
+// A SEGUNDA PORTA DA TABELA `task` (TASK-175): endereço próprio
+// (`/tables/task`), que o card da seção Tabelas abre em vez de `/task` — é
+// essa diferença de endereço que diz ao `KindView` que aqui o modo é
+// planilha, e não o popup que `/task` continua abrindo pela árvore.
+registerView(TABLES_TASK_KEY, TablesTaskView);
 // A SEÇÃO DE LEMBRETES (TASK-164): a chave é o nome dela, e o endereço é
 // `/reminders`. A seção é uma LINHA no painel e não uma dobra, mas a tela é
 // dela — o registro não sabe a diferença, e é isso que o registro é para.

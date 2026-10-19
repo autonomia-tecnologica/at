@@ -17,7 +17,7 @@ import { enter, lost, session, signedIn } from "./lib/session";
 import { store, applyState, label, word, tableOf } from "./lib/store";
 import { ensureRenderer } from "./lib/markdown";
 import { ensureFonts } from "./lib/fonts";
-import { nav, ui, isKind, viewFor, open, markPage, poke, resumePath, setTrail, armPageLoad, pageReading, pageLoad, CHAT_KEY, NLU_UI_ENABLED, ORPHANS_KEY, BOARD_KEY, FILE_PREFIX, PROJECT_PREFIX, WRITE_PREFIX } from "./lib/views";
+import { nav, ui, isKind, viewFor, open, markPage, poke, resumePath, setTrail, armPageLoad, pageReading, pageLoad, CHAT_KEY, NLU_UI_ENABLED, ORPHANS_KEY, BOARD_KEY, FILE_PREFIX, PROJECT_PREFIX, WRITE_PREFIX, TABLES_TASK_KEY } from "./lib/views";
 import { applyTheme, watchSystem } from "./lib/theme";
 import { applyMotion } from "./lib/motion";
 import { writingState } from "./lib/writing";
@@ -70,7 +70,9 @@ const ROLE_PREFIX = "role:";
 // the whole band (`Trail`), and it says its name like any other page.
 const section = computed(() => {
   const view = nav.current?.view || "";
-  if (tableOf(view)) return word("tables");        // a table is met in the tables
+  // `tables:task` É A SEGUNDA PORTA DE `task` (TASK-175): `tableOf` não a
+  // reconhece — não é o nome de uma tabela —, e é a mesma seção mesmo assim.
+  if (tableOf(view) || view === TABLES_TASK_KEY) return word("tables");        // a table is met in the tables
   if (view.startsWith(FILE_PREFIX)) return word("files");
   if (view.startsWith(PROJECT_PREFIX) || view === ORPHANS_KEY || view === BOARD_KEY) return word("tasks");
   if (view.startsWith(ACTOR_PREFIX) || view.startsWith(ROLE_PREFIX)) return word("settings");

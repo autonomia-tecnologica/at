@@ -34,6 +34,7 @@ import CreatePop from "./pops/CreatePop.vue";
 import ClosePop from "./pops/ClosePop.vue";
 import DeclarePop from "./pops/DeclarePop.vue";
 import RecordPop from "./pops/RecordPop.vue";
+import PickPop from "./pops/PickPop.vue";
 import type { DeclarableTable, FieldSpec, RecordField, RecordRef, RecordRow } from "../lib/record";
 
 const props = withDefaults(
@@ -62,9 +63,14 @@ const props = withDefaults(
     // presente só no payload da tabela `job` — nas demais `actions` nunca
     // traz `declare`, e o menu nem lê este prop.
     declarable?: DeclarableTable[];
+    // O MODO DA TABELA (TASK-175): "tables" é a seção Tabelas, que edita como
+    // planilha — clicar numa célula edita ali mesmo. Sem isto (as telas de
+    // Configurações, `ActorView`/`RoleView`/`PeopleView`), o clique na linha
+    // continua abrindo o registro inteiro, como sempre foi.
+    section?: "tables" | "tasks" | null;
   }>(),
   { schema: () => [], viewKey: null, page: null, rule: false, defaults: null,
-    actions: () => [], declarable: () => [] },
+    actions: () => [], declarable: () => [], section: null },
 );
 
 const emit = defineEmits<{
@@ -583,8 +589,14 @@ onMounted(async () => {
 // A TASK OPENS AS A FLOATING PANEL (TASK-173), over this very table, instead
 // of swapping the whole page for it — the person asked for this in the TASKS
 // part, and every other table keeps the page swap it always had.
+//
+// A SEÇÃO TABELAS NÃO TEM MAIS "abrir o registro" NO CLIQUE (TASK-175, fatia
+// planilha): a célula edita a si mesma, e o registro inteiro — quando
+// precisar, um campo de prosa longo — é o menu de contexto que abre, pela
+// MESMA porta flutuante que a TASK-173 deu à tarefa, agora para QUALQUER
+// tabela vista em modo planilha.
 function openRecord(rec: RecordRow): void {
-  if (props.entity === store.types.task) {
+  if (props.section === "tables" || props.entity === store.types.task) {
     openPop("record:" + props.entity + ":" + rec.id, RecordPop,
             { entity: props.entity, page: page.value, id: rec.id, records: () => props.records },
             { attrs: { class: "record-pop" } });
@@ -592,6 +604,81 @@ function openRecord(rec: RecordRow): void {
   }
   leave(); // the table is where this record is being read from
   markPage(page.value, rec.id);
+}
+
+// A LINHA, QUANDO AINDA ABRE ALGO (TASK-175): fora da seção Tabelas, um clique
+// na linha segue abrindo o registro — mas o mesmo clique BORBULHA até o
+// listener global de `App.vue` (`document.addEventListener("click", () =>
+// closePop())`), que fecharia o painel flutuante no MESMO tique em que ele
+// acabou de abrir (achado ao testar esta fatia: a TASK-173 já carregava essa
+// falha, por não ter `.stop` nenhum aqui). Parar aqui é o mesmo remédio que o
+// botão de filtro do cabeçalho já tinha.
+function onRowClick(ev: MouseEvent, rec: RecordRow): void {
+  if (props.section === "tables") return;
+  ev.stopPropagation();
+  openRecord(rec);
+}
+
+// --- a célula edita a si mesma (TASK-175, seção Tabelas) -----------------------
+// SÓ NA SEÇÃO TABELAS, e só o campo que o catálogo marcou `editable`: o clique
+// na linha parou de abrir o registro ali (acima), e é a célula que toma o
+// gesto. Um ENUM continua pelo `PickPop` de sempre — só a ÂNCORA muda, da
+// célula em vez de um botão do registro —; o resto é texto editado no lugar.
+const editing = ref<{ id: number; name: string } | null>(null);
+const editValue = ref("");
+const editInputEl = ref<HTMLInputElement | null>(null);
+
+function isEditing(rec: RecordRow, name: string): boolean {
+  return !!editing.value && editing.value.id === rec.id && editing.value.name === name;
+}
+
+function cellEditable(name: string): boolean {
+  return props.section === "tables" && !!byName.value[name]?.editable;
+}
+
+function onCellClick(ev: MouseEvent, rec: RecordRow, name: string): void {
+  // SÓ QUEM EDITA PARA O CLIQUE: fora disso ele SOBE até a linha — é de lá
+  // que `/task` (seção Tarefas) abre o popup da TASK-173, e parar aqui
+  // SEMPRE teria calado esse clique também, não só o da célula editável.
+  if (!cellEditable(name) || isEditing(rec, name)) return;
+  ev.stopPropagation(); // a célula toma o gesto; a linha não abre nada atrás dela
+  const spec = byName.value[name];
+  if (spec?.enum && Object.keys(spec.enum).length) {
+    openPop("cell-pick:" + props.entity + ":" + rec.id + ":" + name, PickPop,
+            { field: value(rec, name), spec, entity: props.entity, record: rec },
+            { anchor: ev.currentTarget as HTMLElement });
+    return;
+  }
+  editing.value = { id: rec.id, name };
+  editValue.value = value(rec, name).value || "";
+}
+
+watch(editing, async next => {
+  if (!next) return;
+  await nextTick();
+  editInputEl.value?.focus();
+  editInputEl.value?.select();
+});
+
+async function commitEdit(rec: RecordRow, name: string): Promise<void> {
+  if (!isEditing(rec, name)) return;
+  const next = editValue.value;
+  editing.value = null;
+  if (next === (value(rec, name).value || "")) return; // nada mudou, nada para escrever
+  try {
+    await post("/api/table/" + encodeURIComponent(props.entity), {
+      action: "edit",
+      id: rec.id,
+      set: { [name]: next },
+    });
+    poke();
+  } catch (err) {
+    toast((err as Error).message);
+  }
+}
+
+function cancelEdit(): void {
+  editing.value = null;
 }
 </script>
 
@@ -618,7 +705,7 @@ function openRecord(rec: RecordRow): void {
          table (a `.md` file, a chat answer) is a table too, and it must NOT
          wear the product's dress; scoping the block to `.grid` is what keeps
          the two apart. -->
-    <table class="grid">
+    <table class="grid" :class="{ 'cells-edit': section === 'tables' }">
       <colgroup>
         <col v-for="(w, i) in widths" :key="i" :style="{ width: w + 'px' }">
       </colgroup>
@@ -650,7 +737,7 @@ function openRecord(rec: RecordRow): void {
       </thead>
       <tbody>
         <tr v-for="rec in ordered" :key="rec.id" :title="rec.title || ''" tabindex="0"
-            @click="openRecord(rec)"
+            @click="onRowClick($event, rec)"
             v-context-menu="rowMenuHandler(rec)">
           <template v-for="name in shown" :key="name">
             <!-- `data-label` is the column's header, carried by the CELL: on a
@@ -660,12 +747,22 @@ function openRecord(rec: RecordRow): void {
                 :data-label="label(byName[name]?.labels) || name">{{ cell(rec, name) }}</td>
             <td v-else :data-label="label(byName[name]?.labels) || name"
                 :data-value="enumOf(rec, name)"
+                :class="{ editable: cellEditable(name), editing: isEditing(rec, name) }"
                 :title="String(value(rec, name).value || '').length > limitOf(name)
-                  ? String(value(rec, name).value) : undefined">
+                  ? String(value(rec, name).value) : undefined"
+                @click="onCellClick($event, rec, name)">
+              <!-- A CÉLULA EDITA A SI MESMA (TASK-175, seção Tabelas): o input
+                   substitui a leitura só NESTA célula, enquanto `editing` a
+                   aponta — Enter/blur grava, Esc cancela. -->
+              <input v-if="isEditing(rec, name)" ref="editInputEl" v-model="editValue"
+                     @click.stop
+                     @keydown.enter="commitEdit(rec, name)"
+                     @keydown.esc.stop="cancelEdit"
+                     @blur="commitEdit(rec, name)">
               <!-- The `.v` is the cell's VALUE as ONE thing, and it is what a
                    theme dresses when the column declares a closed list — the
                    mark `data-value` sits on the cell and the drawing on this. -->
-              <span class="v"><FieldValue :field="value(rec, name)" :limit="limitOf(name)" by-title
+              <span v-else class="v"><FieldValue :field="value(rec, name)" :limit="limitOf(name)" by-title
                           @ref="emit('ref', $event)" /></span>
             </td>
           </template>

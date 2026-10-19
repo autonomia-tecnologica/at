@@ -552,6 +552,19 @@ th .to { color: var(--ink-3); margin-left: 4px; }
 .grid tbody tr:hover td { background: var(--row-hover); }
 .grid td.id { color: var(--ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
 
+/* A SEÇÃO TABELAS EDITA COMO PLANILHA (TASK-175): a LINHA não abre mais nada
+   — é a CÉLULA que toma o clique —, então o ponteiro de "linha clicável" sai,
+   e quem o ganha é só a célula que o catálogo marcou `editable`. */
+.grid.cells-edit tbody tr { cursor: default; }
+.grid td.editable { cursor: text; }
+.grid td.editing { padding: 0; }
+.grid td.editing input {
+  display: block; width: 100%; height: 100%; min-height: 1.6em;
+  font: inherit; color: inherit; background: var(--surface-1);
+  border: 2px solid var(--accent); border-radius: 0;
+  padding: var(--cell-pad-y) var(--cell-pad);
+}
+
 /* ===== the value of a CLOSED LIST ========================================
    The status of a task, the priority of a row: the page marks WHICH member the
    record carries (`data-value`, the same idiom `data-bucket` already uses for

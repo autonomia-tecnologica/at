@@ -45,6 +45,12 @@ export const TASKS_KEY = "tasks";
 export const FILES_KEY = "files";
 export const TABLES_KEY = "tables";
 
+// A SEGUNDA PORTA DA TABELA `task` (TASK-175): a árvore de projetos abre `task`
+// puro, com o popup da TASK-173; o card da seção Tabelas abre ESTA chave, outro
+// endereço para o MESMO dado — e é o endereço que diz qual modo, já que não há
+// outro sinal que sobreviva ao reload (`nav` guarda só `{view, id}`).
+export const TABLES_TASK_KEY = "tables:task";
+
 // A SEÇÃO DE LEMBRETES (TASK-164), pela mesma regra das outras: a chave é o
 // nome da seção, e o endereço dela é `/reminders`. Ela NÃO é uma dobra — é uma
 // linha só, entre Arquivos e Cofre — mas é uma seção com tela própria, e a
@@ -203,9 +209,16 @@ export function registerType(type: string, prefix: string): void {
 
 // The entry that claims a view, or null when NO module claims it: a table's own
 // table claims nothing — it is what is left over.
+//
+// `startsWith` ONLY APPLIES WHEN THE ENTRY HAS A `prop` (TASK-175): that is the
+// mark of a REAL prefix, one with a REST after it (`project:3`, `file:kb/x.md`).
+// A single-key registration (`tables`, `settings`, `actor`...) has no rest, and
+// treating it as a prefix too is what let `tables:task` (TASK-175's own second
+// door into `task`) match the bare `tables` entry by accident — "tables:task"
+// DOES start with "tables", and nothing about that string said it should count.
 export function viewFor(view: string): [string, Component, string | null] | null {
   for (const [prefix, entry] of views) {
-    if (view === prefix || view.startsWith(prefix)) return [prefix, entry.component, entry.prop];
+    if (view === prefix || (entry.prop && view.startsWith(prefix))) return [prefix, entry.component, entry.prop];
   }
   return null;
 }

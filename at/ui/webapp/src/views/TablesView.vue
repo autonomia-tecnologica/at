@@ -14,7 +14,7 @@
 
 import { computed, watchEffect } from "vue";
 import { store, word, kindLabel } from "../lib/store";
-import { open, setTrail } from "../lib/views";
+import { open, setTrail, TABLES_TASK_KEY } from "../lib/views";
 import { byName } from "../lib/order";
 
 // The same two the panel keeps out of the fold, and for the same reason: a table
@@ -33,8 +33,11 @@ const rows = computed(() => tables.value.reduce((sum, kind) => sum + kind.count,
 // count, and the trail follows the language like every other word on screen.
 watchEffect(() => setTrail(word("tables")));
 
+// `task` ABRE POR UM ENDEREÇO PRÓPRIO (TASK-175): é a mesma tabela que a
+// árvore de projetos abre em `/task` com o popup da TASK-173, e o endereço é
+// o único sinal que diferencia o modo — aqui, planilha.
 function openTable(key: string): void {
-  open(key, null);
+  open(key === store.types.task ? TABLES_TASK_KEY : key, null);
 }
 </script>
 
