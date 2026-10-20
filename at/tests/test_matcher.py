@@ -160,6 +160,113 @@ class TheProposal(MatcherCase):
         )
 
 
+class TheWhen(MatcherCase):
+    """O quando escrito junto do título — a data e a hora, não o texto."""
+
+    def test_a_date_inside_the_title_leaves_the_title_alone(self):
+        # "comprar pão amanhã" é o título e a data; o título não carrega o
+        # "amanhã", e a data é a que a pessoa disse.
+        self.assertEqual(
+            self.propose("cria uma tarefa comprar pão amanhã").values,
+            {"deadline": "2026-09-23", "text": "comprar pão"},
+        )
+
+    def test_the_composed_day_phrase_arrives_whole(self):
+        for sentence, expected in (
+            ("cria uma tarefa comprar pão depois de amanhã", "2026-09-24"),
+            ("cria uma tarefa comprar pão daqui a 3 dias", "2026-09-25"),
+            ("cria uma tarefa comprar pão em duas semanas", "2026-10-06"),
+            ("cria uma tarefa comprar pão hoje de manhã", "2026-09-22"),
+            ("cria uma tarefa comprar pão amanhã à tarde", "2026-09-23"),
+        ):
+            with self.subTest(sentence=sentence):
+                proposal = self.propose(sentence)
+                self.assertEqual(proposal.values["deadline"], expected)
+                self.assertEqual(proposal.values["text"], "comprar pão")
+
+    def test_english_reads_its_own_counted_days(self):
+        for sentence, expected in (
+            ("create a task buy bread in 3 days", "2026-09-25"),
+            ("create a task buy bread day after tomorrow", "2026-09-24"),
+            ("create a task buy bread next week", "2026-10-05"),
+        ):
+            with self.subTest(sentence=sentence):
+                proposal = self.propose(sentence, "en_US")
+                self.assertEqual(proposal.values["deadline"], expected)
+                self.assertEqual(proposal.values["text"], "buy bread")
+
+    def test_an_hour_named_in_the_text_leaves_it(self):
+        # A tarefa não declara hora e o quando não é o título: as 18h saem do
+        # texto, e o que fica é o que a pessoa vai fazer.
+        proposal = self.propose("cria uma tarefa comprar pão às 18h")
+        self.assertEqual(proposal.values, {"text": "comprar pão"})
+
+    def test_a_count_in_the_title_is_not_an_hour(self):
+        # `2 pães` e `item 5` são contingência do título: só a marca de relógio
+        # (`18h`, `18:30`, `meio-dia`, o `às` antes do número) faz de um número
+        # uma hora.
+        for sentence, expected in (
+            ("cria uma tarefa comprar 2 pães", "comprar 2 pães"),
+            ("cria uma tarefa revisar o item 5", "revisar item 5"),
+            ("create a task buy 2 breads", "buy 2 breads"),
+        ):
+            language = "en_US" if sentence.startswith("create") else "pt_BR"
+            with self.subTest(sentence=sentence):
+                proposal = self.propose(sentence, language)
+                self.assertEqual(proposal.values.get("text"), expected)
+
+    def test_the_announcer_leaves_with_the_hour(self):
+        # `às 18` é uma hora; o `às` sai com ela, e o título fica o título.
+        self.assertEqual(
+            self.propose("me lembra de imprimir passagens às 18").values,
+            {"at": ["18:00"], "text": "imprimir passagens"},
+        )
+
+
+class TheImplied(MatcherCase):
+    """O verbo que já diz o valor, e a cortesia que não é o objeto."""
+
+    def test_a_verb_carries_the_value_and_the_action(self):
+        for sentence in ("conclui a tarefa 1", "risca a tarefa 1"):
+            with self.subTest(sentence=sentence):
+                proposal = self.propose(sentence)
+                self.assertEqual(proposal.action, "edit")
+                self.assertEqual(proposal.values, {"status": "done"})
+                self.assertEqual(proposal.row, 1)
+
+    def test_an_english_verb_carries_it_the_same_way(self):
+        for sentence in ("complete task 1", "check off task 1", "finish task 1"):
+            with self.subTest(sentence=sentence):
+                proposal = self.propose(sentence, "en_US")
+                self.assertEqual(proposal.action, "edit")
+                self.assertEqual(proposal.values, {"status": "done"})
+
+    def test_a_written_action_still_wins(self):
+        # `adiciona uma tarefa concluída` diz a ação e o valor; a ação escrita
+        # é a que a pessoa quis, e o verbo não a troca.
+        proposal = self.propose("adiciona uma tarefa concluída")
+        self.assertEqual(proposal.action, "create")
+        self.assertEqual(proposal.values, {"status": "done"})
+
+    def test_a_courtesy_is_never_the_title(self):
+        for sentence, expected in (
+            ("quero criar uma tarefa comprar leite", "comprar leite"),
+            ("gostaria de criar uma tarefa comprar pão", "comprar pão"),
+            ("por favor cria uma tarefa comprar pão", "comprar pão"),
+            ("i want to create a task buy bread", "buy bread"),
+        ):
+            language = "en_US" if sentence.startswith("i ") else "pt_BR"
+            with self.subTest(sentence=sentence):
+                proposal = self.propose(sentence, language)
+                self.assertEqual(proposal.values.get("text"), expected)
+
+    def test_a_hint_names_the_table_the_verb_implies(self):
+        # "me lembra de X" não escreve "lembrete", e a linha é um lembrete.
+        proposal = self.propose("me lembra de imprimir passagens")
+        self.assertEqual(proposal.table, "reminder")
+        self.assertEqual(proposal.values.get("text"), "imprimir passagens")
+
+
 class TheRefusal(MatcherCase):
     """A sentence the catalogue does not reach is refused by name."""
 
@@ -220,6 +327,7 @@ class TheRefusal(MatcherCase):
             "nlu.error.no_row",
             "nlu.error.interpreter_off",
             "nlu.ask.which_field",
+            "nlu.ask.what",
             "nlu.proposal",
         ):
             for language in i18n.SUPPORTED:
@@ -258,6 +366,15 @@ class TheQuestion(MatcherCase):
     def test_a_question_writes_nothing(self):
         self.propose("cria um projeto pra sexta")
         self.assertEqual(store.load("project"), [])
+
+    def test_a_create_that_names_no_title_asks_what_the_title_is(self):
+        # `cria uma tarefa` names the table and the action and nothing else. An
+        # empty row is not a row: the field the person still has to write is the
+        # table's PRIMARY, and the sentence comes back as the question for it.
+        question = self.propose("cria uma tarefa")
+        self.assertIsInstance(question, nlu.Question)
+        self.assertEqual(question.key, "nlu.ask.what")
+        self.assertEqual(question.text, tables.label("task", "text"))
 
 
 class TheDoor(MatcherCase):

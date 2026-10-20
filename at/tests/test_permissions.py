@@ -231,12 +231,13 @@ class TheInterfacesThatReach(unittest.TestCase):
 
     def test_the_grammar_actions_are_the_ones_the_vocabulary_names(self):
         # Só os verbos que o vocabulário embalado nomeia como canônico entram
-        # no `llm`; hoje são os quatro que o `action.json` carrega. O teste
-        # trava o FATO, para um vocabulário que ganhe (`cancel`) ou perca uma
-        # gíria apareça aqui e não passe em silêncio.
+        # no `llm`; hoje são os seis que o `action.json` carrega — o
+        # vocabulário ganhou `cancel` e `delete` quando o motor passou a
+        # entender `cancela`/`apaga`. O teste trava o FATO, para um vocabulário
+        # que ganhe ou perca uma gíria apareça aqui e não passe em silêncio.
         self.assertEqual(
             actions_audit._grammar_actions(),
-            frozenset({"list", "view", "create", "edit"}),
+            frozenset({"list", "view", "create", "edit", "cancel", "delete"}),
         )
 
     def test_the_three_interfaces_are_all_exercised(self):

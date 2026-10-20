@@ -42,6 +42,78 @@ WEEKDAYS = folded({
 # `tomorrow` is the day that comes; `today` is the day the clock is saying.
 RELATIVE = folded({"today": 0, "tomorrow": 1})
 
+# The day phrases that only read WHOLE — the matcher keeps them together
+# (`grammar.phrases`) and `read_day` reads them. `day after tomorrow` was read
+# as `tomorrow` plus the text "day after", and `next week` as `week` (a
+# reminder's frequency) plus residue. The count is of DAYS; next week is the
+# coming Monday, which is how a person names it.
+PHRASES = (
+    "day after tomorrow",
+    "next week",
+    "this weekend",
+    "next weekend",
+    "tomorrow morning",
+    "tomorrow afternoon",
+    "tomorrow evening",
+    "tomorrow night",
+    "this morning",
+    "this afternoon",
+    "this evening",
+    "tonight",
+    "next monday",
+    "next tuesday",
+    "next wednesday",
+    "next thursday",
+    "next friday",
+    "next saturday",
+    "next sunday",
+)
+
+# The composed phrase, and what it names. A period of the day names the DAY —
+# a day field holds a day, and the hour a period suggests is not this layer's to
+# invent.
+COMPOSED = folded({
+    "day after tomorrow": ("days", 2),
+    "next week": ("monday", 1),
+    "this weekend": ("saturday", 0),
+    "next weekend": ("saturday", 1),
+    "tomorrow morning": ("days", 1),
+    "tomorrow afternoon": ("days", 1),
+    "tomorrow evening": ("days", 1),
+    "tomorrow night": ("days", 1),
+    "this morning": ("days", 0),
+    "this afternoon": ("days", 0),
+    "this evening": ("days", 0),
+    "tonight": ("days", 0),
+    # `next monday` é a segunda da semana que vem, e não a que vem primeiro:
+    # é como a língua separa `monday` (a próxima) de `next monday` (a de depois).
+    "next monday": ("weekday-next", 0),
+    "next tuesday": ("weekday-next", 1),
+    "next wednesday": ("weekday-next", 2),
+    "next thursday": ("weekday-next", 3),
+    "next friday": ("weekday-next", 4),
+    "next saturday": ("weekday-next", 5),
+    "next sunday": ("weekday-next", 6),
+})
+
+# A count from today: `in 3 days`, `in two weeks`, `3 days from now`. The number
+# is what the words say and the unit is the word beside it.
+COUNTED = re.compile(
+    r"^(?:in|within) (.+) (days?|weeks?)$|^(.+) (days?|weeks?) from now$"
+)
+
+# The openings of a count — the matcher keeps them whole with the number and the
+# unit (`grammar.spans`); the day reader is what confirms the window is a date,
+# so a common opening (`in the box`) stays as it was.
+CONNECTORS = tuple(fold(word) for word in ("in", "within"))
+
+# The clock markers: the word that is already a whole hour, and the particle
+# that announces an hour written as a number (`at 6`). `18h` and `2pm` need
+# neither — the shape is the marker — and a bare number with none of them is a
+# count, not an hour.
+CLOCK_MARKERS = tuple(fold(word) for word in ("noon", "midnight", "at"))
+ANNOUNCERS = tuple(fold(word) for word in ("at",))
+
 # The numbers that are written out. One entry per form — English spends no
 # gender on them, which is one place where it costs less than Portuguese.
 NUMBERS = folded({
@@ -93,13 +165,36 @@ def _count(text: str) -> int | float | None:
     return number_of(spelled, DECIMAL)
 
 
+def _composed(spelled: str, today) -> "date":
+    """The day a composed phrase names: a count of days, or the coming time the
+    week reaches that day (`next week` is the Monday after this one)."""
+    kind, count = COMPOSED[spelled]
+    if kind == "days":
+        return today + timedelta(days=count)
+    if kind == "weekday-next":
+        return next_weekday(today, count) + timedelta(days=7)
+    weekday = WEEKDAYS["monday" if kind == "monday" else "saturday"]
+    nxt = next_weekday(today, weekday)
+    return nxt + timedelta(days=7) if count else nxt
+
+
 def read_day(text: str, now) -> Reading:
     """`today`, `tomorrow`, `friday` and `the 3rd`: a day said in English."""
     spelled = fold(text)
     if spelled in RELATIVE:
         return Value((now.date() + timedelta(days=RELATIVE[spelled])).isoformat())
+    if spelled in COMPOSED:
+        return Value(_composed(spelled, now.date()).isoformat())
     if spelled in WEEKDAYS:
         return Value(next_weekday(now.date(), WEEKDAYS[spelled]).isoformat())
+    match = COUNTED.match(spelled)
+    if match:
+        count = _count(match.group(1) or match.group(3))
+        if count is None:
+            return Residue(text)
+        unit = match.group(2) or match.group(4)
+        days = int(count) * (7 if unit.startswith("week") else 1)
+        return Value((now.date() + timedelta(days=days)).isoformat())
     match = DAY_OF_MONTH.match(spelled)
     if match:
         return Value(day_of_month(now.date(), int(match.group(1))).isoformat())

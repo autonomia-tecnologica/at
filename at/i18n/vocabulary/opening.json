@@ -1,0 +1,30 @@
+{
+  "pt_BR": {
+    "locality": "BR",
+    "openers": {
+      "quero": "request",
+      "queria": "request",
+      "gostaria de": "request",
+      "gostaria": "request",
+      "preciso de": "request",
+      "preciso": "request",
+      "poderia": "request",
+      "pode": "request",
+      "me ajuda a": "request",
+      "me ajude a": "request",
+      "por favor": "request"
+    }
+  },
+  "en_US": {
+    "locality": "US",
+    "openers": {
+      "i want to": "request",
+      "i'd like to": "request",
+      "i would like to": "request",
+      "i need to": "request",
+      "could you": "request",
+      "can you": "request",
+      "please": "request"
+    }
+  }
+}

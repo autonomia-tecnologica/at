@@ -247,8 +247,13 @@ class TheResidue(unittest.TestCase):
         self.assertIsNone(nlu.canonical("idz", "pt_BR"))
 
     def test_a_word_it_does_not_know_names_nothing_even_one_letter_off(self):
-        self.assertIsNone(nlu.canonical("fecharr", "pt_BR"))
-        self.assertIsNone(nlu.canonical("cancelar", "pt_BR"))
+        # `fechadura` is a word of the language and not one of the product's,
+        # and it is five letters from the nearest expression — past the one
+        # letter the tolerance forgives, and it stays a residue. `fecharr`, on
+        # the other hand, is one letter from `fechar` now that the vocabulary
+        # carries the verb: the tolerance is mechanical, and it reads it.
+        self.assertIsNone(nlu.canonical("fechadura", "pt_BR"))
+        self.assertEqual(nlu.canonical("fecharr", "pt_BR"), "cancel")
 
 
 class TheTie(unittest.TestCase):

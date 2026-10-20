@@ -30,7 +30,35 @@
       "meu",
       "minha",
       "me",
-      "favor"
+      "favor",
+      "como",
+      "no dia",
+      "às",
+      "aos",
+      "pelo",
+      "pela",
+      "num",
+      "numa",
+      "aqui",
+      "ai",
+      "aí",
+      "vem",
+      "chamado",
+      "chamada",
+      "nomeado",
+      "nomeada",
+      "chama",
+      "chamar",
+      "porque",
+      "pois",
+      "já que",
+      "está",
+      "esta",
+      "toda",
+      "todo",
+      "cada",
+      "todos",
+      "todas"
     ]
   },
   "en_US": {
@@ -50,7 +78,16 @@
       "my",
       "me",
       "it",
-      "please"
+      "please",
+      "as",
+      "at",
+      "by",
+      "into",
+      "from",
+      "about",
+      "on the",
+      "off",
+      "because"
     ]
   }
 }

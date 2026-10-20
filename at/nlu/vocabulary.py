@@ -86,6 +86,75 @@ def particles(language: str) -> tuple[str, ...]:
     return tuple(found)
 
 
+def implies(language: str) -> dict[str, str]:
+    """The words that SET a value without naming the field it goes in.
+
+    `conclui a tarefa 3` is a done-task: the verb carries the value, and the
+    field it lands in is whichever closed vocabulary of the table already holds
+    it. It is written under `implies` and never under `expressions` because the
+    canonical it names is a VALUE and not a field: the same word on a table
+    that does not carry that value means nothing, and is spent as a particle
+    for that table — the matcher is what decides, by reading the declaration.
+
+    A language the product does not speak answers nothing, like every door here.
+    """
+    return _expressions(language, "implies")
+
+
+def openers(language: str) -> dict[str, str]:
+    """As palavras de CORTESIA que abrem (ou fecham) um pedido.
+
+    `quero criar uma tarefa comprar leite` e `por favor, lista as tarefas` são o
+    mesmo pedido que a pessoa faria sem a cortesia, e as palavras que a fazem
+    não dizem nada sobre o que criar — são gastas como uma partícula, e nunca
+    viram o texto da linha. Elas moram num bloco próprio (`openers`) porque
+    valem para qualquer tabela, ao contrário de uma dica, que aponta uma.
+
+    Uma linguagem que o produto não fala responde vazio, como toda porta aqui.
+    """
+    return _expressions(language, "openers")
+
+
+def reasons(language: str) -> dict[str, str]:
+    """As palavras que ANUNCIAM o motivo de um encerramento.
+
+    `cancela a tarefa 3 porque desisti` diz o motivo, e o `porque` não é o
+    começo dele — é a palavra que diz que o que vem é o motivo. Ela é gasta, e
+    o que vem depois é o texto sob a chave `reason`, que `at.ui.ask` entrega ao
+    fechamento da linha (§`tables.cancel`). A palavra não é uma partícula
+    comum: fora de um encerramento ela pode ser conteúdo, e é por isso que ela
+    mora num bloco próprio e o matcher só a lê na ação que a usa.
+    """
+    return _expressions(language, "reasons")
+
+
+def hints(language: str) -> dict[str, str]:
+    """The words that NAME A TABLE without the table's own word in them.
+
+    `me lembra de X` says the row is a reminder — the verb already does, and
+    `lembra` alone is the `create` action. The difference between this and the
+    table vocabulary is that this one is spent ONLY when the sentence names no
+    table of its own (`cria um lembrete` keeps its word); a hint is what
+    settles which table a verb with no object meant, and nothing else.
+
+    A hint whose table is not declared in the folder is dropped by the
+    matcher, the same way a vocabulary word for an undeclared table is.
+    """
+    return _expressions(language, "hints")
+
+
+@lru_cache(maxsize=None)
+def _expressions(language: str, key: str) -> dict[str, str]:
+    """One extra block of a language, keyed the way a person writes it."""
+    code = language if language in i18n.SUPPORTED else i18n.SOURCE
+    found: dict[str, str] = {}
+    for block in files():
+        listed = _section(block, code).get(key)
+        if isinstance(listed, dict):
+            found.update({str(word): str(canonical) for word, canonical in listed.items()})
+    return found
+
+
 def locality(language: str) -> str:
     """Where a language's words belong — the region part of the pair (§5).
 

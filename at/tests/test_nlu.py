@@ -292,6 +292,61 @@ class WhatIsAskedBack(RulerCase):
                 self.assertIn("hora" if language == "pt_BR" else "hour", text)
 
 
+class TheComposedDay(RulerCase):
+    """A frase que só se lê inteira: o dia contado, a semana, o próximo dia."""
+
+    def test_a_composed_phrase_names_the_day_it_says(self):
+        for phrase, expected in (
+            ("depois de amanhã", "2026-09-24"),
+            ("daqui a 3 dias", "2026-09-25"),
+            ("em duas semanas", "2026-10-06"),
+            ("dentro de 5 dias", "2026-09-27"),
+            ("semana que vem", "2026-10-05"),
+            ("fim de semana", "2026-09-26"),
+            ("sexta que vem", "2026-10-02"),
+            ("hoje de manhã", "2026-09-22"),
+            ("amanhã à tarde", "2026-09-23"),
+            ("de noite", "2026-09-22"),
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertEqual(self.value(phrase, "day"), expected)
+
+    def test_english_names_its_own(self):
+        for phrase, expected in (
+            ("day after tomorrow", "2026-09-24"),
+            ("in 3 days", "2026-09-25"),
+            ("in two weeks", "2026-10-06"),
+            ("next week", "2026-10-05"),
+            ("this weekend", "2026-09-26"),
+            ("next monday", "2026-10-05"),
+            ("tonight", "2026-09-22"),
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertEqual(self.value(phrase, "day", "en_US"), expected)
+
+    def test_a_period_of_the_day_is_a_day_and_not_a_guessed_hour(self):
+        # `hoje de manhã` nomeia o dia; a hora que a manhã sugere não é esta
+        # camada que a inventa, e o dia é o que sai.
+        self.assertEqual(self.value("hoje de manhã", "day"), "2026-09-22")
+        self.assertIsInstance(self.read("hoje de manhã", "time"), nlu.Residue)
+
+
+class TheTimeOfDay(RulerCase):
+    """A hora dita pelo período em que ela cai, e a marca que a anuncia."""
+
+    def test_a_period_names_which_hour_the_number_is(self):
+        for phrase, expected in (
+            ("9 da manhã", "09:00"),
+            ("3 da tarde", "15:00"),
+            ("oito da noite", "20:00"),
+            ("duas e meia da tarde", "14:30"),
+            ("ao meio-dia", "12:00"),
+            ("à meia-noite", "00:00"),
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertEqual(self.value(phrase, "time"), expected)
+
+
 class TheResidue(RulerCase):
     """What does not resolve is residue, and it comes back as it went in."""
 

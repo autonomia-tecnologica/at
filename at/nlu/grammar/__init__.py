@@ -24,11 +24,13 @@ tolerance, in `at.nlu.normalizer`.
 from __future__ import annotations
 
 import importlib
+import re
 from datetime import date, datetime, time, timedelta
 
 from at import i18n
 from at.core import tables
-from at.nlu.reading import Refused
+from at.nlu.normalizer import fold
+from at.nlu.reading import Refused, Residue, Value
 
 # The readers every language's grammar must carry, keyed by the kind a field
 # declares. This dict is the contract between this module and the language
@@ -72,6 +74,48 @@ def read(language: str, kind: str):
     return getattr(of(language), name)
 
 
+def spans(
+    language: str, folded: list[str], now: datetime | None = None
+) -> list[tuple[int, int]]:
+    """Os trechos de data que o matcher não pode picar — `(início, tamanho)`.
+
+    São as frases que a linguagem declara (`phrases`) mais as que só se leem
+    inteiras por serem um número contado: `em duas semanas`, `daqui a 3 dias`.
+    A segunda classe não cabe numa lista, porque o número muda; ela é
+    reconhecida pelo que a linguagem declara como ABERTURA (`CONNECTORS`) e
+    confirmada pelo próprio leitor de dia — a janela só fica junta quando
+    `read_day` a lê inteira, e uma abertura comum no meio do texto (`em casa`)
+    não vira data porque não se lê como uma.
+
+    A maior janela vence em cada abertura: `daqui a 3 dias` inteira, e não
+    `daqui a 3`.
+    """
+    found = _phrases(language, folded)
+    module = of(language)
+    openings = getattr(module, "CONNECTORS", ())
+    reader = read(language, "day")
+    moment = now if now is not None else datetime.now()
+    for start in range(len(folded)):
+        if not _opens(openings, folded, start):
+            continue
+        longest = min(MAX_PHRASE, len(folded) - start)
+        for size in range(longest, 1, -1):
+            piece = " ".join(folded[start:start + size])
+            if isinstance(_read_quietly(reader, piece, moment), Value):
+                found.append((start, size))
+                break
+    return sorted(found, key=lambda span: span[1], reverse=True)
+
+
+def _opens(openings, folded: list[str], start: int) -> bool:
+    """Se uma das aberturas declaradas começa em `start`."""
+    for opening in openings:
+        words = opening if isinstance(opening, tuple) else (opening,)
+        if tuple(folded[start:start + len(words)]) == tuple(words):
+            return True
+    return False
+
+
 def phrases(language: str) -> tuple[str, ...]:
     """As FRASES de data que a linguagem reconhece INTEIRAS, da mais longa para a
     mais curta — o que o matcher precisa para não picá-las palavra a palavra.
@@ -83,6 +127,146 @@ def phrases(language: str) -> tuple[str, ...]:
     """
     listed = getattr(of(language), "PHRASES", {})
     return tuple(sorted(listed, key=lambda phrase: len(phrase.split()), reverse=True))
+
+
+def split(
+    language: str, kind: str, text: str, now: datetime | None = None
+) -> tuple[str, str] | None:
+    """A data (ou a hora) escrita DENTRO de um trecho, e o texto que a cerca.
+
+    Não é a leitura de uma frase: é a leitura de um trecho que a frase carrega
+    — `comprar pão amanhã` é o título e a data, e `imprimir passagens hoje 18h`
+    é o título, a data e a hora. Quem não separa os dois grava o título com a
+    data colada dentro ("comprar pão amanhã"), e é o defeito que isto fecha.
+
+    **A ordem é a da frase, e a expressão mais LONGA vence**: os trechos são
+    varridos do fim para o começo (é onde a pessoa põe o quando), uma janela
+    de até `MAX_PHRASE` palavras é tentada da maior para a menor, e o primeiro
+    que o leitor do `kind` lê INTEIRO é o que vale. O `kind` é o do campo que
+    recebe o valor — `day` para o prazo, `time` para o horário de um lembrete
+    —, e um leitor que devolve `Residue` (ou pergunta, ou recusa) não achou
+    nada: o trecho fica como está, e o texto não é adivinhado.
+
+    Responde `(antes, valor)` com o texto sem a expressão, ou `None` quando
+    nenhuma palavra do trecho é a data/hora que o campo procura.
+    """
+    reader = read(language, kind)
+    moment = now if now is not None else datetime.now()
+    words = text.split()
+    folded = [fold(word) for word in words]
+    # A EXPRESSÃO COMPOSTA QUE A FRASE PARTE (20/10/2026): `depois de amanhã`
+    # são três palavras, e o matcher já gastou o `amanhã` delas como a data —
+    # o que sobra aqui é `depois de`, e a expressão inteira vence. As frases
+    # que a linguagem declara em `PHRASES` são lidas JUNTAS primeiro; a janela
+    # solta vem depois, e não passa por cima delas.
+    kept = spans(language, folded, moment)
+    for start, size in kept:
+        piece = " ".join(words[start:start + size])
+        reading = _read_quietly(reader, piece, moment)
+        if isinstance(reading, Value):
+            rest = " ".join([*words[:start], *words[start + size:]]).strip()
+            return rest, reading.value
+    longest = min(MAX_PHRASE, len(words))
+    for size in range(longest, 0, -1):
+        for start in range(len(words) - size, -1, -1):
+            if (start, size) in kept:
+                continue
+            piece = " ".join(words[start:start + size])
+            # A HORA PRECISA DE MARCA DE RELÓGIO (20/10/2026): um número
+            # solto no meio do texto não é uma hora — "comprar 2 pães" perdia
+            # o `2` para as duas da manhã, e "revisar o item 5" perdia o `5`.
+            # A hora que a pessoa ESCREVE vem com o relógio junto (`18h`,
+            # `18:30`, `meio-dia`) ou logo atrás da partícula que a anuncia
+            # (`às 18`, `at 6`); fora disso, é contagem, e contagem é texto.
+            # Quando é a partícula que anuncia, ela sai junto com a hora: ela
+            # só estava ali para dizer que o número era uma hora.
+            if kind == "time" and not _clocked(language, folded, start, size):
+                continue
+            if kind == "time" and _counted_date(language, words, start, size, moment):
+                continue
+            reading = _read_quietly(reader, piece, moment)
+            if isinstance(reading, Value):
+                head = start - 1 if _announced(language, folded, start) else start
+                rest = " ".join([*words[:head], *words[start + size:]]).strip()
+                return rest, reading.value
+    return None
+
+
+def _announced(language: str, folded: list[str], start: int) -> bool:
+    """Se a palavra antes da hora é a partícula que a anuncia (`às`, `at`)."""
+    announcers = set(getattr(of(language), "ANNOUNCERS", ()))
+    return start > 0 and folded[start - 1] in announcers
+
+
+def _counted_date(language: str, words: list[str], start: int, size: int, moment) -> bool:
+    """Se a janela é uma DATA contada — `daqui a 3 dias`, `em duas semanas`.
+
+    `3 dias` também se lê como três horas num campo de hora, e `daqui a 3
+    dias` é uma data, não a hora três. O que decide é a leitura do dia sobre o
+    trecho MAIOR, com a abertura junto: se ele lê a contagem inteira, a hora
+    não pode tomar o número dela.
+    """
+    reader = read(language, "day")
+    for extra in (1, 2):
+        head = start - extra
+        if head < 0:
+            continue
+        piece = " ".join(words[head:start + size])
+        if isinstance(_read_quietly(reader, piece, moment), Value):
+            return True
+    return False
+
+
+def _clocked(language: str, folded: list[str], start: int, size: int) -> bool:
+    """Se a janela diz uma hora com a marca de relógio dela.
+
+    A marca é de três formas: o número escrito com o relógio junto (`18h`,
+    `14:30`, `2pm`), a palavra que já é uma hora inteira (`meio-dia`, `noon`),
+    e a partícula que anuncia a hora e fica FORA da janela (`às 18`, `at 6`).
+    Fora delas, o número é contagem — e contagem é texto.
+    """
+    keys = set(folded[start:start + size])
+    markers = set(getattr(of(language), "CLOCK_MARKERS", ()))
+    if keys & markers:
+        return True
+    if any(CLOCK_LITERAL.match(word) for word in keys):
+        return True
+    return _announced(language, folded, start)
+
+
+# O número que traz o relógio junto — `18h`, `18h30`, `14:30`, `2pm`. Um
+# número SOLTO não casa: `18` é uma hora num campo de hora, mas no texto é uma
+# contagem, e é a marca que diz a diferença.
+CLOCK_LITERAL = re.compile(r"^(?:\d{1,2}(?::\d{2}|h\d{0,2})|(?:\d{1,2})(?::\d{2})?(?:am|pm))$")
+
+
+def _read_quietly(reader, piece: str, moment) -> object:
+    """O que o leitor lê, ou `Residue` — uma expressão de data que não existe
+    (`dia 32`) não para a busca de outra na mesma frase."""
+    try:
+        return reader(piece, moment)
+    except Refused:
+        return Residue(piece)
+
+
+def _phrases(language: str, folded: list[str]) -> list[tuple[int, int]]:
+    """As posições das frases de data que a frase carrega inteiras, da mais
+    longa para a mais curta — `depois de amanhã`, `semana que vem`."""
+    spans: list[tuple[int, int]] = []
+    for phrase in phrases(language):
+        words = fold(phrase).split()
+        if not words:
+            continue
+        for start in range(len(folded) - len(words) + 1):
+            if folded[start:start + len(words)] == words:
+                spans.append((start, len(words)))
+    return sorted(spans, key=lambda span: span[1], reverse=True)
+
+
+# A janela que a data dentro de um trecho pode ocupar — `depois de amanhã` são
+# três palavras, `sexta-feira que vem` são três, e nenhuma expressão de data
+# desta língua passa disso.
+MAX_PHRASE = 4
 
 
 # ------------------------------------------------------------- the words ---

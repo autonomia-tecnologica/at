@@ -68,6 +68,23 @@ def canonical(text: str, language: str | None = None) -> str | None:
         found = pairs.get(form)
         if found is not None:
             return found
+    # A TOLERÂNCIA É DE UMA PALAVRA (20/10/2026): uma expressão de duas
+    # palavras — `me lembra de`, `em andamento` — só se lê INTEIRA, como foi
+    # escrita. A distância de uma letra sobre uma frase junta palavras que não
+    # são a mesma (`conclui a` está a duas edições de `concluída`, e uma janela
+    # maior que a palavra a lê como o valor), e é a classe de defeito que
+    # transforma `conclui a tarefa` em `done a task`. A expressão composta é
+    # dado, e dado se escreve; o erro de digitação é de quem digitou UMA
+    # palavra.
+    if " " in spoken:
+        return None
+    # A PALAVRA CURTA É CONTEÚDO, E NÃO UM ERRO DE DIGITAÇÃO (20/10/2026):
+    # `vem` está a uma letra de `sem` e virava partícula — a tolerância apagava
+    # o texto que a pessoa escreveu. O erro de digitação é de quem digitou uma
+    # palavra LONGA; abaixo do piso, a distância de uma letra é a distância
+    # entre duas palavras comuns, e ali não há nada a perdoar.
+    if len(spoken) < TYPO_FLOOR:
+        return None
     return nearest(spoken, pairs)
 
 
@@ -85,6 +102,14 @@ def nearest(word: str, pairs: dict[str, str]) -> str | None:
     found: set[str] = set()
     for expression, canonical in pairs.items():
         if abs(len(expression) - len(word)) > TYPO_DISTANCE:
+            continue
+        # A LETRA QUE NÃO SE PERDE NA FRENTE (20/10/2026): `pagar` está a uma
+        # letra de `apagar`, e não é o dedo que escorregou — é uma palavra
+        # corrente da língua, que o vocabulário passou a conhecer ao ganhar a
+        # vizinha. O erro de digitação troca, come ou repete uma letra DENTRO
+        # da palavra; perder a primeira inventa outra palavra, e é essa
+        # invenção que a tolerância não faz.
+        if expression.endswith(word):
             continue
         distance = _distance(word, expression, TYPO_DISTANCE)
         if distance > TYPO_DISTANCE:

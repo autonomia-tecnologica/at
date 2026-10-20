@@ -1,0 +1,83 @@
+{
+  "pt_BR": {
+    "locality": "BR",
+    "implies": {
+      "conclui": "done",
+      "concluir": "done",
+      "concluí": "done",
+      "concluiu": "done",
+      "termina": "done",
+      "terminar": "done",
+      "terminei": "done",
+      "finaliza": "done",
+      "finalizar": "done",
+      "finalizei": "done",
+      "feito": "done",
+      "feita": "done",
+      "resolve": "done",
+      "resolver": "done",
+      "resolvi": "done",
+      "risca": "done",
+      "riscar": "done",
+      "risquei": "done",
+      "anota": "note",
+      "anotar": "note",
+      "anote": "note",
+      "registra": "note",
+      "registrar": "note",
+      "registre": "note",
+      "jota": "note"
+    },
+    "reasons": {
+      "porque": "reason",
+      "pois": "reason",
+      "já que": "reason",
+      "motivo": "reason",
+      "razão": "reason"
+    },
+    "hints": {
+      "me lembra": "reminder",
+      "me lembre": "reminder",
+      "me lembrar": "reminder",
+      "lembra-me": "reminder",
+      "lembre-me": "reminder",
+      "me avisa": "reminder",
+      "me avise": "reminder",
+      "me avisar": "reminder",
+      "avisa-me": "reminder",
+      "me acorda": "reminder",
+      "acorda-me": "reminder"
+    }
+  },
+  "en_US": {
+    "locality": "US",
+    "implies": {
+      "finish": "done",
+      "finished": "done",
+      "complete": "done",
+      "completed": "done",
+      "resolve": "done",
+      "resolved": "done",
+      "done": "done",
+      "check off": "done",
+      "cross off": "done",
+      "tick off": "done",
+      "note": "note",
+      "annotate": "note",
+      "jot": "note"
+    },
+    "reasons": {
+      "because": "reason",
+      "since": "reason",
+      "reason": "reason",
+      "why": "reason"
+    },
+    "hints": {
+      "remind me": "reminder",
+      "reminds me": "reminder",
+      "wake me": "reminder",
+      "notify me": "reminder",
+      "alert me": "reminder"
+    }
+  }
+}
