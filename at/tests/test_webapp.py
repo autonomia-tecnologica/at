@@ -1438,6 +1438,41 @@ class TheAskDoor(ServerCase):
         self.assertIn(tables.table_name("task"), answer["proposal"])
         self.assertEqual(answer["text"], i18n.tr("table.created", id="TASK-2"))
 
+    def test_a_write_comes_back_with_the_record_it_touched(self):
+        # THE CARD (20/10/2026): `create` answers with the row it made, whole —
+        # its main fields in the page's words, and its id as the door to the
+        # record's page —, and the sentence that introduces it. Both composed
+        # HERE, by the server; the page draws what it is handed.
+        status, answer = self.post("/api/ask", {"text": "cria uma tarefa comprar pão"})
+        self.assertEqual(status, 200)
+        self.assertEqual(answer["kind"], "answer")
+        record = answer["record"]
+        self.assertEqual(record["table"], "task")
+        self.assertEqual(record["id"], 2)
+        self.assertEqual(record["shown_id"], "TASK-2")
+        self.assertEqual(record["entity"], tables.table_name("task"))
+        self.assertEqual(record["title"], tables.title("task", tables.find("task", 2)))
+        names = [field["name"] for field in record["fields"]]
+        self.assertEqual(names, list(tables.columns("task")))
+        self.assertEqual(answer["lead"], i18n.tr("table.lead.create", id="TASK-2"))
+
+    def test_viewing_comes_back_with_the_record_it_found(self):
+        status, answer = self.post("/api/ask", {"text": "ver a tarefa 1"})
+        self.assertEqual(status, 200)
+        self.assertEqual(answer["kind"], "answer")
+        self.assertEqual(answer["record"]["shown_id"], "TASK-1")
+        self.assertEqual(answer["lead"], i18n.tr("table.lead.view", id="TASK-1"))
+
+    def test_a_list_has_no_card_and_keeps_its_own_shape(self):
+        # One row is the card's business; a LIST of them is the table's, and a
+        # card standing for a whole list would be one record pretending to be
+        # the answer (the person's own cut, 20/10/2026).
+        status, answer = self.post("/api/ask", {"text": "lista as tarefas"})
+        self.assertEqual(status, 200)
+        self.assertIsNone(answer["record"])
+        self.assertIsNone(answer["lead"])
+        self.assertTrue(answer["table"] or answer["bullets"])
+
     def test_the_sentence_of_the_item_reaches_the_row_it_names(self):
         # "editar a tarefa 1 status concluída": the row named the way a person names
         # one becomes a WRITE, and the LISTING UNDERNEATH is what changes — which is

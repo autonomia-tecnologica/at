@@ -1143,6 +1143,34 @@ a.ref:hover, a.url:hover { border-bottom-color: currentColor; background: var(--
 .turn .md-body code { background: var(--surface-2); border-radius: 5px; padding: .1em .35em; font-size: .92em; }
 .turn .md-body a { color: var(--accent); }
 .turn .proposal .tag { color: var(--ink-3); margin-right: var(--space-2); }
+/* THE ROW AS A CARD (20/10/2026): `create`, `edit`, `cancel`, `delete` and
+   `view` answer with the record they touched, and the card is the record whole —
+   the table's main fields, already in words, and the id as the door to its page.
+   A BUTTON, because it opens one: it reads as content (text left, no chrome of a
+   button) and reacts as a door (accent on hover, focus ring), the same contract
+   `.row` gives a table row. */
+.turn .lead { margin: 0; }
+.turn .card {
+  display: flex; flex-direction: column; gap: var(--space-3);
+  width: 100%; padding: var(--space-3) var(--space-4); text-align: left;
+  font: inherit; color: var(--ink-1); cursor: pointer;
+  background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--r-sm);
+  transition: border-color .12s ease;
+}
+.turn .card:hover { border-color: var(--accent); }
+.turn .card:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.turn .card-head { display: flex; align-items: baseline; gap: var(--space-3); flex-wrap: wrap; }
+.turn .card-id {
+  font-family: monospace; font-size: var(--text-xs);
+  font-weight: var(--weight-semibold); color: var(--accent);
+}
+.turn .card-title { font-weight: var(--weight-semibold); }
+.turn .card-fields { display: flex; flex-direction: column; gap: var(--space-2); }
+.turn .card-field { display: flex; align-items: baseline; gap: var(--space-3); }
+.turn .card-label {
+  flex: 0 0 auto; min-width: 7em; color: var(--ink-3); font-size: var(--text-xs);
+}
+.turn .card-value { white-space: pre-wrap; }
 .turn[data-kind="question"] .answer, .turn[data-kind="refused"] .answer,
 .turn[data-kind="question"] .md-body, .turn[data-kind="refused"] .md-body { color: var(--ink-2); }
 /* THE SAME MARGIN EVERY OTHER PAGE BRINGS (`#body table`, `.prose`, above):
@@ -1165,6 +1193,19 @@ a.ref:hover, a.url:hover { border-bottom-color: currentColor; background: var(--
   flex: 1; display: flex; flex-direction: column; gap: var(--space-3); overflow-y: auto;
   padding: var(--space-4); background: var(--surface-1); border-radius: var(--r-lg);
 }
+/* THE OPENING (20/10/2026): an empty conversation says what the box takes and
+   offers four sentences to try — each a button that asks for real, not a
+   picture of one. Quiet, because it is the box talking before anything was
+   asked, not an answer to anything. */
+.chat-hello { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); color: var(--ink-2); }
+.chat-hello p { margin: 0; }
+.chat-example {
+  padding: var(--space-2) var(--space-3); font: inherit; font-size: var(--text-sm);
+  color: var(--ink-1); text-align: left; cursor: pointer;
+  background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--r-sm);
+}
+.chat-example:hover { border-color: var(--accent); }
+.chat-example:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .chat-form { display: flex; align-items: center; gap: var(--space-3); padding: 0 var(--space-4) var(--space-4); }
 .chat-say {
   flex: 1; min-width: 0; padding: var(--space-3); background: var(--surface-0); color: var(--ink-1);

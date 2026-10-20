@@ -24,6 +24,7 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { store, word } from "../lib/store";
 import type { Turn } from "../lib/ask";
+import { openRef } from "../lib/views";
 import { ensureRenderer, proseHtml, rendererReady, tableMarkdown } from "../lib/markdown";
 
 const props = defineProps<{ turn: Turn }>();
@@ -80,6 +81,15 @@ onMounted(() => {
 });
 watch(body, render);
 watch(rendererReady, render);
+
+// THE CARD is the DOOR: clicking it opens the record's page, the same step
+// every other reference in the product takes (`views.ts`'s `openRef`). The key
+// is the table's own, and the id is the row's — both handed over by the server,
+// so the page composes no address of its own.
+function openCard(): void {
+  const card = props.turn.record;
+  if (card) openRef({ key: card.table, id: card.id });
+}
 </script>
 
 <template>
@@ -89,7 +99,29 @@ watch(rendererReady, render);
       <time v-if="when" class="stamp">{{ when }}</time>
     </p>
     <div class="answer-msg">
-      <template v-if="html !== null">
+      <!-- THE SENTENCE AROUND THE CARD (20/10/2026): "Achei TASK-1 para
+           você. É este:" — composed by the server, drawn here, and never a
+           second wording of the engine's own answer (`text`, which the card
+           stands for when there is one). -->
+      <p v-if="turn.lead" class="lead">{{ turn.lead }}</p>
+      <!-- THE CARD: the row the answer was about, and a door to its page. -->
+      <button v-if="turn.record" type="button" class="card"
+              :aria-label="turn.record.shown_id" @click="openCard">
+        <span class="card-head">
+          <span class="card-id">{{ turn.record.shown_id }}</span>
+          <span class="card-title">{{ turn.record.title }}</span>
+        </span>
+        <span class="card-fields">
+          <span v-for="field in turn.record.fields" :key="field.name" class="card-field">
+            <span class="card-label">{{ field.label }}</span>
+            <span class="card-value">{{ field.value }}</span>
+          </span>
+        </span>
+      </button>
+      <!-- THE ENGINE'S OWN ANSWER, still shown when there is no card to stand
+           for it: a `list` (table or bullets), a refusal, a question, and the
+           demand that waited. -->
+      <template v-else-if="html !== null">
         <div class="md-body" v-html="html"></div>
         <time v-if="when" class="stamp">{{ when }}</time>
       </template>
@@ -97,6 +129,7 @@ watch(rendererReady, render);
         {{ body }}
         <time v-if="when" class="stamp">{{ when }}</time>
       </p>
+      <time v-if="turn.record && when" class="stamp">{{ when }}</time>
     </div>
     <form v-if="turn.assist" class="assist-retry" @submit.prevent="retry">
       <input v-model="mainKey" type="password" autocomplete="off"

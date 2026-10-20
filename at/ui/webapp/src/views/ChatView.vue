@@ -34,18 +34,30 @@ async function scrolled(): Promise<void> {
   if (log.value) log.value.scrollTop = log.value.scrollHeight;
 }
 
-async function send(): Promise<void> {
-  const text = sentence.value.trim();
-  if (!text || busy.value) return;
+// A SENTENCE THE OPENING OFFERS: the same road as typed one — it goes up as a
+// turn of its own, so the person reads the example AND its answer side by side.
+async function say(text: string): Promise<void> {
+  if (busy.value) return;
   busy.value = true;
   try {
     await sendTurn(text);
-    sentence.value = "";
     await scrolled();
   } finally {
     busy.value = false;
   }
 }
+
+async function send(): Promise<void> {
+  const text = sentence.value.trim();
+  if (!text || busy.value) return;
+  sentence.value = "";
+  await say(text);
+}
+
+// THE OPENING (20/10/2026): an empty conversation says what the box takes — a
+// sentence, in plain words — and offers four of them to try, each a click that
+// asks for real. The words are the catalog's, in the language of the page.
+const examples = ["chat_ex1", "chat_ex2", "chat_ex3", "chat_ex4"];
 
 // TASK-180, fatia 3/3: the SAME sentence, asked again with a Main Key — kept
 // as a NEW turn, the same way the chat keeps every round rather than editing
@@ -68,7 +80,13 @@ async function retry(sentence: string, mainKey: string): Promise<void> {
 <template>
   <div class="chat">
     <div ref="log" class="chat-log">
-      <p v-if="!chatState.turns.length" class="empty">{{ word("no_records") }}</p>
+      <div v-if="!chatState.turns.length" class="chat-hello">
+        <p>{{ word("chat_hello") }}</p>
+        <button v-for="key in examples" :key="key" type="button" class="chat-example"
+                :title="word('chat_example')" @click="say(word(key))">
+          {{ word(key) }}
+        </button>
+      </div>
       <AskTurn v-for="(turn, index) in chatState.turns" :key="index" :turn="turn"
                @retry="(key) => retry(turn.sentence, key)" />
     </div>

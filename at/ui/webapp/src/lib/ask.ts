@@ -16,6 +16,26 @@ import { poke } from "./views";
 
 export type Kind = "answer" | "question" | "refused";
 
+// ONE ROW as a card — the table's main fields, already written out in the
+// active language, and the id that makes the card a door to the record's page.
+// It is the shape the server hands over (`at.ui.ask.card`), not the full record
+// (`RecordRow`): there is no editor here, and no field the table does not
+// declare as its `columns`.
+export interface RecordCardField {
+  name: string;
+  label: string;
+  value: string;
+}
+
+export interface RecordCard {
+  table: string;   // the table the row IS — the key a link opens it by
+  entity: string;  // its display name, for the card's own heading
+  id: number;
+  shown_id: string; // `TASK-3`, the way the engine names it
+  title: string;
+  fields: RecordCardField[];
+}
+
 export interface Turn {
   sentence: string; // what was asked
   kind: Kind; // which of the three came back
@@ -45,6 +65,17 @@ export interface Turn {
   // it to complete the sentence from whatever is typed next, the way "sim"
   // completes an open CONFIRM question.
   awaiting?: string | null;
+  // THE OBJECT the answer was about, as a CARD (20/10/2026): `create`, `edit`,
+  // `cancel`, `delete` and `view` answer with the row they touched, so the
+  // conversation can show it whole instead of only naming it. `null` for a
+  // `list` (its own `table`/`bullets` are the shape) and for every question
+  // and refusal. The server composes it (`at.ui.ask.card`) — the page draws
+  // the fields it was handed and invents none.
+  record?: RecordCard | null;
+  // WHAT A CONVERSATION SAYS BEFORE THE CARD — "Achei TASK-1 para você. É
+  // este:" — also composed by the server, for the same reason every other
+  // sentence here is (§3). `null` whenever `record` is.
+  lead?: string | null;
   // When this turn was ADDED to the conversation, stamped by `chat.ts`'s
   // `remember` and read nowhere else — the engine answers no clock here, and a
   // chat that showed none would be the one place a person cannot tell two
@@ -68,6 +99,7 @@ export async function ask(
       kind: Kind; proposal: string | null; text: string; assist?: boolean;
       confirm?: string | null; table?: { header: string[]; rows: string[][] } | null;
       bullets?: string[] | null; awaiting?: string | null;
+      record?: RecordCard | null; lead?: string | null;
     }
   >("/api/ask", body);
   // A proposal may have WRITTEN: the same page is redrawn where it stands, exactly
@@ -78,5 +110,6 @@ export async function ask(
     sentence, kind: data.kind, proposal: data.proposal ?? null, text: data.text,
     assist: !!data.assist, confirm: data.confirm ?? null, table: data.table ?? null,
     bullets: data.bullets ?? null, awaiting: data.awaiting ?? null,
+    record: data.record ?? null, lead: data.lead ?? null,
   };
 }

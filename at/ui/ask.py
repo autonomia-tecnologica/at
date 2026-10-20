@@ -192,6 +192,30 @@ class Result:
     # (`nlu.error.no_table_bare`, `lib/chat.ts`). `None` for every other
     # refusal and for every answer and question.
     awaiting: str | None = None
+    # THE RECORD an action about ONE row left behind — `create`, `edit`,
+    # `cancel`, `delete` and `view` — as a CARD a surface draws (the person's
+    # own ask, 20/10/2026: "mostra o objeto inteiro"). `None` for `list` (its
+    # own `table`/`bullets` are the shape), for a `backup`, for a demand that
+    # WAITED, and for a sentence that answered nothing but a refusal.
+    #
+    # The card is the ONE the record's page already draws (`record`, `app.py`),
+    # and it is built HERE because the door is where the row is; the page
+    # composes no card of its own (§3). Only the fields the table declares as
+    # its `columns` travel — the same ones a listing shows, the person's rule
+    # ("os campos principais da tabela, definido no schema") — so the card is
+    # as wide as the table says and never as wide as the row.
+    record: dict | None = None
+    # THE SENTENCE THE CONVERSATION ADDS AROUND THE CARD — "Pronto, criei
+    # TASK-2:" — composed HERE, for the reason the whole module exists: the
+    # words are composed once, and what a surface decides is only where they
+    # GO. `text` is still the engine's own answer (the fact, the line the
+    # version carries); this is what a conversation says about it, and a
+    # surface that is not a conversation never draws it.
+    #
+    # `None` for everything the card does not answer — a `list`, a `backup`, a
+    # question, a refusal — and for a demand that waited: there is no row to
+    # show, so there is no sentence to lead into it.
+    lead: str | None = None
 
 
 def ask(
@@ -272,12 +296,25 @@ def ask(
 
     written = proposed_text(proposed)
     try:
-        code, answer, _, table_rows, bullets = execute(proposed, actor=actor)
+        code, answer, row, table_rows, bullets = execute(proposed, actor=actor)
     except tables.TableError as error:
         return Result("answer", written, str(error), REFUSED)
     except files.ReadOnly as error:
         return Result("answer", written, tr("cli.error.read_only", where=error.where), REFUSED)
-    return Result("answer", written, answer, code, table=table_rows, bullets=bullets)
+    # THE CARD of the row the act touched — one row's own action, and only
+    # it: a `list` answers its own shape (above), and a demand that WAITED
+    # answered `None` from `run` (nothing was written to show).
+    shown = card(proposed.table, row) if row is not None else None
+    return Result(
+        "answer", written, answer, code,
+        table=table_rows, bullets=bullets,
+        record=shown,
+        # THE LEAD names the row by the engine's OWN id (`shown_id`) and never
+        # by its title: a title is prose, and prose belongs to the person the
+        # row is about — the card under it carries the whole of what the row
+        # says, and a sentence that repeated it would be a second telling.
+        lead=tr(f"table.lead.{proposed.action}", id=shown["shown_id"]) if shown else None,
+    )
 
 
 def ceiling(actor: dict | None, proposal: nlu.Proposal) -> str | None:
@@ -593,7 +630,11 @@ def job(
         code, text, _, _ = _listing(jobs.JOB, args)
         return code, text
     if action == "view":
-        return _viewing(jobs.JOB, args)
+        # The `cli` prints the engine's listing and reads nothing else, which is
+        # the whole of what this door owes a terminal — the row a conversation
+        # would draw is `ask`'s to carry (`_acted`), and it is not this one.
+        code, text, _ = _viewing(jobs.JOB, args)
+        return code, text
     if action == jobs.DECLARE:
         return _declared(args, actor=actor, via=via)
     if action not in jobs.ACTS or len(args) != 1:
@@ -1414,8 +1455,13 @@ def _acted(
         code, answer, table_rows, bullets = _listing(table, args, values, ranges or {}, full_table)
         return code, answer, None, table_rows, bullets
     if action == "view":
-        code, answer = _viewing(table, args)
-        return code, answer, None, None, None
+        # THE ROW TRAVELS BACK for a `view` (20/10/2026): the card a
+        # conversation draws is the very record the `cli` prints, and the
+        # second element is still the engine's own listing of it, unchanged.
+        code, answer, found = _viewing(table, args)
+        if code != OK:
+            return code, answer, None, None, None
+        return code, answer, found, None, None
     values, leftovers = given if given is not None else _sets(args)
     if action == "create":
         if leftovers:
@@ -1624,7 +1670,7 @@ def _claims(table: str) -> bool:
     return isinstance(ref, list) and PROJECT in ref
 
 
-def _viewing(table: str, args: list[str]) -> tuple[int, str]:
+def _viewing(table: str, args: list[str]) -> tuple[int, str, dict | None]:
     """One row's fields — and, for a project, what is inside it.
 
     A project is a SCOPE and not a table of its own (§4): the page a person
@@ -1633,7 +1679,7 @@ def _viewing(table: str, args: list[str]) -> tuple[int, str]:
     slices of an item are answered here, by the very rows the page draws.
     """
     if len(args) != 1:
-        return USAGE, rejected("view")
+        return USAGE, rejected("view"), None
     row = tables.find(table, args[0])
     lines = [f"{tr('table.field.id')}: {tables.format_id(table, row['id'])}"]
     for name in (schema.of(table) or {}).get("fields", {}):
@@ -1646,7 +1692,45 @@ def _viewing(table: str, args: list[str]) -> tuple[int, str]:
         lines.append("")
         lines.append(f"{tables.table_name(TASK, many=True)}:")
         lines.append(rendered(TASK, slices) if slices else tr("table.word.empty"))
-    return OK, "\n".join(lines)
+    return OK, "\n".join(lines), row
+
+
+def card(table: str, row: dict) -> dict:
+    """ONE row as a card a surface draws — the fields the table declares as its
+    `columns`, and nothing else.
+
+    It is the person's own rule (20/10/2026): the card is the table's MAIN
+    fields, and which ones those are is the DECLARATION's to say, never the
+    surface's — `schema.columns` is the very list a listing shows, so the card
+    and the grid agree about what a table's main fields are.
+
+    The ID travels beside the fields because a card is a door: the surface
+    links to the record's page with it (`views.ts`'s `openRef`), the same way
+    the row's own title does. Every value is written the way the engine writes
+    one (`text_of`) — the closed vocabulary's word, the reference's title — so
+    the card shows what the listing shows and never a raw number.
+
+    It is the CARD's shape, not the record's (`at.ui.webapp.app._record`): a
+    full record carries every declared field, `raw` values, references and the
+    editor's own facts. A chat answer has no editor — what it needs is the row
+    as a person reads it.
+    """
+    return {
+        "table": table,
+        "entity": tables.table_name(table),
+        "id": row.get("id"),
+        "shown_id": tables.format_id(table, row["id"]) if "id" in row else "",
+        "title": tables.title(table, row),
+        "fields": [
+            {
+                "name": name,
+                "label": tables.label(table, name),
+                "value": tables.text_of(table, name, row.get(name)),
+            }
+            for name in tables.columns(table)
+            if schema.field(table, name)
+        ],
+    }
 
 
 def _table_rows(table: str, rows: list[dict]) -> tuple[list[str], list[list[str]]]:

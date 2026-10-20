@@ -629,6 +629,13 @@ PAGE_WORDS = (
     # the demand filter (§4).
     "chat", "ask", "ask_hint", "proposal", "interpreter", "balloon", "balloon_close",
     "chat_cleared",
+    # A ABERTURA DO CHAT E OS SEUS EXEMPLOS (20/10/2026): o que a conversa diz
+    # quando ainda não há conversa, e as quatro frases que mostram o que ela
+    # entende — clicáveis, porque um exemplo que se digita não ensina ninguém a
+    # digitar. As frases moram no catálogo pelo motivo de sempre: a página
+    # escreve nenhuma delas (§3), e cada idioma exemplifica no seu.
+    "chat_hello", "chat_example",
+    "chat_ex1", "chat_ex2", "chat_ex3", "chat_ex4",
     "risk", "risk_runs", "risk_waits", "risk_threshold", "risk_none",
     # The assist's own Control Panel section, and its one retry (TASK-180,
     # fatia 3/3): the switch, the mode's two names, and the inline form a
@@ -2533,6 +2540,14 @@ class Handler(BaseHTTPRequestHandler):
             # complete it from whatever is typed next instead of asking the
             # person to repeat themselves with the object already in hand.
             "awaiting": result.awaiting,
+            # THE CARD and THE SENTENCE AROUND IT (20/10/2026) — the object the
+            # answer was about, the way a person reads it, and what a
+            # conversation says before showing it. Both are composed by the
+            # door and only PLACED here: the page invents neither (§3). `None`
+            # for a `list` (its own `table`/`bullets` are the shape) and for
+            # every question and refusal.
+            "record": result.record,
+            "lead": result.lead,
         })
 
     def _post_jev(self) -> None:
