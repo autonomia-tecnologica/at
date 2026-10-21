@@ -139,6 +139,7 @@ sonarr
 suas
 subcommand
 subdomain
+subprocess
 subproject
 subprojects
 subtree
@@ -163,6 +164,7 @@ url
 urls
 utc
 utilizar
+vendorized
 versioned
 versioning
 vite

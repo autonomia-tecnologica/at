@@ -114,6 +114,7 @@ f
 faq
 favicon
 fcm
+firewall
 flag
 forms
 forward
@@ -152,6 +153,7 @@ hsts
 i
 id
 ids
+inalcançável
 inline
 install
 interiorano
@@ -183,6 +185,7 @@ metadados
 micropython
 migration
 modulepreload
+nat
 nlu
 notebook
 notification
@@ -252,14 +255,17 @@ service
 seção
 seções
 sha
+shim
 smartphones
 sni
+so
 sonarr
 spec
 specs
 steam
 subagente
 subcomandos
+subprocesso
 subprojeto
 subprojetos
 subárvore
@@ -288,6 +294,7 @@ urls
 utc
 vapid
 vault
+vendorizado
 versiona
 versionada
 versionado

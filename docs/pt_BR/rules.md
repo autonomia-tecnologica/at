@@ -88,6 +88,22 @@
 
 - O que o AT **não** mede, ele diz: se não há backup da pasta, se a máquina não tem senha, se o celular não tem bloqueio — o AT não sabe, e prefere dizer isso a inventar uma letra.
 
+- **A exposição é graduada por ALCANCE e PORTÃO, e não pelo caminho.** O que a função mede é quem chega — o alcance — e o que espera quem chega — o portão —, e o caminho **não tem nota própria**: hospedado e container recebem a nota do que estiver configurado neles. O mesmo AT no laço local é `S` nos dois, e o mesmo AT atrás do Caddy sem portão é `A` nos dois.
+
+  | nível | nota |
+  |---|---|
+  | laço local (`127.0.0.1`, nada sai dali) | `S` |
+  | rede privada com portão (container): rede do ambiente, Authelia na frente, containers isolados (§7b) | `S` |
+  | rede privada com portão (bundle, sem container): TLS do Caddy, Authelia vendorizado no mesmo binário, sem isolamento por container | `A` |
+  | rede privada sem portão: fora do laço, TLS do Caddy e Forms, sem segundo fator | `A` |
+  | rede pública: alcançável de fora da rede privada | `F` |
+
+- **Rede privada conta como local, e é UM nível só.** Uma rede privada exige NAT ou VPN e é inalcançável de fora, e por isso ela conta como alcance local — nunca como exposição pública. A VPN **não abre um nível próprio**: o que o AT mede é o alcance, não o meio de chegar lá.
+
+- **A nota da exposição depende da DECLARAÇÃO da pessoa**, porque o AT **não mede** NAT, VPN nem firewall: o que ele mede é o que está configurado e o que foi declarado, e é a declaração que sustenta o nível. É a mesma regra das outras funções graduadas, e vale como vale lá: o AT mede o que controla e **declara o que não mede**.
+
+- **Instalar não move a nota.** Pacote do SO, binário solto com `at-cli install`, shim do Windows: o que muda é **como o binário chega**, não **quem o alcança**, e por isso a letra da exposição não muda com a instalação.
+
 ### Internacionalização
 
 - Com exceção da porta da raiz, todo documento deste repositório mora na **pasta do seu idioma**, no formato POSIX (`pt_BR`, `en_US`), alinhado ao módulo de `i18n` — não é BCP 47. A porta da raiz é um `README.md` fora das pastas, e não tem texto além do título, dos links para as versões em cada língua, e de uma nota curta em `en_US` dirigida a agentes LLM: que leiam no idioma que serve melhor ao modelo, que na dúvida leiam em inglês, e que a trilha inglesa usa os termos e conceitos do mercado de propósito, para um nome significar a mesma coisa aqui e lá fora.

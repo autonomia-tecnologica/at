@@ -88,6 +88,22 @@
 
 - What AT does **not** measure, it says: whether there is no backup of the folder, whether the machine has no password, whether the phone has no lock — AT does not know, and prefers to say so rather than invent a letter.
 
+- **Exposure is graded by REACH and GATE, and not by the path.** What the function measures is who arrives — the reach — and what waits for whoever arrives — the gate —, and the path **has no grade of its own**: hosted and container receive the grade of what is configured in them. The same AT on the local loop is `S` in both, and the same AT behind the Caddy without a gate is `A` in both.
+
+  | level | grade |
+  |---|---|
+  | local loop (`127.0.0.1`, nothing leaves it) | `S` |
+  | private network with a gate (container): the environment's network, Authelia in front, containers isolated (§7b) | `S` |
+  | private network with a gate (bundle, no container): the Caddy's TLS, the vendorized Authelia in the same binary, no container isolation | `A` |
+  | private network without a gate: off the loop, the Caddy's TLS and Forms, no second factor | `A` |
+  | public network: reachable from outside the private network | `F` |
+
+- **A private network counts as local, and it is ONE level.** A private network demands NAT or VPN and is unreachable from outside, and so it counts as a local reach — never as a public exposure. A VPN **does not open a level of its own**: what AT measures is the reach, not the way of getting there.
+
+- **The exposure grade depends on the person's DECLARATION**, because AT **does not measure** NAT, VPN or firewall: what it measures is what is configured and what was declared, and it is the declaration that holds the level up. It is the same rule the other graded functions answer to, and it holds as it holds there: AT measures what it controls and **declares what it does not measure**.
+
+- **Installing does not move the grade.** An OS package, a loose binary with `at-cli install`, a Windows shim: what changes is **how the binary arrives**, not **who reaches it**, and so the exposure letter does not change with the installation.
+
 ### Internationalization
 
 - Except for the root door, every document in this repository lives in the **folder of its language**, in the POSIX format (`pt_BR`, `en_US`), aligned with the `i18n` module — it is not BCP 47. The root door is a `README.md` outside the folders, and it has no text beyond the title, the links to the versions in each language, and a short note in `en_US` addressed to LLM agents: that they read in the language that suits their model best, that when in doubt they read in English, and that the English track uses the market's terms and concepts on purpose, so that a name means the same thing here and out there.

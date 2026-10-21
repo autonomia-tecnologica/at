@@ -12,7 +12,7 @@
 
 - The integrations (§7) can exist without a container: whoever installs the service on their own and points AT at it uses the service, knowing that the state of that service is no longer AT's business — and therefore that the folder backup does not cover it. Approving a risky demand, here, happens on the machine itself; notification, for its part, is not a §7 service — it is the PWA's own Web Push (§7f).
 
-- Exposing AT on the hosted path with the container path's Authelia is the **advanced mode**, and it is not supported: whoever wants the gate uses the container path.
+- **Exposing AT on the hosted path with Authelia is a first-class path.** The vendorized Authelia comes up as a subprocess in the bundle, by the same recipe as the `--include-caddy`, and it is this path's own gate. What the hosted path does **not** have is the container isolation — and it is that lack of isolation, and not the absence of a gate, that holds it at `A` and not at `S` ([The security posture](rules.md#the-security-posture)). Container isolation remains the container path's alone (§7).
 
 ### Container path
 

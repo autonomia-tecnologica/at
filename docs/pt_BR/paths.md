@@ -12,7 +12,7 @@
 
 - As integrações (§7) podem existir sem container: quem instala o serviço por conta e aponta o AT para ele usa o serviço, com a ciência de que o estado daquele serviço não é mais assunto do AT — e, portanto, que o backup da pasta não o cobre. A aprovação de uma demanda arriscada, aqui, acontece na própria máquina; a notificação, essa não é um serviço do §7 — ela é o Web Push do próprio PWA (§7f).
 
-- Expor o AT pelo caminho hospedado com o Authelia do caminho container é o **modo avançado**, e não é suportado: quem quiser o portão, usa o caminho container.
+- **Expor o AT pelo caminho hospedado com o Authelia é um caminho de primeira classe.** O Authelia vendorizado sobe como subprocesso no bundle, pela mesma receita do `--include-caddy`, e é o portão do próprio caminho hospedado. O que o caminho hospedado **não** tem é o isolamento por container — e é essa falta de isolamento, e não a ausência de portão, que o segura em `A` e não em `S` ([A postura de segurança](rules.md#a-postura-de-segurança)). O isolamento por container continua sendo só do §7.
 
 ### Caminho container
 
