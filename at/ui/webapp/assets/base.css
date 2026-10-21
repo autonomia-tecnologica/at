@@ -953,6 +953,18 @@ pre.text { overflow-wrap: break-word; white-space: pre-wrap; word-break: break-w
    never bigger than the page it sits in — a photo dropped in `Arquivos/`
    does not get to set the width of the whole screen. */
 .file-image { display: block; max-width: 100%; max-height: 80vh; margin: var(--space-6); }
+/* O QUE A PÁGINA NÃO DESENHA SOZINHA — o PDF e o vídeo que abrem em nova aba,
+   e o arquivo que não abre e vira download. O cartão é o de sempre (o mesmo
+   `.prose`/`pre.text`), com o nome do arquivo e o botão na mesma linha, e o
+   motivo do limite acima dele. */
+.file-open {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3);
+  margin: var(--space-6) var(--space-6) 0;
+  padding: var(--space-5); background: var(--surface-1); border-radius: var(--r-lg);
+  box-shadow: var(--shadow-card);
+}
+.file-open > pre.text { flex: 1 1 100%; margin: 0; padding: 0; background: none; box-shadow: none; }
+.file-open > .file-name { flex: 1 1 auto; min-width: 0; overflow-wrap: break-word; }
 .prose { overflow-wrap: break-word; }
 .prose:not(.field-prose) > :first-child { margin-block-start: 0; }
 .prose:not(.field-prose) > :last-child { margin-block-end: 0; }

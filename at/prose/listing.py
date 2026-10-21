@@ -2,9 +2,17 @@
 
 Everything that is not a table row lives under `prose/`, and this module is the
 one place that says what a file there IS and what may be done to it. The read
-door and the write door ask the SAME questions (`is_text`, the ceiling) — two
-rules for one question drift, and the drift shows up as a file the page can read
-and cannot save.
+door and the write door ask the SAME question about the KIND (`is_text`: a NUL
+byte in the head is what a binary looks like from here) — two rules for one
+question drift, and the drift shows up as a file the page can read and cannot
+save.
+
+Their CEILINGS are two, and they are not the same: `MAX_FILE_BYTES` is the
+door of the EDIT and `MAX_OPEN_BYTES` is the door of the OPEN. A markdown of
+300 KB is text that OPENS (readable, not editable), and a file above
+`MAX_OPEN_BYTES` does not open in the browser at all — the page says it hit the
+limit and offers the download. One ceiling for both was what made a 0,54 MB
+note answer "not supported".
 
 **The tree is rooted at the prose folder** — `Arquivos/` in `pt_BR`, `Files/` in
 `en_US`, and `paths.prose_dir()` is what knows which — and not at the Working
@@ -22,17 +30,42 @@ from pathlib import Path
 
 from at.core import files, paths, versioning
 
-# The ceiling, in bytes, for a file a person edits in the page. It binds the
-# reader and the writer alike: a file over it is not text anybody edits here.
+# The ceiling, in bytes, for a file a person edits in the page: above it the
+# write door is closed, and it binds the reader too — a file over it opens for
+# READING and not for writing.
 MAX_FILE_BYTES = 256 * 1024
 
+# The ceiling, in bytes, for a file the page OPENS. It is the rule MAIOR: a
+# file above it does not open in the browser at all — `read` answers
+# `prose.over_limit` and the page offers the download.
+MAX_OPEN_BYTES = 10 * 1024 * 1024
+
+# How much of a file is read to DECIDE what it is. The whole file is never
+# read to answer "is it text" — a 1,47 GB `.txt` is a text file, and reading
+# it to find out would be the very thing this fatia is about.
+HEAD_BYTES = 64 * 1024
+
 BUCKETS = ("code", "text", "data", "image", "other")
-# The nine an image VIEWER already knows how to draw (TASK-167) — audio, video
-# and PDF stay out, because seeking one needs HTTP Range (206) and this fatia
-# does not carry it (§"Decidido").
+# The nine an image VIEWER already knows how to draw (TASK-167) — an image is
+# drawn by the page, inside it.
 IMAGE_EXT = (
     ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp", ".ico", ".avif",
 )
+# The formats a browser PLAYS BY ITSELF — the video and the PDF the page opens
+# in a NEW TAB (the browser draws them, AT does not). Only what the browser
+# really plays: a `.mkv` or a `.wmv` is a download, not a player that fails.
+VIDEO_EXT = (".mp4", ".webm", ".ogv", ".ogg", ".mov")
+PDF_EXT = (".pdf",)
+# What the page OPENS in a new tab, and what it draws as it is.
+TAB_EXT = PDF_EXT + VIDEO_EXT
+
+# What the page may DO with a file — the closed set the answer carries, so
+# the page never invents a rule of extension of its own.
+OPEN_TEXT = "text"
+OPEN_IMAGE = "image"
+OPEN_TAB = "tab"
+OPEN_DOWNLOAD = "download"
+
 BUCKET_EXT = {
     ".py": "code", ".md": "text", ".json": "data", ".jsonl": "data",
     **{ext: "image" for ext in IMAGE_EXT},
@@ -70,13 +103,19 @@ def root() -> Path:
 
 
 def is_text(data: bytes) -> bool:
-    """Whether a person may edit this in a page.
+    """Whether these bytes are TEXT.
 
     A NUL byte in the head is what a binary looks like from here — the same
     question the writer asks, so a file the reader shows is a file the writer
     takes.
+
+    **The SIZE is not part of this question.** The ceiling of the EDIT is
+    `MAX_FILE_BYTES` and the ceiling of the OPEN is `MAX_OPEN_BYTES`, and they
+    are two doors: a markdown of 300 KB is text that opens (and is not text
+    anybody edits here). A rule that mixed the two answered "not supported" to
+    a note of half a megabyte.
     """
-    return len(data) <= MAX_FILE_BYTES and b"\0" not in data[:4096]
+    return b"\0" not in data[:4096]
 
 
 def bucket(rel: str) -> str:
@@ -156,27 +195,90 @@ def digest(data: bytes) -> str:
     return hashlib.sha1(data).hexdigest()
 
 
+def digest_of(where: Path) -> str:
+    """The revision of a file, read in BLOCKS — the digest is of every byte,
+    but no byte of the file is ever in memory all at once.
+    """
+    hasher = hashlib.sha1()
+    with where.open("rb") as handle:
+        for block in iter(lambda: handle.read(64 * 1024), b""):
+            hasher.update(block)
+    return hasher.hexdigest()
+
+
 def read(rel: str) -> dict | None:
-    """One file as the page reads it, or None when it is not one it may read."""
+    """One file as the page reads it, or None when it is not one it may read.
+
+    **What the file IS is asked of a HEAD** (`HEAD_BYTES`), never of the whole
+    file: a 1,47 GB `.txt` is a text file, and reading it whole to find out
+    would be the very thing this fatia is about. The whole file is read only
+    when it is TEXT and it fits in `MAX_OPEN_BYTES` — and then it is read
+    because the page is going to show it.
+
+    **The answer carries WHAT TO DO with it** (`open`): the page does not
+    invent a rule of extension of its own. A PDF and a video the browser plays
+    open in a NEW TAB (`"tab"`), an image opens inline (`"image"`), a text
+    opens as text (`"text"`), and everything else is a download (`"download"`).
+    """
     where = inside(rel)
     if where is None or not where.is_file():
         return None
-    data = where.read_bytes()
-    payable = is_text(data)
-    file_kind = kind(rel, data)
-    # TEXT (edited) or IMAGE (viewed, never edited — `writable` stays the
-    # `payable` it always was) are the two this page opens; anything else is
-    # a binary it has no way to show (TASK-167).
-    opens = payable or file_kind == "image"
+    try:
+        size = where.stat().st_size
+        with where.open("rb") as handle:
+            head = handle.read(HEAD_BYTES)
+    except OSError:
+        return None
+    file_kind = kind(rel, head)
+    suffix = Path(rel).suffix.lower()
+    # THE RULE MAIOR: above `MAX_OPEN_BYTES` the file does not open in the
+    # browser AT ALL. Nothing of it is read — the answer says it hit the
+    # limit, and the page offers the download.
+    if size > MAX_OPEN_BYTES:
+        return {
+            "path": rel,
+            "bucket": bucket(rel),
+            "kind": file_kind,
+            # Nothing is written to a file the page cannot open.
+            "writable": False,
+            # No revision: the bytes were not read, and a revision of bytes
+            # nobody read would be a lie. A file that is not writable is not
+            # compared against anything.
+            "rev": "",
+            "text": None,
+            "reason": "prose.over_limit",
+            "open": OPEN_DOWNLOAD,
+        }
+    if file_kind == "image":
+        # An IMAGE is viewed, never edited (TASK-167) — and it opens inline.
+        open_as = OPEN_IMAGE
+    elif suffix in TAB_EXT:
+        # The browser draws a PDF and plays a video BY ITSELF — AT opens the
+        # door and keeps out of the way.
+        open_as = OPEN_TAB
+    elif is_text(head):
+        open_as = OPEN_TEXT
+    else:
+        open_as = OPEN_DOWNLOAD
+    text = None
+    if open_as == OPEN_TEXT:
+        data = where.read_bytes()
+        text = data.decode("utf-8", "replace")
+        revision = digest(data)
+    else:
+        revision = digest_of(where)
     return {
         "path": rel,
         "bucket": bucket(rel),
         "kind": file_kind,
         # The page owns no rule of the write: whether it may is the SERVER's.
-        "writable": payable,
-        "rev": digest(data),
-        "text": data.decode("utf-8", "replace") if payable else None,
-        "reason": None if opens else "prose.not_supported",
+        # The EDIT has its own ceiling — a text that opens and is too big to
+        # save opens all the same, and what is not text is not written here.
+        "writable": open_as == OPEN_TEXT and size <= MAX_FILE_BYTES,
+        "rev": revision,
+        "text": text,
+        "reason": None if open_as != OPEN_DOWNLOAD else "prose.not_supported",
+        "open": open_as,
     }
 
 

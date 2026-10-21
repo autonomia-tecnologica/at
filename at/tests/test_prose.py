@@ -10,6 +10,7 @@ from __future__ import annotations
 import os
 import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
 from at.core import files
@@ -85,6 +86,78 @@ class TheReading(unittest.TestCase):
         self.assertFalse(answer["writable"])
         self.assertIsNone(answer["text"])
         self.assertIsNone(answer["reason"])
+        self.assertEqual(answer["open"], "image")
+
+
+class TheOpening(unittest.TestCase):
+    """O QUE A PÁGINA FAZ COM O ARQUIVO — e o que ela NÃO carrega.
+
+    A regra MAIOR é o teto da ABERTURA (`MAX_OPEN_BYTES`): acima dele o
+    arquivo não abre no navegador de jeito nenhum, e a página diz que bateu no
+    limite e oferece o download.
+    """
+
+    def setUp(self):
+        self.scratch = tempfile.TemporaryDirectory()
+        self.env = mock.patch.dict(os.environ, {"AT_ROOT": self.scratch.name})
+        self.env.start()
+        (prose.root()).mkdir(parents=True)
+
+    def tearDown(self):
+        self.env.stop()
+        self.scratch.cleanup()
+
+    def test_a_markdown_over_the_edit_ceiling_opens_in_reading(self):
+        # Acima de `MAX_FILE_BYTES` (a porta do EDIT) e abaixo de
+        # `MAX_OPEN_BYTES` (a porta da ABERTURA): abre, e não se escreve.
+        (prose.root() / "nota.md").write_text(
+            "a" * (prose.MAX_FILE_BYTES + 1), encoding="utf-8")
+        answer = prose.read("nota.md")
+        self.assertEqual(answer["open"], "text")
+        self.assertIsNotNone(answer["text"])
+        self.assertFalse(answer["writable"])
+        self.assertIsNone(answer["reason"])
+
+    def test_a_file_over_the_open_ceiling_does_not_open(self):
+        where = prose.root() / "grande.md"
+        with where.open("wb") as handle:
+            handle.truncate(prose.MAX_OPEN_BYTES + 1)
+        answer = prose.read("grande.md")
+        self.assertEqual(answer["open"], "download")
+        self.assertIsNone(answer["text"])
+        self.assertEqual(answer["reason"], "prose.over_limit")
+        self.assertFalse(answer["writable"])
+
+    def test_a_file_over_the_open_ceiling_is_never_read_whole(self):
+        # The answer above is not enough: the file must NOT be loaded to be
+        # refused — a 1,47 GB `.txt` read at once is the very thing this is
+        # about.
+        where = prose.root() / "grande.md"
+        with where.open("wb") as handle:
+            handle.truncate(prose.MAX_OPEN_BYTES + 1)
+        with mock.patch.object(Path, "read_bytes",
+                               side_effect=AssertionError("read the whole file")):
+            answer = prose.read("grande.md")
+        self.assertEqual(answer["open"], "download")
+
+    def test_a_pdf_and_a_video_open_in_a_new_tab(self):
+        (prose.root() / "nota.pdf").write_bytes(b"%PDF-1.7\n%\xe2\xe3\xcf\xd3\n")
+        (prose.root() / "clip.mp4").write_bytes(b"\x00\x00\x00\x18ftypmp42resto")
+        for name in ("nota.pdf", "clip.mp4"):
+            with self.subTest(name=name):
+                answer = prose.read(name)
+                self.assertEqual(answer["open"], "tab")
+                self.assertIsNone(answer["text"])
+                self.assertIsNone(answer["reason"])
+
+    def test_a_zip_and_a_strange_video_are_a_download(self):
+        (prose.root() / "pacote.zip").write_bytes(b"PK\x03\x04" + b"\x00" * 20)
+        (prose.root() / "clip.mkv").write_bytes(b"\x1a\x45\xdf\xa3" + b"\x00" * 20)
+        for name in ("pacote.zip", "clip.mkv"):
+            with self.subTest(name=name):
+                answer = prose.read(name)
+                self.assertEqual(answer["open"], "download")
+                self.assertEqual(answer["reason"], "prose.not_supported")
 
 
 class TheWriting(unittest.TestCase):
@@ -236,9 +309,12 @@ class TheCeiling(unittest.TestCase):
         # The head is what is looked at: a NUL far inside is not read.
         self.assertTrue(prose.is_text(b"a" * 5000 + b"\x00"))
 
-    def test_the_ceiling_is_the_same_for_the_reader_and_the_writer(self):
+    def test_the_size_is_not_part_of_being_text(self):
+        # A markdown of 300 KB is TEXT — it opens and it is not edited here.
+        # The size has its own question, and the two ceilings are two.
         self.assertTrue(prose.is_text(b"a" * prose.MAX_FILE_BYTES))
-        self.assertFalse(prose.is_text(b"a" * (prose.MAX_FILE_BYTES + 1)))
+        self.assertTrue(prose.is_text(b"a" * (prose.MAX_FILE_BYTES + 1)))
+        self.assertLess(prose.MAX_FILE_BYTES, prose.MAX_OPEN_BYTES)
 
 
 class TheModel(unittest.TestCase):

@@ -295,6 +295,15 @@ _CONTENT_TYPES = {
     ".bmp": "image/bmp",
     ".ico": "image/vnd.microsoft.icon",
     ".avif": "image/avif",
+    # The formats the browser DRAWS BY ITSELF (the `tab` door): a PDF it
+    # renders, a video it plays. They leave as what they are, or the browser
+    # downloads them instead of showing them.
+    ".pdf": "application/pdf",
+    ".mp4": "video/mp4",
+    ".webm": "video/webm",
+    ".ogv": "video/ogg",
+    ".ogg": "video/ogg",
+    ".mov": "video/quicktime",
 }
 
 
@@ -665,6 +674,9 @@ PAGE_WORDS = (
     # O LEITOR DO COFRE (TASK-155): a confirmação antes de abrir, o botão de
     # salvar uma cópia, e o que se diz de um arquivo que não tem visualizador.
     "open_confirm", "save_local", "cannot_show",
+    # A LEITURA DE UM ARQUIVO QUE A PÁGINA NÃO ABRE: o que abre em nova aba (o
+    # PDF e o vídeo que o navegador desenha) e o download do que não abre.
+    "open_in_tab", "download",
     # The entrance's, because the entrance comes back when a session dies under
     # a running page (the 401 hook) — and it would come back wordless.
     *SESSION_WORDS,
@@ -1156,9 +1168,21 @@ class Handler(BaseHTTPRequestHandler):
     # ------------------------------------------------------------ output --
 
     def _send(self, status: int, body: bytes, ctype: str, extra: dict | None = None) -> None:
+        self._head(status, len(body), ctype, extra)
+        if self.command != "HEAD":
+            self.wfile.write(body)
+
+    def _head(self, status: int, length: int, ctype: str,
+              extra: dict | None = None) -> None:
+        """The headers of an answer whose body is NOT in memory.
+
+        The body of a file is written in BLOCKS (`_send_file`), and the
+        `Content-Length` is the one the disk says — the number of bytes that
+        will really leave.
+        """
         self.send_response(status)
         self.send_header("Content-Type", ctype)
-        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Content-Length", str(length))
         # Nothing here is worth a cache: the page is served fresh on purpose, so
         # that the language and the theme the server resolved are the ones drawn.
         self.send_header("Cache-Control", "no-store")
@@ -1171,8 +1195,6 @@ class Handler(BaseHTTPRequestHandler):
             # jeito certo de um cabeçalho HTTP carregar mais de um cookie.
             self.send_header("Set-Cookie", self._local_cookie)
         self.end_headers()
-        if self.command != "HEAD":
-            self.wfile.write(body)
 
     def _text(self, text: str, ctype: str = "text/plain; charset=utf-8",
               status: int = 200, extra: dict | None = None) -> None:
@@ -1206,9 +1228,86 @@ class Handler(BaseHTTPRequestHandler):
         # The suffix is folded first: `prose.kind`/`prose.bucket` already fold
         # it (`Path(name).suffix.lower()`), and a `FOTO.PNG` the list calls an
         # image must not be served as `application/octet-stream` here.
-        self._send(200, path.read_bytes(),
-                   _CONTENT_TYPES.get(path.suffix.lower(), "application/octet-stream"),
-                   headers or None)
+        self._send_file(path,
+                        _CONTENT_TYPES.get(path.suffix.lower(), "application/octet-stream"),
+                        headers or None)
+
+    # The block a file is written in. The file arrives WHOLE — this is a
+    # download, not a truncation — but the server never holds it whole: a
+    # 1,47 GB `.txt` read at once gave a peak of 2,2 GB of RSS.
+    _BLOCK = 64 * 1024
+
+    def _range_of(self, size: int) -> tuple[int, int] | None:
+        """The ONE range the client asks for, as `(start, end)`, or None.
+
+        A single range is what a video player's own seek asks for. A request
+        the server does not understand is answered with the WHOLE file (a
+        200) rather than with a refusal: the download still lands.
+        """
+        header = (self.headers.get("Range") or "").strip()
+        if not header.startswith("bytes="):
+            return None
+        spec = header[len("bytes="):].strip()
+        if "," in spec:
+            return None
+        first, _, last = spec.partition("-")
+        try:
+            if not first:
+                # `bytes=-N` — the LAST N bytes.
+                length = int(last)
+                if length <= 0:
+                    return None
+                start, end = max(0, size - length), size - 1
+            else:
+                start = int(first)
+                end = int(last) if last else size - 1
+        except ValueError:
+            return None
+        if start < 0 or start >= size or start > end:
+            return None
+        return start, min(end, size - 1)
+
+    def _send_file(self, path: Path, ctype: str, extra: dict | None = None) -> None:
+        """A file, written in BLOCKS — never read whole into the memory.
+
+        The `Content-Length` is the one the disk says, and the bytes leave in
+        the order they are on it. A `Range` (206) is served for the one range
+        a video player asks for when it seeks, and `Accept-Ranges` tells it
+        that it may.
+        """
+        try:
+            size = path.stat().st_size
+        except OSError:
+            self._not_found()
+            return
+        headers = dict(extra or {})
+        headers["Accept-Ranges"] = "bytes"
+        span = self._range_of(size)
+        if span is None:
+            status, start, length = 200, 0, size
+        else:
+            start, end = span
+            status, length = 206, end - start + 1
+            headers["Content-Range"] = f"bytes {start}-{end}/{size}"
+        self._head(status, length, ctype, headers)
+        if self.command == "HEAD":
+            return
+        try:
+            with path.open("rb") as handle:
+                if start:
+                    handle.seek(start)
+                remaining = length
+                while remaining > 0:
+                    block = handle.read(min(self._BLOCK, remaining))
+                    if not block:
+                        break
+                    self.wfile.write(block)
+                    remaining -= len(block)
+        except (BrokenPipeError, ConnectionResetError):
+            # The client went away in the middle of the download — the tab
+            # closed, the browser had what it wanted. There is nobody left to
+            # send the rest to, and it is not an error of the server.
+            return
 
     def _not_found(self) -> None:
         self._text("not found\n", status=404)
@@ -2383,8 +2482,10 @@ class Handler(BaseHTTPRequestHandler):
         if info is None:
             self._json({"error": i18n.tr("prose.not_served")}, 404)
             return
-        if info.get("reason"):
-            self._json({"error": i18n.tr(str(info["reason"]))}, 400)
+        # A conversion is of TEXT — a PDF, an image or a video opens in the page
+        # (`open`), and none of them is a markdown to convert.
+        if info.get("open") != "text":
+            self._json({"error": i18n.tr(str(info.get("reason") or "prose.not_supported"))}, 400)
             return
         where = prose.inside(rel)
         try:
@@ -2953,9 +3054,18 @@ class Server(ThreadingHTTPServer):
     quem dorme nele — é o sinal que fecha a janela do mesmo jeito que
     fechá-la por fora já fechava. Sempre um `Event` novo, numa pasta
     confirmada ou não: marcá-lo onde não há ninguém esperando não custa nada.
+
+    **`request_queue_size = 128`** (a FILA do servidor): o `socketserver`
+    deixa 5, e o servidor é HTTP/1.0 — sem keep-alive, cada request é uma
+    conexão nova. Com 300 conexões simultâneas o kernel descartava o SYN
+    (medido: 298 timeouts, 6089 `TcpExtListenOverflows`): a fila encheu e o
+    pedido morreu antes de chegar. A fila é do kernel (`listen()`), e 128 é o
+    que aguenta a rajada que a WebApp provoca — cada aba, cada `<img>`, cada
+    seek de vídeo.
     """
 
     daemon_threads = True
+    request_queue_size = 128
 
     def __init__(self, address: tuple[str, int],
                  handler: type[BaseHTTPRequestHandler], asks: bool = True,

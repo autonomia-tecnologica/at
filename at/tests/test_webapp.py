@@ -49,6 +49,7 @@ from at.core import (
 )
 from at.data import schema, store
 from at.encryption import vault
+from at.prose import listing as prose
 from at.services import caddy
 from at.tests import POLL, drawn_gate
 from at.ui.webapp import app as webapp
@@ -957,6 +958,19 @@ class TheProjectBranch(ServerCase):
         self.assertEqual([row["shown_id"] for row in payload["records"]], ["TASK-1"])
 
 
+class TheQueue(unittest.TestCase):
+    """A FILA do servidor — a do kernel, a de `listen()`.
+
+    O `socketserver` deixa 5, e o servidor é HTTP/1.0 (sem keep-alive): cada
+    request é uma conexão nova. Com 300 conexões simultâneas o kernel
+    descartava o SYN (298 timeouts, 6089 `TcpExtListenOverflows`) — a fila
+    encheu e o pedido morreu antes de chegar.
+    """
+
+    def test_the_queue_is_deep_enough_for_the_burst(self):
+        self.assertEqual(webapp.Server.request_queue_size, 128)
+
+
 class TheProseDoors(ServerCase):
     def setUp(self):
         super().setUp()
@@ -991,6 +1005,47 @@ class TheProseDoors(ServerCase):
         self.assertEqual(payload["bucket"], "image")
         self.assertFalse(payload["writable"])
         self.assertIsNone(payload["reason"])
+        self.assertEqual(payload["open"], "image")
+
+    def test_a_markdown_over_the_edit_ceiling_opens_in_reading(self):
+        # Acima de `MAX_FILE_BYTES` (a porta do EDIT) e abaixo de
+        # `MAX_OPEN_BYTES` (a porta da ABERTURA): abre, e não se escreve.
+        (paths.prose_dir() / "grande.md").write_text(
+            "a" * (prose.MAX_FILE_BYTES + 1), encoding="utf-8")
+        _, _, body = self.get("/api/file?path=grande.md")
+        payload = json.loads(body)
+        self.assertEqual(payload["open"], "text")
+        self.assertIsNotNone(payload["text"])
+        self.assertFalse(payload["writable"])
+        self.assertIsNone(payload["reason"])
+
+    def test_a_file_over_the_open_ceiling_answers_a_download(self):
+        where = paths.prose_dir() / "gigante.md"
+        with where.open("wb") as handle:
+            handle.truncate(prose.MAX_OPEN_BYTES + 1)
+        _, _, body = self.get("/api/file?path=gigante.md")
+        payload = json.loads(body)
+        self.assertEqual(payload["open"], "download")
+        self.assertIsNone(payload["text"])
+        self.assertFalse(payload["writable"])
+        self.assertEqual(payload["reason"], i18n.tr("prose.over_limit"))
+
+    def test_a_pdf_and_a_video_open_in_a_new_tab(self):
+        (paths.prose_dir() / "nota.pdf").write_bytes(b"%PDF-1.7\n%\xe2\xe3\xcf\xd3\n")
+        (paths.prose_dir() / "clip.mp4").write_bytes(b"\x00\x00\x00\x18ftypmp42")
+        for name in ("nota.pdf", "clip.mp4"):
+            with self.subTest(name=name):
+                _, _, body = self.get(f"/api/file?path={name}")
+                payload = json.loads(body)
+                self.assertEqual(payload["open"], "tab")
+                self.assertIsNone(payload["text"])
+
+    def test_a_zip_is_a_download(self):
+        (paths.prose_dir() / "pacote.zip").write_bytes(b"PK\x03\x04" + b"\x00" * 20)
+        _, _, body = self.get("/api/file?path=pacote.zip")
+        payload = json.loads(body)
+        self.assertEqual(payload["open"], "download")
+        self.assertEqual(payload["reason"], i18n.tr("prose.not_supported"))
 
     def test_a_binary_neither_text_nor_image_carries_the_renamed_reason(self):
         (paths.prose_dir() / "bin.dat").write_bytes(b"a\0b")
@@ -1035,6 +1090,32 @@ class TheProseDoors(ServerCase):
         (paths.prose_dir() / "FOTO.PNG").write_bytes(b"\x89PNG\r\n\x1a\n")
         _, headers, _ = self.get("/api/file/bytes?path=FOTO.PNG")
         self.assertEqual(headers["Content-Type"], "image/png")
+
+    def test_the_bytes_route_serves_a_file_larger_than_a_block_whole(self):
+        # The file is written in BLOCKS (a 1,47 GB `.txt` read at once gave a
+        # peak of 2,2 GB of RSS) — and it arrives WHOLE: the digest of what
+        # left is the digest of what is on the disk.
+        data = bytes(range(256)) * 1000
+        (paths.prose_dir() / "grande.bin").write_bytes(data)
+        status, headers, body = self.get("/api/file/bytes?path=grande.bin")
+        self.assertEqual(status, 200)
+        self.assertEqual(int(headers["Content-Length"]), len(data))
+        self.assertEqual(hashlib.sha1(body).hexdigest(), hashlib.sha1(data).hexdigest())
+
+    def test_the_bytes_route_answers_the_range_a_video_player_asks_for(self):
+        data = bytes(range(256)) * 10
+        (paths.prose_dir() / "clip.mp4").write_bytes(data)
+        status, headers, body = self.get("/api/file/bytes?path=clip.mp4",
+                                         headers={"Range": "bytes=0-99"})
+        self.assertEqual(status, 206)
+        self.assertEqual(body, data[:100])
+        self.assertEqual(headers["Content-Range"], f"bytes 0-99/{len(data)}")
+        self.assertEqual(headers["Accept-Ranges"], "bytes")
+
+    def test_the_bytes_route_announces_that_it_takes_ranges(self):
+        (paths.prose_dir() / "nota.md").write_text("# oi\n", encoding="utf-8")
+        _, headers, _ = self.get("/api/file/bytes?path=nota.md")
+        self.assertEqual(headers["Accept-Ranges"], "bytes")
 
     def test_a_write_with_a_stale_revision_is_refused_with_the_new_one(self):
         _, _, body = self.get("/api/file?path=nota.md")

@@ -177,7 +177,9 @@
     "reach_none_known": "Sem porta ainda, por desenho",
     "open_confirm": "Abrir {name}? O conteúdo decifrado vai aparecer na tela.",
     "save_local": "Salvar cópia",
-    "cannot_show": "Este arquivo não tem visualizador — salve uma cópia e abra no seu computador."
+    "cannot_show": "Este arquivo não tem visualizador — salve uma cópia e abra no seu computador.",
+    "open_in_tab": "Abrir em nova aba",
+    "download": "Baixar"
   },
   "en_US": {
     "serving": "AT WebApp at {url}",
@@ -357,6 +359,8 @@
     "reach_none_known": "No interface yet, by design",
     "open_confirm": "Open {name}? The decrypted content will be shown on screen.",
     "save_local": "Save a copy",
-    "cannot_show": "This file has no viewer — save a copy and open it on your machine."
+    "cannot_show": "This file has no viewer — save a copy and open it on your machine.",
+    "open_in_tab": "Open in a new tab",
+    "download": "Download"
   }
 }

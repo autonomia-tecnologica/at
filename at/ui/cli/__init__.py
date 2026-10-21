@@ -284,8 +284,10 @@ def _convert(rest: list[str]) -> int:
     if info is None:
         print(tr("prose.not_served"))
         return REFUSED
-    if info["reason"]:
-        print(tr(info["reason"]))
+    # A conversion is of TEXT — a PDF, an image or a video opens in the page
+    # (`open`), and none of them is a markdown to convert.
+    if info["open"] != "text":
+        print(tr(info["reason"] or "prose.not_supported"))
         return REFUSED
     where = prose.inside(rel)
     try:

@@ -9,6 +9,7 @@
 
 import { ref, computed, watch, onMounted, onBeforeUnmount, watchEffect } from "vue";
 import { api } from "../lib/api";
+import { word } from "../lib/store";
 import { nav, setTrail, open, leave, markPage, FILE_PREFIX, WRITE_PREFIX } from "../lib/views";
 import { downloadFile, isSaveGesture } from "../lib/download";
 import { dirOf, fileOf } from "../lib/relative";
@@ -22,6 +23,11 @@ interface FilePayload {
   rev: string;
   text: string | null;
   reason: string | null;
+  // WHAT TO DO WITH IT — the server's word, never a rule of extension invented
+  // here: "text" opens as text, "image" opens inline, "tab" opens in a NEW TAB
+  // (the browser draws the PDF and plays the video), "download" is a file the
+  // page cannot show.
+  open: "text" | "image" | "tab" | "download";
 }
 
 const props = defineProps<{ path: string }>();
@@ -52,6 +58,22 @@ async function load(): Promise<void> {
 function openWrite(): void {
   if (!payload.value || !payload.value.writable || payload.value.text === null) return;
   open(WRITE_PREFIX + payload.value.path, null);
+}
+
+// A PDF E UM VÍDEO ABREM EM NOVA ABA, e o navegador é quem os desenha: a
+// porta de bytes (`/api/file/bytes`) é a mesma que o `<img>` usa, e a aba nova
+// é a do BROWSER — nada de `<object>`/`<embed>` dentro da SPA, que trouxeram
+// o documento para a origem do AT.
+function openInTab(): void {
+  if (!payload.value) return;
+  window.open("/api/file/bytes?path=" + encodeURIComponent(payload.value.path),
+              "_blank", "noopener");
+}
+
+// O DOWNLOAD de um arquivo que a página não abre: a mesma porta de bytes, e o
+// que sai é o arquivo do disco — byte a byte, sem re-encodear.
+function download(): void {
+  downloadFile(payload.value?.path || props.path);
 }
 
 // A PASTA DO ARQUIVO, and the base against which a RELATIVE path in the
@@ -131,24 +153,34 @@ watch(() => nav.tick, () => void load());
 <template>
   <div class="file-page">
     <pre v-if="!payload" class="text">{{ error }}</pre>
-    <!-- AN IMAGE IS VIEWED, NEVER EDITED (TASK-167) — the branch sits before
-         the "not text" refusal because an image IS one of those (`text` is
-         `null`, same as any other binary) and has to be told apart from a
-         file this page truly cannot open at all. `src` never repeats the
-         bytes already in `payload` (there are none): it names the SAME safe
-         door every other read of the folder walks (`_get_file_bytes`,
-         `prose.inside`), and the browser fetches it on its own. -->
-    <img v-else-if="payload.kind === 'image'" class="file-image"
+    <!-- AN IMAGE IS VIEWED, NEVER EDITED (TASK-167) — and it opens INLINE, the
+         way it always did. `src` never repeats the bytes already in `payload`
+         (there are none): it names the SAME safe door every other read of the
+         folder walks (`_get_file_bytes`, `prose.inside`), and the browser
+         fetches it on its own. -->
+    <img v-else-if="payload.open === 'image'" class="file-image"
          :src="'/api/file/bytes?path=' + encodeURIComponent(payload.path)"
          :alt="payload.path">
-    <pre v-else-if="payload.text === null" class="text">{{ payload.reason }}</pre>
+    <!-- UM PDF E UM VÍDEO ABREM EM NOVA ABA: o navegador desenha o PDF e toca
+         o vídeo, e a SPA não os carrega dentro dela. A aba nova é a do
+         BROWSER — a porta de bytes é a mesma que o `<img>` usa. -->
+    <div v-else-if="payload.open === 'tab'" class="file-open">
+      <b class="file-name">{{ payload.path }}</b>
+      <button type="button" class="btn" @click="openInTab">{{ word("open_in_tab") }}</button>
+    </div>
+    <!-- O QUE A PÁGINA NÃO ABRE: o motivo (o limite, ou o formato que o
+         navegador não toca) e o download — a mesma porta de bytes. -->
+    <div v-else-if="payload.open === 'download'" class="file-open">
+      <pre class="text">{{ payload.reason }}</pre>
+      <button type="button" class="btn" @click="download">{{ word("download") }}</button>
+    </div>
     <!-- THE WHOLE SURFACE IS THE DOOR (2026-10-05): a writable text file opens
          its write tab on ONE click/tap anywhere on it — no button to find,
          no mode to leave. `.writable` is the only thing that changes the
          cursor; a file that cannot be written stays exactly as quiet as it
          always was. A LINK is the exception, and it is the page's own
          (`onProseClick`): a link is followed, not written over. -->
-    <ProseField v-else-if="payload.bucket === 'text'" :text="payload.text"
+    <ProseField v-else-if="payload.bucket === 'text'" :text="payload.text ?? ''"
                 :base-dir="baseDir"
                 :class="{ writable: payload.writable }" @click="onProseClick" />
     <pre v-else class="text" :class="{ writable: payload.writable }" @click="openWrite">{{ payload.text }}</pre>
