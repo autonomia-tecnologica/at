@@ -23,6 +23,9 @@
 
 import { ref } from "vue";
 import type { Ref } from "vue";
+// O CAMINHO RELATIVO que o markdown escreve, virado nas portas do servidor
+// (`lib/relative.ts`) — o `src` de uma imagem e o `href` de um link.
+import { rewriteHref, rewriteSrc } from "./relative";
 
 // Where the hosted renderer is served from. The key is the file's own name
 // (`vendor/manifest.json`), never a path.
@@ -100,13 +103,19 @@ export function tableMarkdown(header: string[], rows: string[][]): string {
 // passes `md-table` so its tables get the chat's own block, and a file passes
 // nothing, keeping `.prose table`. It is an OPINION the caller holds, so it is
 // asked for and not decided here.
+//
+// `baseDir` is the PASTA of the file the prose came from — the base against
+// which a RELATIVE path in the text is resolved (`lib/relative.ts`). Without it
+// a relative `src`/`href` stays as the renderer wrote it, and a relative link
+// points at the SPA's own shell instead of at a file of `Arquivos/`. A field
+// that is not a file (a table cell, the chat) passes nothing.
 export async function proseHtml(
-  source: string, tableClass?: string,
+  source: string, tableClass?: string, baseDir?: string,
 ): Promise<string | null> {
   const renderer = marked();
   if (!source || !rendererReady.value || !renderer) return null;
   const html = await renderer.parse(source, { async: false });
-  return sanitize(String(html), tableClass);
+  return sanitize(String(html), tableClass, baseDir);
 }
 
 // The renderer as the hosted script leaves it on the global. `marked.umd.js`
@@ -167,13 +176,13 @@ function safeUrl(value: string): boolean {
 // parsing document is INERT: no script runs, no image loads and no link is
 // followed while the tree is walked — the browser builds it detached from the
 // page, and only the pruned copy is ever assigned.
-function sanitize(html: string, tableClass?: string): string {
+function sanitize(html: string, tableClass?: string, baseDir?: string): string {
   const doc = new DOMParser().parseFromString(html, "text/html");
-  prune(doc.body, tableClass);
+  prune(doc.body, tableClass, baseDir);
   return doc.body.innerHTML;
 }
 
-function prune(node: Node, tableClass?: string): void {
+function prune(node: Node, tableClass?: string, baseDir?: string): void {
   for (const child of Array.from(node.childNodes)) {
     // A comment never paints; it goes, so nothing hidden travels with the copy.
     if (child.nodeType === Node.COMMENT_NODE) {
@@ -205,12 +214,46 @@ function prune(node: Node, tableClass?: string): void {
         element.removeAttribute(attr.name);
       }
     }
+    // THE PATH RELATIVO, VIRADO NAS PORTAS DO SERVIDOR — and it happens HERE,
+    // BETWEEN the allow-list above and the `rel` below, and the order is the
+    // rule: the allow-list has the FIRST word on the value the SOURCE carried
+    // (a `javascript:` href is gone before anything else looks at it), and the
+    // `rel` below is set on the element the rewrite left in place.
+    //
+    // The `src` of an image becomes the BYTES door (`/api/file/bytes?path=`) and
+    // the `href` of a link becomes the ADDRESS of a file in the AT
+    // (`/file/<caminho>`) — the two doors the server already answers. A path
+    // that points to nothing (it left the folder) loses the attribute: a link
+    // without a destination is not a link.
+    //
+    // The guard is `!== undefined` and not a test of truth: a file that sits at
+    // the ROOT of the folder has a base that is the EMPTY string, and that is
+    // a base — the folder itself. A file that is not a file at all (a table
+    // cell, the chat) passes no base, and its paths stay as they were written.
+    if (baseDir !== undefined) {
+      if (tag === "img") {
+        const src = element.getAttribute("src");
+        if (src !== null) {
+          const rewritten = rewriteSrc(src, baseDir);
+          if (rewritten.kind === "drop") element.removeAttribute("src");
+          else if (rewritten.kind === "set") element.setAttribute("src", rewritten.value);
+        }
+      }
+      if (tag === "a") {
+        const href = element.getAttribute("href");
+        if (href !== null) {
+          const rewritten = rewriteHref(href, baseDir);
+          if (rewritten.kind === "drop") element.removeAttribute("href");
+          else if (rewritten.kind === "set") element.setAttribute("href", rewritten.value);
+        }
+      }
+    }
     // A link the person follows leaves the page; the referrer does not go with.
     if (tag === "a") element.setAttribute("rel", "noopener noreferrer");
     // The class the CHAT's tables wear (`.md-table`), set AFTER the attribute
     // allow-list — `table` allows no attributes and the loop above would strip
     // it. A file passes no class, so `.prose table` stays its own block.
     if (tag === "table" && tableClass) element.setAttribute("class", tableClass);
-    prune(element, tableClass);
+    prune(element, tableClass, baseDir);
   }
 }

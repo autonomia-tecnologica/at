@@ -7,10 +7,11 @@
 // A markdown file is PROSE (`bucket` — the server's word, not the extension), any
 // other text is text as it is, and a file that is not text says why instead.
 
-import { ref, watch, onMounted, onBeforeUnmount, watchEffect } from "vue";
+import { ref, computed, watch, onMounted, onBeforeUnmount, watchEffect } from "vue";
 import { api } from "../lib/api";
-import { nav, setTrail, open, WRITE_PREFIX } from "../lib/views";
+import { nav, setTrail, open, leave, markPage, FILE_PREFIX, WRITE_PREFIX } from "../lib/views";
 import { downloadFile, isSaveGesture } from "../lib/download";
+import { dirOf, fileOf } from "../lib/relative";
 import ProseField from "../components/ProseField.vue";
 
 interface FilePayload {
@@ -51,6 +52,47 @@ async function load(): Promise<void> {
 function openWrite(): void {
   if (!payload.value || !payload.value.writable || payload.value.text === null) return;
   open(WRITE_PREFIX + payload.value.path, null);
+}
+
+// A PASTA DO ARQUIVO, and the base against which a RELATIVE path in the
+// markdown is resolved (`lib/relative.ts`): a `![](../imagens/x.webp)` in
+// `Carro/TR4/nota.md` points at `Carro/TR4/imagens/x.webp` — the way a
+// relative path points at anything, in any markdown.
+const baseDir = computed(() => dirOf(payload.value?.path || props.path));
+
+// A LINK É UM LINK, E NÃO UM CLIQUE NO CORPO. The whole surface is the door to
+// the WRITE page — and a link inside it is the one thing that is NOT the door:
+// a click on the text around it opens the editor, a click ON THE LINK follows
+// the link.
+//
+// A FILE OF THE AT (`/file/<caminho>`) opens that file's READ, in THIS tab —
+// the markdown a person wrote points at another file of the folder, and
+// opening it in the editor would be opening the WRONG file.
+function onProseClick(event: MouseEvent): void {
+  const target = event.target as HTMLElement | null;
+  const anchor = target?.closest?.("a");
+  if (!anchor) {
+    openWrite();
+    return;
+  }
+  // The click stops here, so the surface's own door (the editor) does not
+  // open under the link that was followed.
+  event.stopPropagation();
+  // A click that MEANS another tab — ctrl, cmd or shift — is the browser's
+  // own, and this page does not take it away.
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  const href = anchor.getAttribute("href") || "";
+  // The address may carry a query and a fragment, and NEITHER is part of the
+  // path the folder knows — the same reading the shell does of an address it
+  // is handed (`App.vue`'s `pathParts`, which reads the path alone).
+  const path = fileOf(href.split("#")[0].split("?")[0]);
+  if (path === null) return; // a link to somewhere else: the browser follows it
+  event.preventDefault();
+  // The page the link was clicked on goes on the path FIRST: that is what
+  // makes the step back land on the file the person was reading — the same
+  // order a reference has (`views.ts`'s `openRef`).
+  leave();
+  markPage(FILE_PREFIX + path, null);
 }
 
 // CTRL+S SAVES THE OPEN FILE TO THE PERSON'S MACHINE, byte a byte — the same
@@ -104,9 +146,11 @@ watch(() => nav.tick, () => void load());
          its write tab on ONE click/tap anywhere on it — no button to find,
          no mode to leave. `.writable` is the only thing that changes the
          cursor; a file that cannot be written stays exactly as quiet as it
-         always was. -->
+         always was. A LINK is the exception, and it is the page's own
+         (`onProseClick`): a link is followed, not written over. -->
     <ProseField v-else-if="payload.bucket === 'text'" :text="payload.text"
-                :class="{ writable: payload.writable }" @click="openWrite" />
+                :base-dir="baseDir"
+                :class="{ writable: payload.writable }" @click="onProseClick" />
     <pre v-else class="text" :class="{ writable: payload.writable }" @click="openWrite">{{ payload.text }}</pre>
   </div>
 </template>

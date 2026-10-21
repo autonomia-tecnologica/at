@@ -19,15 +19,22 @@ const props = withDefaults(
     // `field-prose` takes away the page's breathing room, which is the PAGE's:
     // inside the `<dd>` it would be a second inset.
     field?: boolean;
+    // The PASTA of the file this text came from — the base against which a
+    // RELATIVE path in the markdown is resolved (`lib/relative.ts`). A field
+    // that is not a file (a table cell, the chat) passes nothing, and the
+    // paths in it stay as they were written.
+    baseDir?: string;
   }>(),
-  { text: "", field: false },
+  { text: "", field: false, baseDir: undefined },
 );
 
 const html = ref<string | null>(null);
 
 async function render(): Promise<void> {
   html.value = null;
-  const out = await proseHtml(props.text);
+  // The second argument is the chat's own table class — a file wears no class
+  // of its own (`.prose table` stays the file's block), so it is `undefined`.
+  const out = await proseHtml(props.text, undefined, props.baseDir);
   if (out !== null) html.value = out;
 }
 
@@ -35,7 +42,7 @@ onMounted(() => {
   void ensureRenderer();
   void render();
 });
-watch(() => props.text, render);
+watch(() => [props.text, props.baseDir], render);
 // The renderer arrives AFTER the mount — it is a hosted script —, and the first
 // render answered null. This is what redraws the field as prose.
 watch(rendererReady, render);
