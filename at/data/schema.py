@@ -15,7 +15,9 @@ happened in one folder) — the store keeps it.
 Two doors write a declaration, and they are told apart by what they do to one
 that is already there: `seed` lays down the whole file where it is ABSENT, and
 `extend` grows one that exists, key by key, without ever overwriting what a
-person put there (§3, migration).
+person put there (§3, migration). A third one answers a different question:
+`rename_field` gives a field another NAME — the one door that takes a name
+away, and the one a migration that renames a field needs (§3, migration).
 """
 
 from __future__ import annotations
@@ -25,6 +27,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from importlib import resources
 from pathlib import Path
+from typing import Any
 
 from at.core import files, paths
 
@@ -137,6 +140,81 @@ def _grow(declared: dict, additions: dict, where: str, added: list, collisions: 
                 added.append(path)
         elif mine != value:
             collisions.append(path)
+
+
+@dataclass(frozen=True)
+class Renamed:
+    """What one rename of a field found, and what it did.
+
+    `state` is `renamed` when the field was there under the old name and the
+    file was rewritten, `missing` when the folder does not carry the
+    declaration, `unreadable` when it is there and does not parse, `absent`
+    when it carries no field of that name, and `collision` when the NEW name
+    is already taken — the folder's own field wins there, and nothing is
+    written (§3, migration).
+    """
+
+    table: str
+    old: str
+    new: str
+    state: str = "renamed"
+
+
+def rename_field(table: str, old: str, new: str) -> Renamed:
+    """Rename one field of the folder's declaration, keeping the rest as it is.
+
+    The THIRD door that writes a declaration, and the only one that takes a
+    name away: `seed` lays down the whole file where it is ABSENT, and
+    `extend` grows one that is there — and a RENAME is neither. The field
+    keeps everything it declared (its type, its flags, its place in the
+    order) and only its name moves.
+
+    **The name of a field is what the rows carry**, so a rename is a change of
+    STRUCTURE and not of wording: whoever renames it in the declaration
+    renames it in the store too — the rows are the instance's, and this door
+    does not reach into them.
+
+    The LABEL follows the name when the label is the product's own — the
+    convention `table.<table>.field.<name>` — and stays as it is when it is
+    somebody's: a hand-written label is theirs, and a rename does not take it.
+    """
+    target = directory() / f"{table}{SUFFIX}"
+    if not target.is_file():
+        return Renamed(table, old, new, state="missing")
+    try:
+        declared = files.read_json(target, default=None)
+    except (OSError, json.JSONDecodeError):
+        return Renamed(table, old, new, state="unreadable")
+    if not isinstance(declared, dict):
+        return Renamed(table, old, new, state="unreadable")
+
+    fields = declared.get("fields")
+    if not isinstance(fields, dict) or old not in fields:
+        return Renamed(table, old, new, state="absent")
+    if new in fields:
+        # The NEW name is already there: the folder's own field wins, and the
+        # old name stays as it is. A migration says so instead of choosing.
+        return Renamed(table, old, new, state="collision")
+
+    # The field moves to where it was — the order the declaration lists is the
+    # folder's, and a rename is not a reordering.
+    written: dict[str, Any] = {}
+    for name, field in fields.items():
+        if name != old:
+            written[name] = field
+            continue
+        moved = dict(field) if isinstance(field, dict) else field
+        if isinstance(moved, dict):
+            label = moved.get("label")
+            if label == f"table.{table}.field.{old}":
+                moved["label"] = f"table.{table}.field.{new}"
+        written[new] = moved
+    declared["fields"] = written
+
+    body = json.dumps(declared, ensure_ascii=False, indent=2) + "\n"
+    files.atomic_write_text(target, body)
+    reset()
+    return Renamed(table, old, new, state="renamed")
 
 
 def bundled() -> dict[str, dict]:

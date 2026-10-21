@@ -235,7 +235,7 @@ class TheState(ServerCase):
         # the list with them.
         self.assertEqual(
             keys,
-            ["task", "project", "reminder", "actor", "role", "secret", "audit", "job"],
+            ["task", "project", "note", "reminder", "actor", "role", "secret", "audit", "job"],
         )
         self.assertEqual(next(t for t in state["tables"] if t["key"] == "task")["count"], 1)
 
@@ -3910,6 +3910,93 @@ class TheJevRoute(ServerCase):
 
     def test_without_a_session_it_is_refused(self):
         self.assertEqual(self.status("/api/jev", method="POST"), 401)
+
+
+class TheNotesSection(ServerCase):
+    """TASK-198: a section of its own for the notes, between Lembretes and Cofre.
+
+    A section is three things at once — a LINE in the panel, a SCREEN of its
+    own, and a MARK of its own — and the screen is the GENERIC one: the
+    section does not invent a table of its own, it IS the table `note` read
+    through the very door every table already has. What the page writes is the
+    row it read; what it does not write is a rule of its own.
+    """
+
+    def test_the_section_sits_between_the_reminders_and_the_strongbox(self):
+        panel = (webapp.HERE / "src" / "components" / "Sidebar.vue").read_text(encoding="utf-8")
+        reminders = panel.index('data-view="REMINDERS_KEY"')
+        notes = panel.index('data-view="NOTES_KEY"')
+        strongbox = panel.index('id="strongbox"')
+        self.assertLess(reminders, notes)
+        self.assertLess(notes, strongbox)
+
+    def test_the_section_has_a_screen_of_its_own(self):
+        views = (webapp.HERE / "src" / "lib" / "views.ts").read_text(encoding="utf-8")
+        self.assertIn('export const NOTES_KEY = "notes";', views)
+        main = (webapp.HERE / "src" / "main.ts").read_text(encoding="utf-8")
+        self.assertIn("registerView(NOTES_KEY, NotesView)", main)
+        self.assertTrue((webapp.HERE / "src" / "views" / "NotesView.vue").is_file())
+
+    def test_the_section_has_a_mark_of_its_own(self):
+        status, headers, _ = self.get("/icons/at2-nav-notes.svg")
+        self.assertEqual(status, 200)
+        self.assertEqual(headers["Content-Type"], "image/svg+xml")
+        base = (webapp.ASSETS / "base.css").read_text(encoding="utf-8")
+        self.assertIn(
+            'nav .file[data-view="notes"]::before { --i: url("/icons/at2-nav-notes.svg"); }',
+            base,
+        )
+
+    def test_the_notes_are_read_through_the_generic_door(self):
+        with redirect_stdout(io.StringIO()):
+            tables.create("note", {"text": "o banco ligou", "tags": ["casa"]})
+        status, _, body = self.get("/api/table/note?all")
+        self.assertEqual(status, 200)
+        payload = json.loads(body)
+        self.assertEqual(payload["key"], "note")
+        self.assertEqual(len(payload["records"]), 1)
+        by_name = {field["name"]: field for field in payload["records"][0]["fields"]}
+        self.assertEqual(by_name["text"]["value"], "o banco ligou")
+        # A LISTA é guardada como lista — a célula mostra a junta, e a junta não
+        # é a lista.
+        self.assertEqual(by_name["tags"]["raw"], ["casa"])
+
+    def test_the_section_offers_what_the_engine_says_and_nothing_more(self):
+        # A nota não tem VIDA própria: não há `status`, e logo não há o que
+        # fechar. O que o ator pode nela é criar, editar e apagar — e o motor
+        # é quem diz isso, não a página.
+        _, _, body = self.get("/api/table/note")
+        self.assertEqual(json.loads(body)["actions"], ["create", "edit", "delete"])
+
+    def test_a_note_is_written_through_the_same_door(self):
+        status, answer = self.post(
+            "/api/table/note", {"action": "create", "set": {"text": "o banco ligou"}},
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(answer["record"]["shown_id"], "NOTE-1")
+        status, answer = self.post(
+            "/api/table/note", {"action": "edit", "id": 1, "set": {"text": "o banco nao ligou"}},
+        )
+        self.assertEqual(status, 200)
+        by_name = {field["name"]: field for field in answer["record"]["fields"]}
+        self.assertEqual(by_name["text"]["raw"], "o banco nao ligou")
+        status, _ = self.post("/api/table/note", {"action": "delete", "id": 1})
+        self.assertEqual(status, 200)
+        self.assertEqual(tables.rows("note"), [])
+
+    def test_a_note_without_a_text_is_refused_by_the_engine(self):
+        status, answer = self.post("/api/table/note", {"action": "create", "set": {}})
+        self.assertEqual(status, 400)
+        self.assertIn("error", answer)
+
+    def test_the_words_of_the_section_are_the_catalogs_own(self):
+        for word in ("notes", "new_note", "notes_none", "save"):
+            with self.subTest(word=word):
+                self.assertIn(word, webapp.PAGE_WORDS)
+                for language in i18n.SUPPORTED:
+                    with mock.patch.dict(os.environ, {"AT_LANG": language}):
+                        i18n.reset()
+                        self.assertNotEqual(i18n.tr(f"webapp.{word}"), f"webapp.{word}")
 
 
 if __name__ == "__main__":

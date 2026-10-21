@@ -313,7 +313,12 @@ nav hr.sep {
    ar em volta — para o painel se ler como uma lista só de seções. O que ele NÃO
    carrega é a seta: não há nada embaixo dele para abrir. */
 nav .folder,
-nav .file[data-view="reminders"] {
+nav .file[data-view="reminders"],
+/* A SEÇÃO DE NOTAS (TASK-198) é a MESMA coisa que a de Lembretes: uma LINHA
+   do painel que é um capítulo — e ela veste a mesma roupa das dobras ao lado
+   (as maiúsculas em negrito e o ar em volta), para o painel se ler como uma
+   lista só de seções. */
+nav .file[data-view="notes"] {
   display: flex; justify-content: flex-start; align-items: center; gap: var(--space-2);
   /* THE BOX IS THE TEXT'S, now that a section head is also a ROW. It used to be
      `16px 20px 4px` — the air above a head that could only open and close — and
@@ -426,6 +431,10 @@ nav .folder[data-branch="tables"]::before,
    e o marcador é escrito pela `data-view` dela — nunca `.file` sozinho, pelo
    motivo acima. */
 nav .file[data-view="reminders"]::before,
+/* A sexta porta com forma (TASK-198): "Notas" é uma LINHA como "Lembretes", e
+   o marcador é escrito pela `data-view` dela — nunca `.file` sozinho, pelo
+   motivo acima. */
+nav .file[data-view="notes"]::before,
 nav .side-foot > .file::before,
 .caret::before,
 .menu-toggle::before,
@@ -456,6 +465,7 @@ nav .folder[data-branch="files"]::before { --i: url("/icons/at2-nav-files.svg");
 nav .folder[data-branch="strongbox"]::before { --i: url("/icons/at2-nav-strongbox.svg"); }
 nav .folder[data-branch="tables"]::before { --i: url("/icons/at2-nav-tables.svg"); }
 nav .file[data-view="reminders"]::before { --i: url("/icons/at2-nav-reminders.svg"); }
+nav .file[data-view="notes"]::before { --i: url("/icons/at2-nav-notes.svg"); }
 nav .side-foot > .file[data-view="settings"]::before { --i: url("/icons/at2-nav-settings.svg"); }
 nav .side-foot > .file[data-view="chat"]::before { --i: url("/icons/at2-nav-chat.svg"); }
 /* THE FOOT'S OWN CLOSE (2026-10-05): it only ever shows while the panel is
@@ -1308,6 +1318,10 @@ a.ref:hover, a.url:hover { border-bottom-color: currentColor; background: var(--
 .bar-part[data-state="todo"] { background: var(--info); }
 
 .cards { display: flex; flex-direction: column; gap: var(--space-3); }
+/* A LINHA QUE NASCE NA TELA (TASK-198): o botão que cria a nota fica no lugar
+   das notas, e a lista desce DEPOIS dele — não ao lado, e não do tamanho da
+   lista toda. O `align-self` é o que impede a coluna de esticar o botão. */
+.cards > .btn { align-self: flex-start; }
 .cards h2 {
   margin: 0; color: var(--ink-3); font-size: var(--text-xs);
   font-weight: var(--weight-semibold); letter-spacing: .06em; text-transform: uppercase;

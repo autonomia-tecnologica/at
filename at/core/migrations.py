@@ -1260,6 +1260,85 @@ def _hooks(ask: Ask | None) -> list[Report]:
     return _hand_over(HOOKS_PERMISSIONS)
 
 
+# A TABELA DAS NOTAS (TASK-196) — e, na MESMA migração, o nome que o lembrete
+# perdeu. As duas coisas andam juntas porque a palavra "nota" nomeia UMA coisa:
+# a tabela nova. O `reminder` tinha um campo com esse nome, e uma palavra que
+# nomeia duas não nomeia nenhuma — o interpretador recusa a frase que diz as
+# duas (`nlu.error.two_tables`).
+NOTES = ("note",)
+
+# The permissions the CATALOGUE grows by — the six the engine has, for a table
+# that does not narrow itself. It is read off `tables.ACTIONS` and not spelled
+# out here, so an action the engine grows is a permission this migration
+# already hands over.
+NOTE_PERMISSIONS = tuple(f"note:{action}" for action in tables.ACTIONS)
+
+
+def _notes(ask: Ask | None) -> list[Report]:
+    """Migração trinta: a tabela `note`, e o `note` que o lembrete tinha.
+
+    **A tabela nova entra como as outras de sistema** — a declaração é
+    empacotada e o `seed` a escreve onde ela está AUSENTE, e uma declaração
+    que a pessoa editou continua sendo dela.
+
+    **O campo do lembrete muda de nome**, na declaração e nas linhas: o que a
+    palavra "nota" passa a nomear é a TABELA, e o conteúdo que o campo
+    carregava vai com ele — um lembrete que tinha uma observação continua
+    tendo uma, e com o mesmo texto.
+
+    A renomeação é feita pela porta da DECLARAÇÃO (`schema.rename_field`) e
+    pelas LINHAS por baixo: o motor sabe mudar o valor de um campo e não sabe
+    TIRAR uma chave de uma linha — e uma renomeação é exatamente isso.
+    """
+    written = schema.seed(paths.data_dir() / schema.SCHEMA_DIR, only=NOTES)
+    report: list[Report] = []
+    if written:
+        report.append(
+            ("boot.migration.declarations.written", {"names": ", ".join(sorted(written))})
+        )
+    report += _remark_renamed()
+    return report + _hand_over(NOTE_PERMISSIONS)
+
+
+def _remark_renamed() -> list[Report]:
+    """O campo `note` do `reminder` vira `remark` — na declaração e nas linhas.
+
+    A DECLARAÇÃO pela porta que a renomeia, e as LINHAS pela loja: cada linha
+    que carregava a chave antiga carrega a nova no MESMO lugar da ordem — um
+    campo que muda de lugar parece outro campo —, e a chave antiga sai.
+
+    As linhas só andam quando a pasta já fala o nome novo: uma pasta que
+    declara os DOIS nomes é uma pasta em que o nome velho ainda existe, e aí
+    as linhas ficam como estão.
+    """
+    schema.rename_field("reminder", "note", "remark")
+    if schema.field("reminder", "note") or not schema.field("reminder", "remark"):
+        return []
+
+    rows = store.load("reminder")
+    moved: list[str] = []
+    written: list[dict] = []
+    for row in rows:
+        if "note" not in row:
+            written.append(row)
+            continue
+        existing = row.get("remark")
+        fresh: dict[str, object] = {}
+        for name, value in row.items():
+            if name == "note":
+                fresh["remark"] = existing if existing is not None else value
+            elif name == "remark":
+                continue  # a chave nova entra no lugar da velha
+            else:
+                fresh[name] = value
+        written.append(fresh)
+        moved.append(tables.title("reminder", row))
+    if not moved:
+        return []
+    store.save("reminder", written)
+    return [("boot.migration.reminder.renamed", {"names": ", ".join(moved)})]
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, _legacy_instance),
     Migration(2, _capitalized_instance),
@@ -1290,6 +1369,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(27, _reminder_hour),
     Migration(28, _once_needs_a_day),
     Migration(29, _hooks),
+    Migration(30, _notes),
 )
 
 

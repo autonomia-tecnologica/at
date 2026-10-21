@@ -20,11 +20,12 @@ import "./lib/offline";
 import "./lib/events";
 // A INSCRIÇÃO NO PUSH (Web Push) — a notificação do PWA, que substituiu o ntfy.
 import { register as registerPush } from "./lib/push";
-import { registerView, registerType, TASKS_KEY, FILES_KEY, TABLES_KEY, TABLES_TASK_KEY, REMINDERS_KEY, BOARD_KEY, WRITE_PREFIX } from "./lib/views";
+import { registerView, registerType, TASKS_KEY, FILES_KEY, TABLES_KEY, TABLES_TASK_KEY, REMINDERS_KEY, NOTES_KEY, BOARD_KEY, WRITE_PREFIX } from "./lib/views";
 import TasksView from "./views/TasksView.vue";
 import FilesView from "./views/FilesView.vue";
 import TablesView from "./views/TablesView.vue";
 import RemindersView from "./views/RemindersView.vue";
+import NotesView from "./views/NotesView.vue";
 import BoardView from "./views/BoardView.vue";
 import SettingsView from "./views/SettingsView.vue";
 import ChatView from "./views/ChatView.vue";
@@ -63,6 +64,10 @@ registerView(TABLES_TASK_KEY, TablesTaskView);
 // `/reminders`. A seção é uma LINHA no painel e não uma dobra, mas a tela é
 // dela — o registro não sabe a diferença, e é isso que o registro é para.
 registerView(REMINDERS_KEY, RemindersView);
+// A SEÇÃO DE NOTAS (TASK-198): a chave é o nome dela, e o endereço é `/notes`.
+// A tela é a da tabela `note` — a seção não abre uma porta nova, ela mostra a
+// porta que já existe.
+registerView(NOTES_KEY, NotesView);
 // THE BOARD: not a section's own fold, but the door right after ORPHANS in the
 // same tree (`Sidebar.vue`) — a view like any other, with an address of its
 // own (`/board`).

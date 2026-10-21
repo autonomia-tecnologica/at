@@ -17,7 +17,7 @@
 
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { store, word } from "../lib/store";
-import { CHAT_KEY, NLU_UI_ENABLED, TASKS_KEY, FILES_KEY, TABLES_KEY, REMINDERS_KEY, BOARD_KEY, SETTINGS_KEY, isCurrent, open, countOf } from "../lib/views";
+import { CHAT_KEY, NLU_UI_ENABLED, TASKS_KEY, FILES_KEY, TABLES_KEY, REMINDERS_KEY, NOTES_KEY, BOARD_KEY, SETTINGS_KEY, isCurrent, open, countOf } from "../lib/views";
 import { byName } from "../lib/order";
 import { toggleNav } from "../lib/nav";
 import Foldable from "./Foldable.vue";
@@ -69,6 +69,10 @@ function openChat(): void {
 
 function openReminders(): void {
   open(REMINDERS_KEY, null);
+}
+
+function openNotes(): void {
+  open(NOTES_KEY, null);
 }
 
 // `--foot-space` USED TO BE A GUESS (2026-09-27): a constant in `base.css`,
@@ -133,6 +137,14 @@ onUnmounted(() => {
     <button type="button" class="file" :data-view="REMINDERS_KEY"
             :class="{ on: isCurrent(REMINDERS_KEY) }" @click="openReminders">
       <span>{{ word("reminders") }}</span>
+    </button>
+    <!-- NOTAS (TASK-198), entre Lembretes e Cofre: uma LINHA, como a de
+         Lembretes — o que ela guarda é uma tela só (as notas), e a tela é o
+         todo dela. A marca (a folha) é pendurada por `base.css` na
+         `data-view`, como a de toda porta com forma. -->
+    <button type="button" class="file" :data-view="NOTES_KEY"
+            :class="{ on: isCurrent(NOTES_KEY) }" @click="openNotes">
+      <span>{{ word("notes") }}</span>
     </button>
     <!-- THE STRONGBOX, right after Lembretes — a fourth fold, and ONLY a fold
          now (2026-10-05): the section's own screen is gone, so the head opens

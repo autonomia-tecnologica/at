@@ -26,8 +26,8 @@
       "searchable": true,
       "required": true
     },
-    "note": {
-      "label": "table.reminder.field.note",
+    "remark": {
+      "label": "table.reminder.field.remark",
       "type": "markdown",
       "searchable": true
     },

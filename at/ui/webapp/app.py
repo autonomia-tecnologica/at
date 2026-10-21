@@ -597,6 +597,10 @@ PAGE_WORDS = (
     # A TELA DE LEMBRETES (TASK-164): a seção, as duas metades, e o que uma
     # pasta sem lembrete e um dia sem aviso dizem.
     "reminders", "reminders_coming", "reminders_rang", "reminders_none", "reminders_quiet",
+    # A SEÇÃO DE NOTAS (TASK-198): a seção, o botão que nasce uma nota, e o que
+    # uma pasta sem nota diz. E o "salvar" do formulário que edita uma linha —
+    # a porta que faltava para um campo que não é escolha (TASK-198).
+    "notes", "new_note", "notes_none", "save",
     "move_to_project", "records", "hidden", "no_records", "error", "filter",
     # THE FILA'S BADGE (TASK-162, fatia 2/2): whether this browser is online,
     # and how many edits are still waiting to leave it.

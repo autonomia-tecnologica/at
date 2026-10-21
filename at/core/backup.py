@@ -82,7 +82,7 @@ SUFFIX = ".tar.gz.enc"
 
 # The tables a person's own work fills, and the ones `_fresh` reads. `actor` and
 # `role` are left out on purpose (the module docstring says why).
-FRESH_TABLES = ("task", "project", "reminder", "secret", "audit", "job")
+FRESH_TABLES = ("task", "project", "reminder", "note", "secret", "audit", "job")
 
 # `make`'s outcomes.
 MADE = "made"

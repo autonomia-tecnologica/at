@@ -31,7 +31,7 @@ from pathlib import Path
 from unittest import mock
 
 from at import i18n
-from at.core import boot, migrations, paths, reminder, settings, tables
+from at.core import actors, boot, migrations, paths, permissions, reminder, settings, tables
 from at.data import schema, store
 from at.ui import ask as door
 
@@ -949,6 +949,157 @@ class TheNotificationGuardArrives(FolderCase):
             ),
             output,
         )
+
+
+class TheNotesArrive(FolderCase):
+    """Migração trinta: a tabela das notas, e o nome que o lembrete perdeu.
+
+    A palavra "nota" nomeia UMA coisa — a TABELA. O `reminder` tinha um campo
+    com esse nome, e uma palavra que nomeia duas não nomeia nenhuma: o
+    interpretador recusa a frase que diz as duas (`nlu.error.two_tables`).
+
+    A migração traz a tabela nova (a declaração é empacotada e o `seed` a
+    escreve onde está AUSENTE), renomeia o campo do lembrete na DECLARAÇÃO e
+    nas LINHAS — o motor sabe mudar o valor de um campo e não sabe TIRAR uma
+    chave de uma linha, e uma renomeação é exatamente isso —, e dá ao papel do
+    administrador as permissões que a tabela nova acrescenta.
+    """
+
+    def old_reminder(self) -> dict:
+        """`reminder.json` como a versão anterior a esta escrevia: o campo
+        chamava-se `note`."""
+        declared = json.loads(self.declaration("reminder").read_text(encoding="utf-8"))
+        fields = declared["fields"]
+        fields["note"] = fields.pop("remark")
+        fields["note"]["label"] = "table.reminder.field.note"
+        return declared
+
+    def a_role_of_the_day_before(self) -> None:
+        """O papel do administrador, como ele nasceu ANTES da tabela nova: com
+        o catálogo que existia naquele dia, e sem uma permissão `note:`."""
+        tables.create(
+            "role",
+            {
+                "name": "admin",
+                "permissions": [
+                    permission
+                    for permission in permissions.all_permissions()
+                    if not permission.startswith("note:")
+                ],
+            },
+        )
+
+    def old_folder(self) -> None:
+        """A pasta de antes: a declaração do lembrete com o nome velho, a
+        declaração das notas ausente, e um lembrete que dizia o que dizia."""
+        self.born()
+        self.rewrite(self.declaration("reminder"), self.old_reminder())
+        (self.root / "Tabelas" / "schema" / "note.json").unlink()
+        self.a_role_of_the_day_before()
+        (self.root / "Tabelas" / "reminders.jsonl").write_text(
+            json.dumps(
+                {
+                    "id": 1,
+                    "text": "Beber água",
+                    "note": "depois do almoço",
+                    "freq": "daily",
+                    "at": ["09:00"],
+                    "status": "active",
+                    "since": "2026-09-01",
+                },
+                ensure_ascii=False,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        self.forgotten()
+
+    def reminders(self) -> list[dict]:
+        where = self.root / "Tabelas" / "reminders.jsonl"
+        return [json.loads(line) for line in where.read_text(encoding="utf-8").splitlines()]
+
+    def test_an_old_folder_gains_the_declaration_of_the_notes(self):
+        self.old_folder()
+        self.caught_up()
+        self.assertTrue(self.declaration("note").is_file())
+        declared = json.loads(self.declaration("note").read_text(encoding="utf-8"))
+        self.assertEqual(declared["primary"], "text")
+        self.assertEqual(declared["columns"], ["text", "tags"])
+
+    def test_the_declaration_of_the_reminder_carries_the_new_name(self):
+        self.old_folder()
+        self.caught_up()
+        fields = json.loads(
+            self.declaration("reminder").read_text(encoding="utf-8")
+        )["fields"]
+        self.assertIn("remark", fields)
+        self.assertNotIn("note", fields)
+        # O rótulo segue o nome quando ele é o do produto — a convenção
+        # `table.<tabela>.field.<nome>` — e uma mão que escreveu o seu fica.
+        self.assertEqual(fields["remark"]["label"], "table.reminder.field.remark")
+
+    def test_the_line_keeps_what_it_said(self):
+        self.old_folder()
+        self.caught_up()
+        rows = self.reminders()
+        self.assertEqual(len(rows), 1)
+        self.assertNotIn("note", rows[0])
+        self.assertEqual(rows[0]["remark"], "depois do almoço")
+        self.assertEqual(rows[0]["text"], "Beber água")
+
+    def test_the_output_names_the_line_that_changed(self):
+        self.old_folder()
+        output = self.caught_up()
+        self.assertIn(
+            i18n.tr("boot.migration.reminder.renamed", names="Beber água"), output
+        )
+
+    def test_the_administrator_carries_the_permissions_of_the_new_table(self):
+        self.old_folder()
+        self.caught_up()
+        held = permissions.carried(actors.admin_role())
+        for action in tables.ACTIONS:
+            self.assertIn(f"note:{action}", held)
+
+    def test_a_declaration_carrying_both_names_is_left_alone(self):
+        # A COLISÃO: a pasta que já tem os DOIS nomes é uma pasta em que o
+        # nome velho ainda existe, e aí nada é escrito — nem na declaração nem
+        # nas linhas. A migração diz isso e não escolhe.
+        self.born()
+        declared = json.loads(self.declaration("reminder").read_text(encoding="utf-8"))
+        declared["fields"]["note"] = {
+            "label": "table.reminder.field.note",
+            "type": "markdown",
+            "searchable": True,
+        }
+        self.rewrite(self.declaration("reminder"), declared)
+        (self.root / "Tabelas" / "schema" / "note.json").unlink()
+        self.forgotten()
+        self.caught_up()
+        fields = json.loads(
+            self.declaration("reminder").read_text(encoding="utf-8")
+        )["fields"]
+        self.assertIn("note", fields)
+        self.assertIn("remark", fields)
+
+    def test_a_folder_born_today_is_not_rewritten(self):
+        # Uma pasta que já fala o nome novo não tem linha nenhuma para mover, e
+        # o arquivo das linhas não é reescrito para dizer o que a leitura já
+        # diz.
+        self.born()
+        where = self.root / "Tabelas" / "reminders.jsonl"
+        where.write_text(
+            json.dumps(
+                {"id": 1, "text": "Beber água", "freq": "daily", "at": ["09:00"]},
+                ensure_ascii=False,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        before = where.read_text(encoding="utf-8")
+        self.forgotten()
+        self.caught_up()
+        self.assertEqual(where.read_text(encoding="utf-8"), before)
 
 
 # ------------------------------------------------------------- the stamp ---

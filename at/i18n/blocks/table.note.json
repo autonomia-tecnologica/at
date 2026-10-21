@@ -1,0 +1,14 @@
+{
+  "pt_BR": {
+    "name.one": "Nota",
+    "name.many": "Notas",
+    "field.text": "Texto",
+    "field.tags": "Tags"
+  },
+  "en_US": {
+    "name.one": "Note",
+    "name.many": "Notes",
+    "field.text": "Text",
+    "field.tags": "Tags"
+  }
+}

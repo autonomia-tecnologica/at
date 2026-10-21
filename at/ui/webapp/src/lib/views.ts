@@ -57,6 +57,13 @@ export const TABLES_TASK_KEY = "tables:task";
 // chave é dela.
 export const REMINDERS_KEY = "reminders";
 
+// A SEÇÃO DE NOTAS (TASK-198), pela mesma regra das outras: a chave é o nome
+// da seção, e o endereço dela é `/notes`. Ela É uma linha só, entre Lembretes e
+// Cofre — e a tela que mora atrás dela é a da TABELA `note`, lida pela porta
+// genérica: a seção não é uma tabela de nome próprio, é a tabela `note`
+// mostrada do jeito que uma seção mostra.
+export const NOTES_KEY = "notes";
+
 // O COFRE NÃO TEM CHAVE DE VIEW (2026-10-05). Ele teve uma tela própria
 // (TASK-156) — a quarta dobra, irmã de Arquivos —, e ela saiu: era a mesma
 // árvore do painel numa página só, "sem necessidade de existir". O que o

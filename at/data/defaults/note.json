@@ -1,0 +1,36 @@
+{
+  "id": "note",
+  "order": 3,
+  "name": {
+    "one": "table.note.name.one",
+    "many": "table.note.name.many"
+  },
+  "store": "data/notes.jsonl",
+  "type": "note",
+  "primary": "text",
+  "columns": [
+    "text",
+    "tags"
+  ],
+  "desc": "the thing said and kept: one text, the tags that sort it, and no life of its own — a note is not work, it is not finished nor closed",
+  "fields": {
+    "id": {
+      "label": "table.field.id",
+      "filterable": true,
+      "searchable": true
+    },
+    "text": {
+      "label": "table.note.field.text",
+      "type": "markdown",
+      "searchable": true,
+      "required": true
+    },
+    "tags": {
+      "label": "table.note.field.tags",
+      "type": "list",
+      "filterable": true,
+      "searchable": true,
+      "default": []
+    }
+  }
+}
