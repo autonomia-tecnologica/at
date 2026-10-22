@@ -18,7 +18,7 @@ pergunta, por permissão; `orphans` é a lista do que não tem resposta nenhuma.
   `secret`, o `due` do `reminder`) são lidos do mesmo catálogo
   (`permissions.actions`) pelas portas que os despacham. As palavras que não
   são tabela (`webapp`, `backup`, `admin`, `help`...) vêm de
-  `tree.WORD_PERMISSIONS` — a mesma lista que a fatia 1/4 já prova contra
+  `permissions.WORD_PERMISSIONS` — a mesma lista que a fatia 1/4 já prova contra
   `tree.WORDS`, lida aqui e não copiada de novo.
 - `WEB` — uma rota de `at/ui/webapp/app.py` checa esta permissão por nome
   (`_may`/`_legal`). Não há como descobrir isso sem ler o despacho: uma rota
@@ -47,7 +47,6 @@ from __future__ import annotations
 from at.core import permissions, tables
 from at.data import schema
 from at.nlu import vocabulary
-from at.ui.cli import tree
 
 CLI = "cli"
 WEB = "web"
@@ -128,7 +127,7 @@ def reach() -> dict[str, frozenset[str]]:
             if action in grammar:
                 mark(permission, LLM)
 
-    for names in tree.WORD_PERMISSIONS.values():
+    for names in permissions.WORD_PERMISSIONS.values():
         for permission in names:
             mark(permission, CLI)
 

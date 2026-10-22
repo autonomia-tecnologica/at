@@ -31,7 +31,7 @@ import os
 import tempfile
 import unittest
 from contextlib import redirect_stdout
-from datetime import datetime, timezone
+from datetime import datetime
 from io import StringIO
 from pathlib import Path
 from unittest import mock
@@ -41,7 +41,6 @@ from at.core import (
     actors,
     audit,
     boot,
-    files,
     paths,
     permissions,
     risk,

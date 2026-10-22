@@ -601,3 +601,27 @@ def action_label(name: str) -> str:
     key = action_key(name)
     written = tr(key)
     return written if written != key else name
+
+
+# Every other non-table word, mapped to the permission(s) it carries — the
+# proof `at/tests/test_permissions.py` walks, and the data the audit
+# (`at.core.actions_audit`, fatia 3/4) reads for the CLI side of the words
+# that are not a table: a second mapping of the same words would be the
+# second home the catalogue already refuses elsewhere (`permissions.py`'s own
+# docstring). Most words ARE their own object (`webapp:run`,
+# `backup:make`/`backup:restore`) — the clear object+verb cases. `admin`,
+# `lang` and `convert` are verbs left SOLTOS, with no object of their own, so
+# the three share one, `cli`. `assist` and `setting` were catalogued already
+# (`EXTRA`, before fatia 1/4). `help` joined in fatia 3/4: it IS an object
+# and a verb (the person's own call, unlike the three SOLTOS above), so it
+# gets its own — `help:show`.
+WORD_PERMISSIONS: dict[str, tuple[str, ...]] = {
+    "webapp": ("webapp:run",),
+    "backup": ("backup:make", "backup:restore"),
+    "convert": ("cli:convert",),
+    "admin": ("cli:admin",),
+    "lang": ("cli:lang",),
+    "assist": ("assist:ask",),
+    SETTING: ("setting:read", "setting:edit"),
+    "help": ("help:show",),
+}

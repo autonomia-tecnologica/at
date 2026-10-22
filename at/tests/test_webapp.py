@@ -604,6 +604,7 @@ class TheWrites(ServerCase):
         )
         with self.assertRaises(urllib.error.HTTPError) as caught:
             urllib.request.urlopen(request)
+        caught.exception.close()
         self.assertEqual(caught.exception.code, 415)
 
     def test_other_verbs_are_refused_out_loud(self):

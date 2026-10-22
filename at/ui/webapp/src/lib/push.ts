@@ -31,7 +31,7 @@ export function state(): PushState {
 }
 
 // A chave vem base64url (a `applicationServerKey` quer BYTES, não texto).
-function bytes(key: string): Uint8Array {
+function bytes(key: string): Uint8Array<ArrayBuffer> {
   const pad = "=".repeat((4 - (key.length % 4)) % 4);
   const raw = atob((key + pad).replace(/-/g, "+").replace(/_/g, "/"));
   const out = new Uint8Array(raw.length);
