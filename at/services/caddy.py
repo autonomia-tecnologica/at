@@ -55,6 +55,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import zipfile
 import tempfile
 from pathlib import Path
 from platform import machine
@@ -79,7 +80,9 @@ FOLDER = "caddy"
 
 # Inside that folder. The stamp is the platform word, and the Caddyfile keeps
 # Caddy's own name so that the adapter is inferred from it.
-BINARY = "caddy"
+# The member's name inside the vendor's archive, which is also the unpacked file:
+# Windows spells it with the `.exe` its loader needs.
+BINARY = "caddy.exe" if sys.platform == "win32" else "caddy"
 STAMP = "platform"
 CADDYFILE = "Caddyfile"
 STORAGE = "storage"
@@ -146,7 +149,8 @@ HTTPS = 443
 # named with. `sys.platform` first, then the machine: a pair that is not here is
 # a platform whose Caddy this artifact does not carry, and that is said instead
 # of guessed (§9: Windows and macOS build on their own runners).
-SYSTEMS = {"linux": "linux", "darwin": "darwin", "win32": "windows"}
+# Caddy names macOS `mac`, not `darwin` (gitleaks does say `darwin`).
+SYSTEMS = {"linux": "linux", "darwin": "mac", "win32": "windows"}
 MACHINES = {
     "x86_64": "amd64",
     "amd64": "amd64",
@@ -160,7 +164,7 @@ class CaddyError(Exception):
 
 
 def platform_name() -> str | None:
-    """The vendor's word for this platform — `linux_amd64`, `darwin_arm64`.
+    """The vendor's word for this platform — `linux_amd64`, `mac_arm64`.
 
     `None` when the pair is not one the release names, which is a real answer and
     not a failure: the build froze a Caddy for one system, and this is another.
@@ -183,6 +187,25 @@ def label() -> str:
     return f"{sys.platform}/{machine()}"
 
 
+def _extension(name: str) -> str:
+    """The vendor ships a `.zip` for Windows and a `.tar.gz` for everything else."""
+    return "zip" if name.startswith("windows") else "tar.gz"
+
+
+def _open(source: Path):
+    """The vendor's archive, whichever of the two shapes it came in."""
+    if source.suffix == ".zip":
+        return zipfile.ZipFile(source)
+    return tarfile.open(source, "r:gz")
+
+
+def _member(archive, name: str):
+    """The named member as a file object; `KeyError` when the archive has none."""
+    if isinstance(archive, zipfile.ZipFile):
+        return archive.open(name)
+    return archive.extractfile(name)
+
+
 def payload() -> Path | None:
     """The vendor's tarball for this platform, or `None` when there is none.
 
@@ -192,7 +215,7 @@ def payload() -> Path | None:
     name = platform_name()
     if name is None:
         return None
-    found = sorted(PAYLOAD.glob(f"caddy_*_{name}.tar.gz"))
+    found = sorted(PAYLOAD.glob(f"caddy_*_{name}.{_extension(name)}"))
     if len(found) != 1:
         # None, and not the first of many: two Caddies for one platform is a
         # build that does not know which one it carries, and picking one would
@@ -303,9 +326,9 @@ def ensure() -> Path | None:
 
     # Written beside the target and moved onto it, so a Caddy that is half
     # unpacked is never a Caddy the folder would try to run.
-    with tarfile.open(source, "r:gz") as archive:
+    with _open(source) as archive:
         try:
-            packed = archive.extractfile(BINARY)
+            packed = _member(archive, BINARY)
         except KeyError as error:
             raise CaddyError(f"{source.name} carries no {BINARY}") from error
         if packed is None:  # pragma: no cover — a member that is not a file

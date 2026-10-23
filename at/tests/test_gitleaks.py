@@ -18,7 +18,9 @@ from __future__ import annotations
 import io
 import os
 import subprocess
+import hashlib
 import tarfile
+import zipfile
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -76,6 +78,34 @@ class ThePayload(unittest.TestCase):
         with mock.patch.object(gitleaks.sys, "platform", "darwin"), \
                 mock.patch.object(gitleaks, "_machine", lambda: "arm64"):
             self.assertEqual(gitleaks.platform_name(), "darwin_arm64")
+
+    def test_the_other_platforms_archives_are_the_vendors_own_bytes(self):
+        # The CI matrix builds Windows x64 and macOS arm64: their archives travel
+        # byte for byte, pinned by the sha256 of the release's own checksums.txt.
+        pins = {
+            "gitleaks_8.30.1_windows_x64.zip": "d29144deff3a68aa93ced33dddf84b7fdc26070add4aa0f4513094c8332afc4e",
+            "gitleaks_8.30.1_darwin_arm64.tar.gz": "b40ab0ae55c505963e365f271a8d3846efbc170aa17f2607f13df610a9aeb6a5",
+        }
+        for name, digest in pins.items():
+            with self.subTest(name=name):
+                path = gitleaks.PAYLOAD / name
+                self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(), digest)
+                if path.suffix == ".zip":
+                    members = zipfile.ZipFile(path).namelist()
+                    self.assertIn("gitleaks.exe", members)
+                else:
+                    members = tarfile.open(path, "r:gz").getnames()
+                    self.assertIn("gitleaks", members)
+                self.assertIn("LICENSE", members)
+        for system, machine, expected in (
+            ("win32", "amd64", "gitleaks_8.30.1_windows_x64.zip"),
+            ("darwin", "arm64", "gitleaks_8.30.1_darwin_arm64.tar.gz"),
+        ):
+            with mock.patch.object(gitleaks.sys, "platform", system), \
+                    mock.patch.object(gitleaks, "_machine", lambda m=machine: m):
+                found = gitleaks.payload()
+                assert found is not None
+                self.assertEqual(found.name, expected)
 
     def test_a_platform_the_release_does_not_name_has_no_payload(self):
         with mock.patch.object(gitleaks, "platform_name", lambda: "solaris_sparc"):

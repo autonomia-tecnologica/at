@@ -16,7 +16,7 @@
       "license": "Apache-2.0",
       "artifacts": ["at-cli"],
       "text": "at/vendor/licenses/caddy/LICENSE",
-      "note": "The vendor's tarball travels byte for byte in at/vendor/caddy/, and the tarball carries its own LICENSE beside the binary; this copy is the same bytes, so the CLI can answer without unpacking a 17 MB archive."
+      "note": "The vendor's tarball travels byte for byte in at/vendor/caddy/, and the tarball carries its own LICENSE beside the binary; this copy is the same bytes, so the CLI can answer without unpacking a 17 MB archive. The same release also travels for the CI matrix: caddy_2.11.4_windows_amd64.zip and caddy_2.11.4_mac_arm64.tar.gz, each checked against the release's SHA-512 checksums and carrying the same LICENSE."
     },
     "cffi": {
       "name": "cffi",
@@ -68,7 +68,7 @@
       "license": "MIT",
       "artifacts": ["at-cli"],
       "text": "at/vendor/licenses/gitleaks/LICENSE",
-      "note": "The scanner `secret scan` walks the folder with (item 32). The vendor's tarball travels byte for byte in at/vendor/gitleaks/, and the tarball carries its own LICENSE beside the binary; this copy is the same bytes, so the CLI can answer without unpacking an 8 MB archive."
+      "note": "The scanner `secret scan` walks the folder with (item 32). The vendor's tarball travels byte for byte in at/vendor/gitleaks/, and the tarball carries its own LICENSE beside the binary; this copy is the same bytes, so the CLI can answer without unpacking an 8 MB archive. The same release also travels for the CI matrix: gitleaks_8.30.1_windows_x64.zip and gitleaks_8.30.1_darwin_arm64.tar.gz, each checked against the release checksums.txt."
     },
     "libsodium": {
       "name": "libsodium",

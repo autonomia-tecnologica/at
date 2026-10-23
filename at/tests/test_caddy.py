@@ -23,7 +23,9 @@ import os
 import socket
 import ssl
 import subprocess
+import hashlib
 import tarfile
+import zipfile
 import tempfile
 import threading
 import time
@@ -119,10 +121,42 @@ class ThePayload(unittest.TestCase):
     def test_the_platform_is_the_vendors_word_for_it(self):
         with mock.patch.object(caddy.sys, "platform", "darwin"), \
                 mock.patch.object(caddy, "_machine", lambda: "arm64"):
-            self.assertEqual(caddy.platform_name(), "darwin_arm64")
+            # The vendor says `mac`, not `darwin`.
+            self.assertEqual(caddy.platform_name(), "mac_arm64")
+        with mock.patch.object(caddy.sys, "platform", "win32"), \
+                mock.patch.object(caddy, "_machine", lambda: "amd64"):
+            self.assertEqual(caddy.platform_name(), "windows_amd64")
         with mock.patch.object(caddy.sys, "platform", "linux"), \
                 mock.patch.object(caddy, "_machine", lambda: "amd64"):
             self.assertEqual(caddy.platform_name(), "linux_amd64")
+
+    def test_the_other_platforms_tarballs_are_the_vendors_own_bytes(self):
+        # The CI matrix builds Windows x64 and macOS arm64: their archives travel
+        # byte for byte, pinned by the sha256 the SHA-512 of the release checked.
+        pins = {
+            "caddy_2.11.4_windows_amd64.zip": "1708333f79e274c7697285afe6d592ab39314e0b131e9ec6bea08ad27df62ebf",
+            "caddy_2.11.4_mac_arm64.tar.gz": "9efb0af2d6cf09cfb5053c0e51721b9b3d4956d346234f39368d943d25a3c9a7",
+        }
+        for name, digest in pins.items():
+            with self.subTest(name=name):
+                path = caddy.PAYLOAD / name
+                self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(), digest)
+                if path.suffix == ".zip":
+                    members = zipfile.ZipFile(path).namelist()
+                    self.assertIn("caddy.exe", members)
+                else:
+                    members = tarfile.open(path, "r:gz").getnames()
+                    self.assertIn("caddy", members)
+                self.assertIn("LICENSE", members)
+        for system, machine, expected in (
+            ("win32", "amd64", "caddy_2.11.4_windows_amd64.zip"),
+            ("darwin", "arm64", "caddy_2.11.4_mac_arm64.tar.gz"),
+        ):
+            with mock.patch.object(caddy.sys, "platform", system), \
+                    mock.patch.object(caddy, "_machine", lambda m=machine: m):
+                found = caddy.payload()
+                assert found is not None
+                self.assertEqual(found.name, expected)
 
     def test_a_platform_the_release_does_not_name_has_no_payload(self):
         with mock.patch.object(caddy, "platform_name", lambda: "solaris_sparc"):

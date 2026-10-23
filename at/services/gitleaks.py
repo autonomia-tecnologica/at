@@ -17,7 +17,7 @@ against the release's own `checksums.txt`, and the binary inside it against the
 `gitleaks 8.30.1` the person already had — and what travels from here on is those
 same bytes. **The vendor spells the machine differently**: `linux_x64`, where the
 Caddy spells `linux_amd64`, and `windows_x64` is a `.zip` — which the glob below
-does not carry, so Windows answers `None` the same way the Caddy's does.
+carries too (`_extension`), with `gitleaks.exe` as its member.
 
 **The unpacking is the Caddy's own arithmetic.** It lands in `App/` and only when
 the platform stamp does not match, which is what makes a folder carried from one
@@ -41,6 +41,7 @@ import os
 import shutil
 import sys
 import tarfile
+import zipfile
 import tempfile
 from pathlib import Path
 from platform import machine
@@ -59,7 +60,9 @@ PAYLOAD = Path(__file__).resolve().parents[1] / "vendor" / "gitleaks"
 FOLDER = "gitleaks"
 
 # Inside that folder: the binary and the stamp that says which platform it serves.
-BINARY = "gitleaks"
+# The member's name inside the vendor's archive, which is also the unpacked file:
+# Windows spells it with the `.exe` its loader needs.
+BINARY = "gitleaks.exe" if sys.platform == "win32" else "gitleaks"
 STAMP = "platform"
 
 # The vendor's own word for each platform, which is what its release assets are
@@ -104,6 +107,25 @@ def label() -> str:
     return f"{sys.platform}/{machine()}"
 
 
+def _extension(name: str) -> str:
+    """The vendor ships a `.zip` for Windows and a `.tar.gz` for everything else."""
+    return "zip" if name.startswith("windows") else "tar.gz"
+
+
+def _open(source: Path):
+    """The vendor's archive, whichever of the two shapes it came in."""
+    if source.suffix == ".zip":
+        return zipfile.ZipFile(source)
+    return tarfile.open(source, "r:gz")
+
+
+def _member(archive, name: str):
+    """The named member as a file object; `KeyError` when the archive has none."""
+    if isinstance(archive, zipfile.ZipFile):
+        return archive.open(name)
+    return archive.extractfile(name)
+
+
 def payload() -> Path | None:
     """The vendor's tarball for this platform, or `None` when there is none.
 
@@ -113,7 +135,7 @@ def payload() -> Path | None:
     name = platform_name()
     if name is None:
         return None
-    found = sorted(PAYLOAD.glob(f"gitleaks_*_{name}.tar.gz"))
+    found = sorted(PAYLOAD.glob(f"gitleaks_*_{name}.{_extension(name)}"))
     if len(found) != 1:
         # None, and not the first of many: two scanners for one platform is a
         # build that does not know which one it carries, and picking one would be
@@ -163,9 +185,9 @@ def ensure() -> Path | None:
 
     # Written beside the target and moved onto it, so a scanner that is half
     # unpacked is never a scanner the folder would try to run.
-    with tarfile.open(source, "r:gz") as archive:
+    with _open(source) as archive:
         try:
-            packed = archive.extractfile(BINARY)
+            packed = _member(archive, BINARY)
         except KeyError as error:
             raise GitleaksError(f"{source.name} carries no {BINARY}") from error
         if packed is None:  # pragma: no cover — a member that is not a file
