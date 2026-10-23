@@ -99,7 +99,7 @@ import json
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable
 
 from at import i18n, nlu
 from at.nlu import matcher

@@ -20,7 +20,7 @@ clock hour alone (`HH:MM`).
 from __future__ import annotations
 
 import re
-from datetime import timedelta
+from datetime import date, timedelta
 
 from at.nlu.grammar import clock, clock_text, day_of_month, next_weekday, number_of
 from at.nlu.normalizer import fold, folded
