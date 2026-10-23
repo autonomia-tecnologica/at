@@ -1541,6 +1541,11 @@ def _acted(
     return OK, tr("table.edited", id=tables.format_id(table, row["id"])), row, None, None
 
 
+# The rows the last `_listing` kept, after every narrowing — what `--json` hands
+# over as the listing's `table`, so the filter is the listing's and not a second.
+last_rows: list[dict] | None = None
+
+
 def _listing(
     table: str, args: list[str], values: dict | None = None,
     ranges: dict[str, str] | None = None, full_table: bool = True,
@@ -1562,6 +1567,8 @@ def _listing(
     a bare "listar tarefas" — is a bullet, one line per row, the row's own
     TITLE and nothing beside it.
     """
+    global last_rows
+    last_rows = None
     show_all = "--all" in args
     rest = [arg for arg in args if arg != "--all"]
     wanted: str | None = None
@@ -1584,6 +1591,7 @@ def _listing(
     rows = _kept(table, rows, values, ranges)
     if on_day is not None:
         rows = [row for row in rows if reminder.occurs(row, on_day)]
+    last_rows = rows
     if not rows:
         if on_day is not None:
             # Named the way the person asked it: the DAY, not a field nobody

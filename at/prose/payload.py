@@ -169,7 +169,9 @@ def says(table: str, row: dict) -> dict:
     return {}
 
 
-def table_payload(table: str, show_all: bool) -> dict:
+def table_payload(table: str, show_all: bool, rows: list[dict] | None = None) -> dict:
+    """`rows` is a listing already narrowed (`--project`, a filter); left out, the table's own."""
+    chosen = tables.rows(table, show_all=show_all) if rows is None else rows
     return {
         "key": table,
         "name": tables.table_name(table, many=True),
@@ -179,5 +181,5 @@ def table_payload(table: str, show_all: bool) -> dict:
         # page (§4, "campos padrão na exibição"): the rest steps aside into the
         # pill, where the person can bring it back.
         "columns": schema.columns(table),
-        "records": [record(table, row) for row in tables.rows(table, show_all=show_all)],
+        "records": [record(table, row) for row in chosen],
     }

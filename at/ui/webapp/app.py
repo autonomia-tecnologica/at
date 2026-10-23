@@ -3194,6 +3194,12 @@ def _report_taken(where: str, port: int) -> None:
             print(i18n.tr("webapp.instance_behind_no_deploy", deploy=deploy))
 
 
+# Who wants to know, AT ONCE, that the server is up: `(url, the announced line)`.
+# A surface that says the run as data (`--json`) registers here for the length of
+# the run, so the announcement leaves while the server keeps serving.
+on_serving: list[Callable[[str, str], None]] = []
+
+
 def run(port: int = DEFAULT_PORT, public_port: int | None = None,
         host: str | None = None, include_caddy: bool = True) -> int:
     """Put AT on a port — in HTTP, or behind the Caddy's TLS.
@@ -3371,8 +3377,11 @@ def run(port: int = DEFAULT_PORT, public_port: int | None = None,
             return 1
 
     url = f"https://{where}:{port}" if include_caddy else f"http://{where}:{port}"
-    print(tr("caddy.serving", url=url) if include_caddy
-          else tr("webapp.serving", url=url))
+    serving = tr("caddy.serving", url=url) if include_caddy \
+        else tr("webapp.serving", url=url)
+    print(serving)
+    for listener in list(on_serving):
+        listener(url, serving)
     # AND WHETHER THIS RUN ASKS, said out loud: a person who expected an
     # entrance and does not find one should not have to guess why — and the
     # sentence is the same fact (`asks`), said once in the language on screen.
