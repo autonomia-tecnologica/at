@@ -1,0 +1,90 @@
+# Native per-system builds of the two artifacts (at-cli, at-deploy).
+#
+# This is NOT the release: the Linux release is `python3 -m release.build`
+# (pinned container, glibc floor gate). This workflow builds each artifact on
+# a hosted runner of its own system with `pyinstaller <spec>` and uploads the
+# result as a workflow artifact. Gathering the three into a published release
+# is out of scope here.
+name: binaries
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        with:
+          # Exact version; pyproject.toml requires >=3.14.7.
+          python-version: "3.14.7"
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: "22.23.2"
+          cache: npm
+          cache-dependency-path: at/ui/webapp/package-lock.json
+
+      # The specs collect at/ui/webapp/dist; a missing or empty dist yields a
+      # binary that answers 500 on the front page (see release/build.py).
+      - name: Build the WebApp
+        working-directory: at/ui/webapp
+        run: |
+          npm ci
+          npm run build
+          test -n "$(ls -A dist)"
+
+      # Pinned with hashes, like the release builder does.
+      - name: Install Python dependencies
+        run: |
+          python -m venv .venv
+          if [ -x .venv/Scripts/python.exe ]; then PY=.venv/Scripts/python.exe; else PY=.venv/bin/python; fi
+          echo "PY=$PY" >> "$GITHUB_ENV"
+          "$PY" -m pip install --require-hashes -r requirements.txt
+          "$PY" -m pip install --require-hashes -r requirements-dev.txt
+          "$PY" -m pip install -e . --no-deps
+
+      - name: Build at-cli and at-deploy
+        run: |
+          "$PY" -m PyInstaller --noconfirm at-cli.spec
+          "$PY" -m PyInstaller --noconfirm at-deploy.spec
+          ls -l dist
+
+      # Run from an empty temporary folder, so nothing is created in the checkout.
+      - name: Smoke test
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then EXT=.exe; else EXT=; fi
+          D=$(mktemp -d)
+          # AT refuses to adopt a folder nobody answered for (no terminal in CI),
+          # so the temporary folder is born a Working Folder first, via boot.
+          AT_ROOT="$D" "$PY" -c "from at.core import boot; boot.create_working_folder()"
+          for name in at-cli at-deploy; do
+            cp "dist/${name}${EXT}" "$D/"
+            (cd "$D" && AT_ROOT="$D" "./${name}${EXT}" --help)
+          done
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: binaries-${{ runner.os }}
+          path: |
+            dist/at-cli
+            dist/at-cli.exe
+            dist/at-deploy
+            dist/at-deploy.exe
+          if-no-files-found: error
