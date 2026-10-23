@@ -1,6 +1,6 @@
 /* at, at night — the same from-scratch system, the light turned off.
 
-   The type, spacing and motion scales live in `base.css` (F0, 2026-10-22) —
+   The type, spacing and motion scales live in `base.css` —
    they are not colour. What changes is only what LIGHT
    decides: the surfaces invert, and the accent is lifted from #7c3aed (built
    for white, 3.9:1 on a dark card — under AA) to #a684f7, the same 262° hue at
@@ -17,7 +17,6 @@
   --font-sans: "Nunito Sans", system-ui, -apple-system, "Segoe UI", Roboto,
                "Helvetica Neue", Arial, sans-serif;
   --font-brand: "Quicksand", "Nunito Sans", system-ui, sans-serif;
-  --weight-bold: 600;
 
   /* ===== radius scale ======================================================= */
   --r-sm: 8px;
@@ -28,7 +27,7 @@
   --surface-0: #120b1f;
   --surface-1: #180f28;
   --surface-2: #1c1230;
-  /* THE TEXT ROLES (F1, 2026-10-22): violet-tinted neutrals with the chroma
+  /* THE TEXT ROLES: violet-tinted neutrals with the chroma
      turned down (H 262), so the text stays in the brand's family without
      reading purple. Worst-case ratios on the three surfaces: 16.3 / 8.2 / 6.4. */
   --neutral-high:  #f6f4fa;
@@ -39,6 +38,7 @@
   --text-tertiary: var(--neutral-low);
   --border-soft: #2c2047;
   --border-strong: #3a2c5c;
+  --border-control: #7a6ea0;
   --row-hover: #211738;
   --control-track: #2f2150;
 
@@ -79,7 +79,7 @@
   --info-text: var(--info);
 
   /* ===== elevation: deeper, still tinted =======================================
-     ONE TRIPLET (2026-10-05, the same door the day side opened in `at.css`):
+     ONE TRIPLET:
      every shadow here, and the panel's own cast (`--nav-edge`, below), is
      black at a different opacity — named once, so deepening the night is one
      number and not a hunt through every rule that happens to agree today. */
@@ -94,7 +94,7 @@
   --scrollbar-thumb-hover: #453569;
 
   /* ===== the chrome: darker than the canvas around it, still violet ============ */
-  /* THE EDGE WAS A SHADOW, AND A SHADOW ON BLACK IS NOTHING (2026-09-28): the
+  /* THE EDGE WAS A SHADOW, AND A SHADOW ON BLACK IS NOTHING: the
      day side's `--nav-edge` reads because it darkens a LIGHT canvas — cast the
      same shadow over a canvas already this dark and there is no darker left to
      go, so the one thing left to carry the boundary is the fill itself. The

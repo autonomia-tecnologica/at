@@ -159,7 +159,7 @@ class TheTokenContract(unittest.TestCase):
             "--weight-semibold", "--letter-tight", "--r-full",
             "--space-0_5", "--space-1", "--space-2", "--space-3", "--space-4",
             "--space-5", "--space-6", "--space-8", "--space-10", "--space-12",
-            "--space-16", "--dur-fast", "--dur-base", "--ease-out", "--nav-w",
+            "--space-16", "--nav-w",
             "--nav-rail-w", "--nav-toggle-size", "--header-h", "--page-pad-x",
         }
         self.assertEqual(sorted(structure_tokens - self.base_declared), [])
@@ -432,6 +432,13 @@ class TheTextRoles(unittest.TestCase):
                 got = _ratio(tokens[f"--{kind}-text"], tokens[f"--{kind}-soft"])
                 self.assertGreaterEqual(got, 4.5, f"{name} {kind}: {got:.2f}")
 
+    def test_the_border_of_a_control_holds_three_to_one_on_every_surface(self):
+        for name, tokens in self.themes.items():
+            self.assertIn("--border-control", tokens, name)
+            for surface in self.SURFACES:
+                got = _ratio(tokens["--border-control"], tokens[surface])
+                self.assertGreaterEqual(got, 3.0, f"{name} --border-control on {surface}: {got:.2f}")
+
     def test_the_separator_is_text_not_a_border(self):
         body = without_comments(self.base)
         self.assertIn("#head-title .sep { color: var(--text-tertiary); }", body)
@@ -478,3 +485,45 @@ class TheDensity(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TheDesignPlanRules(unittest.TestCase):
+    """F3-F6 of the design plan, as far as grep and parse can see them."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.css = without_comments((ASSETS / "base.css").read_text(encoding="utf-8"))
+        cls.raw = (ASSETS / "base.css").read_text(encoding="utf-8")
+
+    def test_static_surfaces_carry_no_shadow(self):
+        # F5: elevation is for what floats (pop, dialog, balloon, toast), never a resting card.
+        static = {".block", ".card", ".stat-strip .stat", "table.grid"}
+        for selectors, body in re.findall(r"([^{}]+)\{([^{}]*)\}", self.css):
+            names = {name.strip() for name in selectors.split(",")}
+            if not names & static:
+                continue
+            for value in re.findall(r"box-shadow:\s*([^;]+)", body):
+                self.assertEqual(value.strip(), "none", f"{sorted(names)} floats: box-shadow {value}")
+
+    def test_no_literal_px_font_size_outside_root(self):
+        css = re.sub(r":root\s*\{[^{}]*\}", "", self.css)
+        self.assertEqual(re.findall(r"font-size:\s*[0-9.]+px", css), [])
+
+    def test_the_temporary_aliases_stay_gone(self):
+        # F0/F8: the names the scales replaced do not come back.
+        for name in ("--dur-fast", "--dur-base", "--ease-out", "--weight-bold"):
+            self.assertNotIn(name, self.css)
+            for theme in ("at.css", "at-dark.css"):
+                self.assertNotIn(name, (ASSETS / "themes" / theme).read_text(encoding="utf-8"))
+            for source in PAGE_SOURCES:
+                self.assertNotIn(name, source.read_text(encoding="utf-8"), source.name)
+
+    def test_the_empty_state_is_a_room_not_a_line(self):
+        rule = re.search(r"\.empty-state\s*\{([^}]*)\}", self.css).group(1)
+        self.assertIn("min-height: 240px", rule)
+        self.assertRegex(self.css, r"\.empty-state \.empty-icon\s*\{\s*width: 24px; height: 24px;")
+
+    def test_icons_read_the_icon_scale(self):
+        self.assertNotRegex(self.css, r"::before\s*\{[^}]*(?<![-\w])(?:width|height):\s*1[0-9]px")
+        self.assertIn("--icon-sm:", self.css)
+        self.assertIn("--icon-md:", self.css)

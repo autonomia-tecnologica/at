@@ -5,7 +5,7 @@
 
 import { h, ref, watchEffect } from "vue";
 import { setTrail } from "../lib/views";
-import { store } from "../lib/store";
+import { store, word } from "../lib/store";
 import { openPop } from "../lib/pop";
 import { ask } from "../lib/confirm";
 import { toast } from "../lib/toast";
@@ -23,13 +23,13 @@ const dense = ref<Density>(density());
 function pickSide(state: DarkState): void { side.value = state; chooseDark(state); }
 function pickDensity(state: Density): void { dense.value = state; setDensity(state); }
 
-const TEXT_ROLES = [
-  ["--text-primary", "primary"], ["--text-secondary", "secondary"], ["--text-tertiary", "tertiary"],
+const TEXT_ROLES: [string, string][] = [
+  ["--text-primary", "ds_primary"], ["--text-secondary", "ds_secondary"], ["--text-tertiary", "ds_tertiary"],
 ];
-const TYPE_SCALE = [
-  ["--type-display", "Display 28"], ["--type-page", "Page 20"], ["--type-title", "Title 16"],
-  ["--type-body-lg", "Body large 16"], ["--type-body", "Body 14"], ["--type-body-sm", "Body small 13"],
-  ["--type-caption", "Caption 12"],
+const TYPE_SCALE: [string, string, number][] = [
+  ["--type-display", "ds_display", 28], ["--type-page", "ds_page", 20], ["--type-title", "ds_title", 16],
+  ["--type-body-lg", "ds_body_large", 16], ["--type-body", "ds_body", 14], ["--type-body-sm", "ds_body_small", 13],
+  ["--type-caption", "ds_caption", 12],
 ];
 const STEPS = [50, 100, 200, 300, 400, 500, 600, 700, 800];
 const SURFACES = ["--surface-0", "--surface-1", "--surface-2", "--border-soft", "--border-strong"];
@@ -37,20 +37,20 @@ const STATES = ["success", "warning", "danger", "info"];
 const CHIPS = ["todo", "doing", "done", "cancelled", "low", "high", "critical"];
 const SPACES = ["1", "2", "3", "4", "6", "8", "12", "16"];
 
-const sample = { render: () => h("div", { class: "opt" }, "A popover is a floating panel") };
+const sample = { render: () => h("div", { class: "opt" }, word("ds_pop_text")) };
 
 function showPop(event: MouseEvent): void {
   openPop("design-pop", sample, {}, { anchor: event.currentTarget as HTMLElement });
 }
 async function showDialog(): Promise<void> {
-  toast((await ask("Is this the dialog?")) ? "Answered yes" : "Answered no");
+  toast((await ask(word("ds_ask"))) ? word("ds_yes") : word("ds_no"));
 }
 </script>
 
 <template>
   <div class="design">
     <section>
-      <h2>Theme, side and density</h2>
+      <h2>{{ word("ds_theme") }}</h2>
       <div class="row">
         <button v-for="row in store.themes" :key="row.id" type="button" class="btn btn-sm" :class="themeState.id === row.id ? '' : 'btn-quiet'" :aria-pressed="themeState.id === row.id" @click="chooseTheme(row.id)">{{ row.label }}</button>
         <button v-for="state in DARK_STATES" :key="state" type="button" class="btn btn-sm"
@@ -61,21 +61,21 @@ async function showDialog(): Promise<void> {
     </section>
 
     <section>
-      <h2>Text roles</h2>
+      <h2>{{ word("ds_text_roles") }}</h2>
       <p v-for="[token, name] in TEXT_ROLES" :key="token" :style="{ color: `var(${token})`, margin: 0 }">
-        {{ name }} <code>{{ token }}</code> — the quick brown fox jumps over the lazy dog
+        {{ word(name) }} <code>{{ token }}</code> — {{ word("ds_fox") }}
       </p>
     </section>
 
     <section>
-      <h2>Type scale</h2>
-      <p v-for="[token, name] in TYPE_SCALE" :key="token" :style="{ fontSize: `var(${token})`, margin: 0 }">
-        {{ name }} <code>{{ token }}</code>
+      <h2>{{ word("ds_type_scale") }}</h2>
+      <p v-for="[token, name, px] in TYPE_SCALE" :key="token" :style="{ fontSize: `var(${token})`, margin: 0 }">
+        {{ word(name) }} {{ px }} <code>{{ token }}</code>
       </p>
     </section>
 
     <section>
-      <h2>Colour</h2>
+      <h2>{{ word("ds_colour") }}</h2>
       <div class="row">
         <span v-for="step in STEPS" :key="step" class="swatch" :style="{ background: `var(--accent-${step})` }"
               :title="`--accent-${step}`">{{ step }}</span>
@@ -98,50 +98,50 @@ async function showDialog(): Promise<void> {
     </section>
 
     <section>
-      <h2>Buttons</h2>
+      <h2>{{ word("ds_buttons") }}</h2>
       <div class="row">
-        <button type="button" class="btn btn-sm">Small</button>
-        <button type="button" class="btn">Medium</button>
-        <button type="button" class="btn btn-lg">Large</button>
-        <button type="button" class="btn btn-quiet">Quiet</button>
-        <button type="button" class="btn btn-ghost">Ghost</button>
-        <button type="button" class="btn danger">Danger</button>
-        <button type="button" class="btn" disabled>Disabled</button>
+        <button type="button" class="btn btn-sm">{{ word("ds_small") }}</button>
+        <button type="button" class="btn">{{ word("ds_medium") }}</button>
+        <button type="button" class="btn btn-lg">{{ word("ds_large") }}</button>
+        <button type="button" class="btn btn-quiet">{{ word("ds_quiet") }}</button>
+        <button type="button" class="btn btn-ghost">{{ word("ds_ghost") }}</button>
+        <button type="button" class="btn danger">{{ word("ds_danger") }}</button>
+        <button type="button" class="btn" disabled>{{ word("ds_disabled") }}</button>
       </div>
     </section>
 
     <section>
-      <h2>Inputs</h2>
+      <h2>{{ word("ds_inputs") }}</h2>
       <div class="form">
-        <label><span>Text</span><input type="text" value="A value"></label>
-        <label><span>Select</span><select><option>One</option><option>Two</option></select></label>
-        <label><span>Textarea</span><textarea>Some lines</textarea></label>
-        <label><span>Disabled</span><input type="text" value="Locked" disabled></label>
+        <label><span>{{ word("ds_text") }}</span><input type="text" :value="word('ds_value')"></label>
+        <label><span>{{ word("ds_select") }}</span><select><option>1</option><option>2</option></select></label>
+        <label><span>{{ word("ds_textarea") }}</span><textarea :value="word('ds_lines')"></textarea></label>
+        <label><span>{{ word("ds_disabled") }}</span><input type="text" :value="word('ds_locked')" disabled></label>
       </div>
       <div class="radios">
-        <label class="check-row"><input type="checkbox" class="check" checked><span>Checked</span></label>
-        <label class="check-row"><input type="checkbox" class="check"><span>Unchecked</span></label>
-        <label class="radio-row"><input type="radio" class="radio" name="d" checked><span>Radio on</span></label>
-        <label class="radio-row"><input type="radio" class="radio" name="d"><span>Radio off</span></label>
+        <label class="check-row"><input type="checkbox" class="check" checked><span>{{ word("ds_checked") }}</span></label>
+        <label class="check-row"><input type="checkbox" class="check"><span>{{ word("ds_unchecked") }}</span></label>
+        <label class="radio-row"><input type="radio" class="radio" name="d" checked><span>{{ word("ds_radio_on") }}</span></label>
+        <label class="radio-row"><input type="radio" class="radio" name="d"><span>{{ word("ds_radio_off") }}</span></label>
       </div>
     </section>
 
     <section>
-      <h2>State chips</h2>
+      <h2>{{ word("ds_chips") }}</h2>
       <div class="row"><span v-for="value in CHIPS" :key="value" class="chip" :data-value="value">{{ value }}</span></div>
     </section>
 
     <section>
-      <h2>Cards and table</h2>
+      <h2>{{ word("ds_cards_table") }}</h2>
       <div class="cards">
-        <div class="card"><span class="card-top"><b>A card</b><span class="n">12</span></span></div>
+        <div class="card"><span class="card-top"><b>{{ word("ds_a_card") }}</b><span class="n">12</span></span></div>
       </div>
       <table class="grid">
-        <thead><tr><th>Id</th><th>Title</th><th>Status</th></tr></thead>
+        <thead><tr><th>Id</th><th>{{ word("ds_title") }}</th><th>{{ word("ds_status") }}</th></tr></thead>
         <tbody>
           <tr v-for="(value, i) in CHIPS.slice(0, 3)" :key="value">
             <td class="id" data-label="Id">{{ i + 1 }}</td>
-            <td data-label="Title">A row of the table</td>
+            <td data-label="Title">{{ word("ds_a_row") }}</td>
             <td :data-value="value" data-label="Status"><span class="v">{{ value }}</span></td>
           </tr>
         </tbody>
@@ -149,18 +149,18 @@ async function showDialog(): Promise<void> {
     </section>
 
     <section>
-      <h2>Popover, dialog, toast</h2>
+      <h2>{{ word("ds_overlays") }}</h2>
       <div class="row">
-        <button type="button" class="btn btn-quiet" @click="showPop($event)">Popover</button>
-        <button type="button" class="btn btn-quiet" @click="showDialog">Dialog</button>
-        <button type="button" class="btn btn-quiet" @click="toast('A toast, five seconds')">Toast</button>
+        <button type="button" class="btn btn-quiet" @click="showPop($event)">{{ word("ds_popover") }}</button>
+        <button type="button" class="btn btn-quiet" @click="showDialog">{{ word("ds_dialog") }}</button>
+        <button type="button" class="btn btn-quiet" @click="toast(word('ds_toast_text'))">{{ word("ds_toast") }}</button>
       </div>
     </section>
 
     <section>
-      <h2>Empty state</h2>
-      <EmptyState title="Nothing here yet" text="An empty room says what it is and what to do next." icon="note">
-        <button type="button" class="btn">The action</button>
+      <h2>{{ word("ds_empty") }}</h2>
+      <EmptyState :title="word('ds_nothing')" :text="word('ds_nothing_text')" icon="note">
+        <button type="button" class="btn">{{ word("ds_action") }}</button>
       </EmptyState>
     </section>
   </div>

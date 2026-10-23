@@ -28,6 +28,7 @@ import { ask } from "../lib/confirm";
 import { post } from "../lib/api";
 import { toast } from "../lib/toast";
 import FieldValue from "./FieldValue.vue";
+import EmptyState from "./EmptyState.vue";
 import FilterPop from "./pops/FilterPop.vue";
 import ColumnsPop from "./pops/ColumnsPop.vue";
 import CreatePop from "./pops/CreatePop.vue";
@@ -687,7 +688,7 @@ function cancelEdit(): void {
 </script>
 
 <template>
-  <div v-if="!records.length" class="empty" v-context-menu="openEmptyMenu">{{ word("no_records") }}</div>
+  <EmptyState v-if="!records.length" :title="word('no_records')" v-context-menu="openEmptyMenu" />
   <template v-else>
     <!-- THE COUNT OF THE COLUMNS THAT STEPPED ASIDE IS NOT A COLUMN: it is a MARK
          PINNED TO THE CORNER, drawn over the box instead of inside it, so the grid
@@ -698,7 +699,7 @@ function cancelEdit(): void {
       <!-- On a view where the columns are the person's it opens the panel; on a
            RULE view it is the sentence alone, because a control that undoes
            itself is worse than none. -->
-      <button v-if="!rule" type="button" :title="word('columns')" :aria-label="word('columns')"
+      <button v-if="!rule" type="button" class="btn btn-sm btn-ghost" :title="word('columns')" :aria-label="word('columns')"
               @click.stop="openColumns($event.currentTarget as HTMLElement)"
               >+{{ hiddenNow.size }} {{ word("hidden") }}</button>
       <span v-else>+{{ hiddenNow.size }} {{ word("hidden") }}</span>

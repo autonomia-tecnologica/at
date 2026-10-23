@@ -614,6 +614,8 @@ PAGE_WORDS = (
     # a porta que faltava para um campo que não é escolha (TASK-198).
     "notes", "new_note", "notes_none", "save",
     "move_to_project", "records", "hidden", "no_records", "error", "filter",
+    # THE SPECIMEN (`/design`): its own sentences, in both languages.
+    "ds_theme", "ds_text_roles", "ds_type_scale", "ds_colour", "ds_buttons", "ds_inputs", "ds_chips", "ds_cards_table", "ds_overlays", "ds_empty", "ds_small", "ds_medium", "ds_large", "ds_quiet", "ds_ghost", "ds_danger", "ds_disabled", "ds_popover", "ds_dialog", "ds_toast", "ds_text", "ds_select", "ds_textarea", "ds_value", "ds_locked", "ds_lines", "ds_checked", "ds_unchecked", "ds_radio_on", "ds_radio_off", "ds_a_card", "ds_a_row", "ds_title", "ds_status", "ds_pop_text", "ds_ask", "ds_yes", "ds_no", "ds_toast_text", "ds_nothing", "ds_nothing_text", "ds_action", "ds_fox", "ds_primary", "ds_secondary", "ds_tertiary", "ds_display", "ds_page", "ds_body_large", "ds_body", "ds_body_small", "ds_caption",
     # THE FILA'S BADGE (TASK-162, fatia 2/2): whether this browser is online,
     # and how many edits are still waiting to leave it.
     "offline", "queued",

@@ -16,6 +16,7 @@
 import { ref, computed, watch, onMounted } from "vue";
 import { api } from "../lib/api";
 import StatStrip from "../components/StatStrip.vue";
+import EmptyState from "../components/EmptyState.vue";
 import { word } from "../lib/store";
 import { nav, open, setTrail, showError, filesFolder } from "../lib/views";
 
@@ -153,7 +154,7 @@ watch(() => nav.tick, load);
           <span class="fname">{{ f.name }}</span>
         </button>
       </div>
-      <p v-else class="empty">{{ total ? word("folder_empty") : word("no_records") }}</p>
+      <EmptyState v-else icon="folder" :title="total ? word('folder_empty') : word('no_records')" />
     </section>
   </div>
 </template>

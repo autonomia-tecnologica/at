@@ -7,42 +7,21 @@
    Where a number repeats (a breakpoint, a JS-read property name) it is because
    base.css's own comment says so, not because this file remembered the old one.
 
-   THE HOUSE IS CLARINHO NOW, AND THE VIOLET IS A DETAIL (2026-10-05). It was
-   a working screen read white-on-white with a SOLID DARK VIOLET sidebar next
-   to it — the one surface that carried the whole brand, worn as a wall. The
-   report back: the violet wall did not read as the product, it read as a
-   decision this theme had not earned yet, and the ask was a quieter house —
-   an ice-white/warm-grey canvas throughout, cards a shade lighter than the
-   floor they sit on, and the violet kept for what a detail is FOR: the brand
-   tile, a title, the mark of what is open, a focus ring. The panel is no
-   longer a wall of colour at all — it is the SAME quiet surface as the page,
-   because it is an overlay now (base.css, §nav) and not a second room with
-   its own weather.
+   The house is clarinho: an ice-white/warm-grey canvas, cards a shade lighter
+   than their floor, and the violet kept for a detail (brand tile, a title,
+   the mark of what is open, a focus ring). The panel is an overlay on the
+   same quiet surface as the page.
 
-   SHADOW WENT DOWN, NOT OUT. A `rgb(31 16 51 / 20%)` violet-tinted shadow was
-   part of the old wall's own drama; what is left is a neutral, barely-there
-   lift — a hairline border carries most surfaces now, and the shadow is the
-   last 10% a card needed to read as raised at all.
-
-   WEIGHT WENT DOWN TOO. `--weight-bold` reads at the SAME number
-   `--weight-semibold` always has (600) — the loudest the type gets anywhere
-   in this theme is a semibold, never the 700/800 the vendored faces also
-   carry. A section head in capitals already says "this is a heading"; it did
-   not also need to shout. */
+   Shadow is neutral and barely there; a hairline border carries most surfaces.
+   The loudest the type gets is a semibold (600), never the 700/800 faces. */
 
 :root {
   /* ===== type ============================================================ */
   --font-sans: "Nunito Sans", system-ui, -apple-system, "Segoe UI", Roboto,
                "Helvetica Neue", Arial, sans-serif;
   --font-brand: "Quicksand", "Nunito Sans", system-ui, sans-serif;
-  /* NOT 700 ANY MORE (2026-10-05) — the same number as `--weight-semibold`,
-     on purpose: the HEAVIEST this theme ever asks the page to draw is a
-     semibold, so a section head, a dialog's title and a stat's own number
-     read a step softer than they used to, everywhere at once, from this one
-     token. */
-  --weight-bold: 600;
 
-  /* ===== radius scale: BOXIER THAN BEFORE (2026-10-05) ====================
+  /* ===== radius scale: BOXIER THAN BEFORE ====================
      8/14/20 read soft, almost plush; a quieter, more tailored house asks for
      a corner that is barely there — present enough that nothing looks cut,
      never round enough to look friendly. */
@@ -51,14 +30,14 @@
   --r-lg: 12px;
 
   /* ===== surfaces (canvas → card → raised) ================================
-     ICE, NOT WHITE (2026-10-05): the floor is a warm, barely-there grey — not
+     ICE, NOT WHITE: the floor is a warm, barely-there grey — not
      the flat `#fff` a screenshot turns into a glare — and a card is ONE step
      lighter than the floor it sits on, which is what lets it read as raised
      with almost no shadow at all. */
   --surface-0: #f6f5f2;
   --surface-1: #fdfcfa;
   --surface-2: #f1efea;
-  /* THE TEXT ROLES (F1, 2026-10-22): every text colour is one of three, and
+  /* THE TEXT ROLES: every text colour is one of three, and
      each is built so its ratio holds on EVERY surface of this side (canvas,
      card, sunken): 15.6 / 9.2 / 6.1 at the worst. No text uses a step lighter
      than 600; a border colour never paints text. */
@@ -70,6 +49,7 @@
   --text-tertiary: var(--neutral-low);
   --border-soft: #e8e5de;
   --border-strong: #d6d2c9;
+  --border-control: #8a867d;
   --row-hover: #f2f0ea;
   --control-track: #e3e0d7;
 
@@ -110,13 +90,13 @@
   --danger-text: #b91c1c;
   --info-text: #1d4ed8;
 
-  /* ===== elevation: almost nothing, and neutral (2026-10-05) ==============
+  /* ===== elevation: almost nothing, and neutral ==============
      The old ramp went up to 20% opacity, tinted with the brand's own violet —
      a shadow that argued for attention. This one is neutral charcoal, never
      above 12%, and most of what used to be a blur is a hairline border now
      (`base.css` draws those). A shadow here is the LAST bit a surface needs
      to read as raised, not the thing that announces it is.
-     ONE TRIPLET, NOT SEVEN COPIES OF IT (2026-10-05): every shadow, the panel's
+     ONE TRIPLET, NOT SEVEN COPIES OF IT: every shadow, the panel's
      own hairline (`--nav-border`) and its hover wash (`--nav-item-hover`) are
      all the SAME neutral ink, only the opacity moves — so retinting what this
      theme casts as a shadow or a wash is ONE number, here, not a find-and-
@@ -135,7 +115,7 @@
   --scrollbar-thumb-hover: #c3beb3;
 
   /* ===== the chrome: an overlay panel, THE SAME QUIET SURFACE AS THE PAGE
-     (2026-10-05) ============================================================
+     ============================================================
      It used to be a solid dark violet WALL, the one surface that carried the
      whole brand on its own. It is a panel now (base.css, §nav: fixed, off the
      canvas unless opened), and what it wears is the house's own paper, not a
@@ -143,7 +123,7 @@
      own wash and edge), it just no longer owns the whole surface to do it. */
   --nav-bg: #fbfaf7;
   --nav-border: rgb(var(--shadow-rgb) / 8%);
-  /* A SOFT LIFT, NOT A WALL'S OWN EDGE (2026-10-05): the old value pushed the
+  /* A SOFT LIFT, NOT A WALL'S OWN EDGE: the old value pushed the
      shadow sideways (`4px 0 24px`), which read as a wall's own cast — right
      for a strip that lived permanently beside the page. A panel that now
      slides OVER the page on every side wants a shadow with no direction, the
@@ -155,7 +135,7 @@
   --nav-ink-3: var(--text-tertiary);
   --nav-item-hover: rgb(var(--shadow-rgb) / 4%);
   --nav-item-on-bg: var(--accent-50);
-  /* WHITE-ON-VIOLET BECOMES VIOLET-ON-PAPER (2026-10-05): the open row's ink
+  /* WHITE-ON-VIOLET BECOMES VIOLET-ON-PAPER: the open row's ink
      used to be white, because the wash under it was a strong violet fill on a
      dark wall. The wash is `--accent-50` now — barely a tint — so the ink
      that reads on it is the brand's own darker step, the same the page
