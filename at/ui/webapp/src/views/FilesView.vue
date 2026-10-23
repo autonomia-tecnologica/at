@@ -16,7 +16,7 @@
 import { ref, computed, watch, onMounted } from "vue";
 import { api } from "../lib/api";
 import { word } from "../lib/store";
-import { nav, setTrail, showError, FILES_KEY } from "../lib/views";
+import { nav, open, setTrail, showError, filesFolder } from "../lib/views";
 
 interface Listing {
   root: string;
@@ -28,32 +28,80 @@ const listing = ref<Listing | null>(null);
 // The five the engine knows, in the panel's order — never a list written here.
 const BUCKETS = ["text", "code", "data", "image", "other"] as const;
 
-const total = computed(() => listing.value?.files.length || 0);
+// WHERE THE PERSON IS: the folder's path as segments, `[]` being the root. It is
+// state of the SCREEN and not of the server — the listing is flat (`path` +
+// `bucket`), so "inside a folder" is only a prefix of those paths, cut here.
+// Restored from the module state: a file opened from here, or a crumb of its
+// header, brings the person back to the same folder.
+const here = ref<string[]>([...filesFolder.segments]);
+const prefix = computed(() => (here.value.length ? here.value.join("/") + "/" : ""));
+
+// EVERYTHING UNDER THE FOLDER, recursively — the counters and the bar count this,
+// and not the whole listing, so the top always speaks about the folder on screen.
+const inside = computed(() =>
+  (listing.value?.files || []).filter(file => file.path.startsWith(prefix.value)));
+
+const total = computed(() => inside.value.length);
 
 function countOf(bucket: string): number {
-  return (listing.value?.files || []).filter(file => file.bucket === bucket).length;
+  return inside.value.filter(file => file.bucket === bucket).length;
 }
 
-// THE FOLDERS OF THE TOP, each with how many files it holds — and the whole path
-// counts: `Notas/Diário/x.md` is a file of `Notas`, because that is where a
-// person would go looking for it. A file at the root has no folder and is
-// counted under the empty name, which the page shows as the root itself.
-const folders = computed(() => {
-  const counts = new Map<string, number>();
-  for (const file of listing.value?.files || []) {
-    const parts = file.path.split("/");
-    const head = parts.length > 1 ? parts[0] : "";
-    counts.set(head, (counts.get(head) || 0) + 1);
+// THE FOLDER'S ENTRIES, cut from the flat listing: the next segment of each path
+// is either a file (it ends there) or a folder (it goes on — and every file
+// below it counts toward the folder's number, as a person looking for it would
+// expect). Folders first, then files, each by name — the order a file browser
+// has always had. A folder with nothing in it is not listed by the server, so
+// it cannot show here either.
+const entries = computed(() => {
+  const dirs = new Map<string, number>();
+  const files: { name: string; path: string; bucket: string }[] = [];
+  for (const file of inside.value) {
+    const rest = file.path.slice(prefix.value.length);
+    const slash = rest.indexOf("/");
+    if (slash < 0) files.push({ name: rest, path: file.path, bucket: file.bucket });
+    else {
+      const name = rest.slice(0, slash);
+      dirs.set(name, (dirs.get(name) || 0) + 1);
+    }
   }
-  return [...counts.entries()]
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+  const by = (a: string, b: string) => a.localeCompare(b, undefined, { sensitivity: "base" });
+  return {
+    dirs: [...dirs.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => by(a.name, b.name)),
+    files: files.sort((a, b) => by(a.name, b.name)),
+  };
 });
+
+function enter(name: string): void {
+  here.value = [...here.value, name];
+  trail();
+}
+
+// THE CRUMBS: `to` is how many segments of `here` stay; 0 is the root.
+function goTo(to: number): void {
+  here.value = here.value.slice(0, to);
+  trail();
+}
+
+// A FILE OPENS THE FILE'S OWN PAGE — the same door the tree uses, so the two
+// ways in land in the same room.
+function openFile(path: string): void {
+  open("file:" + path, null);
+}
+
+// The header says which folder this is: "Arquivos / Notas / Diário".
+function trail(): void {
+  filesFolder.segments = [...here.value];
+  setTrail(word("files"), ...here.value);
+}
 
 async function load(): Promise<void> {
   try {
     listing.value = await api<Listing>("/api/tree");
-    setTrail(word("files"));
+    // A folder that vanished with the reload (its last file was moved) is a place
+    // that no longer exists: back to the root rather than an empty ghost.
+    if (here.value.length && !inside.value.length) here.value = [];
+    trail();
   } catch (err) {
     listing.value = null;
     showError(err as Error);
@@ -66,7 +114,7 @@ watch(() => nav.tick, load);
 
 <template>
   <div v-if="listing" class="section">
-    <!-- WHAT THE FOLDER HOLDS, by bucket. -->
+    <!-- WHAT THE FOLDER HOLDS, by bucket — the folder in view, not the whole. -->
     <div class="stats">
       <div v-for="bucket in BUCKETS" :key="bucket" class="stat" :data-bucket="bucket">
         <b>{{ countOf(bucket) }}</b>
@@ -74,23 +122,42 @@ watch(() => nav.tick, load);
       </div>
     </div>
 
-    <!-- THE SAME NUMBERS AS ONE BAR — the share each bucket has of the whole. -->
+    <!-- THE SAME NUMBERS AS ONE BAR — the share each bucket has of the folder. -->
     <div class="bars" v-if="total">
       <span v-for="bucket in BUCKETS" :key="bucket" class="bar-part"
             :data-bucket="bucket" :style="{ flexGrow: countOf(bucket) }"
             :title="word('bucket_' + bucket) + ': ' + countOf(bucket)"></span>
     </div>
 
-    <!-- WHERE THE FILES SIT. The rows are READ and not opened: a folder is not a
-         page in this panel — the way into a file is the tree, and a row here
-         that opened something would be a second door to the same room. -->
-    <section class="cards">
-      <h2>{{ word("files") }}</h2>
-      <div v-for="folder in folders" :key="folder.name" class="row">
-        <b>{{ folder.name || word("files") }}</b>
-        <span class="n">{{ folder.count }}</span>
+    <!-- THE BROWSER: only to SEE. Up, the crumbs, folders that open and files that
+         open their page — nothing here copies, moves, renames or deletes. -->
+    <section class="cards fbrowse">
+      <div class="fbar">
+        <button type="button" class="back" :disabled="!here.length"
+                :title="word('folder_up')" @click="goTo(here.length - 1)">{{ word("back") }}</button>
+        <div class="crumbs" role="navigation" aria-label="path">
+          <button type="button" class="crumb" :class="{ on: !here.length }" @click="goTo(0)">{{ word("files") }}</button>
+          <template v-for="(seg, k) in here" :key="k">
+            <span class="sep" aria-hidden="true">/</span>
+            <button type="button" class="crumb" :class="{ on: k === here.length - 1 }" @click="goTo(k + 1)">{{ seg }}</button>
+          </template>
+        </div>
       </div>
-      <p v-if="!total" class="empty">{{ word("no_records") }}</p>
+
+      <div v-if="entries.dirs.length || entries.files.length" class="fgrid">
+        <button v-for="d in entries.dirs" :key="'d:' + d.name" type="button"
+                class="fitem" data-kind="folder" :title="d.name" @click="enter(d.name)">
+          <span class="icon" aria-hidden="true"></span>
+          <span class="fname">{{ d.name }}</span>
+          <span class="fmeta">{{ d.count }} {{ word("items") }}</span>
+        </button>
+        <button v-for="f in entries.files" :key="'f:' + f.name" type="button"
+                class="fitem" :data-bucket="f.bucket" :title="f.name" @click="openFile(f.path)">
+          <span class="fsheet" aria-hidden="true"><span class="icon"></span></span>
+          <span class="fname">{{ f.name }}</span>
+        </button>
+      </div>
+      <p v-else class="empty">{{ total ? word("folder_empty") : word("no_records") }}</p>
     </section>
   </div>
 </template>

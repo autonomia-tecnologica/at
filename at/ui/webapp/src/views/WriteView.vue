@@ -163,21 +163,21 @@ onBeforeUnmount(() => {
              it a background, corners and a shadow), and a card around the field
              is exactly the box this page must not draw. The modifier only says
              "make the field transparent over the mirror". -->
+        <!-- THE STATUS BAR, AT THE TOP (`.file-bar`, shared with the read page): the save's state, and what is written. Nothing
+             else — no button, no chrome. -->
+        <header class="file-bar write-status" :class="{ bad: writingState.failed }">
+          <!-- THE WAY OUT (2026-10-05): the page draws with no shell, so it
+               draws its own voltar — the file's read page. -->
+          <button type="button" class="leave" @click="leaveToRead">{{ word("back") }}</button>
+          <span class="state">{{ stateWord }}</span>
+          <span class="n chars">{{ chars }} {{ word("chars") }}</span>
+          <span class="n">{{ words }} {{ word("words") }}</span>
+        </header>
         <div class="write-page-stage" :class="{ md: isProse }">
           <div v-if="isProse" class="write-highlight" aria-hidden="true" v-html="highlighted"></div>
           <textarea ref="el" v-model="draft" class="write-page-field" spellcheck="false"
                     @input="onInput"></textarea>
         </div>
-        <!-- THE THIN STATUS LINE: the save's state, and what is written. Nothing
-             else — no button, no chrome. -->
-        <footer class="write-status" :class="{ bad: writingState.failed }">
-          <!-- THE WAY OUT (2026-10-05): the page draws with no shell, so it
-               draws its own voltar — the file's read page. -->
-          <button type="button" class="leave" @click="leaveToRead">{{ word("back") }}</button>
-          <span class="state">{{ stateWord }}</span>
-          <span class="n">{{ chars }} {{ word("chars") }}</span>
-          <span class="n">{{ words }} {{ word("words") }}</span>
-        </footer>
       </template>
     </template>
   </div>

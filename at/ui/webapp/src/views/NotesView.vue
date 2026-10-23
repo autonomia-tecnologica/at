@@ -157,7 +157,7 @@ watch(() => nav.tick, load);
       <!-- A NOTA NASCE pelo botão da própria seção — e só quando o MOTOR diz que
            este ator pode criar uma. -->
       <button v-if="actions.includes('create') && records.length" type="button" class="btn"
-              @click="openCreate">{{ word("new_note") }}</button>
+              @click.stop="openCreate">{{ word("new_note") }}</button>
       <!-- CADA NOTA É UMA LINHA QUE ABRE A SI MESMA: o registro é a leitura
            dela, e o menu de contexto é o que edita e apaga. O `.stop` é o que
            segura o clique na linha — sem ele, o clique fora (o de fechar o
@@ -175,7 +175,7 @@ watch(() => nav.tick, load);
       <EmptyState v-if="!records.length" icon="note"
                   :title="word('empty_notes_title')" :text="word('empty_notes_text')">
         <button v-if="actions.includes('create')" type="button" class="btn"
-                @click="openCreate">{{ word("new_note") }}</button>
+                @click.stop="openCreate">{{ word("new_note") }}</button>
       </EmptyState>
     </section>
   </div>

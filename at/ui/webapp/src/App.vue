@@ -17,7 +17,7 @@ import { enter, lost, session, signedIn } from "./lib/session";
 import { store, applyState, label, word, tableOf } from "./lib/store";
 import { ensureRenderer } from "./lib/markdown";
 import { ensureFonts } from "./lib/fonts";
-import { nav, ui, isKind, viewFor, open, markPage, poke, resumePath, setTrail, armPageLoad, pageReading, pageLoad, CHAT_KEY, NLU_UI_ENABLED, ORPHANS_KEY, BOARD_KEY, FILE_PREFIX, PROJECT_PREFIX, WRITE_PREFIX, TABLES_TASK_KEY } from "./lib/views";
+import { nav, ui, isKind, viewFor, open, openFolder, markPage, poke, resumePath, setTrail, armPageLoad, pageReading, pageLoad, CHAT_KEY, NLU_UI_ENABLED, ORPHANS_KEY, BOARD_KEY, FILE_PREFIX, PROJECT_PREFIX, WRITE_PREFIX, TABLES_TASK_KEY } from "./lib/views";
 import { applyTheme, watchSystem } from "./lib/theme";
 import { applyMotion } from "./lib/motion";
 import { applyDensity } from "./lib/density";
@@ -83,6 +83,17 @@ const section = computed(() => {
 // The band: the section, and then what the page wrote for itself.
 const trail = computed(() => (section.value ? [section.value, ...ui.trail] : ui.trail));
 
+
+// A DOOR PER STEP: the page's own links (`ui.trailLinks`, aligned with ITS steps)
+// and, for a file, the section step itself — "Arquivos" opens the browser at the
+// root. A step without a door stays text.
+function stepLink(i: number): (() => void) | null {
+  if (section.value) {
+    if (i === 0) return nav.current?.view?.startsWith(FILE_PREFIX) ? () => openFolder([]) : null;
+    return ui.trailLinks[i - 1] || null;
+  }
+  return ui.trailLinks[i] || null;
+}
 
 // The title the page header says: the last step of the trail — the page's own
 // name. The chat fills the page's height instead of growing it.
@@ -439,6 +450,8 @@ defineExpose({ refresh });
           <template v-for="(step, i) in trail" :key="i">
             <span v-if="i" class="sep">›</span>
             <b v-if="i === trail.length - 1">{{ step }}</b>
+            <a v-else-if="stepLink(i)" class="crumb link" href="#"
+               @click.prevent="stepLink(i)!()">{{ step }}</a>
             <span v-else class="crumb">{{ step }}</span>
           </template>
         </span>

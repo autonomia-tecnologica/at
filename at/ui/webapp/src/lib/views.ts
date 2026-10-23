@@ -129,10 +129,29 @@ export const nav = reactive({
 // and not of the page (`App.vue`).
 export const ui = reactive({
   trail: [] as string[],
+  // A DOOR PER STEP of `trail`, same positions (`null` = a step that is only
+  // text). Set by `setTrailLinks` AFTER `setTrail`, which clears it.
+  trailLinks: [] as ((() => void) | null)[],
 });
 
 export function setTrail(...steps: (string | null | undefined)[]): void {
   ui.trail = steps.filter((step): step is string => Boolean(step && step.trim()));
+  ui.trailLinks = [];
+}
+
+export function setTrailLinks(links: ((() => void) | null)[]): void {
+  ui.trailLinks = links;
+}
+
+// THE FOLDER THE FILES BROWSER IS IN, as segments (`[]` = the root). Module
+// state, so a page that leaves the browser (a file opened from it) can come
+// back to the SAME folder: the crumbs of the header and the voltar of the file
+// both go through `openFolder`, and `FilesView.vue` reads/writes `filesFolder`.
+export const filesFolder = reactive({ segments: [] as string[] });
+
+export function openFolder(segments: string[]): void {
+  filesFolder.segments = [...segments];
+  open(FILES_KEY, null);
 }
 
 // THE PANEL'S NUMBER for the view ON SCREEN. The count the server sends is the

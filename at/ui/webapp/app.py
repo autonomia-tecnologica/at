@@ -624,6 +624,8 @@ PAGE_WORDS = (
     # shapes `Arquivos/` holds. `rename`/`delete`/`name`/`delete_confirm` are
     # already above, shared with the project tree and the table row.
     "new_file", "new_folder",
+    # O navegador de Arquivos: o rótulo da contagem, a pasta vazia e o "subir".
+    "items", "folder_empty", "folder_up",
     "columns", "refers", "panel", "collapse_menu", "expand_menu",
     # The context menu's own items (TASK-120, fatia 1): what the row's menu
     # offers when the engine says `edit` is legal.

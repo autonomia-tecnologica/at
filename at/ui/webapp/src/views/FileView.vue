@@ -10,7 +10,7 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount, watchEffect } from "vue";
 import { api } from "../lib/api";
 import { word } from "../lib/store";
-import { nav, setTrail, open, leave, markPage, FILE_PREFIX, WRITE_PREFIX } from "../lib/views";
+import { nav, setTrail, setTrailLinks, open, back, openFolder, leave, markPage, FILE_PREFIX, WRITE_PREFIX } from "../lib/views";
 import { downloadFile, isSaveGesture } from "../lib/download";
 import { dirOf, fileOf } from "../lib/relative";
 import ProseField from "../components/ProseField.vue";
@@ -45,16 +45,12 @@ async function load(): Promise<void> {
   }
 }
 
-// ONE CLICK, ANYWHERE ON THE FILE, OPENS THE WRITE PAGE (2026-10-05): there is
-// no button to find and no mode to leave — the whole read surface IS the door,
-// for the one case there is anything behind it (a writable text file).
-//
-// IN THIS WINDOW, AND NOT A TAB OF ITS OWN (2026-10-05, a pedido). It opened in
-// a new tab, and that is exactly what the COFRE's reader must not do: on a
-// phone the app is a PWA with no tabs, so a `window.open` throws the person out
-// to the system browser — the same reason the sealed file opens over the page.
-// The write page draws with no shell and keeps its OWN voltar (`WriteView.vue`),
-// so opening it here is a page change with a way back, not a trap.
+// EDITING IS A BUTTON OF THE BAR (a pedido): a click on the text used to open
+// the write page, and a text that edits itself on a click is not what a reader
+// expects. The bar's `Editar` is the one door, for the one case there is
+// anything behind it (a writable text file). It opens IN THIS WINDOW (a PWA on a
+// phone has no tabs: a `window.open` would throw the person out of the app); the
+// write page draws with no shell and keeps its own voltar.
 function openWrite(): void {
   if (!payload.value || !payload.value.writable || payload.value.text === null) return;
   open(WRITE_PREFIX + payload.value.path, null);
@@ -82,24 +78,12 @@ function download(): void {
 // relative path points at anything, in any markdown.
 const baseDir = computed(() => dirOf(payload.value?.path || props.path));
 
-// A LINK É UM LINK, E NÃO UM CLIQUE NO CORPO. The whole surface is the door to
-// the WRITE page — and a link inside it is the one thing that is NOT the door:
-// a click on the text around it opens the editor, a click ON THE LINK follows
-// the link.
-//
-// A FILE OF THE AT (`/file/<caminho>`) opens that file's READ, in THIS tab —
-// the markdown a person wrote points at another file of the folder, and
-// opening it in the editor would be opening the WRONG file.
+// A LINK IS FOLLOWED: a link to a FILE OF THE AT (`/file/<caminho>`) opens that
+// file's READ, in THIS tab; any other link is the browser's.
 function onProseClick(event: MouseEvent): void {
   const target = event.target as HTMLElement | null;
   const anchor = target?.closest?.("a");
-  if (!anchor) {
-    openWrite();
-    return;
-  }
-  // The click stops here, so the surface's own door (the editor) does not
-  // open under the link that was followed.
-  event.stopPropagation();
+  if (!anchor) return;
   // A click that MEANS another tab — ctrl, cmd or shift — is the browser's
   // own, and this page does not take it away.
   if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -138,7 +122,19 @@ onBeforeUnmount(() => {
 // THE PATH IS THE TRAIL: `Arquivos › Notas › uma nota.md`. Every folder it
 // passes through is a step, which is what the path already says — and the
 // section is the shell's to add (`App.vue`).
-watchEffect(() => setTrail(...String(props.path).split("/")));
+// Every FOLDER of it is a door to the browser inside that folder (the file
+// itself, the last step, is the page).
+watchEffect(() => {
+  const parts = String(props.path).split("/");
+  setTrail(...parts);
+  setTrailLinks(parts.map((_, i) => (i < parts.length - 1 ? () => openFolder(parts.slice(0, i + 1)) : null)));
+});
+
+// THE STEP BACK: the file was opened from the browser (no frames behind), so the
+// fallback is the browser in the file's own folder.
+function leaveToFolder(): void {
+  back(() => openFolder(dirOf(props.path).split("/").filter(Boolean)));
+}
 
 watch(() => props.path, () => {
   payload.value = null;
@@ -152,6 +148,13 @@ watch(() => nav.tick, () => void load());
 
 <template>
   <div class="file-page">
+    <!-- THE BAR OF OPTIONS, the system's own (`.page-actions`, as Record/Role/
+         Actor): the step back is quiet, the edit is the action. -->
+    <div class="page-actions file-actions">
+      <button type="button" class="btn btn-quiet" @click="leaveToFolder">← {{ word("back") }}</button>
+      <button v-if="payload && payload.writable && payload.text !== null" type="button"
+              class="btn" @click="openWrite">{{ word("edit") }}</button>
+    </div>
     <pre v-if="!payload" class="text">{{ error }}</pre>
     <!-- AN IMAGE IS VIEWED, NEVER EDITED (TASK-167) — and it opens INLINE, the
          way it always did. `src` never repeats the bytes already in `payload`
@@ -174,15 +177,8 @@ watch(() => nav.tick, () => void load());
       <pre class="text">{{ payload.reason }}</pre>
       <button type="button" class="btn" @click="download">{{ word("download") }}</button>
     </div>
-    <!-- THE WHOLE SURFACE IS THE DOOR (2026-10-05): a writable text file opens
-         its write tab on ONE click/tap anywhere on it — no button to find,
-         no mode to leave. `.writable` is the only thing that changes the
-         cursor; a file that cannot be written stays exactly as quiet as it
-         always was. A LINK is the exception, and it is the page's own
-         (`onProseClick`): a link is followed, not written over. -->
     <ProseField v-else-if="payload.bucket === 'text'" :text="payload.text ?? ''"
-                :base-dir="baseDir"
-                :class="{ writable: payload.writable }" @click="onProseClick" />
-    <pre v-else class="text" :class="{ writable: payload.writable }" @click="openWrite">{{ payload.text }}</pre>
+                :base-dir="baseDir" @click="onProseClick" />
+    <pre v-else class="text">{{ payload.text }}</pre>
   </div>
 </template>
