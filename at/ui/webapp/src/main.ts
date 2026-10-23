@@ -6,7 +6,7 @@
 // of the same origin. `boot.js` has already run before this line — it is classic
 // and lives in the `head` —, so the theme is already applied when the app mounts.
 
-import { createApp } from "vue";
+import { createApp, defineAsyncComponent } from "vue";
 import App from "./App.vue";
 import "./styles/app.css";
 // THE FILA, wired in from the module that owns it (TASK-162, fatia 2/2) — its
@@ -36,6 +36,10 @@ import WriteView from "./views/WriteView.vue";
 import ActorView from "./views/ActorView.vue";
 import RoleView from "./views/RoleView.vue";
 import TablesTaskView from "./views/TablesTaskView.vue";
+
+// THE SPECIMEN: an internal page (`/design`), lazy because nobody opens it by accident, and with
+// NO row in the panel — it is reached by its address only.
+const DesignView = defineAsyncComponent(() => import("./views/DesignView.vue"));
 
 // The pages that are a SINGLE key (no rest): the section screens, the chat,
 // Settings and the "no project". The chat has an address like every other view,
@@ -74,6 +78,7 @@ registerView(NOTES_KEY, NotesView);
 registerView(BOARD_KEY, BoardView);
 registerView("chat", ChatView);
 registerView("settings", SettingsView);
+registerView("design", DesignView);
 registerView("orphans", OrphansView);
 // PEOPLE IS NOT A VIEW OF ITS OWN ANY MORE (2026-09-27): the actors and the
 // roles, together, are a SECTION of Configurações now (`SettingsView.vue`

@@ -31,7 +31,7 @@ function change(name: string, ev: Event): void {
 
 <template>
   <label v-for="name in order" :key="name" class="opt" @click.stop>
-    <input type="checkbox" :checked="!hidden.has(name)" :disabled="name === 'id'"
+    <input type="checkbox" class="check" :checked="!hidden.has(name)" :disabled="name === 'id'"
            @change="change(name, $event)">
     <span>{{ label(byName(name)?.labels) || name }}</span>
   </label>

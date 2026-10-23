@@ -17,39 +17,12 @@
                P052, Charter, Georgia, "Times New Roman", serif;
   --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, "URW Palladio L",
                P052, Charter, Georgia, "Times New Roman", serif;
-  --text-xs: 12px;
-  --text-sm: 13px;
-  --text-base: 13.5px;
-  --text-md: 14.5px;
-  --text-lg: 17px;
-  --text-2xl: 20px;
-  --leading-normal: 1.55;
-  --leading-tight: 1.25;
-  --weight-medium: 500;
-  --weight-semibold: 600;
   --weight-bold: 700;
-  --letter-tight: -0.01em;
-
-  /* ===== spacing scale ==================================================== */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 32px;
-  --space-7: 40px;
-  --space-8: 64px;
 
   /* ===== radius scale ====================================================== */
   --r-sm: 3px;
   --r-md: 6px;
   --r-lg: 10px;
-  --r-full: 999px;
-
-  /* ===== motion ============================================================ */
-  --dur-fast: 140ms;
-  --dur-base: 240ms;
-  --ease-out: cubic-bezier(.16, 1, .3, 1);
 
   /* ===== surfaces ========================================================== */
   --surface-0: #faf4e8;
@@ -58,6 +31,15 @@
   --ink-1: #1b1a17;
   --ink-2: #6d6555;
   --ink-3: #9b9280;
+  /* F1 shim (2026-10-22): frozen theme, still on the old ink vocabulary; base.css
+     reads the --text-* roles, so they are mapped from it until it is thawed. */
+  --text-primary: var(--ink-1);
+  --text-secondary: var(--ink-2);
+  --text-tertiary: var(--ink-3);
+  --success-text: var(--success);
+  --warning-text: var(--warning);
+  --danger-text: var(--danger);
+  --info-text: var(--info);
   --border-soft: #e0d6c1;
   --border-strong: #9b9486;
   --row-hover: #efe5d1;
@@ -99,11 +81,6 @@
   --scrollbar-thumb-hover: #ab9a7d;
 
   /* ===== the chrome ========================================================= */
-  --nav-w: 272px;
-  --nav-rail-w: 44px;
-  --nav-toggle-size: 18px;
-  --header-h: 64px;
-  --page-pad-x: var(--space-5);
   --nav-bg: #d3cab6; /* a step off --surface-1, so the topbar (also --surface-1) never reads as the same panel */
   --nav-border: var(--border-soft);
   --nav-edge: 4px 0 24px rgb(27 26 23 / 18%);

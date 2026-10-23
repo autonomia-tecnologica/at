@@ -1,7 +1,7 @@
 /* at, at night — the same from-scratch system, the light turned off.
 
-   The type scale, the spacing scale, the radius scale and the motion are the
-   day side's exactly — those are not colour. What changes is only what LIGHT
+   The type, spacing and motion scales live in `base.css` (F0, 2026-10-22) —
+   they are not colour. What changes is only what LIGHT
    decides: the surfaces invert, and the accent is lifted from #7c3aed (built
    for white, 3.9:1 on a dark card — under AA) to #a684f7, the same 262° hue at
    a lightness tuned for this ground (8.2:1 on the card, 8.9:1 on the window).
@@ -16,61 +16,27 @@
   /* ===== type ============================================================ */
   --font-sans: "Nunito Sans", system-ui, -apple-system, "Segoe UI", Roboto,
                "Helvetica Neue", Arial, sans-serif;
-  --font-display: "Quicksand", "Nunito Sans", system-ui, sans-serif;
-  /* THE SCALE WENT UP TWO POINTS, STEP BY STEP (2026-09-28), came back ONE
-     (2026-10-02), and was REDRAWN THREE TIMES THE SAME DAY (2026-10-03): the
-     report back was that the ladder read heavy everywhere — `--text-2xl`
-     read like another app entirely (20px to 31px was the one rung with no
-     step in it, a 55% jump where every other rung moved 6-18%). The second
-     pass over-corrected (the sidebar's own labels went with it and came out
-     minúsculo); this third pass puts `--text-xs`/`--text-sm` back where the
-     second redraw had them — the sidebar was never the complaint — and keeps
-     the cut to `--text-base` upward, where the table rows and the Settings
-     cards were still reading big. The logo mark (`.brand`) is pinned to its
-     own pixel value in `base.css` and does not follow the scale — a
-     wordmark does not shrink with body text. The line heights are multiples
-     (`--leading-normal`), so they come along on their own. */
-  --text-xs: 12px;
-  --text-sm: 13px;
-  --text-base: 13.5px;
-  --text-md: 14.5px;
-  --text-lg: 17px;
-  --text-2xl: 20px;
-  --leading-normal: 1.55;
-  --leading-tight: 1.25;
-  --weight-medium: 500;
-  --weight-semibold: 600;
-  --weight-bold: 700;
-  --letter-tight: -0.01em;
-
-  /* ===== spacing scale ===================================================== */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 32px;
-  --space-7: 40px;
-  --space-8: 64px;
+  --font-brand: "Quicksand", "Nunito Sans", system-ui, sans-serif;
+  --weight-bold: 600;
 
   /* ===== radius scale ======================================================= */
   --r-sm: 8px;
   --r-md: 14px;
   --r-lg: 20px;
-  --r-full: 999px;
-
-  /* ===== motion ============================================================== */
-  --dur-fast: 140ms;
-  --dur-base: 240ms;
-  --ease-out: cubic-bezier(.16, 1, .3, 1);
 
   /* ===== surfaces ============================================================= */
   --surface-0: #120b1f;
   --surface-1: #180f28;
   --surface-2: #1c1230;
-  --ink-1: #efeafb;
-  --ink-2: #ab9fca;
-  --ink-3: #7c7098;
+  /* THE TEXT ROLES (F1, 2026-10-22): violet-tinted neutrals with the chroma
+     turned down (H 262), so the text stays in the brand's family without
+     reading purple. Worst-case ratios on the three surfaces: 16.3 / 8.2 / 6.4. */
+  --neutral-high:  #f6f4fa;
+  --neutral-mid: #b3acc4;
+  --neutral-low: #9d97b0;
+  --text-primary: var(--neutral-high);
+  --text-secondary: var(--neutral-mid);
+  --text-tertiary: var(--neutral-low);
   --border-soft: #2c2047;
   --border-strong: #3a2c5c;
   --row-hover: #211738;
@@ -105,6 +71,12 @@
   --danger-soft: #2e1414;
   --info: #60a5fa;
   --info-soft: #10233e;
+  /* On the night side the fill already passes as text (6.2+ on every `-soft`
+     ground), so the text role is the same colour, named the same as the day. */
+  --success-text: var(--success);
+  --warning-text: var(--warning);
+  --danger-text: var(--danger);
+  --info-text: var(--info);
 
   /* ===== elevation: deeper, still tinted =======================================
      ONE TRIPLET (2026-10-05, the same door the day side opened in `at.css`):
@@ -122,11 +94,6 @@
   --scrollbar-thumb-hover: #453569;
 
   /* ===== the chrome: darker than the canvas around it, still violet ============ */
-  --nav-w: 272px;
-  --nav-rail-w: 44px; /* the day side's own reasoning (`at.css`) */
-  --nav-toggle-size: 18px;
-  --header-h: 64px;
-  --page-pad-x: var(--space-5);
   /* THE EDGE WAS A SHADOW, AND A SHADOW ON BLACK IS NOTHING (2026-09-28): the
      day side's `--nav-edge` reads because it darkens a LIGHT canvas — cast the
      same shadow over a canvas already this dark and there is no darker left to
@@ -140,7 +107,7 @@
   --nav-edge: 4px 0 28px rgb(var(--shadow-rgb) / 50%);
   --nav-ink-1: #ffffff;
   --nav-ink-2: #c3b8e0;
-  --nav-ink-3: #7c7098;
+  --nav-ink-3: #9d97b0;
   --nav-item-hover: rgb(255 255 255 / 5%);
   --nav-item-on-bg: rgb(166 132 247 / 18%);
   --nav-item-on-ink: #ffffff;
@@ -153,7 +120,5 @@
   --locale-flag: none;
 
   /* ===== table/measure ============================================================ */
-  --cell-pad: 16px;
-  --cell-pad-y: 11px;
   --measure: 70ch;
 }

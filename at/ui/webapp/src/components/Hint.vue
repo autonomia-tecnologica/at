@@ -12,10 +12,12 @@ import { word } from "../lib/store";
 </script>
 
 <template>
-  <div v-if="shortcutsState.armed" class="shortcut-hint" role="status" aria-live="polite">
-    <span v-for="s in SHORTCUTS" :key="s.key" class="shortcut">
-      <b>{{ s.key }}</b>
-      <span>{{ word(s.labelKey) }}</span>
-    </span>
-  </div>
+  <Transition leave-active-class="hint-leave-active">
+    <div v-if="shortcutsState.armed" class="shortcut-hint" role="status" aria-live="polite">
+      <span v-for="s in SHORTCUTS" :key="s.key" class="shortcut">
+        <b>{{ s.key }}</b>
+        <span>{{ word(s.labelKey) }}</span>
+      </span>
+    </div>
+  </Transition>
 </template>

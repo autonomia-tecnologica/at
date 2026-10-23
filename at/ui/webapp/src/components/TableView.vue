@@ -540,9 +540,13 @@ function measure(): void {
   // the excess between them, down to a floor where the text wraps instead of
   // vanishing. The short columns keep what their content needs.
   {
+    // The room is the PAGE's: `#body > .page` caps the width and keeps the
+    // gutter on both sides, at every window width (F3).
     const body = document.getElementById("body");
+    const page = body?.querySelector<HTMLElement>(".page") ?? null;
     const pagePad = 2 * (parseFloat(css.getPropertyValue("--page-pad-x")) || 20);
-    const panelW = (body?.clientWidth || window.innerWidth) - (narrow.value ? 0 : pagePad);
+    const panelW = Math.min(page?.clientWidth || body?.clientWidth || window.innerWidth,
+                            parseFloat(css.getPropertyValue("--page-max")) || Infinity) - pagePad;
     const floor = 5 * chPx + padPx + 1; // where the text wraps instead of vanishing
     let total = out.reduce((a, b) => a + b, 0);
     // 1) The READING columns give up first: they have room to spare.

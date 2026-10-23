@@ -32,6 +32,8 @@ import { store, word } from "../lib/store";
 import { post } from "../lib/api";
 import { DARK_STATES, chooseDark, chooseTheme, darkState, themeState } from "../lib/theme";
 import { motionOn, setMotion } from "../lib/motion";
+import { DENSITIES, density, setDensity } from "../lib/density";
+import type { Density } from "../lib/density";
 import { byName } from "../lib/order";
 import { setTrail } from "../lib/views";
 // NOTIFICAÇÕES (Web Push): o botão pede a permissão do navegador e inscreve o
@@ -86,6 +88,7 @@ const TABS = ["general", "appearance", "people", "risk", "actions"] as const;
 const tab = ref<(typeof TABS)[number]>("general");
 const motion = ref(motionOn());
 const side = ref(darkState());
+const dense = ref(density());
 
 // O estado do push, o que a tela mostra: o navegador pergunta uma vez, e depois
 // disso é a permissão que responde (`push.state`).
@@ -153,6 +156,10 @@ const sideStates = computed<readonly DarkState[]>(() => {
 
 function toggleMotion(): void {
   motion.value = setMotion(!motion.value);
+}
+
+function pickDensity(state: Density): void {
+  dense.value = setDensity(state);
 }
 
 function pickSide(state: DarkState): void {
@@ -268,6 +275,20 @@ watchEffect(() => setTrail(word("settings")));
               <input type="radio" class="radio" name="dark-side" :value="state"
                      :checked="side === state" @change="pickSide(state)">
               <span>{{ word(WORDS[state]) }}</span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section v-if="tab === 'appearance'" class="block">
+        <h2>{{ word("density") }}</h2>
+        <div class="block-body">
+          <div class="radios" role="radiogroup" :aria-label="word('density')">
+            <label v-for="state in DENSITIES" :key="state" class="radio-row"
+                   :class="{ on: dense === state }">
+              <input type="radio" class="radio" name="density" :value="state"
+                     :checked="dense === state" @change="pickDensity(state)">
+              <span>{{ word(`density_${state}`) }}</span>
             </label>
           </div>
         </div>

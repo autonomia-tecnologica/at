@@ -18,8 +18,9 @@
 
 import { ref, computed, watch, onMounted } from "vue";
 import { api } from "../lib/api";
-import { word } from "../lib/store";
-import { nav, setTrail, showError, pageReadsOnItsOwn, pageLoaded, REMINDERS_KEY } from "../lib/views";
+import { store, word } from "../lib/store";
+import EmptyState from "../components/EmptyState.vue";
+import { nav, open, CHAT_KEY, NLU_UI_ENABLED, setTrail, showError, pageReadsOnItsOwn, pageLoaded, REMINDERS_KEY } from "../lib/views";
 
 interface Reminder {
   id: number;
@@ -111,7 +112,11 @@ watch(() => nav.tick, load);
         </span>
         <span class="n">{{ nextText(reminder) }}</span>
       </div>
-      <p v-if="!reminders.length" class="empty">{{ word("reminders_none") }}</p>
+      <EmptyState v-if="!reminders.length" icon="bell"
+                  :title="word('empty_reminders_title')" :text="word('empty_reminders_text')">
+        <button v-if="NLU_UI_ENABLED && store.interpreter" type="button" class="btn"
+                @click="open(CHAT_KEY, null)">{{ word("chat") }}</button>
+      </EmptyState>
     </section>
 
     <!-- O QUE JÁ TOCOU HOJE: os avisos que saíram, para conferir o que o push

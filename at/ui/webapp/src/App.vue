@@ -20,6 +20,7 @@ import { ensureFonts } from "./lib/fonts";
 import { nav, ui, isKind, viewFor, open, markPage, poke, resumePath, setTrail, armPageLoad, pageReading, pageLoad, CHAT_KEY, NLU_UI_ENABLED, ORPHANS_KEY, BOARD_KEY, FILE_PREFIX, PROJECT_PREFIX, WRITE_PREFIX, TABLES_TASK_KEY } from "./lib/views";
 import { applyTheme, watchSystem } from "./lib/theme";
 import { applyMotion } from "./lib/motion";
+import { applyDensity } from "./lib/density";
 import { writingState } from "./lib/writing";
 import { offlineState } from "./lib/offline";
 import { applyNav, navRail, toggleNav } from "./lib/nav";
@@ -82,6 +83,11 @@ const section = computed(() => {
 // The band: the section, and then what the page wrote for itself.
 const trail = computed(() => (section.value ? [section.value, ...ui.trail] : ui.trail));
 
+
+// The title the page header says: the last step of the trail — the page's own
+// name. The chat fills the page's height instead of growing it.
+const pageTitle = computed(() => trail.value[trail.value.length - 1] || "");
+const fillsPage = computed(() => nav.current?.view === CHAT_KEY);
 
 // The page the panel shows: whoever draws it is the module that registered itself
 // for it, and a table's own table is what is left over when nobody claims the
@@ -340,6 +346,7 @@ onMounted(async () => {
   // from the preference — keeping the two in agreement is what stops the page
   // from disagreeing with the CSS after a reload.
   applyMotion();
+  applyDensity();
   applyNav();
   watchNarrow();
 
@@ -460,7 +467,20 @@ defineExpose({ refresh });
            one on screen and invents none. No sentence, no strip. -->
       <p v-if="store.versioning" id="versioning">{{ label(store.versioning) }}</p>
       <div id="body">
-        <component :is="frame.component" v-if="frame" v-bind="frame.props" :key="frame.key" />
+        <!-- THE PAGE (F3): the one wrapper that owns the gutter and the maximum
+             width (`base.css`, `.page`). The page header names the screen — the
+             last step of the trail, the same words the band above ends in —
+             and every view sits under it with no outer margin of its own. -->
+        <div v-if="frame" class="page" :class="{ 'page--fill': fillsPage }">
+          <div v-if="pageTitle" class="page-header">
+            <h1 class="page-title">{{ pageTitle }}</h1>
+          </div>
+          <!-- THE SCREEN CHANGE (F6): the new page fades in on its own (`base.css`,
+               `.page > :not(.page-header)`) — no `<Transition>` here: a leave that
+               waits for the old page to finish held the new one back whenever the
+               old page's root had no animation to end. -->
+          <component :is="frame.component" v-bind="frame.props" :key="frame.key" />
+        </div>
       </div>
     </main>
     <div id="scrim" class="scrim" @click="toggle"></div>

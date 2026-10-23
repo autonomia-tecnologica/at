@@ -1,0 +1,7 @@
+{"id": "console", "labels": {"pt_BR": "Console", "en_US": "Console"}, "desc": {"dark": "terminal escuro: o visual que o AT sempre teve, monoespaçado e azul"}}
+{"id": "tipography", "labels": {"pt_BR": "Tipografia", "en_US": "Typography"}, "desc": {"light": "papel creme, tinta preta e serifada, com medida e entrelinha de livro"}}
+{"id": "paper", "labels": {"pt_BR": "Papel", "en_US": "Paper"}, "desc": {"light": "papel branco e tinta preta, sem serifa, canto reto"}}
+{"id": "frutiger-aero", "labels": {"pt_BR": "Frutiger Aero", "en_US": "Frutiger Aero"}, "desc": {"light": "o azul-céu e o vidro da era, em superfície chapada — a paleta e o canto generoso, sem gradiente nem desfoque"}}
+{"id": "comunidade", "labels": {"pt_BR": "Comunidade", "en_US": "Community"}, "desc": {"light": "a rede social do meio dos anos 2000: a caixa branca com fio de 1px sobre o azul claro da época, a letra arredondada, o magenta da marca no quadrado do topo e o azul em tudo o que se lê"}}
+{"id": "gothic", "labels": {"pt_BR": "Gótico", "en_US": "Gothic"}, "desc": {"dark": "a catedral de noite: preto, sangue e osso, letra gótica na marca e no número grande dos cartões"}}
+{"id": "hotel", "labels": {"pt_BR": "Hotel", "en_US": "Hotel"}, "desc": {"dark": "o quarto de 2001 com as luzes apagadas: fundo índigo, contorno simples, Silkscreen na marca e o ciano do saguão contra o ouro das moedas"}}

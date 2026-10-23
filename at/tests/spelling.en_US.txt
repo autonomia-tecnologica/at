@@ -179,3 +179,8 @@ vue
 webapp
 workflows
 à
+checkbox
+colour
+etc
+nunito
+px

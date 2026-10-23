@@ -34,7 +34,10 @@ onBeforeUnmount(() => document.removeEventListener("keydown", onKeydown));
 </script>
 
 <template>
-  <div v-if="confirmState.open" class="veil" @click="answer(false)"></div>
+  <Transition leave-active-class="veil-leave-active">
+    <div v-if="confirmState.open" class="veil" @click="answer(false)"></div>
+  </Transition>
+  <Transition leave-active-class="dialog-leave-active">
   <div v-if="confirmState.open" class="dialog confirm" role="dialog" aria-modal="true">
     <p>{{ confirmState.message }}</p>
     <div class="dialog-actions">
@@ -46,4 +49,5 @@ onBeforeUnmount(() => document.removeEventListener("keydown", onKeydown));
       </button>
     </div>
   </div>
+  </Transition>
 </template>

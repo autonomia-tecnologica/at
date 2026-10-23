@@ -9,8 +9,9 @@
 import { ref, computed, watch, onMounted } from "vue";
 import { api } from "../lib/api";
 import { store, setFields, word } from "../lib/store";
-import { nav, openRef, setTrail, showError, ORPHANS_KEY } from "../lib/views";
+import { nav, open, openRef, setTrail, showError, ORPHANS_KEY } from "../lib/views";
 import TaskBoard from "../components/TaskBoard.vue";
+import EmptyState from "../components/EmptyState.vue";
 import RecordView from "../components/RecordView.vue";
 import type { TablePayload } from "../lib/record";
 
@@ -41,6 +42,11 @@ watch(() => nav.tick, load);
 <template>
   <RecordView v-if="record" :record="record" :total="payload?.records.length ?? 0"
               :page="ORPHANS_KEY" :entity="store.types.task" @ref="openRef" />
+  <EmptyState v-else-if="payload && !payload.records.length" icon="inbox"
+              :title="word('empty_orphans_title')" :text="word('empty_orphans_text')">
+    <button v-if="store.types.task" type="button" class="btn"
+            @click="open(store.types.task, null)">{{ word("all_tasks") }}</button>
+  </EmptyState>
   <!-- THE SAME BOARD A PROJECT'S PAGE DRAWS: the two are the SAME shape — every
        row carries the same project, or the same absence — and the table
        declares `hide: ["project", "orphans"]` for both. -->

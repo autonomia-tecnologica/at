@@ -438,15 +438,12 @@ class TheLook(ServerCase):
         self.assertEqual(body.decode("utf-8"),
                          (webapp.THEMES / "at-dark.css").read_text(encoding="utf-8"))
 
-    def test_a_theme_with_one_side_answers_it_either_way(self):
-        # `gothic` kept only its dark file (2026-10-04) — asking for the
-        # light side of a theme that does not have one answers the side
-        # that exists, never a 404.
-        dark_css = (webapp.THEMES / "gothic-dark.css").read_text(encoding="utf-8")
-        _, _, light_request = self.get("/theme.css?theme=gothic")
-        _, _, dark_request = self.get("/theme.css?theme=gothic&dark")
-        self.assertEqual(light_request.decode("utf-8"), dark_css)
-        self.assertEqual(dark_request.decode("utf-8"), dark_css)
+    def test_a_frozen_theme_falls_back_to_the_default(self):
+        # The seven community themes are frozen (2026-10-22): an old
+        # preference naming one gets `at`, never an error.
+        _, _, body = self.get("/theme.css?theme=gothic")
+        self.assertEqual(body.decode("utf-8"),
+                         (webapp.THEMES / "at.css").read_text(encoding="utf-8"))
 
     def test_an_id_that_names_no_theme_falls_back_to_the_default(self):
         _, _, body = self.get("/theme.css?theme=../../etc/passwd")

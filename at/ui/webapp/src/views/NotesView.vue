@@ -27,6 +27,7 @@ import { openContextMenu, type MenuItem } from "../lib/menu";
 import { plainText } from "../lib/markdown";
 import { ask } from "../lib/confirm";
 import { toast } from "../lib/toast";
+import EmptyState from "../components/EmptyState.vue";
 import CreatePop from "../components/pops/CreatePop.vue";
 import EditPop from "../components/pops/EditPop.vue";
 import RecordPop from "../components/pops/RecordPop.vue";
@@ -155,7 +156,7 @@ watch(() => nav.tick, load);
       <h2>{{ word("notes") }}</h2>
       <!-- A NOTA NASCE pelo botão da própria seção — e só quando o MOTOR diz que
            este ator pode criar uma. -->
-      <button v-if="actions.includes('create')" type="button" class="btn"
+      <button v-if="actions.includes('create') && records.length" type="button" class="btn"
               @click="openCreate">{{ word("new_note") }}</button>
       <!-- CADA NOTA É UMA LINHA QUE ABRE A SI MESMA: o registro é a leitura
            dela, e o menu de contexto é o que edita e apaga. O `.stop` é o que
@@ -171,7 +172,11 @@ watch(() => nav.tick, load);
           {{ label(field.labels) || field.name }}: {{ tagsOf(rec, field.name) }}
         </span>
       </button>
-      <p v-if="!records.length" class="empty">{{ word("notes_none") }}</p>
+      <EmptyState v-if="!records.length" icon="note"
+                  :title="word('empty_notes_title')" :text="word('empty_notes_text')">
+        <button v-if="actions.includes('create')" type="button" class="btn"
+                @click="openCreate">{{ word("new_note") }}</button>
+      </EmptyState>
     </section>
   </div>
 </template>

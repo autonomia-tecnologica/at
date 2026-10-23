@@ -149,8 +149,8 @@ watch(() => nav.tick, load);
         </span>
         <span class="progress" aria-hidden="true">
           <span class="progress-part"
-                :style="{ width: (tasksOf(project.id).length
-                  ? (100 * doneOf(project.id)) / tasksOf(project.id).length : 0) + '%' }"></span>
+                :style="{ transform: 'scaleX(' + (tasksOf(project.id).length
+                  ? doneOf(project.id) / tasksOf(project.id).length : 0) + ')' }"></span>
         </span>
       </button>
     </section>

@@ -598,7 +598,10 @@ PAGE_WORDS = (
     "brand", "brand_name",
     "tasks", "files", "strongbox", "tables", "settings", "general", "appearance", "language",
     "dark_mode", "dark_system", "dark_light", "dark_dark",
-    "motion", "themes", "no_project", "all_tasks", "board", "new_task", "new_project", "delete_project",
+    "motion", "density", "density_comfortable", "density_compact",
+    "empty_orphans_title", "empty_orphans_text", "empty_project_title", "empty_project_text",
+    "empty_reminders_title", "empty_reminders_text", "empty_notes_title", "empty_notes_text",
+    "themes", "no_project", "all_tasks", "board", "new_task", "new_project", "delete_project",
     # A ÁRVORE DE PROJETOS, O CRUD (TASK-135): o subprojeto que `new_project`
     # não nomeia, o verbo genérico de renomear, o rótulo do campo de nome do
     # formulário inline, e a opção "sem pai" do seletor de mover.

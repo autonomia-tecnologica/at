@@ -33,7 +33,7 @@ function toggle(item: { value: string; on: boolean }, ev: Event): void {
 
 <template>
   <label v-for="b in boxes" :key="String(b.value)" class="opt" @click.stop>
-    <input type="checkbox" :checked="b.on" @change="toggle(b, $event)">
+    <input type="checkbox" class="check" :checked="b.on" @change="toggle(b, $event)">
     <span>{{ b.value || "—" }}</span>
   </label>
 </template>

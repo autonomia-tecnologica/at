@@ -1,43 +1,6 @@
-/* base — a from-scratch design system for AT. It is the DEFAULT, and since
-   2026-10-03 the ONLY one: every theme in the registry declares no `base` of
-   its own and reads this file. `base-shared.css`, the vocabulary the other
-   ten themes used to walk, is gone — the seven that survived the cut
-   (comunidade, console, frutiger-aero, gothic, hotel, paper, tipography)
-   were rewritten against THIS file's 86-token contract, and the other three
-   (liquid-glass, natal, old-internet) were retired instead of rewritten. The
-   `"base"` field in a registry row still works — the door stays open for a
-   future theme that wants a second vocabulary — it is just that nothing
-   walks it today.
+/* base — AT's design system: the only stylesheet the themes read; a theme declares only `:root`. */
 
-   THE SELECTORS BELOW ARE A CONTRACT WITH THE COMPILED VUE APP, not a choice:
-   the class names, the two breakpoints (960/640), the `nav-rail`/`nav-open`/
-   `shell`/`no-motion` classes, `#scrim`, `td[data-label]` and the
-   three tokens TableView.vue reads by name (`--measure`, `--cell-pad`,
-   `--page-pad-x`) are wiring, not look — the JS was compiled against them and
-   changing a name here without changing the JS breaks the app. Everything
-   ELSE — the token vocabulary, the spacing scale, the corners, the shadows,
-   the type scale, the motion, the material — is this system's own, designed
-   without reference to base-shared.css's actual values.
-
-   A THEME DECLARES ONLY `:root`. This file declares every selector. */
-
-/* ===== the typefaces (2026-09-28, +2 on 2026-10-03, swap→block on 2026-10-05)
-   Nunito Sans for the body (`--font-sans`) and Quicksand for anything that
-   has to carry weight on the page (`--font-display`: the brand mark, a
-   page's own title, a stat's big number) — `at`'s own two.
-
-   UnifrakturMaguntia and Silkscreen joined on 2026-10-03, when `gothic` and
-   `hotel` moved onto this file: both narrow the SAME way `at`'s two do —
-   `--font-display` only, never the body — so they ride the door as a third
-   and fourth NAME, not a new slot. Both were already vendored (pinned,
-   installed) for `base-shared.css`'s five; migrating the two themes that
-   actually used them cost nothing but the two rules below.
-
-   `font-display: block` AND NOT `swap`: these files are HOSTED, same origin,
-   a few KB each — the fallback-then-swap `swap` buys is a flash with nothing
-   underneath it, the same FOUC the boot gate (`App.vue`, `booted`) exists to
-   kill one layer up. `block` holds the glyph invisible for its short window
-   instead of painting it twice. */
+/* ===== the typefaces (2026-09-28, +2 on 2026-10-03, swap→block on 2026-10-05) ===== */
 @font-face { font-family: "Nunito Sans"; font-style: normal; font-weight: 400;
              font-display: block; src: url("/vendor/font-nunito-sans-400") format("woff2"); }
 @font-face { font-family: "Nunito Sans"; font-style: normal; font-weight: 600;
@@ -59,22 +22,109 @@
 @font-face { font-family: "Silkscreen"; font-style: normal; font-weight: 700;
              font-display: block; src: url("/vendor/font-silkscreen-700") format("woff2"); }
 
+/* ===== STRUCTURE (F0, 2026-10-22): what does NOT vary between themes ===== */
+:root {
+  /* ----- type ----- */
+  /* THE SCALE WENT UP TWO POINTS, STEP BY STEP (2026-09-28), came back ONE (2026-10-02), and was REDRAWN… */
+  /* F2 (2026-10-22): the scale is by ROLE, 14px body; weights are 400/500/600. */
+  --type-caption: 12px;
+  --type-body-sm: 13px;
+  --type-body: 14px;
+  --type-body-lg: 16px;
+  --type-title: 16px;
+  --type-page: 20px;
+  --type-display: 28px;
+  --font-mono: ui-monospace, SFMono-Regular, "Cascadia Code", Menlo, Consolas,
+               "Liberation Mono", monospace;
+  --leading-normal: 1.55;
+  --leading-tight: 1.25;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --letter-tight: -0.01em;
+
+  /* ----- space (4px scale; the name is the multiplier) ----- */
+  --space-0_5: 2px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ----- shape ----- */
+  --r-full: 999px;
+
+  /* ----- motion: real duration, a decelerate curve ----- */
+  --dur-1: 80ms;    /* pressing */
+  --dur-2: 120ms;   /* hover, focus, colour; a popover leaving */
+  --dur-3: 180ms;   /* a popover entering; a dialog or toast leaving; a screen */
+  --dur-4: 240ms;   /* a dialog, drawer or toast entering */
+  --ease-enter: cubic-bezier(.16, 1, .3, 1);
+  --ease-exit: cubic-bezier(.4, 0, 1, 1);
+  --ease-move: cubic-bezier(.2, 0, 0, 1);
+  --dur-fast: var(--dur-2);
+  --dur-base: var(--dur-4);
+  --ease-out: var(--ease-enter);
+
+  /* ----- the chrome's measures ----- */
+  --nav-w: 272px;
+  /* THE RAIL IS 56px (F3) */
+  --nav-rail-w: 56px;
+  --nav-toggle-box: 40px;
+  --nav-toggle-size: 20px;
+  --header-h: 56px;
+  /* THE PAGE (F3, 2026-10-22) */
+  --page-max: 1200px;
+  --page-gutter: var(--space-8);
+  --page-header-gap: var(--space-6);
+  --page-pad-x: var(--page-gutter);
+
+  /* ----- controls (F4): input, select and button share ONE height ----- */
+  --control-h: 36px;
+  --control-h-sm: 28px;
+  --control-h-lg: 44px;
+  --control-pad-x: var(--space-3);
+  --control-box: 16px;
+  /* THE ONE FOCUS: a surface-coloured gap and the brand ring around it. */
+  --focus-ring: 0 0 0 2px var(--surface-1), 0 0 0 4px var(--accent-ring);
+
+  /* density (F7) */
+  --density-cell-pad: 16px;
+  --density-cell-pad-y: 12px;
+  --density-card-pad-y: var(--space-4);
+  --density-card-pad-x: var(--space-5);
+  --density-opt-pad-y: var(--space-2);
+  --density-nav-pad-y: var(--space-2);
+}
+/* DENSITY (F7) */
+html {
+  --cell-pad: var(--density-cell-pad);
+  --cell-pad-y: var(--density-cell-pad-y);
+}
+html[data-density="compact"] {
+  --density-cell-pad: 12px;
+  --density-cell-pad-y: 8px;
+  --density-card-pad-y: var(--space-3);
+  --density-card-pad-x: var(--space-4);
+  --page-header-gap: var(--space-4);
+}
+@media (pointer: fine) {
+  html[data-density="compact"] {
+    --control-h: 32px;
+    --density-opt-pad-y: var(--space-1);
+    --density-nav-pad-y: var(--space-1);
+  }
+}
+
 * { box-sizing: border-box; }
-/* THE HAND, EVERYWHERE SOMETHING IS CLICKABLE — a DESIGN SYSTEM rule and not a
-   per-element one: a native `<button>` defaults to `cursor: default` in every
-   engine (the pointer is NOT automatic), so a new button that forgot its own
-   `cursor: pointer` silently drew the arrow instead. This is the one place
-   that promise is kept, for every button the app has or ever grows — the
-   per-selector `cursor: pointer` rules elsewhere in this file predate it and
-   are harmless now, not load-bearing. */
+/* THE HAND, EVERYWHERE SOMETHING IS CLICKABLE */
 button:not(:disabled), [role="button"] {
   cursor: pointer;
-  /* UM BOTÃO NÃO É UM PARÁGRAFO (2026-10-05). No celular, um toque ou um
-     segurar sobre um controle que carrega um RÓTULO começa uma SELEÇÃO DE
-     TEXTO — e a seleção do AT é o azul da marca (`::selection`, abaixo), então
-     o botão saía com um quadrado azul e as alças de seleção, "parecendo coisa
-     de href". O rótulo de um controle não é conteúdo para selecionar: é o NOME
-     do controle. */
+  /* UM BOTÃO NÃO É UM PARÁGRAFO (2026-10-05) */
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
@@ -83,44 +133,25 @@ button:not(:disabled), [role="button"] {
 
 body {
   margin: 0; display: flex;
-  /* A VIEWPORT VISÍVEL, E NÃO A GRANDE (2026-10-05). `100vh` no celular conta a
-     altura com a barra de URL ESCONDIDA: o corpo fica mais alto que a área
-     visível, a PÁGINA ganha rolagem própria por cima da rolagem de `#body`, e
-     ao rolar o topo sai da tela enquanto o `.menu-toggle` (fixo) fica — o
-     ícone "anda com a tela" em vez de morar na barra. `100dvh` é a altura que
-     se VÊ agora; o `vh` fica antes como o fallback de quem não o conhece. */
+  /* A VIEWPORT VISÍVEL, E NÃO A GRANDE (2026-10-05) */
   height: 100vh;
   height: 100dvh;
-  background: var(--surface-0); color: var(--ink-1);
+  background: var(--surface-0); color: var(--text-primary);
   font-family: var(--font-sans);
-  font-size: var(--text-base); line-height: var(--leading-normal);
+  font-size: var(--type-body); line-height: var(--leading-normal);
   -webkit-font-smoothing: antialiased;
-  /* THE BOOT'S FADE (0.3s), ONE ELEMENT. The whole application arrives as one
-     thing — the panel and the page cannot settle on different beats, because
-     neither of them fades on its own (`App.vue`, `bodyShown`). `body` is
-     hidden until the boot says there is something to show, and the class is
-     the latch that says so. */
+  /* THE BOOT'S FADE (0.3s), ONE ELEMENT */
   opacity: 0;
-  transition: opacity .3s var(--ease-out);
+  transition: opacity var(--dur-3) var(--ease-enter);
 }
 body.revealed { opacity: 1; }
 
-/* WHAT IS SELECTED IS OURS, and not the browser's blue: the brand at one of its
-   lightest steps, which is the one field of solid colour a page may wear — it
-   is the person's own mark, made by dragging, and it is gone the moment they
-   let go. */
-::selection { background: var(--accent-200); color: var(--ink-1); }
+/* WHAT IS SELECTED IS OURS, and not the browser's blue */
+::selection { background: var(--accent-200); color: var(--text-primary); }
 
 /* ===== shell: nav / main / header ===================================== */
 
-/* THE PANEL IS AN OVERLAY, ALWAYS (2026-10-05): it used to be a flex sibling
-   that reserved its own column — open at full width, or a rail of icons
-   nobody asked to see — and the rail cost a permanent strip of the window on
-   every page, at every width, whether a person ever opened it or not. It is
-   off the canvas by default now and asked for by ONE control, the corner
-   button in the header (`.menu-toggle`) — hidden until summoned, laid OVER
-   the page and not beside it, closed by that same button, the scrim, or
-   Escape, the same three doors every dialog in this file already answers to. */
+/* THE PANEL IS AN OVERLAY, ALWAYS (2026-10-05) */
 nav {
   position: fixed; top: 0; left: 0; bottom: 0; z-index: 25;
   width: var(--nav-w);
@@ -128,18 +159,12 @@ nav {
   background: var(--nav-bg);
   border-right: 1px solid var(--nav-border);
   transform: translateX(-100%);
-  transition: transform var(--dur-base) var(--ease-out),
-              box-shadow var(--dur-base) var(--ease-out);
+  transition: transform var(--dur-4) var(--ease-enter),
+              box-shadow var(--dur-4) var(--ease-enter);
 }
 html.nav-open nav { transform: translateX(0); box-shadow: var(--nav-edge); }
 
-/* THE TWO SCROLLERS SCROLL ONE WAY, AND ONLY ONE (2026-09-28). A horizontal bar
-   is never welcome here and it is never possible: the table is `table-layout:
-   fixed` at `100%`, a cell breaks its own long word, and the panel's rows are
-   clipped rather than pushed — so what a sideways scrollbar would have been
-   reserving room for is a state this system does not have. The prose's own
-   `<pre>` keeps its own sideways scroll: a code block is content, and wrapping
-   it would break the thing being read. */
+/* THE TWO SCROLLERS SCROLL ONE WAY, AND ONLY ONE (2026-09-28) */
 #kinds {
   flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
   width: 100%;
@@ -151,19 +176,6 @@ html.nav-open nav { transform: translateX(0); box-shadow: var(--nav-edge); }
   padding: var(--space-2) 0 var(--space-3);
   background: var(--nav-bg);
 }
-/* THE CANVAS IS NOT A VOID (item 10). A page of the AT is mostly empty by
-   design — a handful of rows on a large screen — and a flat field of grey is
-   what makes that read as UNFINISHED rather than as calm. One soft wash of the
-   brand, off the top-right corner and under everything, is enough to give the
-   surface a direction without adding a single element: nothing is drawn on it,
-   and the wash moves with the theme because it is the theme's own `--accent-50`
-   (`base-shared.css` draws the bare `--surface-0`). */
-/* AND IT REACHES THE BOTTOM EDGE. `main`, `nav` and the panel's foot each kept a
-   `padding-bottom` that left a strip of nothing under everything — the usual
-   room for a scrollbar that shows up across the bottom of the window. It cannot
-   show up (see the two scrollers above, which do not scroll sideways at all),
-   and a strip reserved for something that cannot happen is a strip that is
-   always there: the panel and the page now end where the window ends. */
 main {
   flex: 1; display: flex; flex-direction: column; min-width: 0;
   background-color: var(--surface-0);
@@ -174,88 +186,80 @@ main {
 header {
   display: flex; align-items: center; gap: var(--space-3);
   min-height: var(--header-h);
-  padding-inline: var(--space-6);
-  padding-inline-start: calc(var(--nav-rail-w) + var(--space-4));
+  padding-inline: var(--space-8);
+  padding-inline-start: calc(var(--space-4) + var(--nav-toggle-box) + var(--space-3));
   background: var(--surface-1);
   border-bottom: 1px solid var(--border-soft);
-  color: var(--ink-2);
+  color: var(--text-secondary);
   position: relative; z-index: 1;
 }
-/* THE PANEL'S OWN DOOR (2026-10-05). `--nav-rail-w` is read again here, not as
-   a rail's width any more but as the one number it always was underneath —
-   WCAG 2.5.5's floor for a target a thumb has to land on — which makes it
-   exactly right for a button that IS the rail now. It sits in the header's
-   own corner in the markup (`App.vue`), but `fixed` and a z-index ABOVE the
-   panel's (25) take it out of the header's stacking context on purpose: the
-   open panel paints OVER the header like it paints over everything else
-   (full height, §nav above), and the one thing that has to survive that is
-   the control that closes it again. The glyph swaps with the state the same
-   way the old control did (`--i`, `html.nav-open`). */
+/* THE PANEL'S OWN DOOR (2026-10-05) */
 .menu-toggle {
   position: fixed; z-index: 30;
-  top: calc((var(--header-h) - var(--nav-rail-w)) / 2); left: var(--space-4);
+  top: calc((var(--header-h) - var(--nav-toggle-box)) / 2); left: var(--space-4);
   display: inline-flex; align-items: center; justify-content: center;
-  width: var(--nav-rail-w); height: var(--nav-rail-w);
+  width: var(--nav-toggle-box); height: var(--nav-toggle-box);
   background: none; border: 0; border-radius: var(--r-sm);
-  color: var(--ink-2);
+  color: var(--text-secondary);
   transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
-.menu-toggle:hover { background: var(--surface-2); color: var(--ink-1); }
-.menu-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-/* ONE SIZE, THE PANEL'S OWN (2026-09-28). The band used to carry THREE — the
-   crumb's, the current step's own display face, and `#head-right .loc`'s —
-   and the biggest of them read as a headline this row was never meant to be:
-   it is context, read once on the way to the page below it. What it now
-   matches is `nav button` (`--text-sm`) — the sidebar's own row, the same
-   kind of line naming the same kind of thing, one step below it. What still
-   says WHICH step is the page is `header b`'s own ink and weight, never its
-   size. */
-header > * { font-size: var(--text-sm); }
-header b { color: var(--ink-1); font-weight: var(--weight-semibold); }
+.menu-toggle:hover { background: var(--surface-2); color: var(--text-primary); }
+.menu-toggle:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+/* ONE SIZE, THE PANEL'S OWN (2026-09-28) */
+header > * { font-size: var(--type-body-sm); }
+header b { color: var(--text-primary); font-weight: var(--weight-semibold); }
 #head-title {
   display: inline-flex; align-items: baseline; gap: var(--space-1);
   min-width: 0; white-space: nowrap; overflow: hidden;
 }
-#head-title .crumb { color: var(--ink-3); }
-#head-title .sep { color: var(--border-strong); }
+#head-title .crumb { color: var(--text-tertiary); }
+#head-title .sep { color: var(--text-tertiary); }
 #versioning {
-  margin: 0; padding: var(--space-2) var(--space-6);
-  border-bottom: 1px solid var(--border-soft); color: var(--ink-2);
-  font-size: var(--text-xs);
+  margin: 0; padding: var(--space-2) var(--space-8);
+  border-bottom: 1px solid var(--border-soft); color: var(--text-secondary);
+  font-size: var(--type-caption);
 }
 #head-right { margin-left: auto; display: flex; align-items: center; gap: var(--space-3); }
-/* THE FILA'S OWN BADGE (TASK-162, fatia 2/2): two facts, one strip, the
-   accent's warning ramp — the same one a refused save already wears
-   (`writingState.failed`), because "an edit is not where it should be yet" is
-   the same fact in both. */
 #offline-badge {
   display: flex; align-items: center; gap: var(--space-2);
   padding: var(--space-1) var(--space-3);
-  background: var(--warning-soft); color: var(--warning);
+  background: var(--warning-soft); color: var(--warning-text);
   border-radius: var(--r-full);
-  font-size: var(--text-xs);
+  font-size: var(--type-caption);
 }
-#head-right .loc { color: var(--ink-3); }
+#head-right .loc { color: var(--text-tertiary); }
 #head-right .raw { display: var(--locale-raw); }
 #head-right .name { display: var(--locale-name); }
 #head-right .flag { display: var(--locale-flag); }
 
 #body { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 0; }
 
-/* NO DIM, NO BLUR (2026-10-05) — just the click-catcher that closes the
-   drawer when the page outside it is touched. A tint over the whole screen
-   read as a dialog's own veil, and the drawer is not a dialog: it is a
-   panel sliding over the page, gone the instant the button or Escape says
-   so, and the ONE motion in that gesture is the panel's own slide
-   (`transform`, above) — not a second layer fading in behind it. */
+/* ===== the page: the one owner of the margin (F3) ===== */
+.page {
+  box-sizing: border-box;
+  width: 100%; max-width: var(--page-max);
+  margin-inline: auto;
+  padding: var(--page-gutter);
+}
+.page--fill { height: 100%; display: flex; flex-direction: column; }
+.page-header { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+.page-title {
+  margin: 0; min-width: 0;
+  font-size: var(--type-page); font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight); letter-spacing: var(--letter-tight);
+  color: var(--text-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* NO DIM, NO BLUR (2026-10-05) */
 .scrim { display: none; position: fixed; inset: 0; z-index: 15; }
 html.nav-open .scrim { display: block; }
 .veil {
   position: fixed; inset: 0; z-index: 30;
-  background: color-mix(in srgb, var(--ink-1) 45%, transparent);
-  backdrop-filter: blur(3px);
-  animation: veil-in var(--dur-base) var(--ease-out);
+  background: color-mix(in srgb, var(--text-primary) 45%, transparent);
+  animation: veil-in var(--dur-4) var(--ease-enter);
 }
+.veil.veil-leave-active { animation: veil-out var(--dur-3) var(--ease-exit) forwards; pointer-events: none; }
 
 /* ===== sidebar rows ===================================================== */
 
@@ -266,29 +270,19 @@ nav h1 {
   font-weight: var(--weight-bold); letter-spacing: .01em;
   color: var(--nav-ink-1);
 }
-/* A TELHA É QUADRADA E CHAPADA (2026-09-28): era um squircle com um gradiente
-   dentro, e o pedido foi o contrário dos dois — um quadrado, de cor lisa, com o
-   canto arredondado só o bastante para não ser um corte. O canto usa o degrau
-   menor da escala (`--r-sm`), e o `--nav-brand-bg` deixa de ser um degrade: o
-   token continua sendo "o pano da marca", e o tema é quem diz qual é. */
+/* A TELHA É QUADRADA E CHAPADA (2026-09-28) */
 nav h1 .brand {
   display: inline-flex; align-items: center; justify-content: center;
   flex: none; width: 34px; height: 34px; border-radius: var(--r-sm);
   background: var(--nav-brand-bg); color: var(--nav-brand-ink);
-  font-family: var(--font-display);
-  /* PINNED, NOT `var(--text-md)` (2026-10-02): the UI scale went down a point
-     and the logo did not follow it — 18px is `--text-md`'s value from before
-     that move, kept here in the raw so the mark reads the same size regardless
-     of where the body scale sits. */
-  font-weight: var(--weight-bold); font-size: 18px;
+  font-family: var(--font-brand, var(--font-display));
+  /* PINNED, NOT `var(--type-body)` (2026-10-02) */
+  font-weight: var(--weight-bold); font-size: var(--type-title);
 }
-/* O NOME INTEIRO AO LADO DA SIGLA. Ele cabe na largura do painel em um caso só
-   — a `--text-sm` — e é por isso que ele não cresce: "Autonomia Tecnológica"
-   numa linha é o nome do produto, e o nome do produto não quebra. */
 nav h1 .brand-name {
   min-width: 0; overflow: hidden; white-space: nowrap;
   color: var(--nav-ink-1);
-  font-family: var(--font-display); font-size: var(--text-sm);
+  font-family: var(--font-brand, var(--font-display)); font-size: var(--type-body-sm);
   font-weight: var(--weight-bold); letter-spacing: var(--letter-tight);
 }
 nav .n { color: var(--nav-ink-3); margin-left: auto; font-variant-numeric: tabular-nums; }
@@ -296,56 +290,24 @@ nav hr.sep {
   margin: var(--space-3) var(--space-5); border: 0;
   border-top: 1px solid var(--nav-border);
 }
-/* THE PANEL'S TOP-LEVEL ROWS ARE ONE KIND OF ROW — the sections, which are the
-   folds — and this is the cloth they all wear (`Foldable.vue` puts `folder` on
-   every section head). A section head is ALSO the door to its section
-   (`View`/`views.ts`), and behaviour is not what the eye reads first: the WEIGHT
-   is. They are the panel's own chapters, in the brightest ink the sidebar has,
-   bold, in caps — a section head that whispers is a section head nobody
-   finds.
-   THE RESTING COLOUR IS THE LIGHT ONE AND NOT PURE WHITE: four rows of 12.5px
-   caps in `#ffffff` on the dark violet are four small lights, and the eye pays
-   for each. `--nav-ink-2` is the same family one step down — bright enough to
-   lead, quiet enough to sit in the panel — and the POINTER is what lifts it to
-   white. */
-/* A SECTION THAT IS NOT A FOLD (TASK-164): "Lembretes" é um capítulo do painel
-   como as dobras ao lado, e veste a MESMA roupa — as maiúsculas em negrito e o
-   ar em volta — para o painel se ler como uma lista só de seções. O que ele NÃO
-   carrega é a seta: não há nada embaixo dele para abrir. */
+/* THE PANEL'S TOP-LEVEL ROWS ARE ONE KIND OF ROW */
 nav .folder,
 nav .file[data-view="reminders"],
-/* A SEÇÃO DE NOTAS (TASK-198) é a MESMA coisa que a de Lembretes: uma LINHA
-   do painel que é um capítulo — e ela veste a mesma roupa das dobras ao lado
-   (as maiúsculas em negrito e o ar em volta), para o painel se ler como uma
-   lista só de seções. */
 nav .file[data-view="notes"] {
   display: flex; justify-content: flex-start; align-items: center; gap: var(--space-2);
-  /* THE BOX IS THE TEXT'S, now that a section head is also a ROW. It used to be
-     `16px 20px 4px` — the air above a head that could only open and close — and
-     the day the row became selectable the wash drew that asymmetric box around
-     the label and the row read as BIGGER than the ones beside it, because it
-     was. The air a section needs above it is a MARGIN now: it does not belong
-     to the control, and the control is what the wash draws. */
+  /* THE BOX IS THE TEXT'S, now that a section head is also a ROW */
   margin: var(--space-4) var(--space-3) var(--space-1);
   padding: var(--space-2) var(--space-3);
   color: var(--nav-ink-2);
-  font-size: var(--text-xs); font-weight: var(--weight-bold);
+  font-size: var(--type-caption); font-weight: var(--weight-bold);
   letter-spacing: .07em; text-transform: uppercase;
   transition: color var(--dur-fast) var(--ease-out);
 }
 nav .folder:hover { color: var(--nav-ink-1); }
-/* WHAT FOLLOWS THE WORD BELONGS TO THE RIGHT EDGE, and the word is what carries
-   it there: a section head holds a word and a caret, and the count that used to
-   sit between them — "TAREFAS 5" — is gone (2026-09-28). A section is not a
-   roll-up: the number of tasks is a thing the tasks screen says, with the rows
-   under it, and a head that counts gives a number the person cannot act on. */
+/* WHAT FOLLOWS THE WORD BELONGS TO THE RIGHT EDGE, and the word is what carries it there */
 nav .folder > .t { margin-right: auto; }
 
-/* AND A FOLDER INSIDE THE TREE IS NOT A CHAPTER — it is a NAME. It carries the
-   same fold (and the same caret), but it sits at another level, and a level
-   that wears the cloth of the one above it leaves the tree with no hierarchy
-   left to read: sentence case in the middle ink, with the INDENTATION saying
-   where it sits. Everything else is the panel's own button, unaltered. */
+/* AND A FOLDER INSIDE THE TREE IS NOT A CHAPTER */
 nav .node {
   justify-content: flex-start; gap: var(--space-2);
   color: var(--nav-ink-2);
@@ -353,7 +315,7 @@ nav .node {
 nav .node:hover { color: var(--nav-ink-1); }
 .caret {
   display: inline-block; line-height: 1;
-  font-size: 9px; color: var(--nav-ink-3);
+  color: var(--nav-ink-3);
   transition: transform var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 .fold-head:hover .caret { color: var(--nav-ink-1); }
@@ -368,72 +330,37 @@ nav button {
   display: flex; justify-content: space-between; align-items: center;
   gap: var(--space-2); width: calc(100% - 2 * var(--space-3));
   margin-inline: var(--space-3);
-  padding: var(--space-2) var(--space-3); background: none; border: 0;
+  padding: var(--density-nav-pad-y) var(--space-3); background: none; border: 0;
   border-radius: var(--r-sm);
   color: var(--nav-ink-2);
-  font: inherit; font-size: var(--text-sm); text-align: left; cursor: pointer;
+  font: inherit; font-size: var(--type-body-sm); text-align: left; cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 nav button:hover { background: var(--nav-item-hover); color: var(--nav-ink-1); }
-/* The open row says so twice, and the two say the same thing: the wash puts it
-   apart from its neighbours, and the bar on the left edge is the one mark a
-   glance finds without reading (`--nav-item-on-edge`, which the theme names
-   apart from the ink because it is a BRAND bar and not a white one). */
-/* THE STATE IS A COLOUR AND A BAR, AND NEVER A TYPE. `font-weight` used to ride
-   along here — the open row went to 500 — and on a section head, which is BOLD,
-   the selected row came out LIGHTER than the ones beside it and the panel
-   looked like it had two font schemes (the report: "o esquema de fontes está
-   pouco controlado"). A word does not change its weight because the page it
-   names is the one on screen; what changes is where the eye lands, and that is
-   the wash and the bar. */
+/* The open row says so twice, and the two say the same thing */
+/* THE STATE IS A COLOUR AND A BAR, AND NEVER A TYPE */
 nav button.on {
   background: var(--nav-item-on-bg); color: var(--nav-item-on-ink);
   box-shadow: inset 3px 0 0 var(--nav-item-on-edge);
 }
 nav .file { color: var(--nav-ink-2); }
 nav .entry { justify-content: flex-start; gap: var(--space-2); align-items: center; }
-/* A SEALED FILE IS A LEAF, NOT A DOOR (2026-10-05): it is not a `<button>` —
-   there is no reader to open (TASK-155) — but it keeps the button's BOX, so the
-   tree still reads as one column and the leaf does not collapse to the edge. */
+/* A SEALED FILE IS A LEAF, NOT A DOOR (2026-10-05) */
 nav .entry.leaf {
   display: flex; align-items: center; gap: var(--space-2);
   width: calc(100% - 2 * var(--space-3)); margin-inline: var(--space-3);
   padding: var(--space-2) var(--space-3); border-radius: var(--r-sm);
-  font-size: var(--text-sm);
+  font-size: var(--type-body-sm);
 }
 
-/* ===== icons: the vendored sprite =======================================
-   The shapes are iconoir's (MIT — `vendor/licenses/iconoir-LICENSE`), vendored
-   under `assets/icons/at2-*.svg` and served by the same `/icons/` door the
-   theme marks already use. They are painted with `mask` and NOT with
-   `background-image`: a mask is filled with the colour the rule gives it, so
-   ONE file wears the sidebar's grey, the white of the open row or the accent
-   of a pressed control — `background-image` would paint whatever the SVG
-   carries, and no theme could move it.
-
-   The shape travels in `--i`, and each door names its own below. A property
-   per rule (the `-webkit-` prefix the older engines still want, the repeat,
-   the position, the size) would be five rules A DOOR, and the door is the one
-   thing that differs. */
+/* ===== icons: the vendored sprite ===== */
 nav .entry .icon,
-/* ONE DOOR AT A TIME, AND THE DOOR IS WRITTEN. Never `[data-branch]` alone: the
-   file tree's folders are Foldables too and carry one, so a rule that matched
-   them would hand a box to a row whose shape nobody named — and `mask: none`
-   paints that box as a SOLID SQUARE. Never `.file` alone either, which was the
-   same mistake one row over: a project row IS a `.file` (`ProjectTreeNode.vue`),
-   and it was wearing the white square the foot's buttons wear. What has a shape
-   is listed, and the foot's two rows are the foot's. */
+/* ONE DOOR AT A TIME, AND THE DOOR IS WRITTEN */
 nav .folder[data-branch="tasks"]::before,
 nav .folder[data-branch="files"]::before,
 nav .folder[data-branch="strongbox"]::before,
 nav .folder[data-branch="tables"]::before,
-/* A quinta porta com forma (TASK-164): "Lembretes" é uma LINHA e não uma dobra,
-   e o marcador é escrito pela `data-view` dela — nunca `.file` sozinho, pelo
-   motivo acima. */
 nav .file[data-view="reminders"]::before,
-/* A sexta porta com forma (TASK-198): "Notas" é uma LINHA como "Lembretes", e
-   o marcador é escrito pela `data-view` dela — nunca `.file` sozinho, pelo
-   motivo acima. */
 nav .file[data-view="notes"]::before,
 nav .side-foot > .file::before,
 .caret::before,
@@ -444,9 +371,7 @@ th .fbtn::before,
   content: ""; flex: none; display: inline-block;
   width: 1.15em; height: 1.15em; vertical-align: -.2em;
   background-color: currentColor;
-  /* No shape named is a door that draws nothing — `none` is the empty mask, and
-     a door that forgot its own file is a filled box, which is exactly the
-     mistake worth seeing. */
+  /* No shape named is a door that draws nothing */
   -webkit-mask-image: var(--i, none); mask-image: var(--i, none);
   -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
   -webkit-mask-position: center; mask-position: center;
@@ -468,8 +393,7 @@ nav .file[data-view="reminders"]::before { --i: url("/icons/at2-nav-reminders.sv
 nav .file[data-view="notes"]::before { --i: url("/icons/at2-nav-notes.svg"); }
 nav .side-foot > .file[data-view="settings"]::before { --i: url("/icons/at2-nav-settings.svg"); }
 nav .side-foot > .file[data-view="chat"]::before { --i: url("/icons/at2-nav-chat.svg"); }
-/* THE FOOT'S OWN CLOSE (2026-10-05): it only ever shows while the panel is
-   open, so the glyph never has to swap the way the corner button's does. */
+/* THE FOOT'S OWN CLOSE (2026-10-05) */
 nav .side-foot > .file.nav-toggle::before { --i: url("/icons/at2-nav-close.svg"); }
 /* the two rows that were a word and a guess (`base-shared.css` has the long version) */
 .caret::before { --i: url("/icons/at2-caret.svg"); }
@@ -486,85 +410,57 @@ th .fbtn::before { --i: url("/icons/at2-nav-filter.svg"); }
    AND IT SITS AT THE FAR END (`order`): a fold says "there is more inside" where
    the eye finishes the row, not before the name of the thing — the same place
    every tree in every file manager has drawn it for thirty years. */
-.caret { font-size: 0; order: 3; }
+.caret { font-size: 0; /* hides the template glyph; the ::before is the icon */ order: 3; }
 .caret::before { width: 13px; height: 13px; }
 .menu-toggle::before {
   --i: url("/icons/at2-nav-menu.svg");
   width: var(--nav-toggle-size); height: var(--nav-toggle-size);
 }
 html.nav-open .menu-toggle::before { --i: url("/icons/at2-nav-close.svg"); }
-/* The rows that are a MARK AND A WORD — the ones with an icon. The file tree's
-   own rows (`.entry`) are the exception twice over: their mark hangs on the
-   `.icon` span they carry, and what they hold is the name alone. */
+/* The rows that are a MARK AND A WORD */
 nav .side-foot > .file { justify-content: flex-start; gap: var(--space-2); }
 
 /* ===== table ============================================================ */
 
 table { border-collapse: separate; border-spacing: 0; width: 100%; table-layout: fixed; }
-/* THE PRODUCT'S TABLE IS THE GRID'S AND NO OTHER'S (2026-10-05): `.grid` is the
-   class `TableView.vue` puts on the one table it draws, and this block — the
-   page's card, the margins, the corners, the shadow — is THAT table's. It used
-   to reach every table in `#body` that was not `.prose` (`:not(.prose table)`),
-   which quietly caught the CHAT's answer table too: a markdown table is a table,
-   and the chat's is not a product page. A markdown table wears `.md-table` now
-   (below), and the Files' `.prose table` keeps its own block; neither is a grid. */
+/* THE PRODUCT'S TABLE IS THE GRID'S AND NO OTHER'S (2026-10-05) */
 #body table.grid {
-  margin: var(--space-6) var(--space-6) 0;
-  width: calc(100% - 2 * var(--space-6));
+  margin: 0;
+  width: 100%;
   background: var(--surface-1);
   border-radius: var(--r-lg);
-  box-shadow: var(--shadow-card);
+  border: 1px solid var(--border-soft);
   overflow: hidden;
 }
 th, td { text-align: left; padding: var(--cell-pad-y) var(--cell-pad); vertical-align: top; }
 tbody td { border-bottom: 1px solid var(--border-soft); transition: background-color var(--dur-fast) var(--ease-out); }
-/* THE CELLS ARE THE READING SURFACE, so they are the one place the body type
-   steps UP instead of down (item 1): a table is where a person spends the day,
-   and 15px on a 1440 screen is a table read with the nose against it. */
-td { overflow: hidden; overflow-wrap: break-word; font-size: var(--text-md); }
-/* A hidden span the page measures a string with — its width in the active font.
-   NEVER SEEN, AND IT HAS TO BE OUT OF THE WAY TWICE. Off the page to the left,
-   because a 200-character string with `white-space: pre` is a ~1500px box and
-   such a box hanging on the body is a lying bar for the whole window; and
-   `fixed`, because `absolute` would position it against the nearest POSITIONED
-   ancestor — and inside the content column none is, so its containing block is
-   the initial one and its top stays where its static position put it: deep
-   inside the scrolled table. The scroller clips what is inside it, but a box
-   whose containing block sits OUTSIDE the scroller escapes that clip, and
-   Firefox counts it — the document grows by the table's own overflow and the
-   whole shell scrolls away under the wheel. Chromium does not count it, which
-   is why it went unseen (`base-shared.css` carries the long version). A fixed box is
-   out of the scrollable overflow by definition, and the width measured is the
-   same one: the width is the font's, not the position's. */
+/* THE CELLS ARE THE READING SURFACE, so they are the one place the body type steps UP instead of down… */
+td { overflow: hidden; overflow-wrap: break-word; font-size: var(--type-body); }
+/* A hidden span the page measures a string with */
 .probe { position: fixed; left: -10000px; visibility: hidden; white-space: pre; pointer-events: none; }
 th {
-  color: var(--ink-3); font-weight: var(--weight-semibold); font-size: var(--text-xs);
+  color: var(--text-tertiary); font-weight: var(--weight-semibold); font-size: var(--type-caption);
   letter-spacing: .04em; text-transform: uppercase;
   position: sticky; top: 0; background: var(--surface-2);
   white-space: nowrap; border-bottom: 1px solid var(--border-strong);
   transition: color var(--dur-fast) var(--ease-out);
 }
 th.sortable { cursor: pointer; user-select: none; }
-th.sortable:hover { color: var(--ink-1); }
+th.sortable:hover { color: var(--text-primary); }
 th.drag { opacity: .45; }
 th.drop-before { box-shadow: inset 2px 0 0 var(--accent); }
 th.drop-after { box-shadow: inset -2px 0 0 var(--accent); }
 th .fbtn { margin-left: 6px; background: none; border: 0; padding: 1px; cursor: pointer; line-height: 0; vertical-align: -1px; }
-/* The mark its own size, because a column head is not a sidebar row: the sprite
-   rule above hands it 1.15em of the header's own small type, which is the noise
-   the drawn funnel replaced. */
-th .fbtn::before { color: var(--ink-3); width: 12px; height: 12px; vertical-align: -2px; }
-th .fbtn:hover::before { color: var(--ink-1); }
+/* The mark its own size, because a column head is not a sidebar row */
+th .fbtn::before { color: var(--text-tertiary); width: 12px; height: 12px; vertical-align: -2px; }
+th .fbtn:hover::before { color: var(--text-primary); }
 th .fbtn.on::before { color: var(--accent); }
-th .to { color: var(--ink-3); margin-left: 4px; }
+th .to { color: var(--text-tertiary); margin-left: 4px; }
 .grid tbody tr { cursor: pointer; }
 .grid tbody tr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .grid tbody tr:hover td { background: var(--row-hover); }
-.grid td.id { color: var(--ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.grid td.id { color: var(--text-tertiary); white-space: nowrap; font-variant-numeric: tabular-nums; }
 
-/* A SEÇÃO TABELAS EDITA COMO PLANILHA (TASK-175): a LINHA não abre mais nada
-   — é a CÉLULA que toma o clique —, então o ponteiro de "linha clicável" sai,
-   e quem o ganha é só a célula que o catálogo marcou `editable`. */
 .grid.cells-edit tbody tr { cursor: default; }
 .grid td.editable { cursor: text; }
 .grid td.editing { padding: 0; }
@@ -575,39 +471,35 @@ th .to { color: var(--ink-3); margin-left: 4px; }
   padding: var(--cell-pad-y) var(--cell-pad);
 }
 
-/* ===== the value of a CLOSED LIST ========================================
-   The status of a task, the priority of a row: the page marks WHICH member the
-   record carries (`data-value`, the same idiom `data-bucket` already uses for
-   the file tree) and the tone is the theme's. A vocabulary the rules below do
-   not know keeps the plain text it always had, which is what makes this a
-   DRESSING and not a second declaration of the table.
-
-   THE TONE IS RESTRAINT. The ends are the ones worth a colour — doing and done,
-   high and critical — and the everyday middle (to do, medium) stays the quiet
-   neutral. A table where every row wears a colour is a table where the colour
-   stopped meaning anything. */
+/* ===== the value of a CLOSED LIST ===== */
 .grid td[data-value] .v, .chip[data-value] {
   display: inline-block; padding: 2px var(--space-3);
   border-radius: var(--r-full);
-  background: var(--surface-2); color: var(--ink-2);
-  font-size: var(--text-xs); font-weight: var(--weight-semibold);
+  background: var(--surface-2); color: var(--text-secondary);
+  font-size: var(--type-caption); font-weight: var(--weight-semibold);
 }
-td[data-value="doing"] .v, .chip[data-value="doing"] { background: var(--info-soft); color: var(--info); }
-td[data-value="done"] .v, .chip[data-value="done"] { background: var(--success-soft); color: var(--success); }
+td[data-value="doing"] .v, .chip[data-value="doing"] { background: var(--info-soft); color: var(--info-text); }
+td[data-value="done"] .v, .chip[data-value="done"] { background: var(--success-soft); color: var(--success-text); }
 td[data-value="cancelled"] .v, td[data-value="low"] .v,
-.chip[data-value="cancelled"], .chip[data-value="low"] { color: var(--ink-3); }
-td[data-value="high"] .v, .chip[data-value="high"] { background: var(--warning-soft); color: var(--warning); }
-td[data-value="critical"] .v, .chip[data-value="critical"] { background: var(--danger-soft); color: var(--danger); }
+.chip[data-value="cancelled"], .chip[data-value="low"] { color: var(--text-tertiary); }
+td[data-value="high"] .v, .chip[data-value="high"] { background: var(--warning-soft); color: var(--warning-text); }
+td[data-value="critical"] .v, .chip[data-value="critical"] { background: var(--danger-soft); color: var(--danger-text); }
 
-/* WHAT AN EMPTY PAGE SAYS. It is the one screen the product shows on a folder
-   that was just born, and "no records" in the middle of a table card is the
-   first thing a person reads — so it is given the room and the type of a
-   sentence, and not the 12px of a row that is not there. */
+/* WHAT AN EMPTY PAGE SAYS */
 .empty {
-  color: var(--ink-3); padding: var(--space-8) var(--space-6);
-  text-align: center; font-size: var(--text-md);
+  color: var(--text-tertiary); padding: var(--space-16) var(--space-8);
+  text-align: center; font-size: var(--type-body);
 }
-.hidden-count { margin: var(--space-3) var(--space-6) 0; text-align: right; color: var(--ink-3); font-size: var(--text-xs); }
+.empty-state {
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-2);
+  padding: var(--space-12) var(--space-6); text-align: center;
+  color: var(--text-secondary);
+}
+.empty-state .empty-icon { width: 40px; height: 40px; color: var(--text-tertiary); margin-bottom: var(--space-2); }
+.empty-state h3 { margin: 0; font-size: var(--type-title); font-weight: var(--weight-semibold); color: var(--text-primary); }
+.empty-state p { margin: 0; max-width: 44ch; font-size: var(--type-body); }
+.empty-state .empty-action { margin-top: var(--space-3); }
+.hidden-count { margin: var(--space-3) 0 0; text-align: right; color: var(--text-tertiary); font-size: var(--type-caption); }
 .hidden-count button, .hidden-count span { padding: 0; background: none; border: 0; color: inherit; font: inherit; }
 .hidden-count button { cursor: pointer; }
 .hidden-count button:hover { color: var(--accent); }
@@ -618,32 +510,26 @@ td[data-value="critical"] .v, .chip[data-value="critical"] { background: var(--d
   position: absolute; z-index: 10; max-height: 320px; overflow: auto;
   background: var(--surface-1); border: 1px solid var(--border-soft);
   border-radius: var(--r-md); padding: var(--space-2);
-  min-width: 190px; box-shadow: var(--shadow-lg);
-  animation: pop-in var(--dur-fast) var(--ease-out);
+  min-width: 190px; box-shadow: var(--shadow-card);
+  animation: pop-in var(--dur-3) var(--ease-enter);
 }
+.pop.pop-leave-active { animation: pop-out var(--dur-2) var(--ease-exit) forwards; pointer-events: none; }
+.pop.record-pop.pop-leave-active { animation-name: veil-out; }
 .pop .opt {
-  display: flex; gap: var(--space-2); align-items: center; padding: var(--space-2) var(--space-3);
-  border-radius: var(--r-sm); color: var(--ink-1); cursor: pointer; white-space: nowrap;
+  display: flex; gap: var(--space-2); align-items: center; padding: var(--density-opt-pad-y) var(--space-3);
+  border-radius: var(--r-sm); color: var(--text-primary); cursor: pointer; white-space: nowrap;
   transition: background-color var(--dur-fast) var(--ease-out);
 }
-button.opt { background: none; border: 0; font: inherit; width: 100%; text-align: left; color: var(--ink-1); }
+button.opt { background: none; border: 0; font: inherit; width: 100%; text-align: left; color: var(--text-primary); }
 .pop .opt:hover { background: var(--surface-2); }
 .pop .opt.on { color: var(--accent); font-weight: var(--weight-medium); }
-.pop-note { margin: 0 0 var(--space-2); color: var(--ink-3); font-size: var(--text-xs); }
-.pop-form input {
-  width: 100%; padding: var(--space-2) var(--space-3);
-  background: var(--surface-1); color: var(--ink-1); font: inherit;
-  border: 1px solid var(--border-soft); border-radius: var(--r-sm);
-}
+.pop-note { margin: 0 0 var(--space-2); color: var(--text-tertiary); font-size: var(--type-caption); }
+.pop-form input { width: 100%; }
 
-/* THE RECORD PANEL (TASK-173): the one `.pop` that is not anchored to a
-   control — no `anchor`, no `point` reaches `placeAt` for it — so it keeps
-   this fixed, centred spot instead of `position: absolute`'s default (which
-   would otherwise place it at the document's origin, never moved). */
 .pop.record-pop {
   position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
-  width: min(640px, calc(100vw - 2 * var(--space-6)));
-  max-height: calc(100vh - 2 * var(--space-6));
+  width: min(640px, calc(100vw - 2 * var(--space-8)));
+  max-height: calc(100vh - 2 * var(--space-8));
   padding: 0;
 }
 .record-pop .record-page { min-height: 0; }
@@ -651,47 +537,40 @@ button.opt { background: none; border: 0; font: inherit; width: 100%; text-align
 .record-pop .record-body { margin: var(--space-4); }
 
 .pick { display: inline-flex; align-items: center; gap: 5px; background: none; border: 0;
-        color: var(--ink-1); font: inherit; text-align: left; cursor: pointer;
+        color: var(--text-primary); font: inherit; text-align: left; cursor: pointer;
         transition: color var(--dur-fast) var(--ease-out); }
 .pick::after { content: ""; display: inline-block; width: 8px; height: 8px;
-               background: var(--ink-3); clip-path: polygon(0 0, 100% 0, 50% 100%); }
+               background: var(--text-tertiary); clip-path: polygon(0 0, 100% 0, 50% 100%); }
 .pick:hover, .pick.on { color: var(--accent); }
 .pick:hover::after, .pick.on::after { background: var(--accent); }
 
 .dialog {
   position: fixed; z-index: 31; left: 50%; top: 50%;
   transform: translate(-50%, -50%);
-  width: min(var(--measure), calc(100vw - 2 * var(--space-6)));
-  max-height: calc(100vh - 2 * var(--space-6)); overflow: auto;
+  width: min(var(--measure), calc(100vw - 2 * var(--space-8)));
+  max-height: calc(100vh - 2 * var(--space-8)); overflow: auto;
   display: flex; flex-direction: column; gap: var(--space-4);
-  padding: var(--space-7); background: var(--surface-1);
+  padding: var(--space-10); background: var(--surface-1);
   border-radius: var(--r-lg); box-shadow: var(--shadow-lg);
-  animation: dialog-in var(--dur-base) var(--ease-out);
+  animation: dialog-in var(--dur-4) var(--ease-enter);
 }
-.dialog h2 { margin: 0; font-size: var(--text-lg); font-weight: var(--weight-bold); }
-.dialog p { margin: 0; color: var(--ink-2); }
-.dialog .refused { color: var(--danger); }
+.dialog.dialog-leave-active { animation: dialog-out var(--dur-3) var(--ease-exit) forwards; pointer-events: none; }
+.dialog h2 { margin: 0; font-size: var(--type-title); font-weight: var(--weight-semibold); }
+.dialog p { margin: 0; color: var(--text-secondary); }
+.dialog .refused { color: var(--danger-text); }
 .dialog-actions { display: flex; justify-content: flex-end; gap: var(--space-3); }
 .dialog-facts { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-3); margin: 0; }
-.dialog-facts dt { color: var(--ink-3); }
+.dialog-facts dt { color: var(--text-tertiary); }
 .dialog-facts dd { margin: 0; }
 .dialog form { display: flex; flex-direction: column; gap: var(--space-4); }
 .dialog label { display: flex; flex-direction: column; gap: var(--space-1); }
-.dialog label > span { color: var(--ink-2); font-size: var(--text-sm); }
+.dialog label > span { color: var(--text-secondary); font-size: var(--type-body-sm); }
 .dialog .btn:disabled { opacity: .5; cursor: default; }
-.dialog input {
-  padding: var(--space-3); background: var(--surface-0);
-  border: 1px solid var(--border-strong); border-radius: var(--r-sm);
-  color: var(--ink-1); font: inherit;
-}
-.dialog input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
-/* THE DOOR INTO `/chat`: one big round icon in the corner, nothing else —
-   there is no window to grow into anymore (the box it would have carried is
-   `/chat`'s own), so the only state left is a click and where it goes. */
+/* THE DOOR INTO `/chat` */
 .balloon-bubble {
   position: fixed; z-index: 20; right: var(--space-5); bottom: var(--space-5);
-  width: 56px; height: 56px; padding: 0; font-size: 1.5rem;
+  width: 56px; height: 56px; padding: 0; font-size: var(--type-page);
   display: flex; align-items: center; justify-content: center;
   background: var(--accent); color: var(--accent-ink);
   border: 0; border-radius: var(--r-full); cursor: pointer;
@@ -699,21 +578,19 @@ button.opt { background: none; border: 0; font: inherit; width: 100%; text-align
   transition: box-shadow var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
   animation: balloon-in var(--dur-base) var(--ease-out);
 }
-.balloon-bubble:hover { transform: translateY(-1px); background: var(--accent-hover); }
+.balloon-bubble:hover { background: var(--accent-hover); }
 .balloon-bubble::before { --i: url("/icons/at2-nav-chat.svg"); width: 1.5em; height: 1.5em; }
 
-/* THE TOASTER (TASK-165, fatia 3/4): a generic, reusable slot — `Toast.vue`
-   names no caller, and the LEFT corner is deliberate, the balloon's own
-   bottom-right already busy with the interpreter. */
 .toast {
   position: fixed; z-index: 25; left: var(--space-5); bottom: var(--space-5);
   width: min(var(--measure), calc(100vw - 2 * var(--space-5)));
   display: flex; flex-direction: column; gap: var(--space-2);
   padding: var(--space-3) var(--space-4); background: var(--surface-1);
   border-radius: var(--r-lg); box-shadow: var(--shadow-lg);
-  animation: balloon-in var(--dur-base) var(--ease-out);
+  animation: balloon-in var(--dur-4) var(--ease-enter);
 }
-.toast-text { color: var(--ink-1); font-size: var(--text-sm); }
+.toast.toast-leave-active { animation: balloon-out var(--dur-3) var(--ease-exit) forwards; pointer-events: none; }
+.toast-text { color: var(--text-primary); font-size: var(--type-body-sm); }
 .toast-bar {
   display: block; height: 3px; border-radius: var(--r-full);
   background: var(--accent); transform-origin: left;
@@ -722,58 +599,72 @@ button.opt { background: none; border: 0; font: inherit; width: 100%; text-align
 }
 @keyframes toast-empty { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 
-/* THE ESC-ARMED SHORTCUTS' HINT (TASK-126): the same left corner as the
-   toaster, because the two never stay up long enough to fight over it. */
 .shortcut-hint {
   position: fixed; z-index: 25; left: var(--space-5); bottom: var(--space-5);
   display: flex; gap: var(--space-4);
   padding: var(--space-3) var(--space-4); background: var(--surface-1);
   border-radius: var(--r-lg); box-shadow: var(--shadow-lg);
-  animation: balloon-in var(--dur-base) var(--ease-out);
+  animation: balloon-in var(--dur-4) var(--ease-enter);
 }
+.shortcut-hint.hint-leave-active { animation: balloon-out var(--dur-3) var(--ease-exit) forwards; pointer-events: none; }
 .shortcut-hint .shortcut { display: flex; align-items: center; gap: var(--space-2); }
 .shortcut-hint b {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 20px; padding: 2px 6px;
   background: var(--surface-2); border-radius: var(--r-sm);
-  font-weight: var(--weight-bold); color: var(--ink-1);
+  font-weight: var(--weight-bold); color: var(--text-primary);
 }
-.shortcut-hint span span { color: var(--ink-2); font-size: var(--text-sm); }
+.shortcut-hint span span { color: var(--text-secondary); font-size: var(--type-body-sm); }
 
 /* ===== controls: buttons, switch, radio, check, forms =================== */
 
-/* A BUTTON IS FILLED, AND THAT IS THE DEFAULT (item 8). It was neutral here —
-   surface, hairline, `--ink-1` — with a single `button[type=submit]` painted
-   solid, which made the login's "Sign in" the one confident door in the product
-   and left every other screen's save, create and mint looking exactly like the
-   filter sitting beside them. The page's action is the page's action on a
-   dialog and on a form: the fill is what says so, and what is NOT the action
-   says so out loud (`.btn-quiet`). */
 .btn {
-  padding: var(--space-2) var(--space-4);
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+  box-sizing: border-box; height: var(--control-h); padding: 0 var(--space-4);
+  font-size: var(--type-body-sm); line-height: 1; white-space: nowrap;
   background: var(--accent); color: var(--accent-ink);
   border: 1px solid transparent; border-radius: var(--r-sm);
   font: inherit; font-weight: var(--weight-semibold); cursor: pointer;
   box-shadow: var(--shadow-xs);
   transition: background-color var(--dur-fast) var(--ease-out),
-              box-shadow var(--dur-fast) var(--ease-out),
-              transform var(--dur-fast) var(--ease-out);
+              background var(--dur-fast) var(--ease-out);
 }
-.btn:hover { background: var(--accent-hover); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
-.btn:active { background: var(--accent-active); transform: translateY(0); }
-.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn:hover { background: var(--accent-hover); box-shadow: var(--shadow-sm); }
+.btn:active { background: var(--accent-active); transform: scale(.98); transition-duration: var(--dur-1); }
 .btn:disabled { opacity: .5; cursor: default; transform: none; }
-/* Destroying something is not the page's action — it is the one door that may
-   take a row away — so it wears the loud colour, and wears it filled: the
-   brief's own rule is that red means danger, and a red hairline is a red
-   nothing. */
+/* Destroying something is not the page's action */
 .btn.danger { background: var(--danger); color: #fff; border-color: transparent; }
 .btn.danger:hover { background: color-mix(in srgb, var(--danger) 85%, #000); }
-/* AND THE ONE THAT IS NOT THE ACTION. A step back, a count, a control that
-   sits beside the real door: neutral, hairline, and afterwards in the file so
-   one class still beats the other. */
-.btn-quiet { background: var(--surface-1); color: var(--ink-1); border-color: var(--border-strong); }
+.btn-quiet { background: var(--surface-1); color: var(--text-primary); border-color: var(--border-strong); }
 .btn-quiet:hover { background: var(--surface-2); }
+/* Sizes ride on `--control-h`; the ghost is the borderless, fill-less button. */
+.btn-sm { height: var(--control-h-sm); padding: 0 var(--space-3); font-size: var(--type-caption); }
+.btn-lg { height: var(--control-h-lg); padding: 0 var(--space-5); font-size: var(--type-body); }
+.btn-ghost { background: none; color: var(--text-secondary); border-color: transparent; box-shadow: none; }
+.btn-ghost:hover { background: var(--surface-2); color: var(--text-primary); box-shadow: none; }
+
+/* ONE INPUT (F4) */
+.input,
+:is(.form, .dialog, .pop-form, .assist-retry, .jev-form, .board-add) :is(input:not([type=checkbox], [type=radio]), select),
+.form textarea,
+.chat-say {
+  box-sizing: border-box; height: var(--control-h); padding: 0 var(--control-hpad, var(--control-pad-x));
+  background: var(--surface-0); color: var(--text-primary);
+  border: 1px solid var(--border-strong); border-radius: var(--r-sm);
+  font: inherit; font-size: var(--type-body-sm);
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+.form textarea { height: auto; padding: var(--space-2) var(--control-pad-x); }
+.input::placeholder, :is(.form, .dialog, .pop-form, .assist-retry, .jev-form, .board-add) input::placeholder,
+.chat-say::placeholder { color: var(--text-tertiary); }
+.input:hover, :is(.form, .dialog, .pop-form, .assist-retry, .jev-form, .board-add) :is(input, select, textarea):hover,
+.chat-say:hover { border-color: var(--text-tertiary); }
+.input:disabled { opacity: .5; }
+
+/* THE ONE FOCUS */
+:where(button, a, input, select, textarea, summary, [tabindex], [role="button"]):focus-visible {
+  outline: none; box-shadow: var(--focus-ring);
+}
 
 .switch {
   position: relative; display: inline-block; vertical-align: middle;
@@ -786,56 +677,50 @@ button.opt { background: none; border: 0; font: inherit; width: 100%; text-align
   content: ""; position: absolute; top: 50%; margin-top: -8px; left: 2px;
   width: 16px; height: 16px; background: #fff; border-radius: 50%;
   box-shadow: var(--shadow-xs);
-  transition: left var(--dur-base) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+  transition: transform var(--dur-3) var(--ease-move), background-color var(--dur-2) var(--ease-move);
 }
 .switch.on { background: var(--accent); border-color: var(--accent); }
-.switch.on::after { left: calc(100% - 18px); }
+.switch.on::after { transform: translateX(14px); }
 
 .radios, .checks { display: flex; flex-wrap: wrap; gap: var(--space-3); }
 .radio-row, .check-row {
   display: inline-flex; align-items: center; gap: var(--space-2);
-  cursor: pointer; color: var(--ink-1);
+  cursor: pointer; color: var(--text-primary);
   transition: color var(--dur-fast) var(--ease-out);
 }
 .radio-row.on, .check-row.on { color: var(--accent); font-weight: var(--weight-medium); }
 .radio, .check {
-  appearance: none; flex: none; width: 16px; height: 16px; margin: 0; padding: 0;
+  appearance: none; flex: none; width: var(--control-box); height: var(--control-box); margin: 0; padding: 0;
   background: var(--surface-0); border: 1px solid var(--border-strong);
   cursor: pointer; vertical-align: middle;
   transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
 }
 .radio { border-radius: 50%; }
-.check { border-radius: 5px; }
+.check { border-radius: var(--r-sm); }
+.check:disabled, .radio:disabled { opacity: .5; cursor: default; }
 .radio:hover:not(:checked), .check:hover:not(:checked) { border-color: var(--accent); }
 .radio:checked {
   border-color: var(--accent);
   background-image: radial-gradient(circle, var(--accent) 4px, transparent 4px);
 }
+.check { position: relative; }
 .check:checked { border-color: var(--accent); background: var(--accent); }
+.check:checked::after {
+  content: ""; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px;
+  border: solid var(--accent-ink); border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
 
 .form { display: flex; flex-direction: column; gap: var(--space-4); }
 .form label { display: flex; flex-direction: column; gap: var(--space-1); }
-.form label > span { color: var(--ink-2); font-size: var(--text-sm); }
-.form input, .form textarea, .form select {
-  padding: var(--space-3); background: var(--surface-0);
-  border: 1px solid var(--border-strong); border-radius: var(--r-sm);
-  color: var(--ink-1); font: inherit;
-}
-/* A CONTROL IN FOCUS WEARS THE RING, and it is the theme's own (`--accent-ring`,
-   the brand at a third): the solid outline is the line a keyboard needs, and
-   the halo around it is what says "here" from across the screen. */
-.form input:focus-visible, .form textarea:focus-visible, .form select:focus-visible {
-  outline: 2px solid var(--accent); outline-offset: 1px;
-  box-shadow: 0 0 0 4px var(--accent-ring);
-}
+.form label > span { color: var(--text-secondary); font-size: var(--type-body-sm); }
 .form textarea { min-height: 4em; resize: vertical; }
 .form-block { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-4); }
-.form-block h2, .form-block h3 { margin: 0; font-size: var(--text-base); font-weight: var(--weight-medium); color: var(--ink-2); }
-.form-block > h2 { color: var(--ink-1); }
+.form-block h2, .form-block h3 { margin: 0; font-size: var(--type-body); font-weight: var(--weight-medium); color: var(--text-secondary); }
+.form-block > h2 { color: var(--text-primary); }
 .unknown { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4);
            border: 1px solid var(--border-strong); border-radius: var(--r-md); }
-.unknown h3 { margin: 0; font-weight: var(--weight-medium); color: var(--danger); }
-.unknown p { margin: 0; color: var(--ink-2); }
+.unknown h3 { margin: 0; font-weight: var(--weight-medium); color: var(--danger-text); }
+.unknown p { margin: 0; color: var(--text-secondary); }
 
 /* ===== settings groups =================================================== */
 
@@ -844,69 +729,56 @@ button.opt { background: none; border: 0; font: inherit; width: 100%; text-align
   display: flex; flex-direction: column; gap: 2px;
   padding: var(--space-3) var(--space-4); background: var(--surface-1);
   border: 1px solid var(--border-soft); border-radius: var(--r-md);
-  color: var(--ink-1); font: inherit; text-align: left; cursor: pointer;
+  color: var(--text-primary); font: inherit; text-align: left; cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
 }
 .theme:hover { background: var(--surface-2); }
 .theme.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .theme.on b { color: var(--accent); }
 .theme b { font-weight: var(--weight-medium); }
-.theme .key, .theme .desc { color: var(--ink-3); font-size: var(--text-sm); }
+.theme .key, .theme .desc { color: var(--text-tertiary); font-size: var(--type-body-sm); }
 
-/* ===== a screen of TABS, and a section inside one ========================
-   THE GROUPS OF A SCREEN ARE TABS (item 5, 2026-09-28). A fold is a thing a
-   person opens to find out what is inside; what a tab holds is not a surprise —
-   it is the other half of the same screen, one click away — and a gesture that
-   hides it costs a click and teaches nothing. The tabs are also what the
-   REFERENCE does, and the reference is where the person pointed.
-
-   AND A PART IS A SECTION. Inside a tab the parts — the theme, the side of the
-   theme, the motion — are separate blocks with a heading each, all in sight, so
-   the subject is read as a whole instead of opened one drawer at a time. */
+/* ===== a screen of TABS, and a section inside one ===== */
 .tabs {
   display: flex; flex-wrap: wrap; gap: var(--space-1);
-  margin: var(--space-6) var(--space-6) 0;
+  margin: 0;
   border-bottom: 1px solid var(--border-soft);
 }
 .tab {
   padding: var(--space-3) var(--space-4); margin-bottom: -1px;
   background: none; border: 0; border-bottom: 2px solid transparent;
-  color: var(--ink-3); font: inherit; font-size: var(--text-sm);
+  color: var(--text-tertiary); font: inherit; font-size: var(--type-body-sm);
   font-weight: var(--weight-semibold); cursor: pointer;
   transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
 }
-.tab:hover { color: var(--ink-1); }
+.tab:hover { color: var(--text-primary); }
 .tab.on { color: var(--accent); border-bottom-color: var(--accent); }
 .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
-.panel { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-6); max-width: 1000px; }
+.panel { display: flex; flex-direction: column; gap: var(--space-4); }
 .block {
   background: var(--surface-1); border: 1px solid var(--border-soft);
-  border-radius: var(--r-lg); box-shadow: var(--shadow-sm);
+  border-radius: var(--r-lg); 
 }
 .block > h2 {
   margin: 0; padding: var(--space-5) var(--space-5) 0;
-  color: var(--ink-1); font-size: var(--text-md); font-weight: var(--weight-bold);
+  color: var(--text-primary); font-size: var(--type-title); font-weight: var(--weight-semibold);
 }
 .block-body { padding: var(--space-4) var(--space-5) var(--space-5); }
-/* A TABLE INSIDE A SECTION IS A TABLE AND NOT ANOTHER CARD. The rule above
-   (`#body table.grid`) dresses a table that IS the page — its own
-   surface, its own corners, the page's margins — and inside a section the card
-   is already there: the second frame is a table floating inside a box that
-   holds it. */
+/* A TABLE INSIDE A SECTION IS A TABLE AND NOT ANOTHER CARD */
 #body .block-body table.grid {
   margin: 0; width: 100%;
-  background: none; border-radius: 0; box-shadow: none;
+  background: none; border-radius: 0; border: 0; box-shadow: none;
 }
-.block-body dt { margin-top: var(--space-4); color: var(--ink-3); font-size: var(--text-sm); }
+.block-body dt { margin-top: var(--space-4); color: var(--text-tertiary); font-size: var(--type-body-sm); }
 .block-body dl > dt:first-child { margin-top: 0; }
 
 dl { margin: 0; padding: 0; }
-dt { color: var(--ink-3); margin-top: var(--space-3); font-size: var(--text-sm); }
+dt { color: var(--text-tertiary); margin-top: var(--space-3); font-size: var(--type-body-sm); }
 dd { margin: 4px 0 0; word-break: break-word; }
 .back {
   display: inline-flex; align-items: center; gap: var(--space-2);
-  padding: var(--space-2) var(--space-3); color: var(--ink-2); cursor: pointer;
+  padding: var(--space-2) var(--space-3); color: var(--text-secondary); cursor: pointer;
   border-radius: var(--r-sm); border: 1px solid transparent; user-select: none;
   transition: color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out),
               transform var(--dur-fast) var(--ease-out);
@@ -916,82 +788,61 @@ dd { margin: 4px 0 0; word-break: break-word; }
 .subs { border-bottom: 1px solid var(--border-soft); }
 .subs .sub {
   display: flex; gap: var(--space-3); align-items: baseline; width: 100%;
-  padding: var(--space-3) var(--space-6); background: none; border: 0;
-  color: var(--ink-1); font: inherit; text-align: left; cursor: pointer;
+  padding: var(--space-3) var(--space-8); background: none; border: 0;
+  color: var(--text-primary); font: inherit; text-align: left; cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease-out);
 }
 .subs .sub:hover { background: var(--surface-1); }
 .subs .sub b { color: var(--accent); font-weight: var(--weight-medium); }
-.subs .sub .st, .subs .sub .n { color: var(--ink-3); }
+.subs .sub .st, .subs .sub .n { color: var(--text-tertiary); }
 .subs .sub .n { margin-left: auto; }
 
 /* ===== content surfaces: prose / write / file ============================ */
 
-/* THE PADDING WAS A ROOM FOR A DOCUMENT, WORN BY A SENTENCE (2026-09-28):
-   `--space-7` (40px) reads fine around a page of prose, but a project's own
-   `desc` is one line more often than not, and 40px top and bottom turned that
-   one line into a box three lines tall — breathing room stretched into a
-   mask. `--space-5` is the same figure the narrow breakpoint already gives
-   this very rule further down: not a new number, the one this file already
-   calls "enough" once the surface is worth being careful about. */
+/* THE PADDING WAS A ROOM FOR A DOCUMENT, WORN BY A SENTENCE (2026-09-28) */
 .prose, pre.text, .record-body {
-  margin: var(--space-6) var(--space-6) 0;
+  margin: 0;
   padding: var(--space-5); background: var(--surface-1); border-radius: var(--r-lg);
-  box-shadow: var(--shadow-card);
+  border: 1px solid var(--border-soft);
 }
-.file-page, .record-page { display: flex; flex-direction: column; min-height: 100%; }
+.file-page, .record-page { display: flex; flex-direction: column; }
 .file-page { position: relative; }
 .file-page > .prose, .file-page > pre.text,
 .file-page > .file-image, .record-page > .record-body { flex: 1 0 auto; }
-/* THE WHOLE SURFACE IS THE DOOR NOW (2026-10-05): there is no button to find
-   any more — a writable text file opens its write tab (`WriteView.vue`) on
-   one click/tap anywhere on the card, and the cursor is the only thing that
-   says so before the click lands. */
+/* THE WHOLE SURFACE IS THE DOOR NOW (2026-10-05) */
 .prose.writable, pre.text.writable { cursor: pointer; }
-pre.text { overflow-wrap: break-word; white-space: pre-wrap; word-break: break-word; font-size: var(--text-sm); }
-/* THE IMAGE (TASK-167): the same margin `pre.text`'s content area gets, and
-   never bigger than the page it sits in — a photo dropped in `Arquivos/`
-   does not get to set the width of the whole screen. */
-.file-image { display: block; max-width: 100%; max-height: 80vh; margin: var(--space-6); }
-/* O QUE A PÁGINA NÃO DESENHA SOZINHA — o PDF e o vídeo que abrem em nova aba,
-   e o arquivo que não abre e vira download. O cartão é o de sempre (o mesmo
-   `.prose`/`pre.text`), com o nome do arquivo e o botão na mesma linha, e o
-   motivo do limite acima dele. */
+pre.text { overflow-wrap: break-word; white-space: pre-wrap; word-break: break-word; font-size: var(--type-body-sm); }
+.file-image { display: block; max-width: 100%; max-height: 80vh; margin: 0; }
+/* O QUE A PÁGINA NÃO DESENHA SOZINHA */
 .file-open {
   display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3);
-  margin: var(--space-6) var(--space-6) 0;
+  margin: 0;
   padding: var(--space-5); background: var(--surface-1); border-radius: var(--r-lg);
-  box-shadow: var(--shadow-card);
+  border: 1px solid var(--border-soft);
 }
-.file-open > pre.text { flex: 1 1 100%; margin: 0; padding: 0; background: none; box-shadow: none; }
+.file-open > pre.text { flex: 1 1 100%; margin: 0; padding: 0; background: none; border: 0; box-shadow: none; }
 .file-open > .file-name { flex: 1 1 auto; min-width: 0; overflow-wrap: break-word; }
 .prose { overflow-wrap: break-word; }
+.prose:not(.field-prose) { font-size: var(--type-body-lg); }
+.prose h1 { font-size: var(--type-display); }
+.prose h2 { font-size: var(--type-page); }
+.prose h3 { font-size: var(--type-title); }
 .prose:not(.field-prose) > :first-child { margin-block-start: 0; }
 .prose:not(.field-prose) > :last-child { margin-block-end: 0; }
 .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 { line-height: 1.3; margin-block: 1.4em .5em; font-weight: var(--weight-bold); }
 .prose p, .prose ul, .prose ol, .prose blockquote, .prose pre, .prose table, .prose dl { margin-block: 0 1em; }
 .prose a { color: var(--accent); }
-.prose code { background: var(--surface-2); border-radius: 5px; padding: .1em .35em; font-size: .92em; }
+.prose code { background: var(--surface-2); border-radius: 5px; padding: .1em .35em; font-size: var(--type-body-sm); }
 .prose pre { background: var(--surface-2); border-radius: var(--r-md); padding: var(--space-4); overflow-x: auto; }
 .prose pre code { background: none; padding: 0; }
-.prose blockquote { border-inline-start: 3px solid var(--accent); color: var(--ink-2); padding-inline-start: var(--space-4); }
+.prose blockquote { border-inline-start: 3px solid var(--accent); color: var(--text-secondary); padding-inline-start: var(--space-4); }
 .prose hr { border: 0; border-block-start: 1px solid var(--border-soft); }
 .prose th, .prose td { text-align: start; padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--border-soft); }
-.prose th { color: var(--ink-3); font-weight: var(--weight-semibold); }
+.prose th { color: var(--text-tertiary); font-weight: var(--weight-semibold); }
 .prose img { max-width: 100%; border-radius: var(--r-sm); }
-.prose.field-prose { margin: 0; padding: 0; background: none; border-radius: 0; box-shadow: none; }
+.prose.field-prose { margin: 0; padding: 0; background: none; border-radius: 0; border: 0; box-shadow: none; }
 
-/* ===== the markdown table (.md-table) ====================================
-   THE CHAT'S TABLE, and it IS a markdown table and not a product one. A chat
-   answer is markdown now (`AskTurn.vue`): it renders through the same hosted
-   `marked` a `.md` file does, and the table in it wears `.md-table` — the class
-   `lib/markdown`'s sanitizer stamps on every `<table>` it renders when the
-   caller asks for it. It is DELIBERATELY not the product grid (`.grid`, above):
-   a bordered, zebra'd little table that reads as a quotation from the data,
-   where the grid is the screen of the Tables. So it carries no card, no
-   pull-to-page margins, and none of the mobile `data-label` stacking — the
-   product's dress is the grid's. Column alignment honours the `align` the
-   renderer leaves on a cell, so a markdown `:---:` reaches the screen. */
+/* ===== the markdown table (.md-table) ===== */
 .md-table {
   border-collapse: separate; border-spacing: 0; width: 100%; table-layout: auto;
   margin: var(--space-2) 0 0;
@@ -1002,83 +853,65 @@ pre.text { overflow-wrap: break-word; white-space: pre-wrap; word-break: break-w
   padding: var(--space-2) var(--space-3); text-align: left; vertical-align: top;
   border-bottom: 1px solid var(--border-soft);
 }
-/* The header is the markdown one and not the grid's: no stick, no uppercase, no
-   letterspacing — a plain grey label, the way a quoted table reads. */
+/* The header is the markdown one and not the grid's */
 .md-table th {
-  position: static; background: var(--surface-2); color: var(--ink-2);
-  font-weight: var(--weight-semibold); font-size: var(--text-xs);
+  position: static; background: var(--surface-2); color: var(--text-secondary);
+  font-weight: var(--weight-semibold); font-size: var(--type-caption);
   text-transform: none; letter-spacing: normal; white-space: normal;
   border-bottom: 1px solid var(--border-strong);
 }
-.md-table tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--ink-1) 3.5%, var(--surface-1)); }
+.md-table tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--text-primary) 3.5%, var(--surface-1)); }
 .md-table tbody tr:last-child td { border-bottom: 0; }
 .md-table th[align="center"], .md-table td[align="center"] { text-align: center; }
 .md-table th[align="right"], .md-table td[align="right"] { text-align: right; }
 
-/* ===== the write tab: the file alone (2026-10-05, `WriteView.vue`) =========
-   `App.vue` draws NOTHING else for this view — no `nav`, no `header`, no
-   card — and what it draws is deliberately BARE: the surface, the text, and a
-   thin status line. This is the one screen that is PURE EDITING; a rounded
-   section or a shadow around the field would be a box between the person and
-   the file.
-
-   `flex: 1` AND NOT A WIDTH: `#app` is `display: contents` (app.css), so this
-   box is a flex item DIRECTLY on `body` (`display: flex`, base.css) — and a
-   flex item with no grow shrinks to the width of its content, which for a
-   `textarea` is a column a few `cols` wide, the whole page marooned in a
-   strip. `min-width: 0` is the other half: it lets the item sit below its
-   content's own minimum instead of refusing to. */
+/* ===== the write tab: the file alone (2026-10-05, `WriteView.vue`) ===== */
 .write-page {
   flex: 1; min-width: 0; overflow-y: auto;
   height: 100vh;
   height: 100dvh;
-  background: var(--surface-1); color: var(--ink-1);
+  background: var(--surface-1); color: var(--text-primary);
 }
-.write-page .text { margin: var(--space-6); white-space: pre-wrap; }
-.write-page-stage { position: relative; min-height: 100vh; min-height: 100dvh; padding-bottom: var(--space-7); box-sizing: border-box; }
+.write-page .text { margin: var(--space-8); white-space: pre-wrap; }
+.write-page-stage { position: relative; min-height: 100vh; min-height: 100dvh; padding-bottom: var(--space-10); box-sizing: border-box; }
 .write-highlight, .write-page-field {
   margin: 0; border: 0; box-sizing: border-box; width: 100%;
   padding: var(--space-5);
-  font: inherit; font-size: var(--text-lg); line-height: var(--leading-normal);
+  font: inherit; font-size: var(--type-body-lg); line-height: var(--leading-normal);
   letter-spacing: inherit; word-spacing: inherit;
   text-align: start; text-indent: 0; tab-size: 4; white-space: pre-wrap; overflow-wrap: break-word;
   word-break: normal; -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
 }
 .write-page-field {
   display: block; resize: none; overflow: hidden; background: none;
-  color: var(--ink-1); touch-action: manipulation;
+  color: var(--text-primary); touch-action: manipulation;
 }
 .write-page-field:focus-visible { outline: none; }
-/* THE MIRROR, BEHIND A FIELD MADE TRANSPARENT (markdown only): a layer UNDER
-   the caret that reads the same characters, coloured, so what is TYPED stays a
-   plain `<textarea>` (the caret, the selection, the undo stack, all the
-   browser's own) and what is SEEN is the mirror's. */
+/* THE MIRROR, BEHIND A FIELD MADE TRANSPARENT (markdown only) */
 .write-highlight { position: absolute; inset: 0; overflow: hidden; pointer-events: none; user-select: none; }
-.write-page-stage.md .write-page-field { position: relative; color: transparent; caret-color: var(--ink-1); }
-.write-highlight .md-mark { color: var(--ink-3); }
-.write-highlight .md-heading { color: var(--ink-1); font-weight: var(--weight-semibold); }
-.write-highlight .md-quote { color: var(--ink-2); }
+.write-page-stage.md .write-page-field { position: relative; color: transparent; caret-color: var(--text-primary); }
+.write-highlight .md-mark { color: var(--text-tertiary); }
+.write-highlight .md-heading { color: var(--text-primary); font-weight: var(--weight-semibold); }
+.write-highlight .md-quote { color: var(--text-secondary); }
 .write-highlight .md-code, .write-highlight .md-code-block, .write-highlight .md-fence {
-  color: var(--ink-1); background: var(--surface-2); border-radius: 4px;
+  color: var(--text-primary); background: var(--surface-2); border-radius: 4px;
 }
-.write-highlight .md-strong { font-weight: var(--weight-semibold); color: var(--ink-1); }
-.write-highlight .md-em { font-style: italic; color: var(--ink-2); }
+.write-highlight .md-strong { font-weight: var(--weight-semibold); color: var(--text-primary); }
+.write-highlight .md-em { font-style: italic; color: var(--text-secondary); }
 .write-highlight .md-link { color: var(--accent); }
 
-/* A BARRA DE STATUS: fininha, presa ao pé da janela, e a única moldura desta
-   página. O estado da gravação à esquerda; o que está escrito à direita. */
+/* A BARRA DE STATUS */
 .write-status {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 1;
   display: flex; align-items: center; gap: var(--space-4);
   padding: var(--space-1) var(--space-5);
   background: var(--surface-1); border-top: 1px solid var(--border-soft);
-  color: var(--ink-3); font-size: var(--text-xs);
+  color: var(--text-tertiary); font-size: var(--type-caption);
 }
 .write-status .state { margin-inline-end: auto; }
-.write-status.bad .state { color: var(--danger); }
+.write-status.bad .state { color: var(--danger-text); }
 .write-status .n { font-variant-numeric: tabular-nums; }
-/* A SAÍDA, na barra: a página não desenha casca, então desenha o próprio
-   voltar — o `Voltar` do rodapé leva à página de leitura do mesmo arquivo. */
+/* A SAÍDA, na barra */
 .write-status .leave {
   border: 0; background: none; padding: 0; cursor: pointer;
   font: inherit; color: var(--accent);
@@ -1086,9 +919,9 @@ pre.text { overflow-wrap: break-word; white-space: pre-wrap; word-break: break-w
 .write-status .leave:hover { text-decoration: underline; }
 
 .page-actions { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;
-                margin: var(--space-6) var(--space-6) 0; padding: 0; }
-.file-state { color: var(--ink-2); }
-.file-state.bad { color: var(--danger); }
+                margin: 0; padding: 0; }
+.file-state { color: var(--text-secondary); }
+.file-state.bad { color: var(--danger-text); }
 
 a.ref, a.url {
   color: var(--accent); text-decoration: none; border-bottom: 1px solid transparent;
@@ -1096,20 +929,14 @@ a.ref, a.url {
   transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out),
               background-color var(--dur-fast) var(--ease-out);
 }
-/* Under the pointer the wash goes ONE STEP STRONGER (`--accent-100`, where the
-   resting soft is the `--accent-50` behind it) — the difference between a
-   reference you are near and one you are leaving. */
+/* Under the pointer the wash goes ONE STEP STRONGER (`--accent-100`, where the resting soft is the… */
 a.ref:hover, a.url:hover { border-bottom-color: currentColor; background: var(--accent-100); }
 
 /* ===== interpreter: chat / balloon / turn ================================ */
 
 .turn { display: flex; flex-direction: column; gap: var(--space-2); }
 .turn .proposal { margin: 0; }
-/* THE TWO VOICES, by COLOR and the system's own rounding — not a bubble: no
-   tail, no left/right split, the same `--r-lg` every content surface already
-   carries (`.prose`, `.record-body`). What was SAID is the accent, solid,
-   because it is the one thing in the turn that is the person's; what comes
-   back is the quiet surface, because it is the engine's. */
+/* THE TWO VOICES, by COLOR and the system's own rounding */
 .turn .said, .turn .answer-msg {
   margin: 0; padding: var(--space-3) var(--space-4); border-radius: var(--r-lg);
 }
@@ -1117,153 +944,87 @@ a.ref:hover, a.url:hover { border-bottom-color: currentColor; background: var(--
   display: flex; align-items: baseline; gap: var(--space-3); flex-wrap: wrap;
   background: var(--accent); color: var(--accent-ink);
 }
-.turn .said .stamp { margin-left: auto; opacity: .72; font-size: var(--text-xs); white-space: nowrap; }
-/* THE ANSWER IS A MESSAGE TOO — its own card, its own stamp, whether it is a
-   sentence or a table: the two are read the same way the person's own turn is,
-   and a table sitting bare in the log, with no card and no clock, would be the
-   one answer that did not look like it was said at a time at all. */
+.turn .said .stamp { margin-left: auto; opacity: .72; font-size: var(--type-caption); white-space: nowrap; }
+/* THE ANSWER IS A MESSAGE TOO */
 .turn .answer-msg {
   display: flex; flex-direction: column; gap: var(--space-2);
-  /* NOT `--surface-2`: on the light theme it sits a hair off `--surface-0`,
-     the PAGE's own background, so the card read as no card at all. A mix off
-     `--ink-1` stays a visible grey against the page in every theme, light or
-     dark, without a token of its own to keep in step with either. The SAME
-     mix is spelled again below (the bullets' own fold-fade) rather than named
-     as a custom property: this file's token contract (`test_design.py`) reads
-     every `var(--x)` with no fallback as a THEME token, and this one answers
-     to no theme — it is arithmetic on tokens that already do. */
-  background: color-mix(in srgb, var(--ink-1) 6%, var(--surface-1));
-  color: var(--ink-1);
+  /* NOT `--surface-2` */
+  background: color-mix(in srgb, var(--text-primary) 6%, var(--surface-1));
+  color: var(--text-primary);
 }
-/* THE STAMP RIDES THE SAME LINE as the text, the way `.said`'s does — a card
-   that put its clock on a row of its own was a card a line taller for nothing,
-   for the common case of one short sentence back. When the answer is RENDERED
-   (`.md-body`, below) there is no such line to share it with — a table, a list
-   —, so it keeps the row below; the plain `.answer` fallback keeps it inline. */
-.turn .answer-msg .stamp { opacity: .6; font-size: var(--text-xs); white-space: nowrap; }
+/* THE STAMP RIDES THE SAME LINE as the text, the way `.said`'s does */
+.turn .answer-msg .stamp { opacity: .6; font-size: var(--type-caption); white-space: nowrap; }
 .turn .answer-msg > .stamp { align-self: flex-end; }
 .turn .answer {
   display: flex; align-items: baseline; gap: var(--space-3); flex-wrap: wrap;
   margin: 0; white-space: pre-wrap;
 }
 .turn .answer .stamp { margin-left: auto; }
-/* THE ANSWER IS MARKDOWN (2026-10-05): `.md-body` holds what the renderer
-   (`lib/markdown`) built out of the engine's answer — a paragraph, a markdown
-   list, or the `.md-table` above. NONE of it wears a panel of its own now: the
-   grey card (`.answer-msg`) is the one surface, and the table inside it is the
-   table block's. The turn used to draw a table ELEMENT and a bullet LIST of its
-   own (`.answer-table*`, `.answer-bullets-wrap`, `.folded`); the three are gone
-   — the answer is one markdown body, whatever shape it came back in. */
+/* THE ANSWER IS MARKDOWN (2026-10-05) */
 .turn .md-body { display: flex; flex-direction: column; gap: var(--space-2); }
 .turn .md-body > :first-child { margin-top: 0; }
 .turn .md-body > :last-child { margin-bottom: 0; }
-/* A paragraph keeps the line breaks the engine wrote (`pre-wrap`), the same
-   rule the plain `.answer` paragraph always had. */
+/* A paragraph keeps the line breaks the engine wrote (`pre-wrap`), the same rule the plain `.answer`… */
 .turn .md-body p { margin: 0; white-space: pre-wrap; }
 .turn .md-body ul, .turn .md-body ol { margin: 0; padding-left: 1.2em; }
 .turn .md-body li { margin: 0; }
-.turn .md-body code { background: var(--surface-2); border-radius: 5px; padding: .1em .35em; font-size: .92em; }
+.turn .md-body code { background: var(--surface-2); border-radius: 5px; padding: .1em .35em; font-size: var(--type-body-sm); }
 .turn .md-body a { color: var(--accent); }
-.turn .proposal .tag { color: var(--ink-3); margin-right: var(--space-2); }
-/* THE ROW AS A CARD (20/10/2026): `create`, `edit`, `cancel`, `delete` and
-   `view` answer with the record they touched, and the card is the record whole —
-   the table's main fields, already in words, and the id as the door to its page.
-   A BUTTON, because it opens one: it reads as content (text left, no chrome of a
-   button) and reacts as a door (accent on hover, focus ring), the same contract
-   `.row` gives a table row. */
+.turn .proposal .tag { color: var(--text-tertiary); margin-right: var(--space-2); }
+/* THE ROW AS A CARD (20/10/2026) */
 .turn .lead { margin: 0; }
 .turn .card {
   display: flex; flex-direction: column; gap: var(--space-3);
   width: 100%; padding: var(--space-3) var(--space-4); text-align: left;
-  font: inherit; color: var(--ink-1); cursor: pointer;
+  font: inherit; color: var(--text-primary); cursor: pointer;
   background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--r-sm);
-  transition: border-color .12s ease;
+  transition: border-color var(--dur-2) var(--ease-move), box-shadow var(--dur-2) var(--ease-move);
 }
 .turn .card:hover { border-color: var(--accent); }
-.turn .card:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.turn .card:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .turn .card-head { display: flex; align-items: baseline; gap: var(--space-3); flex-wrap: wrap; }
 .turn .card-id {
-  font-family: monospace; font-size: var(--text-xs);
+  font-family: var(--font-mono); font-size: var(--type-caption);
   font-weight: var(--weight-semibold); color: var(--accent);
 }
 .turn .card-title { font-weight: var(--weight-semibold); }
 .turn .card-fields { display: flex; flex-direction: column; gap: var(--space-2); }
 .turn .card-field { display: flex; align-items: baseline; gap: var(--space-3); }
 .turn .card-label {
-  flex: 0 0 auto; min-width: 7em; color: var(--ink-3); font-size: var(--text-xs);
+  flex: 0 0 auto; min-width: 7em; color: var(--text-tertiary); font-size: var(--type-caption);
 }
 .turn .card-value { white-space: pre-wrap; }
 .turn[data-kind="question"] .answer, .turn[data-kind="refused"] .answer,
-.turn[data-kind="question"] .md-body, .turn[data-kind="refused"] .md-body { color: var(--ink-2); }
-/* THE SAME MARGIN EVERY OTHER PAGE BRINGS (`#body table`, `.prose`, above):
-   `#body` carries none of its own, and a view that forgot it sits flush
-   against the window — which `.chat` did (2026-10-03) until this line. The
-   margin goes on three sides, not four, the same as the table's: the panel
-   still ends where the window ends at the FOOT, so no scrollbar-reveal strip
-   reopens there. `height` drops the margin's own `--space-6` so the box
-   still fits `#body` exactly — a margin is OUTSIDE the box it is measured
-   against, and `height: 100%` plus it would overflow by exactly that much. */
+.turn[data-kind="question"] .md-body, .turn[data-kind="refused"] .md-body { color: var(--text-secondary); }
+/* THE SAME MARGIN EVERY OTHER PAGE BRINGS (`#body table`, `.prose`, above) */
 .chat {
   display: flex; flex-direction: column; gap: var(--space-3);
-  height: calc(100% - var(--space-6));
-  margin: var(--space-6) var(--space-6) 0;
+  flex: 1; min-height: 0;
+  margin: 0;
 }
-/* WHITE — the page around it is `--surface-0`, close enough in the light
-   theme that a grey turn (`.answer-msg`) read as sitting on the SAME grey as
-   its own log. */
+/* WHITE — the page around it is `--surface-0`, close enough in the light theme that a grey turn… */
 .chat-log {
   flex: 1; display: flex; flex-direction: column; gap: var(--space-3); overflow-y: auto;
   padding: var(--space-4); background: var(--surface-1); border-radius: var(--r-lg);
 }
-/* THE OPENING (20/10/2026): an empty conversation says what the box takes and
-   offers four sentences to try — each a button that asks for real, not a
-   picture of one. Quiet, because it is the box talking before anything was
-   asked, not an answer to anything. */
-.chat-hello { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); color: var(--ink-2); }
+/* THE OPENING (20/10/2026) */
+.chat-hello { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); color: var(--text-secondary); }
 .chat-hello p { margin: 0; }
 .chat-example {
-  padding: var(--space-2) var(--space-3); font: inherit; font-size: var(--text-sm);
-  color: var(--ink-1); text-align: left; cursor: pointer;
+  padding: var(--space-2) var(--space-3); font: inherit; font-size: var(--type-body-sm);
+  color: var(--text-primary); text-align: left; cursor: pointer;
   background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--r-sm);
 }
 .chat-example:hover { border-color: var(--accent); }
-.chat-example:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.chat-example:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .chat-form { display: flex; align-items: center; gap: var(--space-3); padding: 0 var(--space-4) var(--space-4); }
-.chat-say {
-  flex: 1; min-width: 0; padding: var(--space-3); background: var(--surface-0); color: var(--ink-1);
-  border: 1px solid var(--border-strong); border-radius: var(--r-sm); font: inherit;
-}
-.chat-say:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-/* TASK-180, fatia 3/3: the one retry a refusal can still offer — the Main Key
-   the first attempt did not carry, typed inline and never kept past the
-   request it travels with. */
+.chat-say { flex: 1; min-width: 0; }
 .assist-retry { display: flex; align-items: center; gap: var(--space-2); }
-.assist-retry input {
-  flex: 1; min-width: 0; padding: var(--space-2) var(--space-3);
-  background: var(--surface-0); color: var(--ink-1);
-  border: 1px solid var(--border-strong); border-radius: var(--r-sm); font: inherit;
-}
-.assist-retry input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-/* A CHAVE DO JEV (Configurações): os dois campos e o botão, com o MESMO estilo
-   dos inputs do chat/retry — o campo do Jev não é um input de forma de tabela,
-   mas é um campo de texto como qualquer outro. */
+.assist-retry input { flex: 1; min-width: 0; }
 .jev-form { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
-.jev-form input {
-  flex: 1; min-width: 16ch; padding: var(--space-2) var(--space-3);
-  background: var(--surface-0); color: var(--ink-1);
-  border: 1px solid var(--border-strong); border-radius: var(--r-sm); font: inherit;
-}
-.jev-form input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-/* OS BOTÕES DE UM BLOCO DE CONFIGURAÇÕES: o `--set-pad` do `.btn` é o respiro
-   de um cartão, e num controle dentro de um bloco ele fica grande demais. O
-   `.block-body` só existe na tela de Configurações, então o ajuste é dela. */
-.block-body .btn { padding: var(--space-1) var(--space-3); }
-/* O AVISO DO CHAT ("Jev não configurado"): a mesma margem lateral do log e do
-   formulário — não é uma fala da conversa, e não pode colar na borda. */
-.chat-notice { margin: 0; padding: 0 var(--space-4); color: var(--ink-3); font-size: var(--text-xs); }
-/* TASK-183: the cautious assist's own question, turned into two buttons
-   instead of a sentence to retype — "Confirmar" resubmits the rewritten
-   sentence, "Negar" asks nothing and only hides the pair. */
+.jev-form input { flex: 1; min-width: 16ch; }
+/* O AVISO DO CHAT ("Jev não configurado") */
+.chat-notice { margin: 0; padding: 0 var(--space-4); color: var(--text-tertiary); font-size: var(--type-caption); }
 .assist-confirm { display: flex; align-items: center; gap: var(--space-2); }
 
 /* ===== ruler (risk gate) ================================================= */
@@ -1275,18 +1036,18 @@ a.ref:hover, a.url:hover { border-bottom-color: currentColor; background: var(--
 .ruler-part.runs { background: var(--accent-soft); }
 .ruler-part.waits { flex: 1; background: var(--surface-2); }
 .ruler-line { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--accent); }
-.ruler-mark { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--ink-1); }
-.ruler-legend { display: flex; color: var(--ink-3); font-size: var(--text-xs); }
+.ruler-mark { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--text-primary); }
+.ruler-legend { display: flex; color: var(--text-tertiary); font-size: var(--type-caption); }
 .ruler-legend .runs, .ruler-legend .waits { display: block; text-align: center; }
 .ruler-legend .waits { flex: 1; }
-.ruler-note { margin: 0; color: var(--ink-3); font-size: var(--text-xs); }
-.ruler-none { margin: 0; color: var(--ink-3); font-size: var(--text-xs); }
+.ruler-note { margin: 0; color: var(--text-tertiary); font-size: var(--type-caption); }
+.ruler-none { margin: 0; color: var(--text-tertiary); font-size: var(--type-caption); }
 
 /* ===== the section page: what a section of the folder holds ================= */
 
 .section {
-  display: flex; flex-direction: column; gap: var(--space-6);
-  padding: var(--space-6);
+  display: flex; flex-direction: column; gap: var(--space-8);
+  padding: var(--space-8);
 }
 
 .stats {
@@ -1297,136 +1058,100 @@ a.ref:hover, a.url:hover { border-bottom-color: currentColor; background: var(--
   display: flex; flex-direction: column; gap: 2px;
   padding: var(--space-5); background: var(--surface-1);
   border: 1px solid var(--border-soft); border-radius: var(--r-lg);
-  box-shadow: var(--shadow-sm);
+  
 }
-/* THE NUMBER CARRIES THE TYPE SCALE THE REST OF THE APP NEVER HAD (item 1): the
-   display face, at the step this system keeps for exactly this — a count on a
-   card, where a page has one thing to say and the eye should land on it first. */
 .stat b {
-  font-family: var(--font-display); font-size: var(--text-2xl);
+  font-family: var(--font-display, var(--font-sans)); font-size: var(--type-page);
   font-weight: var(--weight-bold); line-height: var(--leading-tight);
   letter-spacing: var(--letter-tight);
-  font-variant-numeric: tabular-nums; color: var(--ink-1);
+  font-variant-numeric: tabular-nums; color: var(--text-primary);
 }
-.stat span { color: var(--ink-3); font-size: var(--text-sm); }
-/* The TONE is the vocabulary's, not this file's invention: the table declares
-   which statuses there are, the theme says what a finished one looks like. A
-   key no rule here knows keeps the ink it would have had. */
-.stat[data-state="done"] b { color: var(--success); }
-.stat[data-state="doing"] b { color: var(--warning); }
-.stat[data-state="todo"] b { color: var(--info); }
+.stat span { color: var(--text-tertiary); font-size: var(--type-body-sm); }
+/* The TONE is the vocabulary's, not this file's invention */
+.stat[data-state="done"] b { color: var(--success-text); }
+.stat[data-state="doing"] b { color: var(--warning-text); }
+.stat[data-state="todo"] b { color: var(--info-text); }
 
-/* THE SAME FOUR NUMBERS AS ONE PROPORTION. A bar is read before a count is, and
-   the parts are the table's own order — so the shape of the bar is the shape of
-   the vocabulary, not a second one drawn here. */
+/* THE SAME FOUR NUMBERS AS ONE PROPORTION */
 .bars { display: flex; gap: 4px; height: 12px; }
 .bar-part {
   display: block; min-width: 6px; border-radius: var(--r-full);
   background: var(--border-strong);
-  transition: flex-grow var(--dur-base) var(--ease-out);
+  transform-origin: left;
+  animation: bar-in var(--dur-4) var(--ease-move) backwards;
 }
 .bar-part[data-state="done"] { background: var(--success); }
 .bar-part[data-state="doing"] { background: var(--warning); }
 .bar-part[data-state="todo"] { background: var(--info); }
 
 .cards { display: flex; flex-direction: column; gap: var(--space-3); }
-/* A LINHA QUE NASCE NA TELA (TASK-198): o botão que cria a nota fica no lugar
-   das notas, e a lista desce DEPOIS dele — não ao lado, e não do tamanho da
-   lista toda. O `align-self` é o que impede a coluna de esticar o botão. */
 .cards > .btn { align-self: flex-start; }
 .cards h2 {
-  margin: 0; color: var(--ink-3); font-size: var(--text-xs);
+  margin: 0; color: var(--text-tertiary); font-size: var(--type-caption);
   font-weight: var(--weight-semibold); letter-spacing: .06em; text-transform: uppercase;
 }
 .card {
   display: flex; flex-direction: column; gap: var(--space-3); width: 100%;
-  padding: var(--space-4) var(--space-5); text-align: left; cursor: pointer;
-  background: var(--surface-1); color: var(--ink-1); font: inherit;
+  padding: var(--density-card-pad-y) var(--density-card-pad-x); text-align: left; cursor: pointer;
+  background: var(--surface-1); color: var(--text-primary); font: inherit;
   border: 1px solid var(--border-soft); border-radius: var(--r-lg);
-  box-shadow: var(--shadow-sm);
+  
   transition: border-color var(--dur-fast) var(--ease-out),
-              box-shadow var(--dur-fast) var(--ease-out),
-              transform var(--dur-fast) var(--ease-out);
+              background var(--dur-fast) var(--ease-out);
 }
-.card:hover { border-color: var(--accent-300); box-shadow: var(--shadow-card); transform: translateY(-1px); }
+.card:hover { border-color: var(--accent-300); background: var(--surface-2); }
 .card-top { display: flex; align-items: baseline; gap: var(--space-3); }
 .card-top b { font-weight: var(--weight-semibold); }
-.card-top .n { margin-left: auto; color: var(--ink-3); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+.card-top .n { margin-left: auto; color: var(--text-tertiary); font-size: var(--type-body-sm); font-variant-numeric: tabular-nums; }
 .card .progress {
   display: block; height: 6px; border-radius: var(--r-full);
   background: var(--surface-2); overflow: hidden;
 }
-/* UMA LINHA QUE SE LÊ E NÃO SE ABRE: a pasta de `Arquivos`, que conta o que
-   guarda e não leva a lugar nenhum — o caminho até um arquivo é a árvore, e uma
-   linha aqui que abrisse alguma coisa seria uma segunda porta para a mesma
-   sala. Onde a linha É uma porta, ela é o `.card` acima. */
+/* UMA LINHA QUE SE LÊ E NÃO SE ABRE */
 .row {
   display: flex; align-items: baseline; gap: var(--space-3);
-  padding: var(--space-4) var(--space-5);
-  background: var(--surface-1); color: var(--ink-1);
+  padding: var(--density-card-pad-y) var(--density-card-pad-x);
+  background: var(--surface-1); color: var(--text-primary);
   border: 1px solid var(--border-soft); border-radius: var(--r-lg);
-  box-shadow: var(--shadow-sm);
+  
 }
 .row b { font-weight: var(--weight-semibold); }
-.row .n { margin-left: auto; color: var(--ink-3); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+.row .n { margin-left: auto; color: var(--text-tertiary); font-size: var(--type-body-sm); font-variant-numeric: tabular-nums; }
 
-/* O LEMBRETE, na tela de Lembretes (TASK-164): a mesma linha que se lê, com o
-   TEXTO à esquerda, a recorrência em cinza ao lado, e o PRÓXIMO toque à direita
-   — é ele que separa um lembrete de uma tarefa, e é o que a linha diz depois do
-   nome. Um lembrete que não vem (pausado, um `once` vencido) fica esmaecido: a
-   linha existe, e diz que não vem. */
 .reminder { flex-wrap: wrap; }
-.reminder .meta { color: var(--ink-3); font-size: var(--text-sm); }
-.reminder .n { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.reminder .meta { color: var(--text-tertiary); font-size: var(--type-body-sm); }
+.reminder .n { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 .reminder.paused { opacity: .55; }
 
-/* O TOM DE CADA BALDE, e ele é do DESENHO e não do dado: os quatro baldes são
-   uma lista fechada do motor (`prose.bucket`), como os status de uma tarefa —
-   e o que a cor diz é de que espécie é o arquivo, não quanto ele vale. */
+/* O TOM DE CADA BALDE, e ele é do DESENHO e não do dado */
 .stat[data-bucket="code"] b, .bar-part[data-bucket="code"] { color: var(--accent); }
 .stat[data-bucket="code"] b { color: var(--accent); }
 .bar-part[data-bucket="code"] { background: var(--accent); }
-.stat[data-bucket="text"] b { color: var(--info); }
+.stat[data-bucket="text"] b { color: var(--info-text); }
 .bar-part[data-bucket="text"] { background: var(--info); }
-.stat[data-bucket="data"] b { color: var(--warning); }
+.stat[data-bucket="data"] b { color: var(--warning-text); }
 .bar-part[data-bucket="data"] { background: var(--warning); }
-.stat[data-bucket="other"] b { color: var(--ink-2); }
+.stat[data-bucket="other"] b { color: var(--text-secondary); }
 .bar-part[data-bucket="other"] { background: var(--border-strong); }
-.stat[data-bucket="image"] b { color: var(--success); }
+.stat[data-bucket="image"] b { color: var(--success-text); }
 .bar-part[data-bucket="image"] { background: var(--success); }
 
 .card .progress-part {
   display: block; height: 100%; background: var(--accent);
   border-radius: var(--r-full);
-  transition: width var(--dur-base) var(--ease-out);
+  width: 100%; transform-origin: left;   /* the share is `scaleX`, set inline */
+  transition: transform var(--dur-4) var(--ease-move);
 }
 
-/* ===== the board: a task moved by dragging it (TaskBoard.vue) =============
-   ONE SCROLLER, STILL — the rule `#kinds`/`#body` already keep (2026-09-28,
-   `base.css` §1's own comment): the columns never scroll sideways, they WRAP,
-   through `auto-fit` on the grid. Four columns on a wide screen, one under the
-   other on a phone — the same board, never a second layout for it. */
-/* THE SAME MARGIN A TABLE GETS FOR FREE (`#body table`, above): `#body` itself
-   carries none (`padding: 0`) — every page that lands straight in it, a board
-   included, has to bring its own, or it sits flush against the edges every
-   OTHER page keeps clear. */
-/* THE ONE PLACE A CARD IS BORN (TASK-162, fatia 2/2): a title and Enter, the
-   narrowest door onto `action: "create"` until TASK-121/137 give every table
-   its own. Same margin as `.board` below it, and no bottom one of its own —
-   the grid's `gap` would double it. */
-.board-add {
-  margin: var(--space-6) var(--space-6) 0;
-}
-.board-add input {
-  width: 100%; padding: var(--space-3) var(--space-4);
-  background: var(--surface-1); color: var(--ink-1); font: inherit;
-  border: 1px solid var(--border-soft); border-radius: var(--r-md);
-}
+/* ===== the board: a task moved by dragging it (TaskBoard.vue) ===== */
+/* THE SAME MARGIN A TABLE GETS FOR FREE (`#body table`, above) */
+.board-add { margin: 0; }
+.board-add input { width: 100%; }
 .board {
   display: grid; gap: var(--space-4);
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   align-items: start;
-  margin: var(--space-6) var(--space-6) var(--space-6);
+  margin: 0;
 }
 .board-col {
   display: flex; flex-direction: column; gap: var(--space-3);
@@ -1436,38 +1161,35 @@ a.ref:hover, a.url:hover { border-bottom-color: currentColor; background: var(--
   transition: border-color var(--dur-fast) var(--ease-out),
               background var(--dur-fast) var(--ease-out);
 }
-/* THE COLUMN A CARD IS DRAGGED OVER, drawn with the same accent every other
-   TARGET in this system answers with — a ring and never a fill, so the cards
-   already there keep reading against the surface they sit on. */
+/* THE COLUMN A CARD IS DRAGGED OVER, drawn with the same accent every other TARGET in this system answers… */
 .board-col.over { border-color: var(--accent-300); background: var(--accent-50); }
 .board-col-head {
   display: flex; align-items: baseline; gap: var(--space-2);
   padding: 0 var(--space-2);
-  color: var(--ink-2); font-size: var(--text-sm); font-weight: var(--weight-semibold);
+  color: var(--text-secondary); font-size: var(--type-body-sm); font-weight: var(--weight-semibold);
 }
 .board-col-head .n {
-  margin-left: auto; color: var(--ink-3); font-variant-numeric: tabular-nums;
+  margin-left: auto; color: var(--text-tertiary); font-variant-numeric: tabular-nums;
 }
 .board-col-body { display: flex; flex-direction: column; gap: var(--space-2); }
 .board-col-body .empty { padding: var(--space-3) var(--space-2); }
 .task-card {
   display: flex; flex-direction: column; gap: var(--space-2); width: 100%;
   padding: var(--space-3) var(--space-4); text-align: left; cursor: grab;
-  background: var(--surface-1); color: var(--ink-1); font: inherit;
+  background: var(--surface-1); color: var(--text-primary); font: inherit;
   border: 1px solid var(--border-soft); border-radius: var(--r-md);
-  box-shadow: var(--shadow-xs);
+  
   transition: border-color var(--dur-fast) var(--ease-out),
-              box-shadow var(--dur-fast) var(--ease-out),
-              transform var(--dur-fast) var(--ease-out),
+              background var(--dur-fast) var(--ease-out),
               opacity var(--dur-fast) var(--ease-out);
 }
-.task-card:hover { border-color: var(--accent-300); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+.task-card:hover { border-color: var(--accent-300); background: var(--surface-2); }
 .task-card.dragging { opacity: .4; cursor: grabbing; }
 .task-card-text { font-weight: var(--weight-medium); }
 .task-card-meta {
   display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2);
 }
-.task-card-deadline { color: var(--ink-3); font-size: var(--text-xs); }
+.task-card-deadline { color: var(--text-tertiary); font-size: var(--type-caption); }
 
 /* ===== scrollbars ========================================================= */
 
@@ -1496,10 +1218,25 @@ a.ref:hover, a.url:hover { border-bottom-color: currentColor; background: var(--
 
 /* ===== motion ============================================================= */
 
+/* HOVER AND FOCUS ARRIVE, THEY DO NOT SNAP */
+:where(button, a, summary, [role="button"], [tabindex], .tab, .fbtn, .pop .opt,
+       .grid tbody tr, .turn .card, .chat-example) {
+  transition: color var(--dur-2) var(--ease-move), background-color var(--dur-2) var(--ease-move),
+              border-color var(--dur-2) var(--ease-move), box-shadow var(--dur-2) var(--ease-move);
+}
+
 @keyframes veil-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes dialog-in { from { opacity: 0; transform: translate(-50%, -46%) scale(.97); }
                         to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
-@keyframes balloon-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes balloon-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes veil-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes dialog-out { from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+                         to { opacity: 0; transform: translate(-50%, -50%) scale(.98); } }
+@keyframes balloon-out { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(4px); } }
+@keyframes pop-out { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(.98); } }
+@keyframes bar-in { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes view-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+.page > :not(.page-header) { animation: view-in var(--dur-3) var(--ease-enter); }
 @keyframes pop-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1510,126 +1247,96 @@ html.no-motion *, html.no-motion *::before, html.no-motion *::after {
   animation-duration: .001ms !important; transition-duration: .001ms !important;
 }
 
+/* THE PAGE SPACES ITS BLOCKS (F3). Last on purpose: a component's own rule says
+   `margin: 0`, and this one — same weight, later — is what gives the gap back. */
+.page > * + *, .file-page > * + *, .record-page > * + * { margin-top: var(--space-6); }
+.page > .page-header + * { margin-top: var(--page-header-gap); }
+.page .hidden-count { margin-top: var(--space-3); }
+
 /* ===== responsive: the one literal band (contract with breakpoint.ts) ===== */
 
-/* THE WIDE WINDOW: THE PANEL IS A RAIL (2026-10-05). Below 961px the panel is
-   the overlay drawer it needs to be — there is no room to keep it on screen.
-   At and above the band there IS room, so it is the other thing: a THIN COLUMN
-   that is always there, carrying only the MARKS (the icons, never the words),
-   and the foot's own button opens it into the full panel. It goes back IN FLOW
-   here — a flex sibling of `main`, not the fixed overlay of the narrow side —
-   which is what lets the page sit BESIDE it instead of under it, and what
-   makes the one thing that moves (its width) push the page rather than cover
-   it. `position: relative` and not `static`: the foot is `absolute`, and it
-   still has to hang off the panel's own box. */
+/* THE WIDE WINDOW */
 @media (min-width: 961px) {
   nav {
     position: relative;
     width: var(--nav-rail-w);
     transform: none;
-    transition: width var(--dur-base) var(--ease-out);
+    transition: none;   /* the rail pushes the page; its width is never animated */
   }
   html.nav-open nav { width: var(--nav-w); box-shadow: var(--nav-edge); }
-  /* MARKS, NOT WORDS. While the panel is a rail every caret, count and long
-     name leaves it, and a section's contents — open only by the person's
-     choice — have no column to live in at 44px. `html:not(.nav-open)` and not
-     a second rule to put them back: open, none of this applies and the base
-     rules are the ones in force, which is where the words belong. */
+  /* MARKS, NOT WORDS */
   html:not(.nav-open) nav .caret,
   html:not(.nav-open) nav .n,
   html:not(.nav-open) nav .brand-name,
   html:not(.nav-open) nav .foldable { display: none; }
-  /* THE LABELS STAY FOR A SCREEN READER, they only stop being SEEN: a rail row
-     is still a button with a name, and `display: none` would take the name with
-     the pixels (WCAG 2.4.6, and a control a screen reader cannot announce is a
-     control only a sighted person has). */
+  /* THE LABELS STAY FOR A SCREEN READER, they only stop being SEEN */
   html:not(.nav-open) nav .t,
-  html:not(.nav-open) nav .side-foot > .file > span {
+  html:not(.nav-open) nav .side-foot > .file > span,
+  html:not(.nav-open) nav .file[data-view="reminders"] > span,
+  html:not(.nav-open) nav .file[data-view="notes"] > span {
     position: absolute; width: 1px; height: 1px;
     padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%);
     white-space: nowrap; border: 0;
   }
-  /* A rail row is the mark CENTERED, and the box a word-and-mark row needs is
-     wider than the rail: the side margins and the padding that made room for a
-     label would squeeze the icon past the edge. */
+  /* A rail row is the mark CENTERED, and the box a word-and-mark row needs is wider than the rail */
   html:not(.nav-open) nav button,
   html:not(.nav-open) nav .folder,
-  /* THE FOOT'S ROWS ARE `.file`, AND THAT IS WHY THEY NEED THEIR OWN SELECTOR:
-     the base rule (`nav .side-foot > .file`, below) is more specific than
-     `nav button`, so on the rail it kept `flex-start` and the mark sat at the
-     left edge instead of centered — the report. Same treatment, named. */
+  /* THE FOOT'S ROWS ARE `.file`, AND THAT IS WHY THEY NEED THEIR OWN SELECTOR */
   html:not(.nav-open) nav .side-foot > .file {
     justify-content: center;
     width: calc(100% - 2 * var(--space-2));
     margin-inline: var(--space-2);
     padding-inline: 0;
   }
-  /* The brand is the rail's own top mark: centered, with the gutter its 34px
-     tile does not need at 44px of column. */
+  /* The brand is the rail's own top mark */
   html:not(.nav-open) nav h1 { justify-content: center; padding-inline: 0; }
-  /* The foot's door says "open" while the panel is a rail — the close glyph is
-     only right once the full panel is what is on screen. */
+  /* The foot's door says "open" while the panel is a rail */
   nav .side-foot > .file.nav-toggle::before { --i: url("/icons/at2-nav-menu.svg"); }
   html.nav-open nav .side-foot > .file.nav-toggle::before { --i: url("/icons/at2-nav-close.svg"); }
-  /* The corner button and its scrim are the NARROW side's doors: nothing here
-     is summoned from off-screen, so neither has a job. The header starts where
-     the rail ends, with the ordinary page gutter. */
+  /* The corner button and its scrim are the NARROW side's doors */
   .menu-toggle { display: none; }
-  header { padding-inline-start: var(--space-6); }
+  header { padding-inline-start: var(--page-gutter); }
   html.nav-open .scrim { display: none; }
 }
 
 @media (max-width: 960px) {
-  /* THE DRAWER LEAVES A STRIP OF THE PAGE (2026-10-05): at full width it left
-     NOTHING outside it to touch, so the only way to close it was the foot's
-     own button — the scrim's click (`#scrim`) and the corner toggle both sit
-     UNDER the 100vw panel and never got the touch. 80vw is the strip: enough
-     of the page stays visible to tap it shut, which is the gesture a drawer is
-     walked out of. */
+  /* THE DRAWER LEAVES A STRIP OF THE PAGE (2026-10-05) */
   nav { width: 80vw; border-right: 0; }
   #kinds, #body, .pop, .settings { scrollbar-width: none; }
   #kinds::-webkit-scrollbar, #body::-webkit-scrollbar, .pop::-webkit-scrollbar, .settings::-webkit-scrollbar { display: none; }
-  #body table.grid { margin: var(--space-4) 0 0; width: 100%; border-radius: var(--r-md); }
-  .prose, pre.text, .record-body { margin: var(--space-4) var(--space-4) 0; }
+  :root { --page-gutter: var(--space-6); }
+  #body table.grid { border-radius: var(--r-md); }
   .groups { padding: var(--space-4); }
-  .page-actions, .hidden-count { margin-left: var(--space-4); margin-right: var(--space-4); }
 }
 
 @media (max-width: 640px) {
+  :root { --page-gutter: var(--space-4); }
   .hidden-count { margin-top: var(--space-3); }
   th, td { padding: var(--space-2) var(--space-2); }
   .pop { max-width: calc(100vw - 24px); }
   #head-right .loc { display: none; }
-  /* THE STACKING IS THE GRID'S (2026-10-05): a narrow screen turns the product
-     grid into one card per row, each cell a labelled line (`data-label`). It is
-     the GRID's gesture and not every table's — a markdown table keeps its rows
-     and scrolls sideways instead (`base.css`, `.md-table`). */
+  /* THE STACKING IS THE GRID'S (2026-10-05) */
   .grid, .grid tbody, .grid tr, .grid td { display: block; }
   .grid thead { display: none; }
   .grid tr {
     margin-bottom: var(--space-3); padding: var(--space-4);
     background: var(--surface-1); border: 1px solid var(--border-soft);
-    border-radius: var(--r-md); box-shadow: var(--shadow-xs);
+    border-radius: var(--r-md);
   }
   .grid td { display: flex; gap: var(--space-3); padding: 0; }
   .grid td + td { margin-top: var(--space-1); border-bottom: 0; }
-  .grid td::before { content: attr(data-label); flex: 0 0 auto; color: var(--ink-3); min-width: 34%; }
-  .grid tbody tr:hover { background: var(--row-hover); box-shadow: var(--shadow-sm); }
+  .grid td::before { content: attr(data-label); flex: 0 0 auto; color: var(--text-tertiary); min-width: 34%; }
+  .grid tbody tr:hover { background: var(--row-hover); }
   .grid tbody tr:hover td { background: none; }
   /* A MARKDOWN TABLE DOES NOT STACK — it keeps its rows and scrolls sideways. */
   .md-table { display: block; overflow-x: auto; }
 }
 
-/* ===== o LEITOR DO COFRE (TASK-155) ====================================
-   O claro por cima da página: uma camada que ocupa a tela, com a barra
-   (Voltar · nome · salvar) e o corpo. Imagem e PDF são desenhados pelo
-   navegador; o texto rola; o que não tem visualizador só oferece o salvar.
-   `z-index` acima do resto (as pops ficam abaixo), porque enquanto ele está
-   aberto é ele a tela. */
+/* ===== o LEITOR DO COFRE (TASK-155) ===== */
 .strongbox-viewer {
   position: fixed; inset: 0; z-index: 40;
   display: flex; flex-direction: column;
-  background: var(--surface-1); color: var(--ink-1);
+  background: var(--surface-1); color: var(--text-primary);
 }
 .strongbox-viewer .viewer-bar {
   display: flex; align-items: center; gap: var(--space-4);
@@ -1649,9 +1356,16 @@ html.no-motion *, html.no-motion *::before, html.no-motion *::after {
 .strongbox-viewer .viewer-text {
   margin: 0; padding: var(--space-5); width: 100%;
   white-space: pre-wrap; overflow-wrap: break-word;
-  font: inherit; font-size: var(--text-md); line-height: var(--leading-normal);
+  font: inherit; font-size: var(--type-body); line-height: var(--leading-normal);
 }
 .strongbox-viewer .viewer-image { margin: auto; max-width: 100%; max-height: 100%; object-fit: contain; }
 .strongbox-viewer .viewer-pdf { border: 0; width: 100%; height: 100%; }
-.strongbox-viewer .viewer-none { margin: auto; padding: var(--space-5); text-align: center; color: var(--ink-2); }
-.strongbox-viewer .viewer-error { margin: auto; color: var(--danger); }
+.strongbox-viewer .viewer-none { margin: auto; padding: var(--space-5); text-align: center; color: var(--text-secondary); }
+.strongbox-viewer .viewer-error { margin: auto; color: var(--danger-text); }
+
+/* TOUCH (F4): a coarse pointer gets 44px targets — controls, rows of a menu, the checkbox's whole label */
+@media (pointer: coarse) {
+  :root { --control-h: 44px; --control-h-sm: 44px; --nav-toggle-box: 44px; }
+  .pop .opt, nav button, .tab { min-height: 44px; }
+  .radio-row, .check-row { min-height: 44px; }
+}

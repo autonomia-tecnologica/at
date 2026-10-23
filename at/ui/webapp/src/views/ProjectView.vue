@@ -19,6 +19,7 @@ import { openPop } from "../lib/pop";
 import { ask } from "../lib/confirm";
 import { toast } from "../lib/toast";
 import TaskBoard from "../components/TaskBoard.vue";
+import EmptyState from "../components/EmptyState.vue";
 import RecordView from "../components/RecordView.vue";
 import ProseField from "../components/ProseField.vue";
 import ClosePop from "../components/pops/ClosePop.vue";
@@ -180,7 +181,12 @@ watch(() => props.id, () => {
          tasks and only tasks, so the quick-add is off too: it writes no
          `project`, and a card born on this page landing as an orphan would
          be the page lying about where it put it. -->
-    <TaskBoard v-if="store.types.task" :entity="store.types.task" :records="payload.records"
+    <EmptyState v-if="!payload.records.length && !prose.length" icon="folder"
+                :title="word('empty_project_title')" :text="word('empty_project_text')">
+      <button v-if="store.types.task" type="button" class="btn"
+              @click="open(store.types.task, null)">{{ word("all_tasks") }}</button>
+    </EmptyState>
+    <TaskBoard v-else-if="store.types.task" :entity="store.types.task" :records="payload.records"
                :schema="payload.fields" :page="page" :show-project="false" :allow-create="false"
                @ref="openRef" />
   </div>

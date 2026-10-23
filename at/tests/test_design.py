@@ -32,9 +32,9 @@ COMMENT = re.compile(r"/\*.*?\*/", re.S)
 # structure is read.
 QUOTED = re.compile(r'"(?:[^"\\]|\\.)*"' + r"|'(?:[^'\\]|\\.)*'")
 # `var(--x)` needs a value from somewhere; `var(--x, fallback)` does not.
-READ = re.compile(r"var\(\s*(--[a-zA-Z0-9-]+)\s*(,)?")
-DECLARED = re.compile(r"(--[a-zA-Z0-9-]+)\s*:")
-READ_BY_NAME = re.compile(r"""getPropertyValue\(\s*["'](--[a-zA-Z0-9-]+)["']""")
+READ = re.compile(r"var\(\s*(--[a-zA-Z0-9_-]+)\s*(,)?")
+DECLARED = re.compile(r"(--[a-zA-Z0-9_-]+)\s*:")
+READ_BY_NAME = re.compile(r"""getPropertyValue\(\s*["'](--[a-zA-Z0-9_-]+)["']""")
 
 
 def without_comments(text: str) -> str:
@@ -90,6 +90,22 @@ class TheRegistry(unittest.TestCase):
         self.assertEqual(row["id"], webapp.DEFAULT_THEME)
 
 
+class TheFrozenThemes(unittest.TestCase):
+    """The seven community themes are frozen, not deleted (2026-10-22)."""
+
+    def test_they_are_out_of_the_registry_and_out_of_the_door(self):
+        ids = {row["id"] for row in webapp.theme_rows()}
+        self.assertEqual(ids, {"at"})
+        self.assertEqual(webapp.active_theme("gothic")["id"], webapp.DEFAULT_THEME)
+        self.assertEqual(webapp.theme_css("gothic", True),
+                         (THEMES / "at-dark.css").read_text(encoding="utf-8"))
+
+    def test_the_files_and_the_rows_stay_for_the_day_they_return(self):
+        frozen = THEMES / "frozen"
+        self.assertEqual(len(list(frozen.glob("*.css"))), 7)
+        self.assertEqual(len((frozen / "themes.jsonl").read_text(encoding="utf-8").splitlines()), 7)
+
+
 class TheTokenContract(unittest.TestCase):
     """What `base.css` reads, every theme has to declare.
 
@@ -112,6 +128,10 @@ class TheTokenContract(unittest.TestCase):
         cls.read = read_of(cls.base)
         cls._base_cache["base.css"] = cls.read
         cls.by_name = read_by_the_page()
+        # Only the ACTIVE themes: `themes/frozen/` (the seven community themes,
+        # frozen 2026-10-22) is outside this glob on purpose — it is outside
+        # the token and contrast contracts until the owner thaws it.
+        cls.base_declared = declared_in(cls.base)
         cls.themes = sorted(THEMES.glob("*.css"))
         cls.declared = {theme.name: declared_in(theme.read_text(encoding="utf-8"))
                         for theme in cls.themes}
@@ -130,10 +150,46 @@ class TheTokenContract(unittest.TestCase):
         # The gate below is only worth having if it has something to check.
         self.assertTrue(self.by_name)
 
-    def test_every_token_read_without_a_fallback_is_declared_by_every_theme(self):
+    def test_the_structure_lives_in_base_css(self):
+        # F0 (2026-10-22): type, space, motion and the chrome's measures do
+        # not vary between themes, so `base.css` declares them once.
+        structure_tokens = {
+            "--type-caption", "--type-body-sm", "--type-body", "--type-body-lg",
+            "--type-title", "--type-page", "--type-display", "--font-mono", "--leading-normal", "--leading-tight", "--weight-medium",
+            "--weight-semibold", "--letter-tight", "--r-full",
+            "--space-0_5", "--space-1", "--space-2", "--space-3", "--space-4",
+            "--space-5", "--space-6", "--space-8", "--space-10", "--space-12",
+            "--space-16", "--dur-fast", "--dur-base", "--ease-out", "--nav-w",
+            "--nav-rail-w", "--nav-toggle-size", "--header-h", "--page-pad-x",
+        }
+        self.assertEqual(sorted(structure_tokens - self.base_declared), [])
+        for theme in self.themes:
+            self.assertEqual(sorted(structure_tokens & self.declared[theme.name]), [],
+                             f"{theme.name} re-declares structure")
+
+    def test_type_is_a_scale_by_role_and_no_literal_font_size_leaks(self):
+        # F2 (2026-10-22): sizes come from `--type-*`; the only literals are
+        # the scale's own declarations in `:root` and the caret's `font-size: 0`.
+        import re
+        css = (ASSETS / "base.css").read_text(encoding="utf-8")
+        css = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+        literals = re.findall(r"(?<![-\w])font-size:\s*([0-9.]+(?:px|rem|em)?)", css)
+        self.assertEqual(sorted(literals), ["0"])
+        for size in ("12px", "13px", "14px", "16px", "20px", "28px"):
+            self.assertIn(f": {size};", css)
+        self.assertIn("font-size: 0;", css)
+        for name in ("at.css", "at-dark.css"):
+            theme = (ASSETS / "themes" / name).read_text(encoding="utf-8")
+            self.assertNotIn("--font-display", theme)
+            sans = re.search(r"--font-sans:\s*([^;]+);", theme).group(1)
+            self.assertNotIn("Quicksand", sans)
+
+    def test_every_theme_token_is_declared_by_every_active_theme(self):
+        # Only what base.css does not declare itself is a THEME token.
         for theme in self.themes:
             reads = self._reads_for(theme)
-            demanded = {token for token, has_fallback in reads.items() if not has_fallback}
+            demanded = {token for token, has_fallback in reads.items()
+                        if not has_fallback and token not in self.base_declared}
             missing = sorted(demanded - self.declared[theme.name])
             self.assertEqual(missing, [], f"{theme.name} does not declare {missing}")
 
@@ -143,7 +199,7 @@ class TheTokenContract(unittest.TestCase):
         # fallback for that — but a name no file declares is a name that quietly
         # reads as nothing. These three are read BY NAME regardless of which base
         # is active, so every base's themes are expected to supply them.
-        declared_somewhere: set[str] = set(self.read)
+        declared_somewhere: set[str] = set(self.read) | self.base_declared
         for declared in self.declared.values():
             declared_somewhere |= declared
         self.assertEqual(sorted(self.by_name - declared_somewhere), [])
@@ -313,6 +369,111 @@ class TheTypefaces(unittest.TestCase):
         pinned = {key for key in self.files if key.startswith("font-")}
         self.assertEqual(sorted(faces - pinned), [])
         self.assertEqual(sorted(pinned - faces), [])
+
+
+def _luminance(hex_color: str) -> float:
+    h = hex_color.lstrip("#")
+    channels = [int(h[i:i + 2], 16) / 255 for i in (0, 2, 4)]
+    lin = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in channels]
+    return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
+
+
+def _ratio(a: str, b: str) -> float:
+    hi, lo = sorted((_luminance(a), _luminance(b)), reverse=True)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def _resolved(text: str) -> dict[str, str]:
+    """Every `--x: #hex` of a theme, following `var(--y)` aliases."""
+    raw = dict(re.findall(r"(--[a-zA-Z0-9_-]+)\s*:\s*([^;]+);", without_comments(text)))
+    def value(name: str, depth: int = 0) -> str:
+        v = raw[name].strip()
+        m = re.fullmatch(r"var\(\s*(--[a-zA-Z0-9_-]+)\s*\)", v)
+        return value(m.group(1), depth + 1) if m and depth < 8 else v
+    return {name: value(name) for name in raw}
+
+
+class TheTextRoles(unittest.TestCase):
+    """F1: text is one of three roles, and each holds its ratio on every surface.
+
+    The ratio is computed from the hex the theme declares, so a new theme (or a
+    retouched one) cannot reintroduce a grey nobody can read.
+    """
+
+    FLOORS = {"--text-primary": 7.0, "--text-secondary": 4.5, "--text-tertiary": 4.5}
+    SURFACES = ("--surface-0", "--surface-1", "--surface-2")
+
+    @classmethod
+    def setUpClass(cls):
+        cls.base = (ASSETS / "base.css").read_text(encoding="utf-8")
+        cls.themes = {t.name: _resolved(t.read_text(encoding="utf-8"))
+                      for t in sorted(THEMES.glob("*.css"))}
+
+    def test_base_reads_the_text_roles_and_not_the_old_ink(self):
+        reads = set(read_of(self.base))
+        self.assertEqual(sorted(r for r in reads if re.fullmatch(r"--ink-[123]", r)), [])
+        self.assertTrue({"--text-primary", "--text-secondary", "--text-tertiary"} <= reads)
+
+    def test_every_active_theme_declares_the_roles_and_the_state_texts(self):
+        need = set(self.FLOORS) | {f"--{k}-text" for k in ("success", "warning", "danger", "info")}
+        for name, tokens in self.themes.items():
+            self.assertEqual(sorted(need - set(tokens)), [], name)
+
+    def test_each_role_holds_its_ratio_on_every_surface(self):
+        for name, tokens in self.themes.items():
+            for role, floor in self.FLOORS.items():
+                for surface in self.SURFACES:
+                    got = _ratio(tokens[role], tokens[surface])
+                    self.assertGreaterEqual(got, floor, f"{name} {role} on {surface}: {got:.2f}")
+
+    def test_the_text_of_a_state_reads_on_its_own_ground(self):
+        for name, tokens in self.themes.items():
+            for kind in ("success", "warning", "danger", "info"):
+                got = _ratio(tokens[f"--{kind}-text"], tokens[f"--{kind}-soft"])
+                self.assertGreaterEqual(got, 4.5, f"{name} {kind}: {got:.2f}")
+
+    def test_the_separator_is_text_not_a_border(self):
+        body = without_comments(self.base)
+        self.assertIn("#head-title .sep { color: var(--text-tertiary); }", body)
+
+
+class TheSpecimen(unittest.TestCase):
+    """F8: the system is visible, and the CSS stays terse."""
+
+    def test_base_css_is_at_most_ten_percent_comments(self):
+        text = (ASSETS / "base.css").read_text(encoding="utf-8")
+        inside, count = False, 0
+        for line in text.split("\n"):
+            if inside or "/*" in line:
+                count += 1
+            if "/*" in line:
+                inside = "*/" not in line.split("/*", 1)[1]
+            elif inside and "*/" in line:
+                inside = False
+        self.assertLessEqual(count / len(text.split("\n")), 0.10)
+
+    def test_the_old_ink_lives_only_in_the_frozen_themes(self):
+        for css in ASSETS.rglob("*.css"):
+            if "frozen" in css.parts:
+                continue
+            self.assertIsNone(re.search(r"--ink-\d", css.read_text(encoding="utf-8")), css.name)
+
+    def test_the_specimen_is_a_view_with_no_row_in_the_panel(self):
+        src = webapp.HERE / "src"
+        self.assertTrue((src / "views" / "DesignView.vue").is_file())
+        self.assertIn('registerView("design"', (src / "main.ts").read_text(encoding="utf-8"))
+        self.assertNotIn("design", (src / "components" / "Sidebar.vue").read_text(encoding="utf-8").lower())
+
+
+class TheDensity(unittest.TestCase):
+    def test_compact_is_an_attribute_that_only_overrides_tokens(self):
+        base = Path(webapp.__file__).parent / "assets" / "base.css"
+        text = without_comments(base.read_text(encoding="utf-8"))
+        self.assertIn('html[data-density="compact"]', text)
+        self.assertIn("--density-cell-pad-y: 8px;", text)
+        self.assertIn("--density-cell-pad-y: 12px;", text)
+        boot = (Path(webapp.__file__).parent / "assets" / "js" / "boot.js").read_text(encoding="utf-8")
+        self.assertIn("at.density", boot)
 
 
 if __name__ == "__main__":

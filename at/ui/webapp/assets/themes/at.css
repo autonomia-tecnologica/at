@@ -34,34 +34,13 @@
   /* ===== type ============================================================ */
   --font-sans: "Nunito Sans", system-ui, -apple-system, "Segoe UI", Roboto,
                "Helvetica Neue", Arial, sans-serif;
-  --font-display: "Quicksand", "Nunito Sans", system-ui, sans-serif;
-  --text-xs: 12px;
-  --text-sm: 13px;
-  --text-base: 13.5px;
-  --text-md: 14.5px;
-  --text-lg: 17px;
-  --text-2xl: 20px;
-  --leading-normal: 1.55;
-  --leading-tight: 1.25;
-  --weight-medium: 500;
-  --weight-semibold: 600;
+  --font-brand: "Quicksand", "Nunito Sans", system-ui, sans-serif;
   /* NOT 700 ANY MORE (2026-10-05) — the same number as `--weight-semibold`,
      on purpose: the HEAVIEST this theme ever asks the page to draw is a
      semibold, so a section head, a dialog's title and a stat's own number
      read a step softer than they used to, everywhere at once, from this one
      token. */
   --weight-bold: 600;
-  --letter-tight: -0.01em;
-
-  /* ===== spacing scale (8px base, 4px half-step) ========================= */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 32px;
-  --space-7: 40px;
-  --space-8: 64px;
 
   /* ===== radius scale: BOXIER THAN BEFORE (2026-10-05) ====================
      8/14/20 read soft, almost plush; a quieter, more tailored house asks for
@@ -70,12 +49,6 @@
   --r-sm: 4px;
   --r-md: 8px;
   --r-lg: 12px;
-  --r-full: 999px;
-
-  /* ===== motion: real duration, a decelerate curve ======================== */
-  --dur-fast: 140ms;
-  --dur-base: 240ms;
-  --ease-out: cubic-bezier(.16, 1, .3, 1);
 
   /* ===== surfaces (canvas → card → raised) ================================
      ICE, NOT WHITE (2026-10-05): the floor is a warm, barely-there grey — not
@@ -85,9 +58,16 @@
   --surface-0: #f6f5f2;
   --surface-1: #fdfcfa;
   --surface-2: #f1efea;
-  --ink-1: #211f1c;
-  --ink-2: #6b6760;
-  --ink-3: #9a9690;
+  /* THE TEXT ROLES (F1, 2026-10-22): every text colour is one of three, and
+     each is built so its ratio holds on EVERY surface of this side (canvas,
+     card, sunken): 15.6 / 9.2 / 6.1 at the worst. No text uses a step lighter
+     than 600; a border colour never paints text. */
+  --neutral-low: #5c5953;
+  --neutral-mid: #45423e;
+  --neutral-high: #1d1c1a;
+  --text-primary: var(--neutral-high);
+  --text-secondary: var(--neutral-mid);
+  --text-tertiary: var(--neutral-low);
   --border-soft: #e8e5de;
   --border-strong: #d6d2c9;
   --row-hover: #f2f0ea;
@@ -123,6 +103,12 @@
   --danger-soft: #fef2f2;
   --info: #2563eb;
   --info-soft: #eff4ff;
+  /* THE TEXT OF A STATE IS NOT ITS FILL (F1): the fills above are for a bar, a
+     dot, a ring (3:1); a word written on a `-soft` ground takes these (>= 4.6). */
+  --success-text: #15803d;
+  --warning-text: #b45309;
+  --danger-text: #b91c1c;
+  --info-text: #1d4ed8;
 
   /* ===== elevation: almost nothing, and neutral (2026-10-05) ==============
      The old ramp went up to 20% opacity, tinted with the brand's own violet —
@@ -155,17 +141,6 @@
      canvas unless opened), and what it wears is the house's own paper, not a
      second weather system — the violet still marks what is open (the row's
      own wash and edge), it just no longer owns the whole surface to do it. */
-  --nav-w: 272px;
-  /* 44px, NOT A GUESS (2026-09-28, read again 2026-10-05): it WAS the rail's
-     own width — the strip that held one centred icon when the panel
-     collapsed into itself. The rail is gone; the number is not — it is the
-     corner button's own size now (`.menu-toggle`, base.css), and 44px is
-     still WCAG 2.5.5's floor for a target a thumb has to land on, which is
-     exactly as true of a header button as it was of a rail. */
-  --nav-rail-w: 44px;
-  --nav-toggle-size: 18px;
-  --header-h: 64px;
-  --page-pad-x: var(--space-5);
   --nav-bg: #fbfaf7;
   --nav-border: rgb(var(--shadow-rgb) / 8%);
   /* A SOFT LIFT, NOT A WALL'S OWN EDGE (2026-10-05): the old value pushed the
@@ -175,9 +150,9 @@
      same neutral, barely-there lift every other raised surface in this theme
      carries. */
   --nav-edge: 0 16px 48px rgb(var(--shadow-rgb) / 12%);
-  --nav-ink-1: var(--ink-1);
-  --nav-ink-2: var(--ink-2);
-  --nav-ink-3: var(--ink-3);
+  --nav-ink-1: var(--text-primary);
+  --nav-ink-2: var(--text-secondary);
+  --nav-ink-3: var(--text-tertiary);
   --nav-item-hover: rgb(var(--shadow-rgb) / 4%);
   --nav-item-on-bg: var(--accent-50);
   /* WHITE-ON-VIOLET BECOMES VIOLET-ON-PAPER (2026-10-05): the open row's ink
@@ -195,7 +170,5 @@
   --locale-flag: none;
 
   /* ===== table/measure: the three names TableView.vue reads by hand ======= */
-  --cell-pad: 16px;
-  --cell-pad-y: 11px;
   --measure: 70ch;
 }

@@ -72,6 +72,12 @@ try {
   if (motion && motion.on === false) {
     document.documentElement.classList.add("no-motion");
   }
+  // DENSITY, the same door: `compact` is the only value written on the root
+  // (`data-density`); the key is `density.ts`'s.
+  const density = JSON.parse(localStorage.getItem("at.density"));
+  if (density && density.state === "compact") {
+    document.documentElement.setAttribute("data-density", "compact");
+  }
 } catch (error) {
   // No localStorage (or one that refuses): the `link` stays as it arrived and
   // the server's default answers — never an error, only the default theme. And

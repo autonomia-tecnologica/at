@@ -40,6 +40,8 @@
 
 The WebApp serves three things and nothing else: **the built page**, **the look** (`base.css`, the themes, the drawings, the hosted typefaces and the renderer) and the **JSON** the page reads. The page owns no rule — the server decides, the page draws.
 
+**The shell and the page.** On the desktop the sidebar is a 56px rail that pushes the content (its width is not animated), with a 56px top bar and, inside `#body`, a single `.page`: it owns the margin (32px gutter, 24px up to 960px, 16px up to 640px) and the 1200px maximum width. Every screen opens with a page header (the title). No component carries an outer margin of its own.
+
 The panel has the entries:
 
 | entry | what it is |
@@ -72,6 +74,16 @@ The **People** entry holds the two system tables of the access ceiling, each row
 - The Design System is the LLM's development. Gradual growth of components.
 
 - Theme support is a structural part of AT. Several themes help me test the strength of the Design System over different views. At the same time they make me happy to use the system. Theme PRs are welcome, but they are entirely subject to my personal judgement and I will be glad to share my terrible taste if I do not want to accept a PR. But do not be shy!
+
+- **Type by role, one interface family**: Nunito Sans (hosted) is the only interface family, with the system mono stack for code (`--font-mono`); Quicksand leaves the interface and survives only as `--font-brand` (the brand tile). The scale is `--type-caption` 12, `--type-body-sm` 13, `--type-body` 14 (the body of the whole interface), `--type-body-lg` / `--type-title` 16, `--type-page` 20 and `--type-display` 28; weights are 400, 500 and 600, and a block title is 16/600. `base.css` has no literal font size (only the `.caret` glyph's `font-size: 0`); the frozen themes keep their own `--font-sans` and `--font-display`.
+- **Text has three roles, and only three**: `--text-primary`, `--text-secondary` and `--text-tertiary`. Every theme declares all three, and each one's contrast holds on **every** surface of the theme (light: 15.6 / 9.2 / 6.1 at the worst; dark: 16.3 / 8.2 / 6.4). No text uses a border colour, and `test_design.py` computes these ratios straight from the theme's hex values. The text of a state (`--success-text`, `--warning-text`, `--danger-text`, `--info-text`) is distinct from the state's fill (`--success` etc., for bars and dots) and reads on its `-soft` ground at 4.5:1 or better.
+
+- **Controls share one height**: `--control-h` (36px; 44px on a coarse pointer) applies to `.btn`, `.input` and `select`, so a field and a button on one line align. `.btn` has `-sm`/`-lg` sizes and a `-ghost` variant; the field is a single block (`.input` plus the form, dialog and popover families); `.check` and `.radio` are drawn by the system, with no native checkbox; and focus is one, `--focus-ring`.
+
+- **Motion uses only `opacity` and `transform`**, as tokens: `--dur-1..4` (80, 120, 180 and 240ms) and `--ease-enter`, `--ease-exit`, `--ease-move`. Everything that enters also leaves (popover, dialog, scrim, toast and hint have an exit animation, shorter than the entrance); a screen change is a fade (`<Transition mode="out-in">` over the page only, never the `nav`); the switch and the bars animate by `transform`, and every control's hover and focus has a transition. The one declared exception is `.foldable`. Under `prefers-reduced-motion` everything is instant.
+- **Density and empty state.** Density is a preference of this browser (`at.density`, like motion), chosen in Settings > Appearance: comfortable (default, 46px table rows) or compact (36px, 32px controls on a fine pointer). It lives in `html[data-density="compact"]` in `base.css`, which only overrides the `--density-*`, `--cell-pad*` and `--control-h` tokens; `boot.js` applies it before first paint. Every empty state of orphans, project, reminders and notes is the `EmptyState` component (icon, title, one line of text and the action, already visible on screen).
+
+- **The specimen (`/design`).** An internal page that shows every token and component of the system (text roles, type scale, colour ramps, buttons, inputs, check and radio, state chips, cards, table, popover, dialog, toast, empty state, density) on the theme and side worn, with the theme, side and density switchers on top. It has an address and no row in the panel; `base.css` keeps its comments under 10% of its lines, so the system is reviewed there and not screen by screen.
 
 - The theme holds for the whole WebApp, **the login screen included**: there is no page of AT that escapes the Design System, and the entrance is the first impression it has to make.
 

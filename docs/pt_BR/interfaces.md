@@ -40,6 +40,8 @@
 
 O WebApp serve três coisas e nada mais: **a página construída**, **a aparência** (`base.css`, os temas, os desenhos, as fontes hospedadas e o renderizador) e o **JSON** que a página lê. A página não tem regra nenhuma — o servidor decide, a página desenha.
 
+**A casca e a página.** Uma sidebar que, no desktop, é um trilho de 56px que empurra o conteúdo (a largura não anima), uma barra de topo de 56px e, dentro de `#body`, um único `.page`: é o dono da margem (gutter de 32px, 24px até 960px, 16px até 640px) e da largura máxima de 1200px. Cada tela abre com um cabeçalho de página (o título). Nenhum componente leva margem externa própria.
+
 O painel tem as entradas:
 
 | entrada | o que é |
@@ -72,6 +74,16 @@ A entrada **Pessoas** guarda as duas tabelas de sistema do teto de acesso, e cad
 - O Design System é de desenvolvimento da LLM. Crescimento gradual de componentes.
 
 - O suporte a temas é parte estrutural do AT. Vários temas me ajudam a testar a força do Design System em cima de diferentes visões. Ao mesmo tempo que me fazem ficar feliz de usar o sistema. PRs de tema são bem-vindas, mas estão totalmente sujeitas ao meu julgamento pessoal e ficarei feliz em compartilhar meu péssimo gosto, se não quiser aceitar uma PR. Mas não se acanhe!
+
+- **Tipografia por papel, uma família de interface**: a Nunito Sans (hospedada) é a única família da interface, com a pilha mono do sistema para código (`--font-mono`); a Quicksand sai da interface e sobrevive só como `--font-brand` (a telha da marca). A escala é `--type-caption` 12, `--type-body-sm` 13, `--type-body` 14 (o corpo de toda a interface), `--type-body-lg` / `--type-title` 16, `--type-page` 20 e `--type-display` 28; os pesos são 400, 500 e 600, e o título de bloco é 16/600. `base.css` não tem tamanho de fonte em literal (só `font-size: 0` do glifo do `.caret`); os temas congelados seguem com `--font-sans` e `--font-display` próprios.
+- **O texto tem três papéis, e só três**: `--text-primary`, `--text-secondary` e `--text-tertiary`. Cada tema declara os três, e o contraste de cada um vale sobre **todas** as superfícies do tema (no claro: 15,6 / 9,2 / 6,1 no pior caso; no escuro: 16,3 / 8,2 / 6,4). Nenhum texto usa cor de borda, e `test_design.py` calcula essas razões direto dos hex do tema. O texto de um estado (`--success-text`, `--warning-text`, `--danger-text`, `--info-text`) é distinto do preenchimento do estado (`--success` etc., para barra e ponto) e lê sobre o `-soft` correspondente com pelo menos 4,5:1.
+
+- **Os controles têm uma altura só**: `--control-h` (36px; 44px com ponteiro grosso) vale para `.btn`, `.input` e `select`, então um campo e um botão na mesma linha se alinham. `.btn` tem os tamanhos `-sm`/`-lg` e a variante `-ghost`; o campo é um bloco só (`.input` e as famílias de formulário, diálogo e popover); `.check` e `.radio` são desenhados pelo sistema, sem o checkbox nativo; e o foco é um só, `--focus-ring`.
+
+- **O movimento só usa `opacity` e `transform`**, em tokens: `--dur-1..4` (80, 120, 180 e 240ms) e `--ease-enter`, `--ease-exit`, `--ease-move`. Tudo o que entra também sai (popover, diálogo, véu, toast e dica têm animação de saída, mais curta que a de entrada); a troca de tela é um fade (`<Transition mode="out-in">` só sobre a página, nunca sobre a `nav`); o switch e as barras animam por `transform`, e hover e foco de todo controle têm transição. A exceção declarada é `.foldable`. Com `prefers-reduced-motion` tudo é instantâneo.
+- **Densidade e estado vazio.** A densidade é uma preferência deste navegador (`at.density`, como o movimento), escolhida em Configurações > Aparência: confortável (padrão, linha de tabela de 46px) ou compacta (36px, controles de 32px em ponteiro fino). Vive em `html[data-density="compact"]` no `base.css`, que só sobrescreve os tokens `--density-*`, `--cell-pad*` e `--control-h`; o `boot.js` a aplica antes da primeira pintura. Todo estado vazio de órfãos, projeto, lembretes e notas é o componente `EmptyState` (ícone, título, uma linha de texto e a ação já visível na tela).
+
+- **O espécime (`/design`).** Uma página interna que mostra todo token e componente do sistema (papéis de texto, escala de tipo, rampas de cor, botões, campos, check e radio, chips de estado, cartões, tabela, popover, diálogo, toast, estado vazio, densidade) no tema e no lado vestidos, com os seletores de tema, lado e densidade no topo. Tem endereço e nenhuma linha no painel; o `base.css` mantém os comentários abaixo de 10% das linhas, então o sistema se revisa ali e não tela por tela.
 
 - O tema vale para o WebApp inteiro, **tela de login incluída**: não existe página do AT que escape do Design System, e a entrada é a primeira impressão que ele tem que causar.
 

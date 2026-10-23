@@ -29,8 +29,10 @@ watch(popStack, place, { flush: "post" });
 </script>
 
 <template>
-  <div v-for="entry in popStack" :key="entry.key" :ref="el => setEl(entry.key, el)" class="pop"
-       v-bind="entry.attrs || {}" @click.stop>
-    <component :is="entry.component" v-bind="entry.props || {}" />
-  </div>
+  <TransitionGroup :css="true" leave-active-class="pop-leave-active">
+    <div v-for="entry in popStack" :key="entry.key" :ref="el => setEl(entry.key, el)" class="pop"
+         v-bind="entry.attrs || {}" @click.stop>
+      <component :is="entry.component" v-bind="entry.props || {}" />
+    </div>
+  </TransitionGroup>
 </template>
