@@ -14,6 +14,8 @@
 
 - **Expor o AT pelo caminho hospedado com o Authelia é um caminho de primeira classe.** O Authelia vendorizado sobe como subprocesso no bundle, pela mesma receita do `--include-caddy`, e é o portão do próprio caminho hospedado. O que o caminho hospedado **não** tem é o isolamento por container — e é essa falta de isolamento, e não a ausência de portão, que o segura em `A` e não em `S` ([A postura de segurança](rules.md#a-postura-de-segurança)). O isolamento por container continua sendo só do §7.
 
+- **O portão do Authelia só existe onde o fornecedor publica o binário.** O Authelia só tem release para Linux e FreeBSD; em Windows e macOS o caminho hospedado sobe **sem** o portão do bundle (o Caddy e o gitleaks viajam, o Authelia não). Nessas plataformas, expor o AT fora do laço local não é suportado.
+
 ### Caminho container
 
 - É o **`at-deploy`** montando um ambiente de serviços em containers de imagens fixadas (§7). Aqui existe isolamento, e ele existe por um motivo específico: **conter o raio de explosão de cada serviço**. O comprometimento do provedor de identidade alcança a autenticação e nada mais; o do corretor alcança o corretor. O que cada serviço expõe é o que ele se propõe a fazer, e nada além.

@@ -14,6 +14,8 @@
 
 - **Exposing AT on the hosted path with Authelia is a first-class path.** The vendorized Authelia comes up as a subprocess in the bundle, by the same recipe as the `--include-caddy`, and it is this path's own gate. What the hosted path does **not** have is the container isolation — and it is that lack of isolation, and not the absence of a gate, that holds it at `A` and not at `S` ([The security posture](rules.md#the-security-posture)). Container isolation remains the container path's alone (§7).
 
+- **The Authelia gate exists only where the vendor publishes the binary.** Authelia has releases for Linux and FreeBSD only; on Windows and macOS the hosted path comes up **without** the bundle's gate (Caddy and gitleaks travel, Authelia does not). On those platforms, exposing AT beyond the local loop is not supported.
+
 ### Container path
 
 - It is **`at-deploy`** building an environment of services in containers from pinned images (§7). Here there is isolation, and it exists for a specific reason: **containing the blast radius of each service**. A compromise of the identity provider reaches authentication and nothing else; the checker's reaches the checker. What each service exposes is what it sets out to do, and nothing beyond.
