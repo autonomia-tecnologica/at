@@ -35,7 +35,7 @@ from at.i18n import tr
 from at.prose import listing as prose
 from at.ui import ask as door
 from at.ui.ask import OK, REFUSED, USAGE
-from at.ui.cli import tree
+from at.ui.cli import jsonout, tree
 
 # What a person answers with, injected so a test can answer without a terminal —
 # the same shape `boot.ensure_working_folder` takes.
@@ -45,7 +45,14 @@ Ask = Callable[[str], str]
 def main(argv: Sequence[str] | None = None) -> int:
     """The process's whole life. Returns the exit code; `__main__` raises it."""
     words = list(sys.argv[1:] if argv is None else argv)
+    if jsonout.FLAG in words:
+        # `--json` is global: it swaps what is PRINTED, in any position, and
+        # nothing about what runs (`jsonout`).
+        return jsonout.run([w for w in words if w != jsonout.FLAG], _dispatch)
+    return _dispatch(words)
 
+
+def _dispatch(words: list[str]) -> int:
     # `install` and `uninstall` run BEFORE the Working Folder is confirmed, and
     # they are the only words that do. Every other word is ABOUT the folder —
     # what it holds, how it is spoken — and the folder belongs to the binary, so
@@ -89,6 +96,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if rest:
             return _reject(word)
         print(tr("cli.version.line", version=__version__))
+        jsonout.attach("version", __version__)
         # A completion written for zsh is not on its `fpath` until the person's
         # `.zshrc` puts it there — `install` said it once, and there is no
         # terminal-free way to know it was read, let alone acted on. `version`
@@ -650,14 +658,16 @@ def _table(table: str, rest: list[str]) -> int:
         code, answer = own(args)
         print(answer)
         return code
+    jsonout.attach("table", table)
     try:
         # The actor of an act typed here is the first admin, and the via is the
         # terminal's: what the door records is WHO and HOW, and the `cli` is the
         # one surface where both are facts of the folder rather than of a request
         # (§3, item 15).
-        code, answer, _, _, _ = door.run(
+        code, answer, row, _, _ = door.run(
             table, action, args, actor=actors.first_admin(), via=audit.CLI
         )
+        jsonout.attach("row", row)
     except tables.TableError as error:
         print(error)
         return REFUSED

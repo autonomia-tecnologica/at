@@ -2,6 +2,7 @@
   "pt_BR": {
     "help.title": "AT {version}",
     "help.usage": "at-cli <palavra>",
+    "help.json": "--json (em qualquer posição) imprime o resultado como um objeto JSON.",
     "help.tables": "Tabelas",
     "help.words": "Palavras",
     "help.no_args": "Sem palavra, o AT imprime esta ajuda.",
@@ -37,6 +38,7 @@
   "en_US": {
     "help.title": "AT {version}",
     "help.usage": "at-cli <word>",
+    "help.json": "--json (in any position) prints the result as one JSON object.",
     "help.tables": "Tables",
     "help.words": "Words",
     "help.no_args": "With no word, AT prints this help.",

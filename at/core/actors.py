@@ -270,7 +270,7 @@ def revoke_agent(pid: object) -> dict:
 
     A machine that carries no credential has nothing to revoke, and it is REFUSED
     by name instead of silently rewritten: the screen that offers the button reads
-    the same fact (`has_credential`, app's `_says`), so a person never sees the
+    the same fact (`has_credential`, `at.prose.payload.says`), so a person never sees the
     refusal — a hand-written request does.
     """
     row = agent_row(pid)

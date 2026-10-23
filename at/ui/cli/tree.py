@@ -174,6 +174,7 @@ def as_text() -> str:
         tr("cli.help.title", version=__version__),
         "",
         tr("cli.help.usage"),
+        tr("cli.help.json"),
     ]
     if declared:
         lines += section(declared, column, "cli.help.tables")

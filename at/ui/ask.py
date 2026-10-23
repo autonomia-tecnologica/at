@@ -1172,6 +1172,10 @@ def _covers(hour: str, moment: datetime) -> bool:
 # -------------------------------------------------------------- the scan ---
 
 
+# The last answer `scan` read, kept for the surfaces that say the findings as data.
+last_scan: scanner.Report | None = None
+
+
 def scan(args: list[str]) -> tuple[int, str]:
     """`secret scan` — the folder says what it carries that it should not (item 51).
 
@@ -1196,6 +1200,9 @@ def scan(args: list[str]) -> tuple[int, str]:
     if args:
         return USAGE, rejected(permissions.SCAN)
     answer = scanner.scan()
+    # What a surface that says it as data (`at-cli --json`) reads beside the text.
+    global last_scan
+    last_scan = answer
     if answer.state == scanner.NO_TOOL:
         # The ways out, and the whole of what AT does about a scanner that is not
         # there: it says them and it installs NOTHING (§7a, the Podman the
@@ -1757,7 +1764,7 @@ def card(table: str, row: dict) -> dict:
     one (`text_of`) — the closed vocabulary's word, the reference's title — so
     the card shows what the listing shows and never a raw number.
 
-    It is the CARD's shape, not the record's (`at.ui.webapp.app._record`): a
+    It is the CARD's shape, not the record's (`at.prose.payload.record`): a
     full record carries every declared field, `raw` values, references and the
     editor's own facts. A chat answer has no editor — what it needs is the row
     as a person reads it.
