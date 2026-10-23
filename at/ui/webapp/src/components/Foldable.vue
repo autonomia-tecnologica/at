@@ -1,3 +1,16 @@
+<script lang="ts">
+// THE ACCORDION: folds that share a `group` are ONE choice — at most one open.
+// The state MUST live in this plain (non-setup) block: `<script setup>` compiles
+// every top-level declaration INTO setup(), i.e. one copy per Foldable instance,
+// and then no fold ever sees another one (every fold ended up with its own group).
+// A plain block runs once per module, which is what "shared" means.
+import { reactive } from "vue";
+const GROUPS: Record<string, { open: string | null; ids: Set<string> }> = {};
+function groupOf(name: string) {
+  return (GROUPS[name] ??= reactive({ open: null, ids: new Set<string>() }) as any);
+}
+</script>
+
 <script setup lang="ts">
 // Foldable — the page's SINGLE disclosure: the panel's folders, dressed by
 // context. It is the same gesture, so it is the same control.
@@ -11,9 +24,11 @@
 //   base.css) and a track that animates is a track that changes;
 // · the head takes `.fold-head`, which is where `base.css`'s caret hangs.
 
-import { ref, onMounted } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 import { foldPrefs, savePrefs, PREFS_KEY } from "../lib/prefs";
 import { isCurrent, open } from "../lib/views";
+
+// THE ACCORDION's shared state lives in the plain <script> block above (see there).
 
 const props = withDefaults(
   defineProps<{
@@ -30,19 +45,36 @@ const props = withDefaults(
     // row is one thing. `null` is a fold that is only a fold, which is what
     // every fold was before there was a screen to lead to.
     view?: string | null;
+    // The accordion this fold belongs to, or `null` for a fold on its own.
+    group?: string | null;
   }>(),
-  { label: "", boxClass: null, headClass: "folder", view: null },
+  { label: "", boxClass: null, headClass: "folder", view: null, group: null },
 );
 
 const prefs = foldPrefs();
-const isOpen = ref(prefs[props.id] === true);
+const shared = props.group ? groupOf(props.group) : null;
+const own = ref(prefs[props.id] === true);
+if (shared) {
+  shared.ids.add(props.id);
+  // Old prefs may hold several open: the FIRST to mount (the panel's order) wins.
+  if (own.value && shared.open === null) shared.open = props.id;
+  else if (own.value) prefs[props.id] = false;
+}
+const isOpen = computed(() => (shared ? shared.open === props.id : own.value));
 const loadedOnce = ref(isOpen.value);
+watch(isOpen, now => { if (now) loadedOnce.value = true; });
 
 function toggle(): void {
-  isOpen.value = !isOpen.value;
-  prefs[props.id] = isOpen.value;
+  const now = !isOpen.value;
+  if (shared) {
+    shared.open = now ? props.id : null;
+    for (const other of shared.ids) prefs[other] = other === props.id ? now : false;
+  } else {
+    own.value = now;
+    prefs[props.id] = now;
+  }
   savePrefs(PREFS_KEY, prefs);
-  if (isOpen.value) loadedOnce.value = true;
+  if (now) loadedOnce.value = true;
 }
 
 // The head's ONE click: the fold opens or closes, and — when the fold is a
@@ -72,7 +104,7 @@ onMounted(() => {
          what follows it — the caret — belongs to the RIGHT EDGE (`base.css`). -->
     <span class="t">{{ label }}</span>
   </button>
-  <div class="foldable" :class="[boxClass, { closed: !isOpen }]">
+  <div class="foldable" :class="[boxClass, { closed: !isOpen, grouped: group }]">
     <div class="fold">
       <slot v-if="loadedOnce" />
     </div>

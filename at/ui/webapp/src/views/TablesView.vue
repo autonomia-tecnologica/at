@@ -16,6 +16,7 @@ import { computed, watchEffect } from "vue";
 import { store, word, kindLabel } from "../lib/store";
 import { open, setTrail, TABLES_TASK_KEY } from "../lib/views";
 import { byName } from "../lib/order";
+import StatStrip from "../components/StatStrip.vue";
 
 // The same two the panel keeps out of the fold, and for the same reason: a table
 // that has a screen of its own is not a table to browse.
@@ -28,6 +29,13 @@ const tables = computed(() =>
 );
 
 const rows = computed(() => tables.value.reduce((sum, kind) => sum + kind.count, 0));
+
+// WHAT THE FOLDER DECLARES, in two numbers: how many tables and how many rows
+// they hold together.
+const stripItems = computed(() => [
+  { key: "tables", value: tables.value.length, label: word("tables") },
+  { key: "records", value: rows.value, label: word("records") },
+]);
 
 // The page has nothing to fetch: the panel already carries every table and its
 // count, and the trail follows the language like every other word on screen.
@@ -45,16 +53,7 @@ function openTable(key: string): void {
   <div class="section">
     <!-- WHAT THE FOLDER DECLARES, in two numbers: how many tables and how many
          rows they hold together. -->
-    <div class="stats">
-      <div class="stat">
-        <b>{{ tables.length }}</b>
-        <span>{{ word("tables") }}</span>
-      </div>
-      <div class="stat">
-        <b>{{ rows }}</b>
-        <span>{{ word("records") }}</span>
-      </div>
-    </div>
+    <StatStrip :items="stripItems" />
 
     <!-- AS TABELAS, uma a uma, e cada linha é a porta da sua página. -->
     <section class="cards">

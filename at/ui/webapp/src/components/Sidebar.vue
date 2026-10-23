@@ -115,7 +115,7 @@ onUnmounted(() => {
          row called "Overview" above the others: the panel's folds ARE its
          sections, and a second door to the same place would be a door with
          nothing behind it. -->
-    <Foldable v-if="hasProjects" id="tasks" :label="word('tasks')" box-class="branch"
+    <Foldable v-if="hasProjects" id="tasks" group="side" :label="word('tasks')" box-class="branch"
               :view="TASKS_KEY">
       <ProjectsTree />
       <!-- THE BOARD SITS RIGHT AFTER "SEM PROJETO" — the tree's own last row
@@ -127,7 +127,7 @@ onUnmounted(() => {
         <span class="n">{{ countOf(BOARD_KEY, boardCount) }}</span>
       </button>
     </Foldable>
-    <Foldable id="files" :label="word('files')" box-class="branch" :view="FILES_KEY">
+    <Foldable id="files" group="side" :label="word('files')" box-class="branch" :view="FILES_KEY">
       <FileTree />
     </Foldable>
     <!-- LEMBRETES (TASK-164), entre Arquivos e Cofre: uma LINHA, e não uma
@@ -150,10 +150,10 @@ onUnmounted(() => {
          now (2026-10-05): the section's own screen is gone, so the head opens
          and closes the tree and goes nowhere. What it lists is what the vigia
          already sealed, and a file opens over WHATEVER screen is up. -->
-    <Foldable id="strongbox" :label="word('strongbox')" box-class="branch">
+    <Foldable id="strongbox" group="side" :label="word('strongbox')" box-class="branch">
       <StrongboxTree />
     </Foldable>
-    <Foldable id="tables" :label="word('tables')" box-class="kinds" :view="TABLES_KEY">
+    <Foldable id="tables" group="side" :label="word('tables')" box-class="kinds" :view="TABLES_KEY">
       <button v-for="kind in kinds" :key="kind.key" type="button"
               :data-view="kind.key" :class="{ on: isCurrent(kind.key) }"
               @click="openKind(kind.key)">

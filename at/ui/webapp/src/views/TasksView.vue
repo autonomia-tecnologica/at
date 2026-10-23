@@ -26,6 +26,7 @@
 
 import { ref, computed, watch, onMounted } from "vue";
 import { api } from "../lib/api";
+import StatStrip from "../components/StatStrip.vue";
 import { store, setFields, word, label, kindLabel } from "../lib/store";
 import { nav, open, setTrail, showError, TASKS_KEY } from "../lib/views";
 import type { TablePayload, RecordRow, RecordField } from "../lib/record";
@@ -60,13 +61,22 @@ function countOfStatus(key: string): number {
   return rows.filter(rec => rawOf(rec, "status") === key).length;
 }
 
-const total = computed(() => tasks.value?.records.length || 0);
-
 // A task that points at no project at all — the panel has a page for it
 // (`orphans`), and the summary is where its number belongs.
 const orphans = computed(
   () => (tasks.value?.records || []).filter(rec => rawOf(rec, "project") === null).length,
 );
+
+// The strip's items: a number and a bar part per status, and the orphans as a
+// number alone (they are not a status, so they take no part in the proportion).
+const stripItems = computed(() => [
+  ...statuses.value.map(status => ({
+    key: status.key, tone: status.key, value: countOfStatus(status.key),
+    share: countOfStatus(status.key), label: label(status.labels),
+    title: label(status.labels) + ": " + countOfStatus(status.key),
+  })),
+  ...(orphans.value ? [{ key: "orphans", value: orphans.value, label: word("no_project") }] : []),
+]);
 
 // WHAT EACH PROJECT HOLDS. A task names its project by NUMBER (`raw`, the way
 // the engine stores a reference to one table), so the two are joined on the id
@@ -113,29 +123,12 @@ watch(() => nav.tick, load);
 
 <template>
   <div v-if="tasks" class="section">
-    <!-- THE NUMBERS, one card each, drawn from the table's own vocabulary. -->
-    <div class="stats">
-      <div v-for="status in statuses" :key="status.key" class="stat"
-           :data-state="status.key">
-        <b>{{ countOfStatus(status.key) }}</b>
-        <span>{{ label(status.labels) }}</span>
-      </div>
-      <div v-if="orphans" class="stat">
-        <b>{{ orphans }}</b>
-        <span>{{ word("no_project") }}</span>
-      </div>
-    </div>
-
-    <!-- THE SAME NUMBERS AS ONE BAR, because a proportion is read faster than
-         four counts: the parts are the statuses, in the table's order, and the
-         width is the share of the whole. It is `--accent`'s ramp and the
-         semantics the theme declares (`base.css`) — the page names neither a
-         colour nor a width. -->
-    <div class="bars" v-if="total">
-      <span v-for="status in statuses" :key="status.key" class="bar-part"
-            :data-state="status.key" :style="{ flexGrow: countOfStatus(status.key) }"
-            :title="label(status.labels) + ': ' + countOfStatus(status.key)"></span>
-    </div>
+    <!-- THE NUMBERS, drawn from the table's own vocabulary, and the same numbers
+         as one bar, because a proportion is read faster than four counts: the
+         parts are the statuses, in the table's order, and the width is the share
+         of the whole. The tones are `StatStrip`'s (the semantics the theme
+         declares) — the page names neither a colour nor a width. -->
+    <StatStrip :items="stripItems" />
 
     <!-- WHAT THE PROJECTS HOLD. Each row is a door: the project's own page is
          where its tasks are, and a summary is not a second way to read them. -->

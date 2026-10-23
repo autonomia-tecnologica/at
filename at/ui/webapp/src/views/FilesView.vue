@@ -15,6 +15,7 @@
 
 import { ref, computed, watch, onMounted } from "vue";
 import { api } from "../lib/api";
+import StatStrip from "../components/StatStrip.vue";
 import { word } from "../lib/store";
 import { nav, open, setTrail, showError, filesFolder } from "../lib/views";
 
@@ -46,6 +47,12 @@ const total = computed(() => inside.value.length);
 function countOf(bucket: string): number {
   return inside.value.filter(file => file.bucket === bucket).length;
 }
+
+const stripItems = computed(() => BUCKETS.map(bucket => ({
+  key: bucket, tone: bucket, value: countOf(bucket), share: countOf(bucket),
+  label: word("bucket_" + bucket),
+  title: word("bucket_" + bucket) + ": " + countOf(bucket),
+})));
 
 // THE FOLDER'S ENTRIES, cut from the flat listing: the next segment of each path
 // is either a file (it ends there) or a folder (it goes on — and every file
@@ -114,20 +121,9 @@ watch(() => nav.tick, load);
 
 <template>
   <div v-if="listing" class="section">
-    <!-- WHAT THE FOLDER HOLDS, by bucket — the folder in view, not the whole. -->
-    <div class="stats">
-      <div v-for="bucket in BUCKETS" :key="bucket" class="stat" :data-bucket="bucket">
-        <b>{{ countOf(bucket) }}</b>
-        <span>{{ word("bucket_" + bucket) }}</span>
-      </div>
-    </div>
-
-    <!-- THE SAME NUMBERS AS ONE BAR — the share each bucket has of the folder. -->
-    <div class="bars" v-if="total">
-      <span v-for="bucket in BUCKETS" :key="bucket" class="bar-part"
-            :data-bucket="bucket" :style="{ flexGrow: countOf(bucket) }"
-            :title="word('bucket_' + bucket) + ': ' + countOf(bucket)"></span>
-    </div>
+    <!-- WHAT THE FOLDER HOLDS, by bucket — the folder in view, not the whole —
+         and the same numbers as one bar. -->
+    <StatStrip :items="stripItems" />
 
     <!-- THE BROWSER: only to SEE. Up, the crumbs, folders that open and files that
          open their page — nothing here copies, moves, renames or deletes. -->

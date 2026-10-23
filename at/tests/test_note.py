@@ -210,6 +210,54 @@ class TheConversation(NoteCase):
         self.assertEqual(result.kind, "answer")
         self.assertIn("o banco ligou", result.text)
 
+    def test_the_listing_shows_the_identifier_beside_the_title(self):
+        tables.create("note", {"text": "Numero 2323 protocolo"})
+        result = door.ask("listar notas")
+        self.assertEqual(result.bullets, ["NOTE-1 · Numero 2323 protocolo"])
+
+    def test_a_row_is_named_by_its_title(self):
+        tables.create("note", {"text": "Numero 2323 protocolo"})
+        tables.create("note", {"text": "o banco ligou"})
+        for sentence in ("deletar nota numero 2323 protocolo", "apagar a nota PROTOCOLO"):
+            proposal = nlu.propose(sentence, language="pt_BR")
+            self.assertEqual((proposal.action, proposal.row), ("delete", 1))
+        proposal = nlu.propose("ver nota banco ligou", language="pt_BR")
+        self.assertEqual((proposal.action, proposal.row), ("view", 2))
+
+    def test_2323_inside_a_title_is_never_the_id(self):
+        # No row 2323 exists; the number alone would have been read as the id.
+        tables.create("note", {"text": "Numero 2323 protocolo"})
+        proposal = nlu.propose("deletar nota numero 2323 protocolo", language="pt_BR")
+        self.assertEqual(proposal.row, 1)
+        proposal = nlu.propose("deletar nota numero 1", language="pt_BR")
+        self.assertEqual(proposal.row, 1)
+
+    def test_a_title_that_matches_many_comes_back_as_a_question(self):
+        tables.create("note", {"text": "protocolo do banco"})
+        tables.create("note", {"text": "protocolo da prefeitura"})
+        result = door.ask("deletar nota protocolo")
+        self.assertEqual(result.kind, "question")
+        self.assertIn("1. NOTE-1 · protocolo do banco", result.text)
+        self.assertIn("2. NOTE-2 · protocolo da prefeitura", result.text)
+        self.assertEqual(len(store.load("note")), 2)
+
+    def test_a_title_that_matches_none_is_refused_in_its_own_words(self):
+        tables.create("note", {"text": "o banco ligou"})
+        result = door.ask("deletar nota xyzzy")
+        self.assertEqual(result.kind, "refused")
+        self.assertEqual(result.text, tr("nlu.error.no_title", table=tr("table.note.name.one"), text="xyzzy"))
+        self.assertNotEqual(result.text, tr("nlu.error.no_row", table=tr("table.note.name.one")))
+
+    def test_no_name_at_all_is_still_no_row(self):
+        result = door.ask("deletar nota")
+        self.assertEqual(result.kind, "refused")
+        self.assertIn(tr("nlu.error.no_row", table=tr("table.note.name.one")), result.text)
+
+    def test_the_new_keys_speak_both_languages(self):
+        for key in ("nlu.error.no_title", "nlu.ask.which_row"):
+            for language in i18n.SUPPORTED:
+                self.assertNotEqual(i18n.text(key, language), key)
+
     def test_a_note_with_no_text_is_a_question(self):
         # "anota", alone, does not say what to write: the matcher asks back for
         # the field the person has not filled, and nothing is written.

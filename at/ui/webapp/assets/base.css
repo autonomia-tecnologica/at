@@ -169,7 +169,12 @@ html.nav-open nav { transform: translateX(0); box-shadow: var(--nav-edge); }
   flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
   width: 100%;
   padding: var(--space-2) 0 var(--foot-space, 140px);
+  /* THE HEADS ARE ALWAYS ON SCREEN: a column where only the open item grows and scrolls inside; this box scrolls only as the fallback of a screen too short for the heads */
+  display: flex; flex-direction: column;
 }
+#kinds > * { flex: none; }
+#kinds > .foldable.grouped:not(.closed) { flex: 1 1 0; min-height: 0; }
+.foldable.grouped:not(.closed) > .fold { overflow-y: auto; overflow-x: hidden; }
 .side-foot {
   position: absolute; left: 0; right: 0; bottom: 0;
   width: 100%;
@@ -298,8 +303,8 @@ nav .file[data-view="reminders"],
 nav .file[data-view="notes"] {
   display: flex; justify-content: flex-start; align-items: center; gap: var(--space-2);
   /* THE BOX IS THE TEXT'S, now that a section head is also a ROW */
-  margin: var(--space-4) var(--space-3) var(--space-1);
-  padding: var(--space-2) var(--space-3);
+  margin: var(--space-2) var(--space-3) 0;
+  padding: var(--space-1) var(--space-3);
   color: var(--nav-ink-2);
   font-size: var(--type-caption); font-weight: var(--weight-bold);
   letter-spacing: .07em; text-transform: uppercase;
@@ -1425,39 +1430,65 @@ a.ref:hover, a.url:hover { border-bottom-color: currentColor; background: var(--
   padding: var(--space-8);
 }
 
-.stats {
+/* STATSTRIP (componente StatStrip.vue) */
+.stat-strip { display: flex; flex-direction: column; gap: var(--space-8); }
+
+.stat-strip .stats {
   display: grid; gap: var(--space-4);
   grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
 }
-.stat {
+.stat-strip .stat {
   display: flex; flex-direction: column; gap: 2px;
   padding: var(--space-5); background: var(--surface-1);
   border: 1px solid var(--border-soft); border-radius: var(--r-lg);
-  
 }
-.stat b {
+.stat-strip .stat b {
   font-family: var(--font-display, var(--font-sans)); font-size: var(--type-page);
   font-weight: var(--weight-bold); line-height: var(--leading-tight);
   letter-spacing: var(--letter-tight);
   font-variant-numeric: tabular-nums; color: var(--text-primary);
 }
-.stat span { color: var(--text-tertiary); font-size: var(--type-body-sm); }
-/* The TONE is the vocabulary's, not this file's invention */
-.stat[data-state="done"] b { color: var(--success-text); }
-.stat[data-state="doing"] b { color: var(--warning-text); }
-.stat[data-state="todo"] b { color: var(--info-text); }
+.stat-strip .stat span { color: var(--text-tertiary); font-size: var(--type-body-sm); }
 
-/* THE SAME FOUR NUMBERS AS ONE PROPORTION */
-.bars { display: flex; gap: 4px; height: 12px; }
-.bar-part {
+/* THE TONE is the vocabulary's, not this file's invention */
+.stat-strip .stat[data-tone="done"] b { color: var(--success-text); }
+.stat-strip .stat[data-tone="doing"] b { color: var(--warning-text); }
+.stat-strip .stat[data-tone="todo"] b { color: var(--info-text); }
+.stat-strip .stat[data-tone="code"] b { color: var(--accent); }
+.stat-strip .stat[data-tone="text"] b { color: var(--info-text); }
+.stat-strip .stat[data-tone="data"] b { color: var(--warning-text); }
+.stat-strip .stat[data-tone="other"] b { color: var(--text-secondary); }
+.stat-strip .stat[data-tone="image"] b { color: var(--success-text); }
+
+/* THE SAME NUMBERS AS ONE PROPORTION */
+.stat-strip .bars { display: flex; gap: 4px; height: 12px; }
+.stat-strip .bar-part {
   display: block; min-width: 6px; border-radius: var(--r-full);
   background: var(--border-strong);
   transform-origin: left;
   animation: bar-in var(--dur-4) var(--ease-move) backwards;
 }
-.bar-part[data-state="done"] { background: var(--success); }
-.bar-part[data-state="doing"] { background: var(--warning); }
-.bar-part[data-state="todo"] { background: var(--info); }
+.stat-strip .bar-part[data-tone="done"] { background: var(--success); }
+.stat-strip .bar-part[data-tone="doing"] { background: var(--warning); }
+.stat-strip .bar-part[data-tone="todo"] { background: var(--info); }
+.stat-strip .bar-part[data-tone="code"] { background: var(--accent); }
+.stat-strip .bar-part[data-tone="text"] { background: var(--info); }
+.stat-strip .bar-part[data-tone="data"] { background: var(--warning); }
+.stat-strip .bar-part[data-tone="other"] { background: var(--border-strong); }
+.stat-strip .bar-part[data-tone="image"] { background: var(--success); }
+
+/* THE PHONE: one strip of chips, number and label on the same line */
+@media (max-width: 640px) {
+  .stat-strip { gap: var(--space-3); }
+  .stat-strip .stats { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  .stat-strip .stat {
+    flex-direction: row; align-items: baseline; gap: var(--space-2);
+    padding: var(--space-1) var(--space-3); border-radius: var(--r-full);
+  }
+  .stat-strip .stat b { font-size: var(--type-body); line-height: var(--leading-tight); }
+  .stat-strip .stat span { font-size: var(--type-caption); }
+  .stat-strip .bars { height: 8px; }
+}
 
 .cards { display: flex; flex-direction: column; gap: var(--space-3); }
 .cards > .btn { align-self: flex-start; }
@@ -1497,19 +1528,6 @@ a.ref:hover, a.url:hover { border-bottom-color: currentColor; background: var(--
 .reminder .meta { color: var(--text-tertiary); font-size: var(--type-body-sm); }
 .reminder .n { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 .reminder.paused { opacity: .55; }
-
-/* O TOM DE CADA BALDE, e ele é do DESENHO e não do dado */
-.stat[data-bucket="code"] b, .bar-part[data-bucket="code"] { color: var(--accent); }
-.stat[data-bucket="code"] b { color: var(--accent); }
-.bar-part[data-bucket="code"] { background: var(--accent); }
-.stat[data-bucket="text"] b { color: var(--info-text); }
-.bar-part[data-bucket="text"] { background: var(--info); }
-.stat[data-bucket="data"] b { color: var(--warning-text); }
-.bar-part[data-bucket="data"] { background: var(--warning); }
-.stat[data-bucket="other"] b { color: var(--text-secondary); }
-.bar-part[data-bucket="other"] { background: var(--border-strong); }
-.stat[data-bucket="image"] b { color: var(--success-text); }
-.bar-part[data-bucket="image"] { background: var(--success); }
 
 /* O NAVEGADOR DE ARQUIVOS (tela Arquivos): ver, abrir pasta, abrir arquivo */
 .fbar { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
@@ -1785,6 +1803,8 @@ html.no-motion *, html.no-motion *::before, html.no-motion *::after {
 /* TOUCH (F4): a coarse pointer gets 44px targets — controls, rows of a menu, the checkbox's whole label */
 @media (pointer: coarse) {
   :root { --control-h: 44px; --control-h-sm: 44px; --nav-toggle-box: 44px; }
-  .pop .opt, nav button, .tab { min-height: 44px; }
+  .pop .opt, .tab { min-height: 44px; }
+  /* THE PANEL'S ROWS ARE CLOSER (a pedido): 40px still a thumb's target */
+  nav button { min-height: 40px; }
   .radio-row, .check-row { min-height: 44px; }
 }

@@ -39,7 +39,7 @@ from typing import Any
 
 from at import i18n
 from at.core import tables
-from at.data import schema
+from at.data import schema, store
 from at.i18n import tr
 from at.nlu import grammar, vocabulary
 from at.nlu.interpreter import KINDS, resolve
@@ -54,6 +54,17 @@ PARTICLE = ""
 
 # The actions that act upon a row, and cannot be done without naming one.
 _ROW_ACTIONS = frozenset({"view", "edit", "cancel", "delete"})
+
+# As ações que podem nomear a linha pelo TÍTULO. `edit` e `cancel` ficam de
+# fora: o resto da frase delas também é o valor novo / o motivo, e o texto não
+# distingue um do outro.
+_TITLED_ACTIONS = frozenset({"view", "delete"})
+
+# A palavra que só anuncia o número (`nota numero 3`): gasta ao nomear a linha.
+_NUMBER_WORDS = frozenset({"numero", "number", "nr", "num"})
+
+# Quantos candidatos a pergunta lista antes de cortar.
+_MAX_CHOICES = 10
 
 
 def match(
@@ -148,6 +159,12 @@ def match(
         # `dia 3` is a day and stays one, and a bare `3` is a row when — and
         # only when — the action asked for one.
         row, runs = _take_row(table, words, runs)
+        if row is None and action in _TITLED_ACTIONS:
+            # NOMEAR POR TÍTULO (23/10/2026): sem número, o que sobra da frase
+            # é buscado no título da tabela.
+            row, runs = _take_title(table, words, runs)
+            if isinstance(row, Question):
+                return row
         if row is None:
             raise Refused("nlu.error.no_row", table=tables.table_name(table))
 
@@ -770,6 +787,49 @@ def _runs(spent: list[bool]) -> list[tuple[int, int]]:
         elif not done and start is None:
             start = index
     return found
+
+
+def _take_title(table: str, words: list[str], runs: list[tuple[int, int]]):
+    """A linha nomeada pelo TÍTULO: o texto que sobrou da frase, buscado no campo
+    principal que a tabela declara (`schema.primary`), sem diferenciar caixa nem
+    acento. Uma só linha: devolve o número dela. Uma linha cujo título é IGUAL ao
+    texto vence as que apenas o contêm. Várias: devolve a `Question`. Nenhuma:
+    `Refused`. Sem texto algum: `None` (a frase continua sem linha).
+
+    Um `2323` dentro de um texto de várias palavras é parte do texto, nunca o id:
+    o número só nomeia a linha quando é a única coisa dita (`numero 3`).
+    """
+    chunk = [
+        word for start, end in runs for word in words[start:end]
+        if fold(word) not in _NUMBER_WORDS
+    ]
+    if not chunk:
+        return None, runs
+    if len(chunk) == 1:
+        number = tables.number_of(table, chunk[0])
+        if number is not None:
+            return number, []
+    wanted = fold(" ".join(chunk))
+    primary = schema.primary(table)
+    if not primary or tables.opaque(table, primary) is not None:
+        return None, runs
+    found = [
+        row for row in tables.rows(table, show_all=True)
+        if isinstance(row.get(primary), str) and wanted in fold(row[primary])
+    ]
+    exact = [row for row in found if fold(row[primary]) == wanted]
+    found = exact or found
+    if not found:
+        raise Refused("nlu.error.no_title", table=tables.table_name(table), text=" ".join(chunk))
+    if len(found) == 1:
+        return store.number_of(found[0]), []
+    lines = [
+        f"{index}. {tables.format_id(table, store.number_of(row))} · {row[primary]}"
+        for index, row in enumerate(found[:_MAX_CHOICES], 1)
+    ]
+    if len(found) > _MAX_CHOICES:
+        lines.append("…")
+    return Question("nlu.ask.which_row", "\n".join(lines)), runs
 
 
 def _take_row(table: str, words: list[str], runs: list[tuple[int, int]]):

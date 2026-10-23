@@ -1593,7 +1593,12 @@ def _listing(
     if full_table:
         header, cells = _table_rows(table, rows)
         return OK, words.table([header, *cells]), (header, cells), None
-    bullets = [tables.title(table, row) for row in rows]
+    # O IDENTIFICADOR VAI JUNTO DO TÍTULO (23/10/2026): é o que a pessoa diz para
+    # nomear a linha (`apagar nota 5`), então a lista o mostra.
+    bullets = [
+        f"{tables.format_id(table, row['id'])} · {tables.title(table, row)}"
+        for row in rows
+    ]
     return OK, "\n".join(f"- {line}" for line in bullets), None, bullets
 
 
