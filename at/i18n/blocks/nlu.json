@@ -2,8 +2,8 @@
   "pt_BR": {
     "error.no_such_day": "Não existe o dia {value}.",
     "error.no_such_clock": "Não existe a hora {value}.",
-    "error.no_action": "Nenhuma ação na frase: {text}.",
-    "error.no_table": "Nenhuma tabela na frase: {text}.",
+    "error.no_action": "Não entendi o que fazer com \"{text}\". Eu listo, vejo, crio, edito, cancelo e apago registros — tarefas, projetos, lembretes e notas. Tente, por exemplo: \"listar tarefas\" ou \"criar tarefa comprar pão\".",
+    "error.no_table": "Entendi a ação, mas não sobre qual registro: \"{text}\". Diga também se é tarefa, projeto, lembrete ou nota — por exemplo: \"listar tarefas\".",
     "error.no_such_table": "Não há {word}.",
     "error.no_table_bare": "Não disse o que {action}. Tenho: {names}.",
     "error.two_actions": "Uma ação por pedido: a frase nomeia {first} e {second}.",
@@ -19,8 +19,8 @@
   "en_US": {
     "error.no_such_day": "There is no day {value}.",
     "error.no_such_clock": "There is no hour {value}.",
-    "error.no_action": "No action in the sentence: {text}.",
-    "error.no_table": "No table in the sentence: {text}.",
+    "error.no_action": "I did not understand what to do with \"{text}\". I list, view, create, edit, cancel and delete records — tasks, projects, reminders and notes. Try, for example: \"list tasks\" or \"create task buy bread\".",
+    "error.no_table": "I got the action, but not which record it is about: \"{text}\". Say whether it is a task, project, reminder or note too — for example: \"list tasks\".",
     "error.no_such_table": "There is no {word}.",
     "error.no_table_bare": "You didn't say what to {action}. I have: {names}.",
     "error.two_actions": "One action per request: the sentence names {first} and {second}.",

@@ -2656,6 +2656,10 @@ class Handler(BaseHTTPRequestHandler):
             # every question and refusal.
             "record": result.record,
             "lead": result.lead,
+            # O desfecho `intent` (conversa): qual intenção e subintenção
+            # produziram `text`. `null` em todo outro desfecho.
+            "intent": result.intent,
+            "subintent": result.subintent,
         })
 
     def _post_jev(self) -> None:

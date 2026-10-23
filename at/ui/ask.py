@@ -155,6 +155,10 @@ class Result:
     - `question` — the sentence admitted more than one reading, and `text` is the
       question (§9). Nothing was proposed, so nothing was written.
     - `refused` — the sentence was not read at all, and `text` names the reason.
+
+    A fourth, `intent`, is the assist reading the sentence as CONVERSATION (a
+    greeting, thanks, a request for help): nothing was proposed or written, and
+    `text` is what is said back — a line of the chat, not an error.
     """
 
     kind: str
@@ -216,6 +220,11 @@ class Result:
     # question, a refusal — and for a demand that waited: there is no row to
     # show, so there is no sentence to lead into it.
     lead: str | None = None
+    # O desfecho `intent` (conversa: saudação, agradecimento, ajuda…): `text` é a
+    # fala já resolvida no idioma ativo, e estes dois dizem QUAL intenção e
+    # subintenção a produziram. `None` em todo outro desfecho.
+    intent: str | None = None
+    subintent: str | None = None
 
 
 def ask(
@@ -258,6 +267,9 @@ def ask(
         # `lib/chat.ts` reads "sim"/"não" against an open CONFIRM question.
         awaiting = refused.kw.get("canonical") if refused.key == "nlu.error.no_table_bare" else None
         return Result("refused", None, str(refused), REFUSED, assist=hinted, awaiting=awaiting)
+    if isinstance(proposed, nlu.Intent):
+        return Result("intent", None, tr(proposed.key), OK,
+                      intent=proposed.intent, subintent=proposed.subintent)
     if isinstance(proposed, nlu.Question):
         # The question carries the phrase it is about, so the surface asks in the
         # active language without knowing which one the phrase was written in.
@@ -305,6 +317,7 @@ def ask(
     # it: a `list` answers its own shape (above), and a demand that WAITED
     # answered `None` from `run` (nothing was written to show).
     shown = card(proposed.table, row) if row is not None else None
+    lead = _lead(proposed, shown, table_rows, bullets, answer)
     return Result(
         "answer", written, answer, code,
         table=table_rows, bullets=bullets,
@@ -313,8 +326,37 @@ def ask(
         # by its title: a title is prose, and prose belongs to the person the
         # row is about — the card under it carries the whole of what the row
         # says, and a sentence that repeated it would be a second telling.
-        lead=tr(f"table.lead.{proposed.action}", id=shown["shown_id"]) if shown else None,
+        lead=lead,
+        intent=jev.ACT, subintent=f"{proposed.table}.{proposed.action}",
     )
+
+
+def say(table: str, action: str, **kw: object) -> str:
+    """A fala humana de `objeto.ação` — a intenção `act` (`intent.act.<tabela>.<ação>`),
+    e, quando a combinação não tem mensagem própria, a da AÇÃO (`intent.act.<ação>`).
+    Uma mensagem por chave: o i18n não tem variantes."""
+    key = f"intent.act.{table}.{action}"
+    if tr(key) == key:
+        key = f"intent.act.{action}"
+    return tr(key, **kw)
+
+
+def _lead(proposed: nlu.Proposal, shown: dict | None, table_rows, bullets, answer: str) -> str | None:
+    """A frase que a conversa diz ANTES do cartão ou da listagem.
+
+    Cartão: nomeia a linha pelo id do motor (`shown_id`), nunca pelo título. Lista
+    com linhas: a fala da lista. Lista vazia SEM filtro: a fala de vazio. Lista
+    vazia COM filtro (ou num dia): `None` — o texto do motor já diz o filtro, e uma
+    frase genérica por cima o repetiria. Qualquer outra coisa: `None`."""
+    if shown:
+        return say(proposed.table, proposed.action, id=shown["shown_id"])
+    if proposed.action != "list":
+        return None
+    if table_rows is not None or bullets is not None:
+        return say(proposed.table, "list")
+    if answer == tr("table.word.empty"):
+        return say(proposed.table, "list.empty")
+    return None
 
 
 def ceiling(actor: dict | None, proposal: nlu.Proposal) -> str | None:

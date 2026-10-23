@@ -99,8 +99,8 @@ function openCard(): void {
       <time v-if="when" class="stamp">{{ when }}</time>
     </p>
     <div class="answer-msg">
-      <!-- THE SENTENCE AROUND THE CARD (20/10/2026): "Achei TASK-1 para
-           você. É este:" — composed by the server, drawn here, and never a
+      <!-- THE SENTENCE AROUND THE CARD (20/10/2026): "Achei a tarefa TASK-1.
+           É esta:" — composed by the server, drawn here, and never a
            second wording of the engine's own answer (`text`, which the card
            stands for when there is one). -->
       <p v-if="turn.lead" class="lead">{{ turn.lead }}</p>
@@ -121,6 +121,9 @@ function openCard(): void {
       <!-- THE ENGINE'S OWN ANSWER, still shown when there is no card to stand
            for it: a `list` (table or bullets), a refusal, a question, and the
            demand that waited. -->
+      <!-- A lista vazia sem filtro: a `lead` já é a fala, e o texto do motor
+           ("Nada aqui ainda.") seria a mesma coisa duas vezes. -->
+      <template v-else-if="turn.lead && !turn.table && !turn.bullets"></template>
       <template v-else-if="html !== null">
         <div class="md-body" v-html="html"></div>
         <time v-if="when" class="stamp">{{ when }}</time>

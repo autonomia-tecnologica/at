@@ -74,6 +74,19 @@ NONE = "none"
 ACTION = "action"
 TABLE = "table"
 
+# O terceiro eixo: a INTENÇÃO de uma frase de conversa (saudação, agradecimento,
+# ajuda…) e a SUBINTENÇÃO dela. Só vale quando ação e tabela dão `NONE`. Ambas
+# são `choice`, como as outras; a subintenção é perguntada como
+# `intenção.subintenção` (um nome só, porque `plain` existe em todas) e o código
+# separa o que voltou.
+INTENT = "intent"
+SUBINTENT = "subintent"
+INTENT_DESC = "intent.desc"
+# A intenção `act` (agir sobre um objeto: `<tabela>.<ação>`) mora no mesmo bloco,
+# mas é DERIVADA das respostas de ação e tabela, nunca uma escolha da pergunta
+# de intenção — por isso `intents()` a exclui.
+ACT = "act"
+
 # Os TRECHOS: qual palavra da frase É a ação e qual É a tabela. O
 # `choice` de `action`/`table` diz o CANÔNICO que a frase quer dizer; estes
 # dizem ONDE, na frase, ele está escrito — que é o que o código precisa para
@@ -120,6 +133,12 @@ class Decision:
     table_span: str = ""
     day_span: str = ""
     time_span: str = ""
+    # A INTENÇÃO e a subintenção, com a confiança da intenção: `NONE`/0.0 por
+    # padrão, que é o que toda chamada e toda entrada de cache anteriores a este
+    # eixo continuam lendo. Não entram em `confidence` — essa é a da ação.
+    intent: str = "none"
+    intent_confidence: float = 0.0
+    subintent: str = "none"
 
     @property
     def confidence(self) -> float:
@@ -209,12 +228,56 @@ def decide(
                     "instructions": _text("assist.criteria.span.time", language),
                     "criteria": spans,
                 },
+                # A conversa: qual a intenção e qual o jeito dela. Os critérios
+                # vêm do bloco `intent` do i18n — acrescentar uma é editar o JSON.
+                INTENT: {
+                    "type": "choice",
+                    "instructions": _text("assist.criteria.intent.instructions", language),
+                    "criteria": intent_criteria(language),
+                },
+                SUBINTENT: {
+                    "type": "choice",
+                    "instructions": _text("assist.criteria.subintent.instructions", language),
+                    "criteria": subintent_criteria(language),
+                },
             },
         }
     ).encode("utf-8")
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     raw = post(ENDPOINT, body, headers, TIMEOUT)
     return _read(raw)
+
+
+def intents(language: str) -> list[str]:
+    """As intenções declaradas no bloco `intent` do i18n (`desc.<intenção>`),
+    na ordem em que o JSON as traz."""
+    head = INTENT_DESC + "."
+    return [key[len(head):] for key in i18n.keys(INTENT_DESC, language)
+            if "." not in key[len(head):] and key[len(head):] != ACT]
+
+
+def subintents(intent: str, language: str) -> list[str]:
+    """As subintenções de `intent` (`desc.<intenção>.<subintenção>`)."""
+    head = f"{INTENT_DESC}.{intent}."
+    return [key[len(head):] for key in i18n.keys(INTENT_DESC, language)
+            if key.startswith(head)]
+
+
+def intent_criteria(language: str) -> dict[str, str]:
+    criteria = {name: i18n.text(f"{INTENT_DESC}.{name}", language)
+                for name in intents(language)}
+    criteria[NONE] = _text("assist.criteria.none.intent", language)
+    return criteria
+
+
+def subintent_criteria(language: str) -> dict[str, str]:
+    criteria = {
+        f"{name}.{sub}": i18n.text(f"{INTENT_DESC}.{name}.{sub}", language)
+        for name in intents(language)
+        for sub in subintents(name, language)
+    }
+    criteria[NONE] = _text("assist.criteria.none.subintent", language)
+    return criteria
 
 
 def _span_criteria(text: str, language: str) -> dict[str, str]:
@@ -255,9 +318,26 @@ def _read(raw: bytes) -> Decision:
             # segue sem elas — nenhuma palavra-campo é plantada.
             day_span=str(answers.get(DAY_SPAN, {}).get("choice", NONE)),
             time_span=str(answers.get(TIME_SPAN, {}).get("choice", NONE)),
+            # Idem para a intenção: um servidor que não a conhece responde
+            # `NONE`, e a frase segue para o matcher como sempre seguiu.
+            **_read_intent(answers),
         )
     except (ValueError, KeyError, TypeError, UnicodeError) as error:
         raise JevError(f"unreadable answer: {error}") from None
+
+
+def _read_intent(answers: dict) -> dict:
+    intent = answers.get(INTENT) or {}
+    chosen = str(intent.get("choice", NONE))
+    sub = str((answers.get(SUBINTENT) or {}).get("choice", NONE))
+    # A subintenção volta como `intenção.subintenção`; só vale a da intenção
+    # escolhida. Qualquer outra coisa é `NONE` (e a mensagem cai em `plain`).
+    head = chosen + "."
+    return {
+        "intent": chosen,
+        "intent_confidence": float(intent.get("confidence", 0.0)) if chosen != NONE else 0.0,
+        "subintent": sub[len(head):] if sub.startswith(head) else NONE,
+    }
 
 
 # ------------------------------------------------------------- the grounding ---

@@ -34,7 +34,7 @@ from at.nlu.interpreter import KINDS, resolve
 from at.nlu.matcher import match
 from at.nlu.normalizer import canonical
 from at.nlu.proposal import Proposal
-from at.nlu.reading import Question, Reading, Refused, Residue, Value
+from at.nlu.reading import Intent, Question, Reading, Refused, Residue, Value
 
 # The key of the switch in `app/settings.json`. Turning the interpreter off takes
 # it out of the core API and the word out of the tree, and takes nothing else.
@@ -54,7 +54,7 @@ def propose(
     now: datetime | None = None,
     main_key: str | None = None,
     confirmed: bool = False,
-) -> Proposal | Question:
+) -> Proposal | Question | Intent:
     """What a sentence proposes, or the question it comes back as.
 
     This is the door of the **core API**, and it is the only one the surfaces

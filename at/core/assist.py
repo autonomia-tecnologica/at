@@ -117,7 +117,7 @@ from at.data import schema, store
 from at.encryption import vault
 from at.nlu import matcher
 from at.nlu.proposal import Proposal
-from at.nlu.reading import Question, Refused
+from at.nlu.reading import Intent, Question, Refused
 
 # The key of this module's own switch in `app/settings.json` — separate from
 # `at.nlu.SWITCH`, because two switches that touched each other would be the
@@ -137,6 +137,12 @@ REFUSE = "refuse"
 READ_THRESHOLD = 0.7
 WRITE_THRESHOLD = 0.9
 CONFIRM_FLOOR = 0.5
+
+# A INTENÇÃO (conversa: saudação, agradecimento, ajuda…) é só fala — não escreve
+# nada —, então vale o piso de uma leitura barata. E a subintenção que o Jev não
+# soube dizer cai em `PLAIN`, a que toda intenção tem.
+INTENT_THRESHOLD = READ_THRESHOLD
+PLAIN = "plain"
 
 # The `i18n` key of the question a CONFIRM tier asks — carried in `nlu.json`
 # beside `ask.which_field` and `ask.which_hour`, because it is the same shape
@@ -219,8 +225,19 @@ def _cached(key: str) -> jev.Decision | None:
     if not isinstance(entry, dict):
         return None
     action, table = entry.get("action"), entry.get("table")
-    if action not in tables.ACTIONS or schema.of(table) is None:
+    # `none` é uma resposta GUARDÁVEL: a frase de conversa ("oi") não pede ação
+    # nem tabela, e é a intenção que a responde.
+    if action not in (*tables.ACTIONS, jev.NONE):
         return None
+    if table != jev.NONE and schema.of(table) is None:
+        return None
+    # Uma entrada `none`/`none` GRAVADA ANTES do eixo de intenção não tem a
+    # chave `intent`: ela nunca foi perguntada sobre a intenção, e servi-la
+    # seria responder "não entendi" a um "oi". É miss — o Jev responde de novo
+    # e a entrada se regrava inteira.
+    if action == jev.NONE and table == jev.NONE and "intent" not in entry:
+        return None
+    intent = entry.get("intent") or jev.NONE
     try:
         return jev.Decision(
             action=str(action),
@@ -233,6 +250,11 @@ def _cached(key: str) -> jev.Decision | None:
             # lê `NONE`, e a leitura sai sem eles — o cache se cura na próxima.
             day_span=str(entry.get("day_span") or jev.NONE),
             time_span=str(entry.get("time_span") or jev.NONE),
+            # Idem para a intenção: entrada anterior a este eixo lê `NONE`. Uma
+            # intenção que o catálogo não declara mais é descartada por `_intent`.
+            intent=str(intent),
+            intent_confidence=float(entry.get("intent_confidence") or 0.0),
+            subintent=str(entry.get("subintent") or jev.NONE),
         )
     except (KeyError, TypeError, ValueError):
         return None
@@ -249,6 +271,9 @@ def _remember(key: str, guess: jev.Decision) -> None:
         "table_span": guess.table_span,
         "day_span": guess.day_span,
         "time_span": guess.time_span,
+        "intent": guess.intent,
+        "intent_confidence": guess.intent_confidence,
+        "subintent": guess.subintent,
     }
     files.atomic_write_text(
         cache_file(),
@@ -263,7 +288,7 @@ def decide(
     now: datetime | None = None,
     main_key: str | None = None,
     transport: jev.Transport | None = None,
-) -> Proposal | Question | None:
+) -> Proposal | Question | Intent | None:
     """A leitura PRIMÁRIA: o que o Jev lê de `text`, ou `None` para deixar a
     frase ao matcher determinístico — o apoio.
 
@@ -301,6 +326,13 @@ def decide(
         except jev.JevError:
             return None
         _remember(key, guess)
+    # **A INTENÇÃO só vale quando ação e tabela deram `none`**: se a frase pede
+    # uma ação, a ação ganha e a escrita segue determinística. É conversa — não
+    # escreve nada —, então o piso é o de uma leitura barata, e independe do
+    # `MODE` da pasta (não há o que confirmar).
+    spoken = _intent(guess, language)
+    if spoken is not None:
+        return spoken
     tier = _folded(_tier(guess))
     if tier == REFUSE:
         return None
@@ -321,6 +353,20 @@ def decide(
                              action=guess.action, table=guess.table)
     except Refused:
         return None
+
+
+def _intent(guess: jev.Decision, language: str) -> Intent | None:
+    """A conversa que o Jev leu, ou `None` quando a frase pede uma ação (ou
+    tabela), a intenção é `none`, ou ela ficou abaixo do piso."""
+    if guess.action != jev.NONE or guess.table != jev.NONE:
+        return None
+    if guess.intent == jev.NONE or guess.intent not in jev.intents(language):
+        return None
+    if guess.intent_confidence < INTENT_THRESHOLD:
+        return None
+    known = jev.subintents(guess.intent, language)
+    sub = guess.subintent if guess.subintent in known else PLAIN
+    return Intent(guess.intent, sub, f"intent.{guess.intent}.{sub}")
 
 
 @dataclass(frozen=True)

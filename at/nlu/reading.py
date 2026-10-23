@@ -69,6 +69,21 @@ class Question:
     text: str
 
 
+@dataclass(frozen=True)
+class Intent:
+    """A phrase that asks for no action on a record — a greeting, thanks, a
+    request for help — and that the assist read as CONVERSATION.
+
+    `intent` and `subintent` are the canonicals the assist chose, and `key` is
+    the i18n key of the message that answers them (`intent.<intent>.<sub>`).
+    Nothing is proposed and nothing is written: it is a sentence to say back.
+    """
+
+    intent: str
+    subintent: str
+    key: str
+
+
 class Refused(Exception):
     """An expression of the kind that names a value which cannot exist.
 

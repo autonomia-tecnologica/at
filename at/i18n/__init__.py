@@ -63,6 +63,15 @@ def text(key: str, language: str) -> str:
     return key
 
 
+def keys(prefix: str, language: str) -> list[str]:
+    """Every full key under `prefix` (`prefix.` and what follows), in the order
+    the block declares them — the catalogue read as DATA, so a list that lives
+    in a block (the intents and their subintents) grows by editing its JSON and
+    never its code."""
+    head = prefix + "."
+    return [key for key in _catalog(language) if key.startswith(head)]
+
+
 def labels(key: str) -> dict[str, str]:
     """One key, written out in every supported language."""
     return {code: text(key, code) for code in SUPPORTED}

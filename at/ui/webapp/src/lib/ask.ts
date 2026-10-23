@@ -14,7 +14,9 @@
 import { post } from "./api";
 import { poke } from "./views";
 
-export type Kind = "answer" | "question" | "refused";
+// `intent` is conversation (a greeting, thanks, help): a line the chat SAYS, not
+// an error and not an answer to a record.
+export type Kind = "answer" | "question" | "refused" | "intent";
 
 // ONE ROW as a card — the table's main fields, already written out in the
 // active language, and the id that makes the card a door to the record's page.
@@ -76,6 +78,9 @@ export interface Turn {
   // este:" — also composed by the server, for the same reason every other
   // sentence here is (§3). `null` whenever `record` is.
   lead?: string | null;
+  // For kind "intent": which intent and subintent produced `text`.
+  intent?: string | null;
+  subintent?: string | null;
   // When this turn was ADDED to the conversation, stamped by `chat.ts`'s
   // `remember` and read nowhere else — the engine answers no clock here, and a
   // chat that showed none would be the one place a person cannot tell two
@@ -100,6 +105,7 @@ export async function ask(
       confirm?: string | null; table?: { header: string[]; rows: string[][] } | null;
       bullets?: string[] | null; awaiting?: string | null;
       record?: RecordCard | null; lead?: string | null;
+      intent?: string | null; subintent?: string | null;
     }
   >("/api/ask", body);
   // A proposal may have WRITTEN: the same page is redrawn where it stands, exactly
@@ -111,5 +117,6 @@ export async function ask(
     assist: !!data.assist, confirm: data.confirm ?? null, table: data.table ?? null,
     bullets: data.bullets ?? null, awaiting: data.awaiting ?? null,
     record: data.record ?? null, lead: data.lead ?? null,
+    intent: data.intent ?? null, subintent: data.subintent ?? null,
   };
 }

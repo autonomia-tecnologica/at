@@ -23,7 +23,11 @@
     "preview.line": "{action} ({action_confidence}) · {table} ({table_confidence}) — {tier}.",
     "preview.tier.auto": "aplicaria direto",
     "preview.tier.confirm": "perguntaria antes de aplicar",
-    "preview.tier.refuse": "não aplicaria"
+    "preview.tier.refuse": "não aplicaria",
+    "criteria.intent.instructions": "A mesma frase, agora sobre a INTENÇÃO de quem a escreveu quando ela não pede nenhuma ação sobre registros: conversa. Escolha a intenção que melhor descreve a frase. Se não é conversa nenhuma destas, responda 'none'.",
+    "criteria.subintent.instructions": "A mesma frase, agora o jeito específico da intenção. Cada opção vem escrita como intenção.subintenção; escolha a que melhor descreve a frase. Se nenhuma serve, responda 'none'.",
+    "criteria.none.intent": "A frase não é conversa de nenhuma destas intenções",
+    "criteria.none.subintent": "Nenhum destes jeitos específicos serve"
   },
   "en_US": {
     "criteria.action.instructions": "The sentence is from someone using a task-management system, written in informal English or slang. Judge which of these actions the person wants to take. Each option already names, in parentheses, the words the system recognizes WITHOUT any help — the question is only about what the sentence says OUTSIDE them: slang, jargon, a way of saying it the system does not know yet. If the sentence asks for none of these actions, answer 'none'.",
@@ -49,6 +53,10 @@
     "preview.line": "{action} ({action_confidence}) · {table} ({table_confidence}) — {tier}.",
     "preview.tier.auto": "would apply directly",
     "preview.tier.confirm": "would ask before applying",
-    "preview.tier.refuse": "would not apply"
+    "preview.tier.refuse": "would not apply",
+    "criteria.intent.instructions": "The same sentence, now about the INTENT of whoever wrote it when it asks for no action on records: conversation. Pick the intent that best describes the sentence. If it is conversation of none of these, answer 'none'.",
+    "criteria.subintent.instructions": "The same sentence, now the specific way of the intent. Each option is written as intent.subintent; pick the one that best describes the sentence. If none fits, answer 'none'.",
+    "criteria.none.intent": "The sentence is conversation of none of these intents",
+    "criteria.none.subintent": "None of these specific ways fits"
   }
 }

@@ -309,12 +309,14 @@ class TheRefusal(MatcherCase):
     def test_the_refusal_speaks_the_active_language(self):
         with self.assertRaises(nlu.Refused) as refused:
             self.propose("banana")
-        self.assertEqual(str(refused.exception), "Nenhuma ação na frase: banana.")
+        self.assertTrue(str(refused.exception).startswith('Não entendi o que fazer com "banana".'))
+        self.assertIn("listar tarefas", str(refused.exception))
         with mock.patch.dict(os.environ, {"AT_LANG": "en_US"}):
             i18n.reset()
             with self.assertRaises(nlu.Refused) as refused:
                 nlu.propose("banana", language="en_US", now=NOW)
-        self.assertEqual(str(refused.exception), "No action in the sentence: banana.")
+        self.assertTrue(str(refused.exception).startswith('I did not understand what to do with "banana".'))
+        self.assertIn("list tasks", str(refused.exception))
 
     def test_every_new_key_is_in_the_catalogue_of_both_languages(self):
         # A key with no text is a raw key on the screen, which is exactly what a

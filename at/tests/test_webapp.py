@@ -1533,14 +1533,14 @@ class TheAskDoor(ServerCase):
         self.assertEqual(record["title"], tables.title("task", tables.find("task", 2)))
         names = [field["name"] for field in record["fields"]]
         self.assertEqual(names, list(tables.columns("task")))
-        self.assertEqual(answer["lead"], i18n.tr("table.lead.create", id="TASK-2"))
+        self.assertEqual(answer["lead"], i18n.tr("intent.act.task.create", id="TASK-2"))
 
     def test_viewing_comes_back_with_the_record_it_found(self):
         status, answer = self.post("/api/ask", {"text": "ver a tarefa 1"})
         self.assertEqual(status, 200)
         self.assertEqual(answer["kind"], "answer")
         self.assertEqual(answer["record"]["shown_id"], "TASK-1")
-        self.assertEqual(answer["lead"], i18n.tr("table.lead.view", id="TASK-1"))
+        self.assertEqual(answer["lead"], i18n.tr("intent.act.task.view", id="TASK-1"))
 
     def test_a_list_has_no_card_and_keeps_its_own_shape(self):
         # One row is the card's business; a LIST of them is the table's, and a
@@ -1549,7 +1549,8 @@ class TheAskDoor(ServerCase):
         status, answer = self.post("/api/ask", {"text": "lista as tarefas"})
         self.assertEqual(status, 200)
         self.assertIsNone(answer["record"])
-        self.assertIsNone(answer["lead"])
+        self.assertEqual(answer["lead"], i18n.tr("intent.act.task.list"))
+        self.assertEqual((answer["intent"], answer["subintent"]), ("act", "task.list"))
         self.assertTrue(answer["table"] or answer["bullets"])
 
     def test_the_sentence_of_the_item_reaches_the_row_it_names(self):
