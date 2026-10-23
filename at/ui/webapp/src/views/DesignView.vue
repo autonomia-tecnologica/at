@@ -48,7 +48,7 @@ async function showDialog(): Promise<void> {
 </script>
 
 <template>
-  <div class="page design">
+  <div class="design">
     <section>
       <h2>Theme, side and density</h2>
       <div class="row">

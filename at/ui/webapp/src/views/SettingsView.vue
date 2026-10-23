@@ -175,7 +175,7 @@ watchEffect(() => setTrail(word("settings")));
        inteira — o idioma, o que se vê, quem age e o que é risco —, e agrupar
        isso em dobras fazia a pessoa ABRIR para descobrir o que havia dentro; o
        que uma aba guarda não é surpresa, é a outra metade da mesma tela. -->
-  <div class="page">
+  <div class="settings-page">
     <div class="tabs" role="tablist">
       <button v-for="name in TABS" :key="name" type="button" role="tab"
               class="tab" :class="{ on: tab === name }"
