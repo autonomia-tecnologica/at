@@ -261,7 +261,8 @@ class TheWarmUp(unittest.TestCase):
         def boom(text, language):
             raise RuntimeError("down")
 
-        self.run_warm(boom)
+        fake = self.run_warm(boom)
+        self.assertEqual(fake.call_count, 1)  # tentou, errou, e a thread acabou sem estourar
 
     def test_not_ready_asks_nothing(self):
         self.assertEqual(self.run_warm(lambda t, lang: [], ready=False).call_count, 0)

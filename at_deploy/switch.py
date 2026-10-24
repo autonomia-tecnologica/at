@@ -184,22 +184,11 @@ def reaches(host: str) -> bool:
 def edge_status(answer: gate.Answer | None = None) -> int | None:
     """The ONE probe of the first claim: what the SITE answers through the edge.
 
-    It is called once and only once per walk — `unproved` reads the status and
-    `in_front` is the same reading collapsed to a boolean —, because the two
+    It is called once and only once per walk — `unproved` reads the status —, because the two
     sentences of a failed first claim are told apart BY this number: `None` is
     the road, and anything else is the gate.
     """
     return gate.ask(f"{site()}/api/session", {}, answer)
-
-
-def in_front(answer: gate.Answer | None = None) -> bool:
-    """Whether the gate answers for AT — the edge in front, through the site.
-
-    Asked of a route that is ABOVE the gate (`/api/session`, which the entrance
-    needs before anybody is in): without the gate in front, AT answers it with
-    its own 200 page; with the gate there, the answer is Authelia's refusal.
-    """
-    return edge_status(answer) in IN_FRONT
 
 
 def sealed(answer: gate.Answer | None = None) -> bool:

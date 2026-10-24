@@ -1283,7 +1283,8 @@ class TheProjectDescriptionGainsATeto(FolderCase):
         self.born()
         self.rewrite(self.declaration("project"), self.old_project())
         made = tables.create("project", {"name": "AT", "status": "active"})
-        tables.edit("project", made["id"], {"desc": "x" * 500})
+        edited = tables.edit("project", made["id"], {"desc": "x" * 500})
+        self.assertEqual(len(edited["desc"]), 500)
 
     def test_once_the_ceiling_arrives_a_biblia_is_refused(self):
         self.old_folder()

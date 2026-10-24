@@ -78,7 +78,6 @@ SINCE = "since"
 NOTIFIED = "notified"
 
 ACTIVE = "active"
-PAUSED = "paused"
 
 DAILY = "daily"
 WEEKLY = "weekly"

@@ -1224,7 +1224,11 @@ class TheBroadcaster(unittest.TestCase):
 
     def test_unsubscribing_an_unknown_queue_does_nothing(self):
         made = events.Broadcaster()
+        kept = made.subscribe()
         made.unsubscribe(queue.Queue())  # não estoura
+        self.assertEqual(len(made), 1)  # e quem estava cadastrado segue lá
+        made.publish()
+        self.assertFalse(kept.empty())
 
 
 class TheEvents(ServerCase):

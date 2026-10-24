@@ -22,7 +22,6 @@ from at.core import push
 # O que todo aviso do AT diz de si — o mesmo vocabulário de antes, agora na
 # fatia que o navegador desenha.
 TITLE = "AT"
-PRIORITY = "high"
 TAGS = "bell"
 
 # Os campos que a página desenha de uma notificação (`push.inbox`).

@@ -2240,7 +2240,7 @@ class Handler(BaseHTTPRequestHandler):
         """The raw bytes of one file of `Arquivos/`, for whatever `<img>` in
         the page names it as `src` (TASK-167). The SAME door every other read
         of the folder walks (`prose.inside`, never a raw join) and the SAME
-        gate (`servable`: `inside` plus `is_file`, so a name outside the tree
+        gate (`inside` plus `is_file`, so a name outside the tree
         or a name nothing answers to is a 404 and not a peek at the
         filesystem).
 

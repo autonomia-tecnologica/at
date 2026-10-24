@@ -187,7 +187,7 @@ class TheProof(FolderCase):
         self.assertFalse(switch.proved(FakeProbes(unsealed=200)))
 
     def test_the_portal_must_answer_on_the_address_the_gate_sends_people_to(self):
-        # A quarta pergunta, e a que faltava: `in_front` se contenta com o 302,
+        # A quarta pergunta, e a que faltava: o primeiro teste se contenta com o 302,
         # e um redirecionamento para uma página que não atende também responde
         # 302 — era assim que a virada fechava com o portal em laço. A pergunta
         # vai ao ENDEREÇO do portal, pela borda, que é onde o navegador pousa.

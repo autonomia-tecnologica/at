@@ -45,7 +45,6 @@ MAX_OPEN_BYTES = 10 * 1024 * 1024
 # it to find out would be the very thing this fatia is about.
 HEAD_BYTES = 64 * 1024
 
-BUCKETS = ("code", "text", "data", "image", "other")
 # The nine an image VIEWER already knows how to draw (TASK-167) — an image is
 # drawn by the page, inside it.
 IMAGE_EXT = (
@@ -164,11 +163,6 @@ def inside(rel: str) -> Path | None:
     if not parts or any(part == ".." or part.startswith(".") for part in parts):
         return None
     return root().joinpath(*parts)
-
-
-def servable(rel: str) -> bool:
-    where = inside(rel)
-    return where is not None and where.is_file()
 
 
 def listed() -> list[str]:

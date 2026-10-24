@@ -75,7 +75,8 @@ class TheDocxGenerator(unittest.TestCase):
 
     def test_it_is_a_well_formed_zip_of_well_formed_xml(self):
         document = self._document("# Título\n\nUm parágrafo.")
-        minidom.parseString(document)  # raises on anything malformed
+        parsed = minidom.parseString(document)  # raises on anything malformed
+        self.assertEqual(parsed.documentElement.tagName, "w:document")
 
     def test_a_heading_is_bold_and_bigger_than_the_body(self):
         document = self._document("# Título")

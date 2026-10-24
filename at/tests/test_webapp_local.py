@@ -14,7 +14,6 @@ import re
 import socket
 import tempfile
 import threading
-import time
 import unittest
 import urllib.request
 from contextlib import redirect_stdout
@@ -205,26 +204,32 @@ class TheIdleWatch(unittest.TestCase):
         server = self._Server(0)
         ticks = {"n": 0}
 
+        clock = {"now": 0.0}
+
         def pause(seconds: float) -> None:
             ticks["n"] += 1
-            time.sleep(seconds)
+            clock["now"] += seconds  # relógio falso: o tempo passa sem dormir
 
-        local._idle_watch(server, timeout=0.02, pause=pause, poll=0.01)
+        with mock.patch.object(local.time, "monotonic", lambda: clock["now"]):
+            local._idle_watch(server, timeout=0.02, pause=pause, poll=0.01)
         self.assertGreaterEqual(ticks["n"], 2)
 
     def test_a_tab_reopening_resets_the_quiet_clock(self) -> None:
         server = self._Server(0)
         calls = {"n": 0}
 
+        clock = {"now": 0.0}
+
         def pause(seconds: float) -> None:
             calls["n"] += 1
-            time.sleep(seconds)
+            clock["now"] += seconds  # relógio falso: o tempo passa sem dormir
             # A aba volta a abrir bem no meio da espera — o relógio da
             # ociosidade zera, e o retorno custa mais voltas do que as
             # mínimas para `timeout`.
             server.events.count = 1 if calls["n"] == 2 else 0
 
-        local._idle_watch(server, timeout=0.02, pause=pause, poll=0.01)
+        with mock.patch.object(local.time, "monotonic", lambda: clock["now"]):
+            local._idle_watch(server, timeout=0.02, pause=pause, poll=0.01)
         self.assertGreater(calls["n"], 2)
 
 
