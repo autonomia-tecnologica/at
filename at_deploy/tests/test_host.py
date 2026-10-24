@@ -24,6 +24,7 @@ from unittest import mock
 from at import i18n
 from at.core import boot
 from at.services import authelia
+from at.tests.payloads import required
 from at_deploy import environment, host, systemd
 from at_deploy.cli import OK, REFUSED, USAGE, main
 
@@ -112,6 +113,7 @@ class TheSystemdSeam(unittest.TestCase):
             self.assertIn("--user", argv)
 
 
+@required(authelia)
 class TheFirstTime(FolderCase):
     def test_no_systemd_is_refused_and_not_guessed_at(self):
         self.manager(present=False)
@@ -165,6 +167,7 @@ class TheFirstTime(FolderCase):
         self.assertFalse((self.unit_dir / host.AUTHELIA_UNIT).exists())
 
 
+@required(authelia)
 class TheUpdate(FolderCase):
     def test_update_restarts_nothing_when_nothing_changed(self):
         self.manager()
@@ -220,6 +223,7 @@ class TheUpdate(FolderCase):
         self.assertEqual(outcome, host.FAILED)
 
 
+@required(authelia)
 class TheCli(FolderCase):
     """`at-deploy host up|update`, through the real command line."""
 

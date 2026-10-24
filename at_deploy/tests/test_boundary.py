@@ -42,7 +42,7 @@ DEPLOY = ROOT / "at_deploy"
 # the whole of what keeps it on this side of the boundary and not the deploy's.
 # Every one of the four is a third party the artifact embeds, which is §3's way
 # of pinning a package.
-KEPT = {"authelia", "caddy", "gitleaks"}
+KEPT = {"authelia", "caddy", "gitleaks", "spelling_checker"}
 
 
 def sources(package: Path) -> list[Path]:
