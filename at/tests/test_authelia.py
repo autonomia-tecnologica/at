@@ -163,9 +163,9 @@ class TheConfiguration(FolderCase):
         self.assertIn("theme: auto", text)
 
     def test_a_one_sided_theme_pins_its_side(self):
-        from at.ui.webapp import app
+        from at.ui.webapp import look
         for sides, expected in ((["light"], "light"), (["dark"], "dark")):
-            with mock.patch.object(app, "theme_sides", return_value=sides):
+            with mock.patch.object(look, "theme_sides", return_value=sides):
                 self.assertEqual(authelia.palette(), expected)
 
     def test_the_configuration_points_at_the_brand_assets(self):

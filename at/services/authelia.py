@@ -327,10 +327,10 @@ def palette() -> str:
     browser's own scheme exactly as the AT's pages do; a theme with one side
     pins that side. `grey` is never chosen: no AT theme maps to it.
     """
-    from at.ui.webapp import app  # lazy: the webapp imports this module
+    from at.ui.webapp import look
 
-    row = app.active_theme(None)
-    sides = app.theme_sides(str(row.get("id"))) if row else []
+    row = look.active_theme(None)
+    sides = look.theme_sides(str(row.get("id"))) if row else []
     if sides == ["light"]:
         return "light"
     if sides == ["dark"]:
