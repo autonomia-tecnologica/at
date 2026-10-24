@@ -184,3 +184,10 @@ colour
 etc
 nunito
 px
+csp
+css
+html
+iframe
+js
+sandboxed
+freebsd

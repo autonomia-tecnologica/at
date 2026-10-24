@@ -330,3 +330,8 @@ sans
 sidebar
 switch
 toast
+csp
+css
+iframe
+sandbox
+freebsd

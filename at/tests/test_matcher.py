@@ -134,7 +134,7 @@ class TheProposal(MatcherCase):
 
     def test_the_residue_fills_the_field_the_table_declares_as_primary(self):
         proposal = self.propose("cria uma tarefa comprar pão pra sexta")
-        self.assertEqual(proposal.values["text"], "comprar pão")
+        self.assertEqual(proposal.values["text"], "Comprar pão")
         self.assertEqual(proposal.values["deadline"], "2026-09-25")
 
     def test_the_widest_expression_the_vocabulary_knows_wins(self):
@@ -168,7 +168,7 @@ class TheWhen(MatcherCase):
         # "amanhã", e a data é a que a pessoa disse.
         self.assertEqual(
             self.propose("cria uma tarefa comprar pão amanhã").values,
-            {"deadline": "2026-09-23", "text": "comprar pão"},
+            {"deadline": "2026-09-23", "text": "Comprar pão"},
         )
 
     def test_the_composed_day_phrase_arrives_whole(self):
@@ -182,7 +182,7 @@ class TheWhen(MatcherCase):
             with self.subTest(sentence=sentence):
                 proposal = self.propose(sentence)
                 self.assertEqual(proposal.values["deadline"], expected)
-                self.assertEqual(proposal.values["text"], "comprar pão")
+                self.assertEqual(proposal.values["text"], "Comprar pão")
 
     def test_english_reads_its_own_counted_days(self):
         for sentence, expected in (
@@ -193,22 +193,22 @@ class TheWhen(MatcherCase):
             with self.subTest(sentence=sentence):
                 proposal = self.propose(sentence, "en_US")
                 self.assertEqual(proposal.values["deadline"], expected)
-                self.assertEqual(proposal.values["text"], "buy bread")
+                self.assertEqual(proposal.values["text"], "Buy bread")
 
     def test_an_hour_named_in_the_text_leaves_it(self):
         # A tarefa não declara hora e o quando não é o título: as 18h saem do
         # texto, e o que fica é o que a pessoa vai fazer.
         proposal = self.propose("cria uma tarefa comprar pão às 18h")
-        self.assertEqual(proposal.values, {"text": "comprar pão"})
+        self.assertEqual(proposal.values, {"text": "Comprar pão"})
 
     def test_a_count_in_the_title_is_not_an_hour(self):
         # `2 pães` e `item 5` são contingência do título: só a marca de relógio
         # (`18h`, `18:30`, `meio-dia`, o `às` antes do número) faz de um número
         # uma hora.
         for sentence, expected in (
-            ("cria uma tarefa comprar 2 pães", "comprar 2 pães"),
-            ("cria uma tarefa revisar o item 5", "revisar item 5"),
-            ("create a task buy 2 breads", "buy 2 breads"),
+            ("cria uma tarefa comprar 2 pães", "Comprar 2 pães"),
+            ("cria uma tarefa revisar o item 5", "Revisar o item 5"),
+            ("create a task buy 2 breads", "Buy 2 breads"),
         ):
             language = "en_US" if sentence.startswith("create") else "pt_BR"
             with self.subTest(sentence=sentence):
@@ -250,10 +250,10 @@ class TheImplied(MatcherCase):
 
     def test_a_courtesy_is_never_the_title(self):
         for sentence, expected in (
-            ("quero criar uma tarefa comprar leite", "comprar leite"),
-            ("gostaria de criar uma tarefa comprar pão", "comprar pão"),
-            ("por favor cria uma tarefa comprar pão", "comprar pão"),
-            ("i want to create a task buy bread", "buy bread"),
+            ("quero criar uma tarefa comprar leite", "Comprar leite"),
+            ("gostaria de criar uma tarefa comprar pão", "Comprar pão"),
+            ("por favor cria uma tarefa comprar pão", "Comprar pão"),
+            ("i want to create a task buy bread", "Buy bread"),
         ):
             language = "en_US" if sentence.startswith("i ") else "pt_BR"
             with self.subTest(sentence=sentence):
@@ -379,6 +379,85 @@ class TheQuestion(MatcherCase):
         self.assertEqual(question.text, tables.label("task", "text"))
 
 
+class TheCreateFamily(MatcherCase):
+    """`criar tarefa ... em projeto X` e `escrever nota ...`: a família de
+    verbos de criar vale para qualquer objeto, e o projeto se acha pelo nome."""
+
+    def setUp(self):
+        super().setUp()
+        tables.create("project", {"name": "TR4"})
+        tables.create("project", {"name": "TR4 antigo"})
+        tables.create("project", {"name": "Casa"})
+
+    def test_create_a_task_in_a_project_by_folded_name(self):
+        proposal = self.propose("criar tarefa limpar carro em projeto tr4")
+        self.assertIsInstance(proposal, nlu.Proposal)
+        self.assertEqual((proposal.action, proposal.table), ("create", "task"))
+        self.assertEqual(proposal.values, {"project": 1, "text": "Limpar carro"})
+
+    def test_the_same_sentence_in_english(self):
+        proposal = self.propose("create task clean car in project tr4", "en_US")
+        self.assertIsInstance(proposal, nlu.Proposal)
+        self.assertEqual((proposal.action, proposal.table), ("create", "task"))
+        self.assertEqual(proposal.values, {"project": 1, "text": "Clean car"})
+
+    def test_a_folded_accent_and_case_still_resolve(self):
+        proposal = self.propose("criar tarefa x em projeto CASÁ".replace("Á", "A"))
+        self.assertEqual(proposal.values["project"], 3)
+
+    def test_write_a_note_keeps_the_particle_inside_the_text(self):
+        proposal = self.propose("escrever nota nao falar com fulano")
+        self.assertIsInstance(proposal, nlu.Proposal)
+        self.assertEqual((proposal.action, proposal.table), ("create", "note"))
+        self.assertEqual(proposal.values, {"text": "Nao falar com fulano"})
+
+    def test_write_a_note_in_english(self):
+        proposal = self.propose("write note do not talk to john", "en_US")
+        self.assertEqual((proposal.action, proposal.table), ("create", "note"))
+        self.assertEqual(proposal.values, {"text": "Do not talk to john"})
+
+    def test_every_verb_of_the_family_creates_any_object(self):
+        for verb in ("criar", "nova", "novo", "adicionar", "escrever", "anotar"):
+            for noun in ("tarefa", "nota"):
+                proposal = self.propose(f"{verb} {noun} comprar pão")
+                self.assertEqual(proposal.action, "create", (verb, noun))
+        for verb in ("create", "new", "add", "write"):
+            proposal = self.propose(f"{verb} note buy bread", "en_US")
+            self.assertEqual(proposal.action, "create", verb)
+
+    def test_only_the_first_letter_is_raised(self):
+        proposal = self.propose("criar nota falar com a TR4 sobre o iPhone")
+        self.assertEqual(proposal.values["text"], "Falar com a TR4 sobre o iPhone")
+
+    def test_a_word_one_letter_off_a_setting_stays_in_the_title(self):
+        # `limpar` is one letter from `limiar`; the typo tolerance must not eat it.
+        proposal = self.propose("criar tarefa limpar carro")
+        self.assertEqual(proposal.values, {"text": "Limpar carro"})
+
+    def test_a_project_that_does_not_exist_is_refused_and_lists_what_exists(self):
+        with self.assertRaises(nlu.Refused) as caught:
+            self.propose("criar tarefa limpar carro em projeto zzz")
+        self.assertEqual(caught.exception.key, "nlu.error.no_ref")
+        self.assertIn("TR4", str(caught.exception))
+        self.assertEqual(store.load("task"), [])
+
+    def test_an_ambiguous_project_comes_back_as_a_question(self):
+        asked = self.propose("criar tarefa limpar carro em projeto tr")
+        self.assertIsInstance(asked, nlu.Question)
+        self.assertEqual(asked.key, "nlu.ask.which_ref")
+        self.assertIn("TR4 antigo", asked.text)
+        self.assertEqual(store.load("task"), [])
+
+    def test_two_projects_with_the_same_name_are_ambiguous(self):
+        tables.create("project", {"name": "casa"})
+        asked = self.propose("criar tarefa x em projeto casa")
+        self.assertIsInstance(asked, nlu.Question)
+
+    def test_a_bare_project_sentence_still_names_one_table(self):
+        proposal = self.propose("criar projeto Novo site")
+        self.assertEqual((proposal.table, proposal.values), ("project", {"name": "Novo site"}))
+
+
 class TheDoor(MatcherCase):
     """`at-cli ask` and `at-cli pedir`: the proposal, then the engine's own answer."""
 
@@ -417,7 +496,7 @@ class TheDoor(MatcherCase):
     def test_the_residue_becomes_the_title_the_engine_stores(self):
         code, _ = self.run_words("ask", "cria uma tarefa comprar pão pra hoje")
         self.assertEqual(code, 0)
-        self.assertEqual(store.find("task", 1)["text"], "comprar pão")
+        self.assertEqual(store.find("task", 1)["text"], "Comprar pão")
 
     def test_a_sentence_outside_the_catalogue_is_refused_by_name(self):
         code, text = self.run_words("ask", "banana")

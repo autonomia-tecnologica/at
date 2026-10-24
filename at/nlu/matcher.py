@@ -44,6 +44,7 @@ from at.i18n import tr
 from at.nlu import grammar, vocabulary
 from at.nlu.interpreter import KINDS, resolve
 from at.nlu.normalizer import canonical, fold
+from at.nlu.polish import polish_text
 from at.nlu.proposal import Proposal
 from at.nlu.reading import Question, Reading, Refused, Residue, Value
 
@@ -101,8 +102,11 @@ def match(
         raise Refused("nlu.error.no_action", text=text)
 
     marks = _segmented(words, language, now)
+    _demote_fuzzy_actions(marks, words, language)
     action = action if action is not None else _action(marks, text, language)
     table = table if table is not None else _table(marks, text, words, action, language, now)
+    _unmistaken(marks, words, table, language)
+    _content_after_the_object(marks, table)
 
     # A value of a closed vocabulary fills the field that carries it. The word is
     # spent either way: `alta` names a priority, it is not content.
@@ -175,7 +179,7 @@ def match(
     # pessoa pôs no fim do título. Ela é separada pelo tipo do campo que a
     # tabela deixa ABERTO (`deadline`, o `at` de um lembrete), e o resto fica
     # o texto. Um trecho que não carrega data nenhuma fica inteiro.
-    leftover: list[str] = []
+    leftover: list[tuple[int, int, list[str]]] = []
     for start, end in runs:
         chunk = " ".join(words[start:end])
         named = _field_before(table, marks, start)
@@ -198,6 +202,17 @@ def match(
             if _field_word(table, marks, start) == REASON:
                 values[REASON] = chunk
                 continue
+        # A REFERÊNCIA DITA PELO NOME (24/10/2026): `projeto tr4` é o campo
+        # `project` da tarefa, e o valor dele é a LINHA que o nome acha — não o
+        # texto. O nome que não acha, ou que acha mais de uma, volta como
+        # recusa ou pergunta: o que não resolve é resíduo, nunca palpite.
+        target = _reference_target(table, named)
+        if target is not None:
+            found = _reference(target, chunk)
+            if isinstance(found, Question):
+                return found
+            values[named] = found
+            continue
         field, reading = _read(table, chunk, named, language, now)
         if isinstance(reading, Question):
             # Nothing is filled in for what the grammar asked back: the whole
@@ -211,14 +226,14 @@ def match(
             if action == "create":
                 stripped, extra = _temporal(table, chunk, language, now, values)
                 if extra:
-                    leftover.extend(stripped.split())
+                    leftover.append((start, end, stripped.split()))
                     continue
-            leftover.extend(words[start:end])
+            leftover.append((start, end, words[start:end]))
 
-    residue = " ".join(leftover).strip()
+    residue = _joined(leftover, words, marks).strip()
     primary = schema.primary(table)
     if residue and primary:
-        values[primary] = residue
+        values[primary] = polish_text(table, primary, residue) if action == "create" else residue
     # UM PEDIDO QUE NÃO DIZ O QUE CRIAR (20/10/2026): "cria uma tarefa", sozinha,
     # não é uma linha vazia — é uma pergunta. O campo que a pessoa não disse é o
     # PRINCIPAL da tabela, e é o que ela ainda tem de escrever; a resposta vai
@@ -677,6 +692,7 @@ def _table(
     for mark in marks:
         if mark and schema.of(mark) and mark not in found:
             found.append(mark)
+    found = _object_tables(found, marks)
     if not found:
         # O VERBO QUE NOMEIA A TABELA (20/10/2026): "anota que o banco ligou"
         # não escreve "nota", mas `anota` já diz que a linha é uma nota. O
@@ -730,6 +746,200 @@ def _table(
             second=tables.table_name(found[1]),
         )
     return found[0]
+
+
+def _object_tables(found: list[str], marks: list[str | None]) -> list[str]:
+    """As tabelas que a frase nomeia, sem as que são só o NOME DE UM CAMPO.
+
+    `criar tarefa limpar carro em projeto tr4` escreve `projeto` — e `projeto`
+    é a tabela e também o campo `project` da tarefa, que aponta para ela. Uma
+    tabela que outra tabela da frase declara como campo (da mesma palavra, com
+    `ref` para ela) e que TRAZ um nome logo depois (`projeto tr4`) é a palavra
+    do campo e não um segundo objeto: o objeto é a outra. Sem o nome depois
+    (`uma tarefa num projeto`) são mesmo duas tabelas, e o pedido continua
+    recusado. Lido da declaração, sem nome nenhum escrito aqui.
+    """
+    if len(found) < 2:
+        return found
+    return [
+        name for name in found
+        if not (
+            _carries_a_name(marks, name)
+            and any(
+                other != name and _reference_target(other, name) == name
+                for other in found
+            )
+        )
+    ]
+
+
+def _carries_a_name(marks: list[str | None], word: str) -> bool:
+    """Se a palavra `word` tem um texto sem marca logo depois dela, saltadas as
+    partículas — o nome que o campo recebe."""
+    for index, mark in enumerate(marks):
+        if mark != word:
+            continue
+        after = index + 1
+        while after < len(marks) and marks[after] == PARTICLE:
+            after += 1
+        if after < len(marks) and marks[after] is None:
+            return True
+    return False
+
+
+def _reference_target(table: str, field: str | None) -> str | None:
+    """A tabela para onde o campo `field` de `table` aponta — quando aponta para
+    UMA só, que é o caso em que um nome escrito acha a linha."""
+    if not field:
+        return None
+    declared = _fields(table).get(field)
+    targets = declared.get("ref") if isinstance(declared, dict) else None
+    if isinstance(targets, list) and len(targets) == 1 and schema.of(targets[0]):
+        return str(targets[0])
+    return None
+
+
+def _reference(target: str, chunk: str) -> int | Question:
+    """O número da linha de `target` que o texto nomeia, ou a pergunta.
+
+    O nome é comparado por `fold` (caixa e acento) com o campo principal da
+    tabela, e só a IGUALDADE resolve. Um único igual vale; vários iguais, ou
+    nenhum igual mas alguns que CONTÊM o que foi dito, voltam como pergunta,
+    com a lista; nenhum parecido é recusa, com o que existe. Um identificador
+    (`3`, `PRJ-3`) nomeia a linha pelo número, se ela existe.
+    """
+    primary = schema.primary(target)
+    rows = tables.rows(target, show_all=True)
+    name = tables.table_name(target)
+    wanted = fold(chunk)
+    number = tables.number_of(target, chunk.strip())
+    if number is not None:
+        for row in rows:
+            if store.number_of(row) == number:
+                return number
+    titled = [
+        row for row in rows if primary and isinstance(row.get(primary), str)
+    ]
+    exact = [row for row in titled if fold(row[primary]) == wanted]
+    if len(exact) == 1:
+        return store.number_of(exact[0])
+    similar = exact or [row for row in titled if wanted and wanted in fold(row[primary])]
+    if similar:
+        lines = [
+            f"{index}. {tables.format_id(target, store.number_of(row))} · {row[primary]}"
+            for index, row in enumerate(similar[:_MAX_CHOICES], 1)
+        ]
+        if len(similar) > _MAX_CHOICES:
+            lines.append("…")
+        return Question("nlu.ask.which_ref", f"{name} \"{chunk}\":\n" + "\n".join(lines))
+    existing = ", ".join(str(row[primary]) for row in titled[:_MAX_CHOICES]) or "—"
+    raise Refused("nlu.error.no_ref", table=name, text=chunk, existing=existing)
+
+
+def _exact(words: list[str], language: str) -> list[bool]:
+    """Por palavra: se o vocabulário a leu como foi ESCRITA, sem a tolerância.
+
+    A mesma segmentação de `_segmented` (a janela mais larga primeiro), só que
+    sem perdoar a letra trocada — o que ela acha é o que a pessoa escreveu.
+    """
+    pairs = vocabulary.of(language)
+    widest = max((len(expression.split()) for expression in pairs), default=1)
+    folded = [fold(word) for word in words]
+    flags = [False] * len(words)
+    position = 0
+    while position < len(words):
+        size = 0
+        for width in range(min(widest, len(words) - position), 0, -1):
+            if canonical(" ".join(folded[position:position + width]), language,
+                         tolerant=False):
+                size = width
+                break
+        for at in range(position, position + size):
+            flags[at] = True
+        position += size or 1
+    return flags
+
+
+def _demote_fuzzy_actions(marks: list[str | None], words: list[str], language: str) -> None:
+    """Uma palavra que só a tolerância leu como ação não é uma SEGUNDA ação.
+
+    `criar tarefa clean car`: `clean` está a uma letra de `clear` (apagar), mas
+    a frase já tem uma ação escrita por inteiro, e uma segunda que só o dedo
+    escorregado explicaria é a palavra da pessoa — texto. Sem nenhuma ação
+    exata, a tolerância segue valendo (`criarr tarefa x`).
+    """
+    exact = _exact(words, language)
+    actions = [index for index, mark in enumerate(marks) if mark in tables.ACTIONS]
+    if not any(exact[index] for index in actions):
+        return
+    for index in actions:
+        if not exact[index]:
+            marks[index] = None
+
+
+def _unmistaken(marks: list[str | None], words: list[str], table: str, language: str) -> None:
+    """Desfaz a marca que a TOLERÂNCIA inventou e que não serve a esta tabela.
+
+    `limpar` está a uma letra de `limiar` e virava o campo `threshold`, gasto
+    em silêncio — a palavra da pessoa sumia do título. A tolerância perdoa o
+    dedo que escorregou, e só vale quando o que ela achou tem papel NESTA frase:
+    a ação, uma tabela, um campo da tabela, um valor dela. Uma marca que não
+    tem papel e não foi escrita por inteiro volta a ser texto.
+    """
+    exact = _exact(words, language)
+    for index, mark in enumerate(marks):
+        if not mark or mark == PARTICLE or exact[index]:
+            continue
+        if (
+            mark in tables.ACTIONS
+            or schema.of(mark)
+            or mark in _fields(table)
+            or _enum_field(table, mark) is not None
+            or mark == REASON
+        ):
+            continue
+        marks[index] = None
+
+
+def _content_after_the_object(marks: list[str | None], table: str) -> None:
+    """Uma segunda palavra de CRIAR depois do objeto é o texto, não outro verbo.
+
+    `criar projeto Novo site`: `novo` é da família de criar, e `criar` já foi
+    dito antes da tabela. Depois da tabela, uma palavra de criar numa frase que
+    JÁ criava é conteúdo da linha. `tarefa nova ...` sem outro verbo antes
+    continua sendo o verbo.
+    """
+    seen_create = False
+    seen_table = False
+    for index, mark in enumerate(marks):
+        if mark == table:
+            seen_table = True
+        elif mark == "create":
+            if seen_create and seen_table:
+                marks[index] = None
+            seen_create = True
+
+
+def _joined(
+    leftover: list[tuple[int, int, list[str]]], words: list[str], marks: list[str | None]
+) -> str:
+    """O resíduo, com as partículas que ficam NO MEIO dele.
+
+    `não falar com fulano` é um texto só: o `com` está entre duas palavras que
+    ficaram, e gastá-lo escreveria "não falar fulano". A partícula da BORDA
+    (`uma`, `pra`) continua gasta, e a que separa um resíduo de um valor que a
+    gramática leu também — só a que une dois pedaços de resíduo é do texto.
+    """
+    out: list[str] = []
+    previous_end: int | None = None
+    for start, end, piece in leftover:
+        if previous_end is not None and start > previous_end and all(
+            marks[at] == PARTICLE for at in range(previous_end, start)
+        ):
+            out.extend(words[previous_end:start])
+        out.extend(piece)
+        previous_end = end
+    return " ".join(out)
 
 
 def _hinted(words: list[str], language: str) -> str | None:

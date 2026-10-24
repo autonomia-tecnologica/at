@@ -53,7 +53,7 @@ def folded(words: dict) -> dict:
     return {fold(word): value for word, value in words.items()}
 
 
-def canonical(text: str, language: str | None = None) -> str | None:
+def canonical(text: str, language: str | None = None, *, tolerant: bool = True) -> str | None:
     """The machine word a person's word names, or nothing at all.
 
     The expression as it was written, then its singulars, then its misspellings —
@@ -68,6 +68,8 @@ def canonical(text: str, language: str | None = None) -> str | None:
         found = pairs.get(form)
         if found is not None:
             return found
+    if not tolerant:
+        return None
     # A TOLERÂNCIA É DE UMA PALAVRA (20/10/2026): uma expressão de duas
     # palavras — `me lembra de`, `em andamento` — só se lê INTEIRA, como foi
     # escrita. A distância de uma letra sobre uma frase junta palavras que não

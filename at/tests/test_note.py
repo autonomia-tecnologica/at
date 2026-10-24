@@ -172,7 +172,7 @@ class TheConversation(NoteCase):
         self.assertEqual(result.kind, "answer")
         rows = store.load("note")
         self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0]["text"], "banco ligou")
+        self.assertEqual(rows[0]["text"], "Banco ligou")
 
     def test_the_word_nota_names_the_table(self):
         result = door.ask("cria uma nota sobre o deploy")
@@ -271,7 +271,7 @@ class TheConversation(NoteCase):
         proposal = nlu.propose("anota que o banco ligou", language="pt_BR")
         self.assertEqual(proposal.action, "create")
         self.assertEqual(proposal.table, "note")
-        self.assertEqual(proposal.values, {"text": "banco ligou"})
+        self.assertEqual(proposal.values, {"text": "Banco ligou"})
         self.assertEqual(store.load("note"), [])
 
 
