@@ -22,7 +22,32 @@
 // would be a write the fila never saw, and a write it swallowed silently
 // would be an edit that looked saved and was not.
 
-const CACHE = "at-shell-v2";
+const CACHE = "at-shell-v3";
+
+// THE PORTAL IS NOT OURS. The identity provider lives on the SAME origin under
+// `/authelia` (`at/services/caddy.py`'s `PORTAL`), and a Service Worker at the
+// root sees its navigations too. Answering them here once poisoned the shell
+// cache with the portal's login page (and a blank screen in Firefox): nothing
+// under that prefix is intercepted, answered or cached by this file.
+const PORTAL = "/authelia";
+
+function portal(pathname) {
+  return pathname === PORTAL || pathname.startsWith(PORTAL + "/");
+}
+
+// Only a response that IS the AT shell may be kept as the shell: a 200 HTML
+// document, not redirected (the gate's 302 to the portal lands there), and not
+// from the portal's path.
+function shell(response) {
+  if (!response.ok || response.redirected) return false;
+  try {
+    if (portal(new URL(response.url).pathname)) return false;
+  } catch (error) {
+    return false;
+  }
+  const type = response.headers.get("content-type") || "";
+  return type.indexOf("text/html") !== -1;
+}
 
 function cacheable(pathname) {
   if (pathname.startsWith("/src/")) return true;
@@ -46,7 +71,13 @@ self.addEventListener("install", () => {
 });
 
 self.addEventListener("activate", event => {
-  event.waitUntil(self.clients.claim());
+  // Caches under any other name are older shells (possibly poisoned): gone.
+  event.waitUntil(
+    caches
+      .keys()
+      .then(names => Promise.all(names.filter(name => name !== CACHE).map(name => caches.delete(name))))
+      .then(() => self.clients.claim()),
+  );
 });
 
 // NETWORK FIRST, THE CACHE AS THE FALLBACK. Online, the page always sees what
@@ -58,6 +89,7 @@ self.addEventListener("fetch", event => {
   if (request.method !== "GET") return; // a write is the fila's, never a cache's
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  if (portal(url.pathname)) return; // the provider's, straight to the network
 
   // A NAVIGATION (a reload, an address typed, a link followed) is answered
   // with the SHELL regardless of the path: the document is the same one
@@ -72,7 +104,7 @@ self.addEventListener("fetch", event => {
   event.respondWith(
     fetch(request)
       .then(response => {
-        if (response.ok) {
+        if (navigating ? shell(response) : response.ok) {
           const copy = response.clone();
           caches.open(CACHE).then(cache => cache.put(key, copy));
         }
