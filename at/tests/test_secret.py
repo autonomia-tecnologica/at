@@ -477,7 +477,7 @@ class TheEntry(SecretCase):
         self.assertEqual(callers, [
             "at/core/actors.py", "at/core/assist.py", "at/core/backup.py",
             "at/core/secrets.py", "at/core/strongbox.py", "at/core/tables_types.py",
-            "at/services/caddy.py", "at_deploy/environment.py", "at_deploy/environment_secrets.py",
+            "at/services/caddy_gate.py", "at_deploy/environment.py", "at_deploy/environment_secrets.py",
         ])
 
     def test_the_surface_that_reaches_the_vault_is_the_deploy_and_no_screen(self):

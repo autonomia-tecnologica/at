@@ -41,136 +41,64 @@ neither can drift from the other. It offers WORDS and never flags: a flag list
 written here would be a second declaration of what the tree declares.
 """
 
+
 from __future__ import annotations
 
-import json
 import os
 import sys
-from collections.abc import Sequence
 from pathlib import Path
 
 from at.core import files, paths, settings
+from at.core.install_base import (  # noqa: F401  (the facade re-exports the lot)
+    ALREADY,
+    BASH,
+    CMD_COMMENT,
+    CMD_EXTENSION,
+    COMPLETIONS,
+    DEFAULT_BIN,
+    DONE,
+    HELD,
+    MARK_TEXT,
+    MISSING,
+    NOTHING,
+    RECORD,
+    REMOVED,
+    WIN32,
+    ZSH,
+    Words,
+    _is,
+    _marked,
+    _mine,
+    _remember,
+    _save,
+    _written,
+    forget,
+    mark,
+    parse,
+    record,
+    record_path,
+    remembered,
+    target,
+    where,
+)
+from at.core.install_completion import (  # noqa: F401
+    FPATH_ENV,
+    _bash,
+    _completion_dir,
+    _write_completion,
+    _zsh,
+    completion_path,
+    completion_text,
+    fpath_needed,
+    shell_name,
+)
+from at.core.install_path import (  # noqa: F401
+    _announce,
+    _foreign,
+    _order,
+    _path_entries,
+)
 from at.i18n import tr
-
-# The words a completion offers, as pairs of (word, the words under it). Plain
-# tuples and not the tree's own `Node`: the trees belong to the surfaces, and
-# the core must not reach into one — the shape is all this needs.
-Words = Sequence[tuple[str, tuple[str, ...]]]
-
-# Where a command is found when nothing says otherwise: the XDG one, and the
-# directory a UNIX shell already carries on the PATH.
-DEFAULT_BIN = (".local", "bin")
-
-# The record of what was installed where. In `App/`, because it is state and
-# state lives in `App/` (§3) — and because it is the folder's, the memory
-# travels with the folder instead of being a second thing to keep in step.
-RECORD = "install.json"
-
-# The two shells whose completion the product knows how to write, and the
-# directory each one reads it from, under the user's home. bash-completion looks
-# a completion up BY THE COMMAND'S NAME under its own data directory and finds
-# it with no configuration at all; zsh reads a file named `_<command>` off its
-# `fpath`, and a person's own directory is not on it until the person puts it
-# there — which is why the install PRINTS that line instead of editing a shell
-# configuration file that is not AT's to edit.
-COMPLETIONS: dict[str, tuple[str, ...]] = {
-    "bash": (".local", "share", "bash-completion", "completions"),
-    "zsh": (".local", "share", "zsh", "site-functions"),
-}
-
-BASH = "bash"
-ZSH = "zsh"
-
-# Windows has no `symlink` a person's own account can write without asking an
-# administrator, so the word there is not a link but a tiny `.cmd` that
-# forwards to the artifact — written fresh every run and never a copy of the
-# binary (§3: nothing is copied). The extension is not a choice: it is what
-# makes the file a command `cmd.exe` runs at all.
-WIN32 = "win32"
-CMD_EXTENSION = ".cmd"
-CMD_COMMENT = "::"
-
-# The outcomes, the way `environment` and `versioning` have them: this module
-# speaks and answers, and the `cli` decides what an exit code is.
-DONE = "done"
-ALREADY = "already"
-HELD = "held"
-MISSING = "missing"
-REMOVED = "removed"
-NOTHING = "nothing"
-
-
-# ------------------------------------------------------------- the directory ---
-
-def record_path() -> Path:
-    return paths.app_dir() / RECORD
-
-
-def record() -> dict:
-    """The record as it is on disk; `{}` for a folder that has none.
-
-    A file that does not parse reads as empty, and this is the one place that
-    treats it so on purpose: what this file holds is AT's own bookkeeping and
-    nothing of the person's — unlike `settings.json`, where an unreadable file
-    is reported and never replaced. Losing it costs one install going to the
-    default; rewriting it costs nothing anybody wrote.
-    """
-    try:
-        data = files.read_json(record_path(), {})
-    except json.JSONDecodeError:
-        return {}
-    return data if isinstance(data, dict) else {}
-
-
-def remembered(word: str) -> str | None:
-    """The directory the last install of that word recorded, if any."""
-    entry = record().get(word)
-    return entry.get("bin") if isinstance(entry, dict) else None
-
-
-def where(word: str, flag: str | None = None) -> Path:
-    """The directory the link is written into.
-
-    The flag first, then what the last install remembered, then the default —
-    one answer per question, and the memory in the middle is what makes a
-    directory chosen once stay chosen instead of being asked for again and the
-    default leaving a second link behind.
-    """
-    if flag:
-        return Path(flag).expanduser()
-    known = remembered(word)
-    if known:
-        return Path(known).expanduser()
-    return Path.home().joinpath(*DEFAULT_BIN)
-
-
-def target(artifact: str) -> Path:
-    """Where the link points: the artifact, in the folder the binary is in.
-
-    §3: the binary lives in the folder and that folder is the Working Folder —
-    resolved from where the ARTIFACT is and never from where the shell happened
-    to be standing, which from the binary is the same place and from a checkout
-    is not.
-    """
-    return paths.working_folder() / artifact
-
-
-# ------------------------------------------------------------------ the act ---
-
-def parse(rest: Sequence[str]) -> tuple[str | None, bool]:
-    """What the word takes: `[--bin <directory>]`, and nothing else.
-
-    `(flag, ok)`, and the flag is the person's own spelling: the resolution that
-    turns it into a directory is `where`'s, so both `cli`s read the same rule.
-    """
-    flag: str | None = None
-    args = list(rest)
-    while args:
-        head, args = args[0], args[1:]
-        if head != "--bin" or not args:
-            return None, False
-        flag, args = args[0], args[1:]
-    return flag, True
 
 
 def act(
@@ -280,11 +208,6 @@ def _obstacle(link: Path, artifact: str, word: str) -> tuple[str, dict] | None:
     return "install.held.file", {"link": link}
 
 
-def _mine(link: Path, artifact: str) -> bool:
-    """Whether that link is one AT wrote: a symlink aimed at an artifact's name."""
-    return link.is_symlink() and link.readlink().name == artifact
-
-
 def _same(link: Path, artifact_at: Path, shim: str | None = None) -> bool:
     """Whether the link (or the shim) already says what this run would say.
 
@@ -322,273 +245,6 @@ def _shim_text(word: str, artifact_at: Path) -> str:
 
 # --------------------------------------------------------------- the memory ---
 
-def _remember(word: str, into: Path, wrote: Sequence[Path]) -> None:
-    data = record()
-    data[word] = {"bin": str(into), "wrote": [str(path) for path in wrote]}
-    _save(data)
-
-
-def forget(word: str) -> None:
-    """Take that word's entry out, and the file with it when it empties."""
-    data = record()
-    if word not in data:
-        return
-    files.guard(record_path())
-    del data[word]
-    if data:
-        _save(data)
-    else:
-        record_path().unlink(missing_ok=True)
-
-
-def _save(data: dict) -> None:
-    files.atomic_write_text(
-        record_path(),
-        json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-    )
-
-
-# ------------------------------------------------------------------ the name ---
-
-def _announce(word: str, into: Path, link: Path) -> None:
-    """Which of two commands of the same name answers, and it is the PATH's order.
-
-    AT installs and then says; it never refuses, because the machine is the
-    person's and two names can live in two directories for as long as they want
-    to. What nobody can read off a file they did not write is which one wins.
-    """
-    other = _foreign(link.name, link)
-    here = _order(into)
-    if other is None:
-        if here is None:
-            # The link is written and will not be found: the directory is not on
-            # the PATH at all, and adding it is the person's edit to make.
-            print(tr("install.off_path", bin=into, word=word))
-        return
-    there = _order(other.parent)
-    if there is not None and (here is None or there < here):
-        print(tr("install.collision.shadowed", word=word, other=other, bin=into))
-    else:
-        print(tr("install.collision.shadowing", word=word, other=other, bin=into))
-
-
-def _path_entries() -> list[Path]:
-    return [
-        Path(entry).expanduser()
-        for entry in os.environ.get("PATH", "").split(os.pathsep)
-        if entry
-    ]
-
-
-def _order(directory: Path) -> int | None:
-    """Where that directory sits on the PATH — the whole of who wins.
-
-    `None` for a directory that is not on it at all, which is a different
-    answer from sitting at the end: the one means nobody finds the command, and
-    the other means somebody else is found first.
-    """
-    for index, entry in enumerate(_path_entries()):
-        if _is(entry, directory):
-            return index
-    return None
-
-
-def _foreign(name: str, link: Path) -> Path | None:
-    """The first command of that FILE name on the PATH that is not AT's own link.
-
-    Scanned and not asked of `which`, because `which` answers with the winner
-    and what this has to name is the LOSER: the tool that AT shadows, which is
-    the one a person looking at their PATH order would not find.
-
-    `name` is `link.name` and not the command word: on Windows that is
-    `at-cli.cmd`, and a scan for the extensionless `at-cli` would never find
-    what actually answers to the typed command there.
-    """
-    for entry in _path_entries():
-        candidate = entry / name
-        if _is(candidate, link):
-            continue
-        if (candidate.is_symlink() or candidate.is_file()) and os.access(candidate, os.X_OK):
-            return candidate
-    return None
-
-
-def _is(left: Path, right: Path) -> bool:
-    """Whether two paths name the same thing, with the links followed."""
-    try:
-        return left.resolve() == right.resolve()
-    except OSError:
-        return left == right
-
-
-# ------------------------------------------------------------ the completion ---
-
-def shell_name() -> str:
-    """The shell the person is in, by its own name — `$SHELL`'s last word.
-
-    `/bin/zsh` and `zsh` are the same shell: what is read is the name of the
-    program, and never the directory it happens to be installed under.
-    """
-    return Path(os.environ.get("SHELL", "")).name
-
-
-def completion_path(word: str, shell: str) -> Path | None:
-    """Where that shell reads the completion of that word.
-
-    The FILE name is not a choice: bash-completion loads a file by the command's
-    name, and zsh reads a file whose name is the command's with an underscore in
-    front. `None` for a shell whose completion has no home the product knows.
-    """
-    directory = _completion_dir(shell)
-    if directory is None:
-        return None
-    return directory / (f"_{word}" if shell == ZSH else word)
-
-
-def _completion_dir(shell: str) -> Path | None:
-    parts = COMPLETIONS.get(shell)
-    return Path.home().joinpath(*parts) if parts else None
-
-
-def _write_completion(word: str, words: Words, shell: str | None) -> Path | None:
-    """The completion, written where the shell reads it — or nothing, and said.
-
-    No terminal to read `$SHELL` from is not a failure: a completion is what
-    makes the words reachable without a path, and it is not what makes the
-    command work. So an unknown shell is a sentence and nothing else — the link
-    is already written by the time this runs.
-    """
-    name = shell_name() if shell is None else shell
-    if not name:
-        print(tr("install.completion.no_shell"))
-        return None
-    path = completion_path(word, name)
-    if path is None:
-        print(tr("install.completion.unknown", shell=name))
-        return None
-    files.atomic_write_text(path, completion_text(word, words, name))
-    print(tr("install.completion.written", shell=name, path=path))
-    if name == ZSH:
-        # zsh reads a file off its `fpath`, and the person's own directory is
-        # not on it by default. AT prints the line and does not write it: the
-        # shell's configuration file is the person's, and a product that edited
-        # it would be a product that has to find and undo its own edit later.
-        print(tr("install.completion.fpath", folder=path.parent))
-    return path
-
-
-# The variable zsh ties its `fpath` array to, and the one this module can ask
-# a CHILD process about: `fpath` itself is a shell-local array, and a person's
-# `.zshrc` has to export it (or `typeset -g -x FPATH`) for a process AT starts
-# to see it at all. A shell that never exports it answers the same as one that
-# has not been fixed yet — the safe side is asking again.
-FPATH_ENV = "FPATH"
-
-
-def fpath_needed(word: str) -> Path | None:
-    """The zsh completion's directory, while the person has not put it on
-    `fpath` yet — or `None` when there is nothing to remind about.
-
-    Asked on every run of `version`, and not only right after `install`: the
-    shell reads its own `fpath` once, at start, and a completion written a
-    minute — or a week — ago is not on it until the `.zshrc` line is added AND
-    the shell is restarted, which is a gap `install`'s own one-time print
-    cannot close on its own.
-
-    A folder with no zsh completion written at all has nothing to remind about
-    (`None`, the same answer `completion_path` gives a shell with no home),
-    and neither does one whose directory is already in the INHERITED
-    `$FPATH` — the heuristic this door has: a directory a person's `.zshrc`
-    already put there is a line already fixed, and asking again would be
-    noise nobody needs. `$FPATH` unset or not carrying it yet reads as "not
-    resolved", which is the floor this reminder cannot go below: repeating a
-    line that was already fixed costs a sentence, and going quiet on one that
-    was not costs the completion itself.
-    """
-    path = completion_path(word, ZSH)
-    if path is None or not path.is_file():
-        return None
-    directory = path.parent
-    inherited = os.environ.get(FPATH_ENV, "")
-    entries = [Path(entry).expanduser() for entry in inherited.split(os.pathsep) if entry]
-    if any(_is(entry, directory) for entry in entries):
-        return None
-    return directory
-
-
-MARK_TEXT = "{word}: written by `{word} install`; an edit here is overwritten"
-
-
-def mark(word: str, comment: str = "#") -> str:
-    """The line that makes a completion file — or the Windows shim — AT's.
-
-    NOT translated, and deliberately: this is a MARK and not a sentence — the
-    same kind of thing as the `OWNER` written inside the repository AT created
-    —, and what reads it is `uninstall` deciding whether the file is AT's to
-    take back. A mark that moved with the language would be a file the next
-    language could not recognise, which is the one thing a mark may not be.
-
-    `comment` is the one thing that DOES change with the file: `#` is a
-    comment to bash and zsh, and a `.cmd` reads it only behind `::`. `_marked`
-    looks for the bare text and never for one comment style, so both still
-    answer to the same mark.
-    """
-    return f"{comment} {MARK_TEXT.format(word=word)}\n"
-
-
-def completion_text(word: str, words: Words, shell: str) -> str:
-    """The completion script for one artifact, in one shell.
-
-    Generated from the tree and never from a list kept here: the words offered
-    are the words the help offers, and the day a word arrives it arrives in
-    both. Only the comment is the person's — the rest is the shell's own
-    language, and it is not translated for the same reason the command words
-    are not (§3).
-    """
-    note = f"# {tr('install.note', word=word)}\n"
-    head = f"{mark(word)}{note}"
-    if shell == ZSH:
-        return f"#compdef {word}\n{head}{_zsh(words)}\n"
-    return f"{head}{_bash(word, words)}\n"
-
-
-def _bash(word: str, words: Words) -> str:
-    function = "_" + word.replace("-", "_") + "_complete"
-    roots = " ".join(name for name, _ in words)
-    lines = [
-        f"{function}() {{",
-        '  local cur="${COMP_WORDS[COMP_CWORD]}"',
-        "  local offer",
-        '  case "${COMP_WORDS[1]}" in',
-    ]
-    for name, under in words:
-        if under:
-            lines.append(f"    {name}) offer=\"{' '.join(under)}\" ;;")
-    lines += [
-        f'    *) offer="{roots}" ;;',
-        "  esac",
-        '  COMPREPLY=($(compgen -W "$offer" -- "$cur"))',
-        "}",
-        f"complete -F {function} {word}",
-    ]
-    return "\n".join(lines)
-
-
-def _zsh(words: Words) -> str:
-    roots = " ".join(name for name, _ in words)
-    lines = ["local -a offer", 'case "${words[2]}" in']
-    for name, under in words:
-        if under:
-            lines.append(f"  {name}) offer=({' '.join(under)}) ;;")
-    lines += [
-        f"  *) offer=({roots}) ;;",
-        "esac",
-        "_describe 'word' offer",
-    ]
-    return "\n".join(lines)
-
-
-# ---------------------------------------------------------------- the undo ---
 
 def undo(
     word: str,
@@ -640,18 +296,3 @@ def undo(
         return NOTHING
     forget(word)
     return HELD if held else REMOVED
-
-
-def _written(word: str) -> list[str]:
-    entry = record().get(word)
-    return list(entry.get("wrote", [])) if isinstance(entry, dict) else []
-
-
-def _marked(path: Path, word: str) -> bool:
-    """Whether that file carries AT's mark — the completion's own evidence,
-    and the Windows shim's: a `.cmd` is not a symlink `_mine` can read, so the
-    mark inside it is the only thing that says the file is AT's."""
-    try:
-        return path.is_file() and MARK_TEXT.format(word=word) in path.read_text(encoding="utf-8")
-    except OSError:
-        return False

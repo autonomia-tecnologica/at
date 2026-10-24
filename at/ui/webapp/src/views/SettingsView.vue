@@ -27,145 +27,25 @@
 // theme's two faces to wear, placed above the list that picks the theme, asks
 // the question backwards.
 
-import { computed, ref, watchEffect } from "vue";
+import { ref, watchEffect } from "vue";
 import { store, word } from "../lib/store";
-import { post } from "../lib/api";
-import { DARK_STATES, chooseDark, chooseTheme, darkState, themeState } from "../lib/theme";
-import { motionOn, setMotion } from "../lib/motion";
-import { DENSITIES, density, setDensity } from "../lib/density";
-import type { Density } from "../lib/density";
-import { byName } from "../lib/order";
 import { setTrail } from "../lib/views";
-// NOTIFICAÇÕES (Web Push): o botão pede a permissão do navegador e inscreve o
-// PWA — sem ntfy, sem app à parte. `state()` diz o que a tela desenha.
-import { enable as enablePush, state as pushNow } from "../lib/push";
 import ActionsView from "../components/ActionsView.vue";
-import Foldable from "../components/Foldable.vue";
 import PeopleView from "../components/PeopleView.vue";
 import RiskRuler from "../components/RiskRuler.vue";
-import type { DarkState } from "../lib/theme";
-import type { ThemeRow } from "../lib/store";
-
-// TASK-180, fatia 3/3: o assist — o switch e o modo, os dois ajustes da pasta
-// que `/api/assist` escreve. `busy` evita um segundo clique enquanto o
-// primeiro ainda não voltou, e o que a tela mostra depois é o que o SERVIDOR
-// respondeu (`store.assist`/`store.assist_mode`), nunca o que foi clicado.
-const ASSIST_MODES = ["cautious", "automatic"] as const;
-const assistBusy = ref(false);
-
-async function toggleAssist(): Promise<void> {
-  if (assistBusy.value) return;
-  assistBusy.value = true;
-  try {
-    const data = await post<{ enabled: boolean; mode: string }>(
-      "/api/assist", { enabled: !store.assist },
-    );
-    store.assist = data.enabled;
-    store.assist_mode = data.mode;
-  } finally {
-    assistBusy.value = false;
-  }
-}
-
-async function pickAssistMode(mode: (typeof ASSIST_MODES)[number]): Promise<void> {
-  if (assistBusy.value || mode === store.assist_mode) return;
-  assistBusy.value = true;
-  try {
-    const data = await post<{ enabled: boolean; mode: string }>(
-      "/api/assist", { mode },
-    );
-    store.assist = data.enabled;
-    store.assist_mode = data.mode;
-  } finally {
-    assistBusy.value = false;
-  }
-}
+import AssistSection from "../components/settings/AssistSection.vue";
+import DarkSideSection from "../components/settings/DarkSideSection.vue";
+import DensitySection from "../components/settings/DensitySection.vue";
+import JevSection from "../components/settings/JevSection.vue";
+import MotionSection from "../components/settings/MotionSection.vue";
+import PushSection from "../components/settings/PushSection.vue";
+import ThemesSection from "../components/settings/ThemesSection.vue";
 
 // AS ABAS, na ordem em que a tela se apresenta: o que a pasta é (o idioma), o
 // que se vê, quem age nela e o que ela mede de risco.
 const TABS = ["general", "appearance", "people", "risk", "actions"] as const;
 
 const tab = ref<(typeof TABS)[number]>("general");
-const motion = ref(motionOn());
-const side = ref(darkState());
-const dense = ref(density());
-
-// O estado do push, o que a tela mostra: o navegador pergunta uma vez, e depois
-// disso é a permissão que responde (`push.state`).
-const pushState = ref(pushNow());
-
-async function askPush(): Promise<void> {
-  const ok = await enablePush();
-  pushState.value = ok ? "on" : pushNow();
-}
-
-// A CREDENCIAL DO JEV: só a chave da API (TypeSafe). A Chave Principal NÃO é
-// digitada aqui — ela é a da SUBIDA, guardada em memória pelo host, e é ela que
-// sela a chave do Jev. A linha que nasce (`secret` de escopo `jev`) é o que faz
-// o chat parar de dizer "Jev não configurado".
-const jevKey = ref("");
-const jevBusy = ref(false);
-const jevError = ref("");
-
-async function saveJev(): Promise<void> {
-  if (jevBusy.value || !jevKey.value) return;
-  jevBusy.value = true;
-  jevError.value = "";
-  try {
-    await post("/api/jev", { key: jevKey.value });
-    store.jev_ready = true;
-    jevKey.value = "";
-  } catch (err) {
-    jevError.value = (err as Error).message;
-  } finally {
-    jevBusy.value = false;
-  }
-}
-
-// The theme's description is PER SIDE: the same theme describes itself
-// differently in light and dark, and what is read is the side being worn —
-// `themeState.dark` is the signal that follows the swap, so changing sides
-// needs no redraw.
-const descOf = (row: ThemeRow): string =>
-  row.desc ? (themeState.dark ? row.desc.dark : row.desc.light) || "" : "";
-
-// THE THEMES IN ALPHABETICAL ORDER, by the name the page PRINTS. The registry
-// declares them in the order they were born, which is a history and not an
-// index — and what somebody does with a list of themes is look one up. It is the
-// same rule the panel already follows for the tables (`order.ts`).
-const themeList = computed(() => [...store.themes].sort((a, b) => byName(a.label, b.label)));
-
-function pick(row: ThemeRow): void {
-  chooseTheme(row.id);
-}
-
-const WORDS: Record<DarkState, string> = {
-  system: "dark_system", light: "dark_light", dark: "dark_dark",
-};
-
-// SÓ UM TEMA COM OS DOIS LADOS TEM O QUE ESCOLHER (2026-10-04): os outros
-// ficaram com o lado que já vestiam por padrão (`gothic`/`console`/`hotel`
-// escuro, os quatro que restam claro) e não têm mais o arquivo do lado que
-// perderam — `row.sides` é o que o SERVIDOR leu do disco, nunca um palpite
-// desta tela. Sem os dois lados, não há radiogroup: não existe ajuste a
-// mostrar por um tema que não carrega escolha nenhuma.
-const sideStates = computed<readonly DarkState[]>(() => {
-  const row = store.themes.find(r => r.id === themeState.id);
-  return row && row.sides.length > 1 ? DARK_STATES : [];
-});
-
-function toggleMotion(): void {
-  motion.value = setMotion(!motion.value);
-}
-
-function pickDensity(state: Density): void {
-  dense.value = setDensity(state);
-}
-
-function pickSide(state: DarkState): void {
-  side.value = state;
-  chooseDark(state);
-}
 
 watchEffect(() => setTrail(word("settings")));
 </script>
@@ -190,118 +70,21 @@ watchEffect(() => setTrail(word("settings")));
         </div>
       </section>
 
-      <!-- O ASSIST (TASK-180, fatia 3/3): o switch, e o modo só quando ligado
-           — um modo escolhido com o assist desligado não teria o que fazer. -->
-      <section v-if="tab === 'general'" class="block">
-        <h2>{{ word("assist") }}</h2>
-        <div class="block-body">
-          <p class="pop-note">{{ word("assist_hint") }}</p>
-          <button type="button" class="switch" role="switch"
-                  :aria-label="word('assist')" :class="{ on: store.assist }"
-                  :aria-checked="store.assist" :disabled="assistBusy"
-                  @click="toggleAssist"></button>
-          <div v-if="store.assist" class="radios" role="radiogroup" :aria-label="word('assist_mode')">
-            <label v-for="mode in ASSIST_MODES" :key="mode" class="radio-row"
-                   :class="{ on: store.assist_mode === mode }">
-              <input type="radio" class="radio" name="assist-mode" :value="mode"
-                     :checked="store.assist_mode === mode" :disabled="assistBusy"
-                     @change="pickAssistMode(mode)">
-              <span>{{ word(`assist_${mode}`) }}</span>
-            </label>
-          </div>
-        </div>
-      </section>
+      <!-- O ASSIST (TASK-180, fatia 3/3), as NOTIFICAÇÕES (Web Push) e a
+           CREDENCIAL DO JEV: cada ajuste da pasta é uma seção em `settings/`. -->
+      <template v-if="tab === 'general'">
+        <AssistSection />
+        <PushSection />
+        <JevSection />
+      </template>
 
-      <!-- NOTIFICAÇÕES (Web Push): o botão PEDE a permissão do navegador e
-           inscreve o PWA — sem ntfy, sem app à parte. Um navegador que não sabe
-           fazer push não mostra o bloco. -->
-      <section v-if="tab === 'general' && pushState !== 'unsupported'" class="block">
-        <h2>{{ word("notifications") }}</h2>
-        <div class="block-body">
-          <p class="pop-note">{{ word("notifications_hint") }}</p>
-          <button type="button" class="btn"
-                  :disabled="pushState === 'on' || pushState === 'denied'"
-                  @click="askPush">
-            {{ pushState === "on" ? word("notifications_on") : word("notifications_off") }}
-          </button>
-        </div>
-      </section>
-
-      <!-- A CREDENCIAL DO JEV: a chave da API e a Chave Principal que a sela.
-           É ajuste da pasta (o `secret` de escopo `jev`), e sem ela o chat diz
-           "Jev não configurado". -->
-      <section v-if="tab === 'general'" class="block">
-        <h2>{{ word("jev") }}</h2>
-        <div class="block-body">
-          <p class="pop-note">{{ word("jev_hint") }}</p>
-          <div class="jev-form">
-            <input v-model="jevKey" type="password" autocomplete="off"
-                   class="jev-input" :placeholder="word('jev_key')"
-                   :aria-label="word('jev_key')">
-            <button type="button" class="btn"
-                    :disabled="jevBusy || !jevKey" @click="saveJev">
-              {{ word("jev_save") }}
-            </button>
-          </div>
-          <p v-if="jevError" class="pop-note">{{ jevError }}</p>
-          <p v-else-if="store.jev_ready" class="pop-note">{{ word("jev_saved") }}</p>
-        </div>
-      </section>
-
-      <!-- OS TEMAS: the whole list, which is what a person comparing two looks
-           came here for. -->
-      <section v-if="tab === 'appearance'" class="block">
-        <h2>{{ word("themes") }}</h2>
-        <div class="block-body">
-          <div class="settings">
-            <button v-for="row in themeList" :key="row.id" type="button" class="theme"
-                    :class="{ on: themeState.id === row.id }"
-                    :aria-pressed="themeState.id === row.id"
-                    @click="pick(row)">
-              <b>{{ row.label }}</b>
-              <span class="key">{{ row.id }}</span>
-              <span v-if="descOf(row)" class="desc">{{ descOf(row) }}</span>
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <section v-if="tab === 'appearance' && sideStates.length" class="block">
-        <h2>{{ word("dark_mode") }}</h2>
-        <div class="block-body">
-          <div class="radios" role="radiogroup" :aria-label="word('dark_mode')">
-            <label v-for="state in sideStates" :key="state" class="radio-row"
-                   :class="{ on: side === state }">
-              <input type="radio" class="radio" name="dark-side" :value="state"
-                     :checked="side === state" @change="pickSide(state)">
-              <span>{{ word(WORDS[state]) }}</span>
-            </label>
-          </div>
-        </div>
-      </section>
-
-      <section v-if="tab === 'appearance'" class="block">
-        <h2>{{ word("density") }}</h2>
-        <div class="block-body">
-          <div class="radios" role="radiogroup" :aria-label="word('density')">
-            <label v-for="state in DENSITIES" :key="state" class="radio-row"
-                   :class="{ on: dense === state }">
-              <input type="radio" class="radio" name="density" :value="state"
-                     :checked="dense === state" @change="pickDensity(state)">
-              <span>{{ word(`density_${state}`) }}</span>
-            </label>
-          </div>
-        </div>
-      </section>
-
-      <section v-if="tab === 'appearance'" class="block">
-        <h2>{{ word("motion") }}</h2>
-        <div class="block-body">
-          <button type="button" class="switch" role="switch"
-                  :aria-label="word('motion')" :class="{ on: motion }"
-                  :aria-checked="motion" @click="toggleMotion"></button>
-        </div>
-      </section>
+      <!-- Aparência: os temas, o lado, a densidade e o movimento. -->
+      <template v-if="tab === 'appearance'">
+        <ThemesSection />
+        <DarkSideSection />
+        <DensitySection />
+        <MotionSection />
+      </template>
 
       <!-- PESSOAS (§5, item 11): quem pode agir, com qual teto. É ajuste da
            pasta, e o componente traz as DUAS seções dele (atores e papéis). -->
