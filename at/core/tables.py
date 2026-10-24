@@ -92,7 +92,7 @@ def word(table: str) -> str:
     return table.upper()
 
 
-def format_id(table: str, number: int) -> str:
+def format_id(table: str, number: int | None) -> str:
     """The id a person reads and types back. It is the MACHINE word, uppercased,
     and it does not follow the UI language: an id is a datum a person keeps in a
     note or in a commit, and one that changed with the translation would stop
@@ -131,7 +131,7 @@ def title(table: str, row: dict) -> str:
         raise TableError(
             f"error.{kind}_primary",
             table=table_name(table),
-            field=label(table, declared),
+            field=label(table, declared or ""),
         )
     value = row.get(declared) if declared else None
     if isinstance(value, str) and value.strip():
@@ -365,12 +365,12 @@ def ordered(table: str, rows: list[dict]) -> list[dict]:
     spec = sort_spec(table)
     if spec is None:
         return rows
-    keys = [(spec["by"], spec.get("direction") == "desc")]
+    keys: list[tuple[str, bool]] = [(spec["by"], spec.get("direction") == "desc")]
     if isinstance(spec.get("then"), str):
         keys.append((spec["then"], False))
     out = list(rows)
     for name, descending in reversed(keys):
-        out.sort(key=lambda row, field=name: _sort_key(table, field, row),
+        out.sort(key=lambda row, field=name: _sort_key(table, field, row),  # type: ignore[misc]  # mypy cannot infer a lambda with a bound default
                  reverse=descending)
     return out
 
@@ -412,7 +412,7 @@ def find(table: str, pid: object) -> dict:
 
 # --------------------------------------------------------------- writing ---
 
-def create(table: str, values: dict[str, str], *, at: str | None = None) -> dict:
+def create(table: str, values: dict[str, Any], *, at: str | None = None) -> dict:
     """A new row from what was typed, with the declaration filling the rest."""
     row = _coerce(table, values, born=True)
     _require(table, row)
@@ -424,7 +424,7 @@ def create(table: str, values: dict[str, str], *, at: str | None = None) -> dict
     return row
 
 
-def edit(table: str, pid: object, values: dict[str, str], *, at: str | None = None) -> dict:
+def edit(table: str, pid: object, values: dict[str, Any], *, at: str | None = None) -> dict:
     if not values:
         raise TableError("error.nothing_to_set")
     row = find(table, pid)
@@ -440,7 +440,7 @@ def edit(table: str, pid: object, values: dict[str, str], *, at: str | None = No
     return row
 
 
-def _coerce(table: str, values: dict[str, str], born: bool) -> dict:
+def _coerce(table: str, values: dict[str, Any], born: bool) -> dict:
     """What was typed, read as the field's type — and refused when it is not.
 
     `born` is the difference between the two doors: a row being created receives
@@ -1012,7 +1012,7 @@ def deletable(table: str) -> bool:
     return declared.get("deletable", True) is not False
 
 
-def referrers(table: str, number: int) -> list[tuple[str, str, int]]:
+def referrers(table: str, number: int | None) -> list[tuple[str, str, int | None]]:
     """`(table, field, row id)` of every row that NAMES row `number` of `table`.
 
     Read from the DECLARATIONS and nothing else: a field whose `ref` can reach
@@ -1020,7 +1020,7 @@ def referrers(table: str, number: int) -> list[tuple[str, str, int]]:
     a link by the shape of its value. The folder is never scanned for a number
     that looks like this one.
     """
-    found: list[tuple[str, str, int]] = []
+    found: list[tuple[str, str, int | None]] = []
     for other, declared in schema.tables().items():
         fields = declared.get("fields")
         if not isinstance(fields, dict):
@@ -1041,7 +1041,7 @@ def referrers(table: str, number: int) -> list[tuple[str, str, int]]:
     return found
 
 
-def _names(value: Any, target: str, number: int) -> bool:
+def _names(value: Any, target: str, number: int | None) -> bool:
     """Whether `value` names row `number` of `target`, in any shape a reference
     takes: the bare number a single-target field stores, the `[table, number]`
     pair a field that may point at more than one stores, or a list of either."""
@@ -1092,5 +1092,6 @@ def delete(table: str, pid: object) -> dict:
         table,
         [old for old in store.load(table) if store.number_of(old) != number],
     )
+    assert number is not None  # `find` hands back a row that carries its id
     store.spend(table, number)
     return row

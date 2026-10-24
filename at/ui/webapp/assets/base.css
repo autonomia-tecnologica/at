@@ -5,16 +5,10 @@
              font-display: block; src: url("/vendor/font-nunito-sans-400") format("woff2"); }
 @font-face { font-family: "Nunito Sans"; font-style: normal; font-weight: 600;
              font-display: block; src: url("/vendor/font-nunito-sans-600") format("woff2"); }
-@font-face { font-family: "Nunito Sans"; font-style: normal; font-weight: 700;
-             font-display: block; src: url("/vendor/font-nunito-sans-700") format("woff2"); }
-@font-face { font-family: "Nunito Sans"; font-style: normal; font-weight: 800;
-             font-display: block; src: url("/vendor/font-nunito-sans-800") format("woff2"); }
 @font-face { font-family: "Quicksand"; font-style: normal; font-weight: 500;
              font-display: block; src: url("/vendor/font-quicksand-500") format("woff2"); }
 @font-face { font-family: "Quicksand"; font-style: normal; font-weight: 600;
              font-display: block; src: url("/vendor/font-quicksand-600") format("woff2"); }
-@font-face { font-family: "Quicksand"; font-style: normal; font-weight: 700;
-             font-display: block; src: url("/vendor/font-quicksand-700") format("woff2"); }
 @font-face { font-family: "UnifrakturMaguntia"; font-style: normal; font-weight: 400;
              font-display: block; src: url("/vendor/font-unifrakturmaguntia") format("woff2"); }
 @font-face { font-family: "Silkscreen"; font-style: normal; font-weight: 400;
@@ -80,7 +74,6 @@
   --page-max: 1200px;
   --page-gutter: var(--space-8);
   --page-header-gap: var(--space-6);
-  --page-pad-x: var(--page-gutter);
 
   /* ----- controls (F4): input, select and button share ONE height ----- */
   --control-h: 36px;
@@ -98,10 +91,16 @@
   --density-card-pad-x: var(--space-5);
   --density-opt-pad-y: var(--space-2);
   --density-nav-pad-y: var(--space-2);
+  --card-pad: var(--density-card-pad-y) var(--density-card-pad-x);
+  --pop-pad: var(--space-2);
+  --dialog-pad: var(--space-10);
+  --toast-pad: var(--space-3) var(--space-4);
+  --chip-pad: var(--space-1) var(--space-3);
+  --sidebar-item-h: 0px;
+  --toast-life: 5000ms;
 }
 /* DENSITY (F7) */
 html {
-  --cell-pad: var(--density-cell-pad);
   --cell-pad-y: var(--density-cell-pad-y);
 }
 html[data-density="compact"] {
@@ -183,9 +182,6 @@ html.nav-open nav { transform: translateX(0); box-shadow: var(--nav-edge); }
 main {
   flex: 1; display: flex; flex-direction: column; min-width: 0;
   background-color: var(--surface-0);
-  background-image: radial-gradient(1100px 460px at 100% -8%,
-                                    var(--accent-50), transparent 72%);
-  background-repeat: no-repeat;
 }
 header {
   display: flex; align-items: center; gap: var(--space-3);
@@ -339,6 +335,7 @@ nav button {
   padding: var(--density-nav-pad-y) var(--space-3); background: none; border: 0;
   border-radius: var(--r-sm);
   color: var(--nav-ink-2);
+  min-height: var(--sidebar-item-h);
   font: inherit; font-size: var(--type-body-sm); text-align: left; cursor: pointer;
   transition: background-color var(--dur-2) var(--ease-enter), color var(--dur-2) var(--ease-enter);
 }
@@ -441,7 +438,7 @@ table { border-collapse: separate; border-spacing: 0; width: 100%; table-layout:
   border: 1px solid var(--border-soft);
   overflow: hidden;
 }
-th, td { text-align: left; padding: var(--cell-pad-y) var(--cell-pad); vertical-align: top; }
+th, td { text-align: left; padding: var(--cell-pad-y) var(--density-cell-pad); vertical-align: top; }
 tbody td { border-bottom: 1px solid var(--border-soft); transition: background-color var(--dur-2) var(--ease-enter); }
 /* The cells are the reading surface: body type steps up here instead of down. */
 td { overflow: hidden; overflow-wrap: break-word; font-size: var(--type-body); }
@@ -468,7 +465,11 @@ th .to { color: var(--text-tertiary); margin-left: 4px; }
 .grid tbody tr { cursor: pointer; }
 .grid tbody tr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .grid tbody tr:hover td { background: var(--row-hover); }
-.grid td.id { color: var(--text-tertiary); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.grid td.id { color: var(--text-tertiary); white-space: nowrap; font-variant-numeric: tabular-nums; text-align: right; }
+.grid th.id-col { text-align: right; }
+@media (max-width: 640px) { .grid td.id { text-align: left; } }
+/* Bold marks with no rule of their own take the system's top weight, the one face it ships. */
+b, strong { font-weight: var(--weight-semibold); }
 
 .grid.cells-edit tbody tr { cursor: default; }
 .grid td.editable { cursor: text; }
@@ -477,7 +478,7 @@ th .to { color: var(--text-tertiary); margin-left: 4px; }
   display: block; width: 100%; height: 100%; min-height: 1.6em;
   font: inherit; color: inherit; background: var(--surface-1);
   border: 2px solid var(--accent); border-radius: 0;
-  padding: var(--cell-pad-y) var(--cell-pad);
+  padding: var(--cell-pad-y) var(--density-cell-pad);
 }
 
 /* ===== the value of a CLOSED LIST ===== */
@@ -517,7 +518,7 @@ td[data-value="critical"] .v, .chip[data-value="critical"] { background: var(--d
 .pop {
   position: absolute; z-index: 10; max-height: 320px; overflow: auto;
   background: var(--surface-1); border: 1px solid var(--border-soft);
-  border-radius: var(--r-md); padding: var(--space-2);
+  border-radius: var(--r-md); padding: var(--pop-pad);
   min-width: 190px; box-shadow: var(--shadow-card);
   animation: pop-in var(--dur-3) var(--ease-enter);
 }
@@ -587,7 +588,7 @@ button.opt { background: none; border: 0; font: inherit; width: 100%; text-align
   width: min(var(--measure), calc(100vw - 2 * var(--space-8)));
   max-height: calc(100vh - 2 * var(--space-8)); overflow: auto;
   display: flex; flex-direction: column; gap: var(--space-4);
-  padding: var(--space-10); background: var(--surface-1);
+  padding: var(--dialog-pad); background: var(--surface-1);
   border-radius: var(--r-lg); box-shadow: var(--shadow-lg);
   animation: dialog-in var(--dur-4) var(--ease-enter);
 }
@@ -622,7 +623,7 @@ button.opt { background: none; border: 0; font: inherit; width: 100%; text-align
   position: fixed; z-index: 25; left: var(--space-5); bottom: var(--space-5);
   width: min(var(--measure), calc(100vw - 2 * var(--space-5)));
   display: flex; flex-direction: column; gap: var(--space-2);
-  padding: var(--space-3) var(--space-4); background: var(--surface-1);
+  padding: var(--toast-pad); background: var(--surface-1);
   border-radius: var(--r-lg); box-shadow: var(--shadow-lg);
   animation: balloon-in var(--dur-4) var(--ease-enter);
 }
@@ -631,7 +632,7 @@ button.opt { background: none; border: 0; font: inherit; width: 100%; text-align
 .toast-bar {
   display: block; height: 3px; border-radius: var(--r-full);
   background: var(--accent); transform-origin: left;
-  animation-name: toast-empty; animation-timing-function: linear;
+  animation-name: toast-empty; animation-duration: var(--toast-life); animation-timing-function: linear;
   animation-fill-mode: forwards;
 }
 @keyframes toast-empty { from { transform: scaleX(1); } to { transform: scaleX(0); } }
@@ -670,8 +671,8 @@ button.opt { background: none; border: 0; font: inherit; width: 100%; text-align
 .btn:active { background: var(--accent-active); transform: scale(.98); transition-duration: var(--dur-1); }
 .btn:disabled { opacity: .5; cursor: default; transform: none; }
 /* Destroying something is not the page's action */
-.btn.danger { background: var(--danger); color: #fff; border-color: transparent; }
-.btn.danger:hover { background: color-mix(in srgb, var(--danger) 85%, #000); }
+.btn.danger { background: var(--danger); color: var(--danger-ink); border-color: transparent; }
+.btn.danger:hover { background: var(--danger-hover); }
 .btn-quiet { background: var(--surface-1); color: var(--text-primary); border-color: var(--border-control); }
 .btn-quiet:hover { background: var(--surface-2); }
 /* Sizes ride on `--control-h`; the ghost is the borderless, fill-less button. */
@@ -712,7 +713,7 @@ button.opt { background: none; border: 0; font: inherit; width: 100%; text-align
 }
 .switch::after {
   content: ""; position: absolute; top: 50%; margin-top: -8px; left: 2px;
-  width: 16px; height: 16px; background: #fff; border-radius: 50%;
+  width: 16px; height: 16px; background: var(--switch-knob); border-radius: 50%;
   box-shadow: var(--shadow-xs);
   transition: transform var(--dur-3) var(--ease-move), background-color var(--dur-2) var(--ease-move);
 }
@@ -947,7 +948,7 @@ a.ref, a.url {
               background-color var(--dur-2) var(--ease-enter);
 }
 /* Under the pointer the wash goes one step stronger than the resting soft. */
-a.ref::after, a.url::after { content: ""; position: absolute; inset: -4px -2px; }
+a.ref::after, a.url::after { content: ""; position: absolute; inset: -6px -2px; }
 a.ref:hover, a.url:hover { border-bottom-color: currentColor; background: var(--accent-100); }
 
 /* ===== interpreter: chat / balloon / turn ================================ */
@@ -1139,7 +1140,7 @@ html.no-motion .dots i { animation: none; opacity: .6; }
   .stat-strip .stats { display: flex; flex-wrap: wrap; gap: var(--space-2); }
   .stat-strip .stat {
     flex-direction: row; align-items: baseline; gap: var(--space-2);
-    padding: var(--space-1) var(--space-3); border-radius: var(--r-full);
+    padding: var(--chip-pad); border-radius: var(--r-full);
   }
   .stat-strip .stat b { font-size: var(--type-body); line-height: var(--leading-tight); }
   .stat-strip .stat span { font-size: var(--type-caption); }
@@ -1154,7 +1155,7 @@ html.no-motion .dots i { animation: none; opacity: .6; }
 }
 .card {
   display: flex; flex-direction: column; gap: var(--space-3); width: 100%;
-  padding: var(--density-card-pad-y) var(--density-card-pad-x); text-align: left; cursor: pointer;
+  padding: var(--card-pad); text-align: left; cursor: pointer;
   background: var(--surface-1); color: var(--text-primary); font: inherit;
   border: 1px solid var(--border-soft); border-radius: var(--r-lg);
   
@@ -1172,7 +1173,7 @@ html.no-motion .dots i { animation: none; opacity: .6; }
 /* UMA LINHA QUE SE LÊ E NÃO SE ABRE */
 .row {
   display: flex; align-items: baseline; gap: var(--space-3);
-  padding: var(--density-card-pad-y) var(--density-card-pad-x);
+  padding: var(--card-pad);
   background: var(--surface-1); color: var(--text-primary);
   border: 1px solid var(--border-soft); border-radius: var(--r-lg);
   
@@ -1311,7 +1312,8 @@ html.no-motion .dots i { animation: none; opacity: .6; }
 
 /* HOVER AND FOCUS ARRIVE, THEY DO NOT SNAP */
 :where(button, a, summary, [role="button"], [tabindex], .tab, .fbtn, .pop .opt,
-       .grid tbody tr, .turn .card, .chat-example) {
+       .grid tbody tr, .turn .card, .chat-example, .chat-say, .dialog input,
+       .strongbox-viewer .viewer-bar button) {
   transition: color var(--dur-2) var(--ease-move), background-color var(--dur-2) var(--ease-move),
               border-color var(--dur-2) var(--ease-move), box-shadow var(--dur-2) var(--ease-move);
 }
@@ -1333,6 +1335,9 @@ html.no-motion .dots i { animation: none; opacity: .6; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important;
                             transition-duration: .001ms !important; scroll-behavior: auto !important; }
+  .page > :not(.page-header), .veil:not(.veil-leave-active), .pop:not(.pop-leave-active), .dialog:not(.dialog-leave-active),
+  .toast:not(.toast-leave-active), .balloon-bubble, .shortcut-hint:not(.hint-leave-active) {
+    animation-name: veil-in; animation-duration: 120ms !important; }
 }
 html.no-motion *, html.no-motion *::before, html.no-motion *::after {
   animation-duration: .001ms !important; transition-duration: .001ms !important;
@@ -1381,6 +1386,13 @@ html.no-motion *, html.no-motion *::before, html.no-motion *::after {
     margin-inline: var(--space-2);
     padding-inline: 0;
   }
+  /* THE RAIL ROW IS THE EXPANDED ROW'S HEIGHT: the label leaves the flow, and a
+     row left with a 14px mark alone is shorter than the same row with its word.
+     `1lh` is the line the word would have taken, so the two forms share one height */
+  html:not(.nav-open) nav .folder,
+  html:not(.nav-open) nav .file[data-view="reminders"],
+  html:not(.nav-open) nav .file[data-view="notes"] { min-height: calc(1lh + 2 * var(--space-1)); box-sizing: border-box; }
+  html:not(.nav-open) nav .side-foot > .file { min-height: calc(1lh + 2 * var(--density-nav-pad-y)); box-sizing: border-box; }
   /* The brand is the rail's own top mark */
   html:not(.nav-open) nav h1 { justify-content: center; padding-inline: 0; }
   /* The foot's door says "open" while the panel is a rail */
@@ -1461,6 +1473,7 @@ html.no-motion *, html.no-motion *::before, html.no-motion *::after {
   :root { --control-h: 44px; --control-h-sm: 44px; --nav-toggle-box: 44px; }
   .pop .opt, .tab { min-height: 44px; }
   /* THE PANEL'S ROWS ARE CLOSER (a pedido): 40px still a thumb's target */
-  nav button { min-height: 40px; }
+  :root { --sidebar-item-h: 40px; }
+  th { height: 44px; }
   .radio-row, .check-row { min-height: 44px; }
 }

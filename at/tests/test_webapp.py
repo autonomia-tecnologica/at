@@ -35,7 +35,6 @@ from at.core import (
     assist,
     audit,
     boot,
-    strongbox,
     jev,
     jobs,
     notifier,
@@ -45,6 +44,7 @@ from at.core import (
     risk,
     secrets,
     settings,
+    strongbox,
     tables,
 )
 from at.data import schema, store

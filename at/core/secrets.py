@@ -119,7 +119,10 @@ def open_value(row: dict, main_key: str) -> str | None:
         key = key_of(_scope_of(row) or "", main_key)
     except SecretsError:
         return None
-    return vault.unseal(_delivered(row), key)
+    envelope = _delivered(row)
+    if envelope is None:
+        return None
+    return vault.unseal(envelope, key)
 
 
 def _scope_of(row: object) -> str | None:

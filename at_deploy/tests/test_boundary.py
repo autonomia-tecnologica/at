@@ -143,7 +143,6 @@ class TheTwoTreesDoNotMix(unittest.TestCase):
 
     def test_the_environment_words_are_the_deploys_alone(self):
         from at.ui.cli import tree as app_tree
-
         from at_deploy import tree as deploy_tree
 
         for word in deploy_tree.environment_words():
@@ -158,7 +157,6 @@ class TheTwoTreesDoNotMix(unittest.TestCase):
         # The commands are machine words and stay machine words (§3); what is
         # translated is every sentence around them.
         from at import i18n
-
         from at_deploy import tree as deploy_tree
 
         for code in i18n.SUPPORTED:

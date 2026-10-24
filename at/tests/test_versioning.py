@@ -39,6 +39,7 @@ from at.core import (
     migrations,
     paths,
     settings,
+    tables,
     versioning,
 )
 from at.data import store
@@ -254,7 +255,7 @@ class TheRepository(ScratchCase):
         # AUDIT line (§3, item 15) — a refusal is a line like an act — and the
         # version that carries it is named by the refusal itself, so the folder
         # is not left dirty by an act that was turned down.
-        with self.assertRaises(Exception):
+        with self.assertRaises(tables.TableError):
             door.run("task", "create", ["--set", "nowhere=x"], **AS_A_PERSON)
         self.assertEqual(len(self.versions()), before + 1)
         self.assertEqual(

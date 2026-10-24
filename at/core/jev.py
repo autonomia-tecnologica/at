@@ -399,7 +399,7 @@ def _criteria(
     known = _synonyms(language, canonicals)
     criteria = {
         canonical: _option(label, description, known.get(canonical, ()), language)
-        for canonical, label, description in zip(canonicals, labels, descriptions)
+        for canonical, label, description in zip(canonicals, labels, descriptions, strict=False)
     }
     criteria[NONE] = _text(none_key, language)
     return criteria

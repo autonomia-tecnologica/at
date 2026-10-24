@@ -298,6 +298,7 @@ def _convert(rest: list[str]) -> int:
         print(tr(info["reason"] or "prose.not_supported"))
         return REFUSED
     where = prose.inside(rel)
+    assert where is not None  # `prose.read` above already served this path
     try:
         target = convert.convert(where, fmt)
     except files.ReadOnly as error:

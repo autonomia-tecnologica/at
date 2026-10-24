@@ -155,12 +155,13 @@ class TheTokenContract(unittest.TestCase):
         # not vary between themes, so `base.css` declares them once.
         structure_tokens = {
             "--type-caption", "--type-body-sm", "--type-body", "--type-body-lg",
-            "--type-title", "--type-page", "--type-display", "--font-mono", "--leading-normal", "--leading-tight", "--weight-medium",
+            "--type-title", "--type-page", "--type-display", "--font-mono", "--leading-normal",
+            "--leading-tight", "--weight-medium",
             "--weight-semibold", "--letter-tight", "--r-full",
             "--space-0_5", "--space-1", "--space-2", "--space-3", "--space-4",
             "--space-5", "--space-6", "--space-8", "--space-10", "--space-12",
             "--space-16", "--nav-w",
-            "--nav-rail-w", "--nav-toggle-size", "--header-h", "--page-pad-x",
+            "--nav-rail-w", "--nav-toggle-size", "--header-h", "--page-gutter",
         }
         self.assertEqual(sorted(structure_tokens - self.base_declared), [])
         for theme in self.themes:
@@ -245,6 +246,20 @@ class TheTokenContract(unittest.TestCase):
         for theme in self.themes:
             body = without_comments(theme.read_text(encoding="utf-8"))
             self.assertNotRegex(body, r"url\(\s*[\"']?data:", theme.name)
+
+
+class TheRadiusScale(unittest.TestCase):
+    """The two house themes round their corners the same."""
+
+    @staticmethod
+    def scale(theme: str) -> dict[str, str]:
+        text = without_comments((THEMES / theme).read_text(encoding="utf-8"))
+        return dict(re.findall(r"(--r-(?:sm|md|lg))\s*:\s*([^;]+);", text))
+
+    def test_light_and_dark_declare_the_same_radius(self) -> None:
+        light, dark = self.scale("at.css"), self.scale("at-dark.css")
+        self.assertEqual({"--r-sm": "8px", "--r-md": "14px", "--r-lg": "20px"}, dark)
+        self.assertEqual(dark, light)
 
 
 class TheDoors(unittest.TestCase):
@@ -439,6 +454,25 @@ class TheTextRoles(unittest.TestCase):
                 got = _ratio(tokens["--border-control"], tokens[surface])
                 self.assertGreaterEqual(got, 3.0, f"{name} --border-control on {surface}: {got:.2f}")
 
+    def test_the_placeholder_reads_a_role_that_holds_its_ratio(self):
+        body = without_comments(self.base)
+        self.assertRegex(body, r"::placeholder\s*\{\s*color: var\(--text-tertiary\);")
+        for name, tokens in self.themes.items():
+            for surface in self.SURFACES:
+                got = _ratio(tokens["--text-tertiary"], tokens[surface])
+                self.assertGreaterEqual(got, 4.5, f"{name} placeholder on {surface}: {got:.2f}")
+
+    def test_the_accent_ink_reads_on_the_accent_and_on_its_wash(self):
+        pairs = (("--accent-ink", "--accent"), ("--accent", "--accent-soft"))
+        for name, tokens in self.themes.items():
+            for fg, bg in pairs:
+                got = _ratio(tokens[fg], tokens[bg])
+                self.assertGreaterEqual(got, 4.5, f"{name} {fg} on {bg}: {got:.2f}")
+
+    def test_the_main_has_no_radial_gradient(self):
+        self.assertNotIn("radial-gradient(1100px", self.base)
+        self.assertNotIn("--page-pad-x", self.base)
+
     def test_the_separator_is_text_not_a_border(self):
         body = without_comments(self.base)
         self.assertIn("#head-title .sep { color: var(--text-tertiary); }", body)
@@ -504,6 +538,55 @@ class TheDesignPlanRules(unittest.TestCase):
                 continue
             for value in re.findall(r"box-shadow:\s*([^;]+)", body):
                 self.assertEqual(value.strip(), "none", f"{sorted(names)} floats: box-shadow {value}")
+
+    # Elevation tokens may appear only where something floats or is a control's own lift.
+    # `.btn` / `.btn:hover` / `.switch::after` rest on the page and still wear `--shadow-xs/sm`:
+    # kept here as KNOWN exceptions (B-4 pendencies), so a NEW resting shadow fails.
+    ELEVATED = {".pop", ".dialog", ".balloon-bubble", ".toast", ".shortcut-hint"}
+    KNOWN_RESTING = {".btn", ".btn:hover", ".switch::after"}
+
+    def test_no_elevation_token_on_any_selector_outside_the_floating_set(self):
+        for selectors, body in re.findall(r"([^{}]+)\{([^{}]*)\}", self.css):
+            names = {" ".join(name.split()) for name in selectors.split(",")}
+            for value in re.findall(r"box-shadow:\s*([^;]+)", body):
+                if "--shadow-" not in value:
+                    continue  # none, focus ring, inset edge, 1px ring: not elevation
+                self.assertLessEqual(names, self.ELEVATED | self.KNOWN_RESTING,
+                                     f"{sorted(names)} rests on the page with an elevation: {value}")
+
+    # Hairlines (a border, ring or edge up to 3px) are not "sizes"; the rest of the literals below
+    # are the KNOWN backlog of the px-to-token migration. The set may only shrink.
+    HAIRLINE = re.compile(r"^(border[\w-]*|outline|box-shadow|border-width):[^;]*?\b[0-3]px\b")
+    PX_ALLOWED = {
+        "background-image: radial-gradient(circle, var(--accent) 4px, transparent 4px)",
+        "border-radius: 4px", "border-radius: 5px", "gap: 2px", "gap: 4px", "gap: 5px",
+        "grid-template-columns: repeat(auto-fill, minmax(112px, 1fr))",
+        "grid-template-columns: repeat(auto-fit, minmax(148px, 1fr))",
+        "grid-template-columns: repeat(auto-fit, minmax(240px, 1fr))",
+        "height: 10px", "height: 12px", "height: 16px", "height: 1px", "height: 20px", "height: 24px",
+        "height: 34px", "height: 3px", "height: 44px", "height: 56px", "height: 6px", "height: 8px",
+        "inset: -6px -2px", "inset: 1px", "left: -10000px", "left: 2px", "left: 4px",
+        "margin-bottom: -1px", "margin-left: -1px", "margin-left: 4px", "margin-left: 6px",
+        "margin-top: -8px", "margin: -1px", "margin: 0 -2px", "margin: 4px 0 0",
+        "max-height: 320px", "max-width: calc(100vw - 24px)", "min-height: 240px", "min-height: 44px",
+        "min-width: 190px", "min-width: 20px", "min-width: 6px",
+        "outline-offset: -2px", "padding: 0 2px", "padding: 1px", "padding: 2px 6px",
+        "padding: 2px var(--space-3)", "padding: var(--space-2) 0 var(--foot-space, 140px)",
+        "top: 1px", "transform: translateX(-2px)", "transform: translateX(14px)",
+        "transform: translateY(-4px)", "transform: translateY(4px)", "transform: translateY(8px)",
+        "vertical-align: -1px", "vertical-align: -2px",
+        "width: 10px", "width: 16px", "width: 1px", "width: 24px", "width: 2px", "width: 34px",
+        "width: 36px", "width: 4px", "width: 56px", "width: 8px",
+        "width: min(640px, calc(100vw - 2 * var(--space-8)))",
+    }
+
+    def test_no_new_literal_px_outside_root(self):
+        css = re.sub(r"@media[^{]*", "", self.css)
+        css = re.sub(r"(?<![\w-]):root\s*\{[^{}]*\}", "", css)
+        found = {" ".join(d.split()) for d in re.findall(r"([\w-]+\s*:[^;{}]*\d(?:\.\d+)?px[^;{}]*)", css)}
+        found = {d for d in found if not d.startswith(("--", "font-size")) and not self.HAIRLINE.match(d)}
+        self.assertEqual(sorted(found - self.PX_ALLOWED), [])
+        self.assertEqual(sorted(self.PX_ALLOWED - found), [], "leaving the list? shrink it")
 
     def test_no_literal_px_font_size_outside_root(self):
         css = re.sub(r":root\s*\{[^{}]*\}", "", self.css)

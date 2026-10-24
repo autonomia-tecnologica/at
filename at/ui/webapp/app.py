@@ -136,7 +136,7 @@ import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Callable
+from typing import Callable, cast
 from urllib.parse import parse_qs, quote, urlparse
 
 from at import __version__, convert, i18n, nlu
@@ -617,7 +617,13 @@ PAGE_WORDS = (
     "notes", "new_note", "notes_none", "save",
     "move_to_project", "records", "hidden", "no_records", "error", "filter",
     # THE SPECIMEN (`/design`): its own sentences, in both languages.
-    "ds_theme", "ds_text_roles", "ds_type_scale", "ds_colour", "ds_buttons", "ds_inputs", "ds_chips", "ds_cards_table", "ds_overlays", "ds_empty", "ds_small", "ds_medium", "ds_large", "ds_quiet", "ds_ghost", "ds_danger", "ds_disabled", "ds_popover", "ds_dialog", "ds_toast", "ds_text", "ds_select", "ds_textarea", "ds_value", "ds_locked", "ds_lines", "ds_checked", "ds_unchecked", "ds_radio_on", "ds_radio_off", "ds_a_card", "ds_a_row", "ds_title", "ds_status", "ds_pop_text", "ds_ask", "ds_yes", "ds_no", "ds_toast_text", "ds_nothing", "ds_nothing_text", "ds_action", "ds_fox", "ds_primary", "ds_secondary", "ds_tertiary", "ds_display", "ds_page", "ds_body_large", "ds_body", "ds_body_small", "ds_caption",
+    "ds_theme", "ds_text_roles", "ds_type_scale", "ds_colour", "ds_buttons", "ds_inputs", "ds_chips",
+    "ds_cards_table", "ds_overlays", "ds_empty", "ds_small", "ds_medium", "ds_large", "ds_quiet", "ds_ghost",
+    "ds_danger", "ds_disabled", "ds_popover", "ds_dialog", "ds_toast", "ds_text", "ds_select", "ds_textarea",
+    "ds_value", "ds_locked", "ds_lines", "ds_checked", "ds_unchecked", "ds_radio_on", "ds_radio_off",
+    "ds_a_card", "ds_a_row", "ds_title", "ds_status", "ds_pop_text", "ds_ask", "ds_yes", "ds_no",
+    "ds_toast_text", "ds_nothing", "ds_nothing_text", "ds_action", "ds_fox", "ds_primary", "ds_secondary",
+    "ds_tertiary", "ds_display", "ds_page", "ds_body_large", "ds_body", "ds_body_small", "ds_caption",
     # THE FILA'S BADGE (TASK-162, fatia 2/2): whether this browser is online,
     # and how many edits are still waiting to leave it.
     "offline", "queued",
@@ -983,6 +989,10 @@ _UNASKED = object()
 class Handler(BaseHTTPRequestHandler):
     server_version = "at-webapp/1"
 
+    # The server this handler is bound to is OURS (`Server`, below), and the
+    # routes read its state: the base class only promises a `BaseServer`.
+    server: Server  # type: ignore[assignment]
+
     # The session of the request being served, until `_in` computes it.
     _held: object = _UNASKED
 
@@ -1231,7 +1241,7 @@ class Handler(BaseHTTPRequestHandler):
         """
         if self._held is _UNASKED:
             self._held = self._opened()
-        return self._held
+        return cast("session.Session | None", self._held)
 
     def _opened(self) -> session.Session | None:
         """Who this request proved, asked of the transports once.
@@ -1653,7 +1663,7 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"error": str(actors.AdminError("error.mismatch"))}, 400)
             return
         try:
-            row = actors.create_admin(name.strip(), credential)
+            row = actors.create_admin(cast(str, name).strip(), cast(str, credential))
         except (actors.AdminError, tables.TableError) as refused:
             self._json({"error": str(refused)}, 400)
             return
@@ -2260,7 +2270,7 @@ class Handler(BaseHTTPRequestHandler):
         if not all(isinstance(value, str) for value in (rel, text, base)):
             self._json({"error": "bad request"}, 400)
             return
-        status, answer = prose.write(rel, text, base)
+        status, answer = prose.write(cast(str, rel), cast(str, text), cast(str, base))
         self._json(_worded(answer), status)
 
     def _post_file_create(self) -> None:
@@ -2287,7 +2297,7 @@ class Handler(BaseHTTPRequestHandler):
         if not all(isinstance(value, str) for value in (rel, to)):
             self._json({"error": "bad request"}, 400)
             return
-        status, answer = prose.rename(rel, to)
+        status, answer = prose.rename(cast(str, rel), cast(str, to))
         self._json(_worded(answer), status)
 
     def _post_file_delete(self) -> None:
@@ -2328,6 +2338,7 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"error": i18n.tr(str(info.get("reason") or "prose.not_supported"))}, 400)
             return
         where = prose.inside(rel)
+        assert where is not None  # `prose.read` above already served this path
         try:
             target = convert.convert(where, to)
         except files.ReadOnly as error:
@@ -2592,7 +2603,7 @@ class Handler(BaseHTTPRequestHandler):
                 if not self._may("actor:create"):
                     return
                 try:
-                    row, token = actors.mint_agent(payload.get("name"), payload.get("role"))
+                    row, token = actors.mint_agent(cast(str, payload.get("name")), payload.get("role"))
                 except (actors.MachineError, tables.TableError) as refused:
                     self._json({"error": str(refused)}, 400)
                     return
@@ -2791,9 +2802,8 @@ class Handler(BaseHTTPRequestHandler):
         actor = self._actor()
         for action in actions:
             needed = permissions.needed(offline.TABLE, action)
-            if not self._may(
-                needed,
-                owing=lambda action=action: door.denied(
+            def owing(action: str = action, needed: str = needed) -> None:
+                door.denied(
                     offline.TABLE,
                     action,
                     actor=actor,
@@ -2802,8 +2812,9 @@ class Handler(BaseHTTPRequestHandler):
                     saying=i18n.tr(
                         "permission.denied", permission=permissions.label(needed)
                     ),
-                ),
-            ):
+                )
+
+            if not self._may(needed, owing=owing):
                 return
         try:
             resolutions = offline.reconcile(entries)
@@ -3213,7 +3224,10 @@ def _terminate_as_interrupt() -> Callable[[], None]:
         raise KeyboardInterrupt
 
     previous = signal.signal(signal.SIGTERM, handler)
-    return lambda: signal.signal(signal.SIGTERM, previous)
+    def restore() -> None:
+        signal.signal(signal.SIGTERM, previous)
+
+    return restore
 
 
 def _spawn_spelling_checker():

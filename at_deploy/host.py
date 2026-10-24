@@ -53,7 +53,6 @@ from at.core import files, paths
 from at.i18n import tr
 from at.services import authelia
 from at.ui.webapp.app import DEFAULT_PORT, GATE_LOOPBACK_NAME
-
 from at_deploy import environment, systemd
 
 Ask = Callable[[str], str]
@@ -249,7 +248,7 @@ def _prepare(host: str, port: int, public_port: int | None) -> tuple[str, str, b
     config_changed = before != after
 
     workdir = paths.working_folder()
-    argv = (environment.binary(), "webapp", "--host", host, "--port", str(port))
+    argv: tuple[str, ...] = (environment.binary(), "webapp", "--host", host, "--port", str(port))
     if public_port is not None:
         argv += ("--public-port", str(public_port))
 

@@ -50,3 +50,27 @@ exclude = ["at.tests*", "at_deploy.tests*"]
 [tool.setuptools.package-data]
 "at.i18n" = ["blocks/*.json", "vocabulary/*.json"]
 "at.data" = ["defaults/*.json"]
+
+# Development tools, pinned like the rest. Not runtime dependencies: the product
+# itself is stdlib plus the two above. `at/tests/test_lint.py` runs both and
+# skips (with the reason) when one is not installed in the `.venv`.
+#   .venv/bin/pip install -e '.[dev]'
+[project.optional-dependencies]
+dev = ["ruff==0.17.1", "mypy==2.4.0"]
+
+# The gate (B-5): `ruff check` and `mypy` clean over the product, and the suite
+# fails if either comes back dirty (at/tests/test_lint.py).
+[tool.ruff]
+line-length = 120
+extend-exclude = ["build", "dist", ".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "I"]
+
+# mypy covers the PRODUCT (`at`, `at_deploy`); the suites are excluded, for their
+# fakes and seams are not typed on purpose. Strict flags are not on: the gate is
+# "clean", not "annotated everywhere".
+[tool.mypy]
+python_version = "3.14"
+files = ["at", "at_deploy"]
+exclude = ["/tests/", "^build/", "^dist/"]

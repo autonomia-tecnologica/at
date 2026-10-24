@@ -108,10 +108,10 @@ from __future__ import annotations
 
 import json
 import unicodedata
-
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import cast
 
 from at.core import files, jev, paths, permissions, secrets, settings, tables
 from at.data import schema, store
@@ -230,7 +230,7 @@ def _cached(key: str) -> jev.Decision | None:
     # nem tabela, e é a intenção que a responde.
     if action not in (*tables.ACTIONS, jev.NONE):
         return None
-    if table != jev.NONE and schema.of(table) is None:
+    if table != jev.NONE and schema.of(cast(str, table)) is None:
         return None
     # Uma entrada `none`/`none` GRAVADA ANTES do eixo de intenção não tem a
     # chave `intent`: ela nunca foi perguntada sobre a intenção, e servi-la

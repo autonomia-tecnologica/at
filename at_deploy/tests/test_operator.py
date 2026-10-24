@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import io
 import os
-import stat
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -32,7 +31,7 @@ from at.core import actors, boot, gate
 from at.encryption import vault
 from at_deploy import environment as env
 from at_deploy import podman, vpn
-from at_deploy.cli import OK, REFUSED, USAGE, services, main
+from at_deploy.cli import OK, REFUSED, USAGE, main, services
 
 # What the person types when the act asks for a credential.
 CREDENTIAL = "uma-frase-bem-longa"

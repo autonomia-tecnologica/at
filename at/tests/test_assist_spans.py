@@ -23,8 +23,8 @@ from unittest import mock
 from at import i18n
 from at.core import assist, boot, jev, secrets
 from at.data import schema, store
-from at.nlu.reading import Question
 from at.nlu.proposal import Proposal
+from at.nlu.reading import Question
 
 MAIN_KEY = "uma-frase-bem-longa"
 NOW = datetime(2026, 10, 3, 9, 0)

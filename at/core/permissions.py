@@ -156,7 +156,7 @@ NARROWED: dict[str, dict[str, tuple[str, ...]]] = {
     # the engine does not have. Read off `tables.ACTIONS` rather than spelled
     # out here, so a sixth action the engine grows is a sixth permission this
     # object already answers for, and not a silent gap.
-    REMINDER: {action: (action,) for action in tables.ACTIONS} | {DUE: (DUE,)},
+    REMINDER: {**{action: (action,) for action in tables.ACTIONS}, DUE: (DUE,)},
 }
 
 # The objects that are not a table, and the actions each one accepts. §4 names

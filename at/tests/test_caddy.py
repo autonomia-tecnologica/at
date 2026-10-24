@@ -17,31 +17,31 @@ tarball the way the product reads it.
 
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import os
 import socket
 import ssl
 import subprocess
-import hashlib
 import tarfile
-import zipfile
 import tempfile
 import threading
 import time
 import unittest
 import urllib.error
 import urllib.request
+import zipfile
 from contextlib import ExitStack, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
 from at import i18n
 from at.core import actors, boot, paths, settings
-from at.tests.payloads import needs, required
 from at.encryption import vault
 from at.services import authelia, caddy
 from at.tests import POLL, drawn_gate
+from at.tests.payloads import needs, required
 from at.ui.webapp import app as webapp
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -397,7 +397,7 @@ class TheCaddyfile(FolderCase):
         text = self.written(auth="127.0.0.1:9091")
         self.assertIn(f"\t@portal path {caddy.PORTAL} {caddy.PORTAL}/*", text)
         self.assertIn("\thandle @portal {", text)
-        self.assertIn(f"\t\treverse_proxy 127.0.0.1:9091", text)
+        self.assertIn("\t\treverse_proxy 127.0.0.1:9091", text)
         # O portal vem ANTES da pergunta, e o proxy do WebApp depois dela.
         self.assertLess(text.index("handle @portal"),
                         text.index("forward_auth"))
@@ -415,7 +415,7 @@ class TheCaddyfile(FolderCase):
         text = self.written(auth="127.0.0.1:9091")
         inside = text[text.index("handle @portal {"):text.index("\thandle {")]
         self.assertNotIn("forward_auth", inside)
-        self.assertIn(f"reverse_proxy 127.0.0.1:9091", inside)
+        self.assertIn("reverse_proxy 127.0.0.1:9091", inside)
 
     def test_without_a_provider_there_is_no_portal_to_route(self):
         # O caminho hospedado divide este gerador, e um caminho que conserta o
@@ -545,7 +545,7 @@ class TheAdaptedGate(FolderCase):
         self.assertIn(caddy.AUTH_URI, asked)
         self.assertIn("127.0.0.1:9091", asked)
         self.assertIn("127.0.0.1:41234", asked)
-        self.assertIn(f"X-At-Gate", asked)
+        self.assertIn("X-At-Gate", asked)
         self.assertIn("segredo-sorteado", asked)
 
     def test_the_hosted_configuration_has_no_portal_to_route(self):

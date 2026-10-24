@@ -18,6 +18,8 @@ not on screen either.
 
 from __future__ import annotations
 
+from typing import cast
+
 from at.core import tables
 from at.data import schema, store
 from at.i18n import tr
@@ -209,7 +211,7 @@ def page(number: int) -> dict | None:
         for task in owners
         if task in tasks and owners[task] in scope
     ]
-    listed.sort(key=lambda row: row.get("id") if isinstance(row.get("id"), int) else 0)
+    listed.sort(key=lambda row: cast(int, row.get("id")) if isinstance(row.get("id"), int) else 0)
 
     parent = all_projects[number].get("parent")
     parent = parent if isinstance(parent, int) and parent in projects else None

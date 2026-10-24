@@ -183,7 +183,7 @@ def found() -> str | None:
     return str(where) if where is not None else None
 
 
-def run(args: Sequence[str]) -> subprocess.CompletedProcess:
+def run(args: Sequence[str | Path]) -> subprocess.CompletedProcess:
     """One call to the tool — the seam, and the only one.
 
     The binary is resolved HERE and never by the caller, so nothing outside this

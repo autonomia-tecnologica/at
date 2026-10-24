@@ -19,7 +19,6 @@ Every test aims AT at a throwaway folder with `AT_ROOT`.
 
 from __future__ import annotations
 
-import io
 import json
 import os
 import tempfile
@@ -1113,7 +1112,8 @@ class TheStamp(FolderCase):
         again = StringIO()
         with redirect_stdout(again):
             boot.ensure_working_folder(ask=lambda question: self.fail("asked again"))
-        self.assertNotIn(i18n.tr("boot.migration.folders.notice", names="data → Tabelas, prose → Arquivos"), again.getvalue())
+        notice = i18n.tr("boot.migration.folders.notice", names="data → Tabelas, prose → Arquivos")
+        self.assertNotIn(notice, again.getvalue())
 
     def test_the_stamp_names_what_ran(self):
         self.legacy("app")

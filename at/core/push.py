@@ -41,8 +41,8 @@ import struct
 import time
 import urllib.error
 import urllib.request
-
 from pathlib import Path
+from typing import cast
 from urllib.parse import urlparse
 
 from cryptography.hazmat.primitives import hashes, serialization
@@ -139,7 +139,7 @@ def _load() -> dict:
 
 
 def _private(stored: dict) -> ec.EllipticCurvePrivateKey:
-    return serialization.load_pem_private_key(stored["private"].encode("ascii"), None)
+    return cast(ec.EllipticCurvePrivateKey, serialization.load_pem_private_key(stored["private"].encode("ascii"), None))
 
 
 def public_key() -> str:
@@ -223,7 +223,7 @@ def _encrypt(subscription: dict, plaintext: bytes) -> bytes:
 
 def subscriptions() -> list[dict]:
     stored = files.read_json(directory() / SUBSCRIPTIONS, default=[])
-    return [entry for entry in stored if isinstance(entry, dict) and entry.get("endpoint")]
+    return [entry for entry in cast(list, stored) if isinstance(entry, dict) and entry.get("endpoint")]
 
 
 def _write_subscriptions(entries: list[dict]) -> None:

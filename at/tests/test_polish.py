@@ -57,7 +57,7 @@ class PolishTest(test_matcher.MatcherCase):
 
     def test_the_chat_sentence_gets_the_accent(self):
         sentence = "escrever nota nao falar com fulano"
-        with mock.patch.object(spelling, "check", side_effect=lambda t, l: [finding(t, "Nao", "Não")]):
+        with mock.patch.object(spelling, "check", side_effect=lambda t, lang: [finding(t, "Nao", "Não")]):
             proposal = self.propose(sentence)
         self.assertEqual(proposal.values["text"], "Não falar com fulano")
         with mock.patch.object(spelling, "check", return_value=None):

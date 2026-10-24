@@ -32,15 +32,14 @@ from types import SimpleNamespace
 from unittest import mock
 
 from at import i18n
-from at.core import actors, boot, strongbox, files, tables
+from at.core import actors, boot, files, strongbox, tables
 from at.encryption import vault
 from at.services import caddy
 from at.ui.webapp import app as webapp
 from at.ui.webapp import keys as webapp_keys
-
 from at_deploy import environment as env
 from at_deploy import podman, tree, vpn
-from at_deploy.cli import OK, REFUSED, USAGE, services, main
+from at_deploy.cli import OK, REFUSED, USAGE, main, services
 
 # An address that is nobody's: RFC 5737's block for documentation. Whoever binds
 # it fails with EADDRNOTAVAIL, which is exactly the answer the orchestrator
@@ -631,7 +630,7 @@ class TheUpdate(FolderCase):
         pins = env.held()
         pins[env.IDENTITY] = {"version": "9.99", "digest": "sha256:" + "d" * 64}
         env.pin_file().write_text(json.dumps(pins), encoding="utf-8")
-        fake = self.runtime()
+        self.runtime()
         outcome, text = self.quiet(env.update, secret=self.phrase)
         self.assertEqual(outcome, env.UPDATED)
         self.assertIn(i18n.tr(

@@ -41,8 +41,8 @@ import os
 import shutil
 import sys
 import tarfile
-import zipfile
 import tempfile
+import zipfile
 from pathlib import Path
 from platform import machine
 

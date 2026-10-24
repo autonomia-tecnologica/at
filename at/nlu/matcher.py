@@ -35,7 +35,7 @@ the core validates and writes (§4).
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 from at import i18n
 from at.core import tables
@@ -129,7 +129,7 @@ def match(
     # e não fechá-la com motivo.
     implied = vocabulary.implies(language)
     spent: dict[str, str] = {}
-    for index, mark in enumerate(marks):
+    for index, _mark in enumerate(marks):
         # A IMPLICAÇÃO É DE UMA PALAVRA OU DE UMA EXPRESSÃO (20/10/2026): `check
         # off` é duas palavras e vale junto — o verbo fica inteiro ou não fica.
         window = _implied_window(implied, words, index)
@@ -207,11 +207,11 @@ def match(
         # texto. O nome que não acha, ou que acha mais de uma, volta como
         # recusa ou pergunta: o que não resolve é resíduo, nunca palpite.
         target = _reference_target(table, named)
-        if target is not None:
-            found = _reference(target, chunk)
-            if isinstance(found, Question):
-                return found
-            values[named] = found
+        if target is not None and named is not None:
+            referenced = _reference(target, chunk)
+            if isinstance(referenced, Question):
+                return referenced
+            values[named] = referenced
             continue
         field, reading = _read(table, chunk, named, language, now)
         if isinstance(reading, Question):
@@ -219,6 +219,7 @@ def match(
             # sentence comes back as the question, and no row is proposed.
             return reading
         if isinstance(reading, Value):
+            assert field is not None  # a read value always lands in a field
             values[field] = reading.value
             if reading.op != "=":
                 ranges[field] = reading.op
@@ -425,7 +426,7 @@ def _read(
         # The declaration is what says the items are times — the type alone
         # cannot, since every `list` field stores one.
         if kind == "list" and declared.get("items") in KINDS:
-            return named, _list_reading(chunk, declared.get("items"), language, now)
+            return named, _list_reading(chunk, cast(str, declared.get("items")), language, now)
         # A field of a type the grammar has no reader for — a text is the
         # example — is not read at all: its content is residue, and residue is
         # what the primary field is for.
@@ -641,13 +642,13 @@ def _implied_window(
     """
     longest = 0
     wanted: str | None = None
-    for expression, canonical in implied.items():
+    for expression, meaning in implied.items():
         size = len(fold(expression).split())
         if size <= longest:
             continue
         piece = fold(" ".join(words[index:index + size]))
         if piece == fold(expression):
-            longest, wanted = size, canonical
+            longest, wanted = size, meaning
     return (longest, wanted) if wanted is not None else None
 
 
@@ -822,7 +823,7 @@ def _reference(target: str, chunk: str) -> int | Question:
     ]
     exact = [row for row in titled if fold(row[primary]) == wanted]
     if len(exact) == 1:
-        return store.number_of(exact[0])
+        return cast("int | Question", store.number_of(exact[0]))
     similar = exact or [row for row in titled if wanted and wanted in fold(row[primary])]
     if similar:
         lines = [

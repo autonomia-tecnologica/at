@@ -24,7 +24,7 @@ from datetime import date, timedelta
 
 from at.nlu.grammar import clock, clock_text, day_of_month, next_weekday, number_of
 from at.nlu.normalizer import fold, folded
-from at.nlu.reading import Question, Reading, Residue, Refused, Value
+from at.nlu.reading import Question, Reading, Refused, Residue, Value
 
 # The week starts on Monday, as it does for Python and for the calendar both
 # languages share. English says the day whole; the short forms are the

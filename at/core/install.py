@@ -221,6 +221,7 @@ def act(
         if windows:
             # No copy here either: the shim is a few lines that forward to the
             # artifact, written fresh every run — never the binary itself.
+            assert shim is not None  # built above for exactly this branch
             files.atomic_write_text(link, shim)
         else:
             # Written BESIDE the link and renamed onto it, the way every text this

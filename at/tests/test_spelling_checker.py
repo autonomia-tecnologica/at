@@ -249,7 +249,7 @@ class TheWarmUp(unittest.TestCase):
         gate = threading.Event()
         with mock.patch.object(spelling, "port", return_value=1), \
                 mock.patch.object(service, "ready", return_value=True), \
-                mock.patch.object(spelling, "check", side_effect=lambda t, l: gate.wait(5)):
+                mock.patch.object(spelling, "check", side_effect=lambda t, lang: gate.wait(5)):
             thread, stop = self.app._warm_spelling_checker(self.process)
             self.assertTrue(thread.is_alive())
             stop.set()
@@ -264,7 +264,7 @@ class TheWarmUp(unittest.TestCase):
         self.run_warm(boom)
 
     def test_not_ready_asks_nothing(self):
-        self.assertEqual(self.run_warm(lambda t, l: [], ready=False).call_count, 0)
+        self.assertEqual(self.run_warm(lambda t, lang: [], ready=False).call_count, 0)
 
     def test_no_process_no_thread(self):
         self.assertIsNone(self.app._warm_spelling_checker(None))

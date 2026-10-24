@@ -364,6 +364,7 @@ def _send(sealed: Path, destination: str, kind: str, tool: str | None) -> bool:
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(sealed, target)
         return True
+    assert tool is not None  # `make` resolved the tool before the key was ever asked
     args = [tool, "copyto", str(sealed), destination] if kind == RCLONE \
         else [tool, str(sealed), destination]
     return subprocess.run(  # noqa: S603 — the tool the destination named, resolved by `make`

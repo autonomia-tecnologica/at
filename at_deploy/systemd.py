@@ -18,6 +18,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 from collections.abc import Sequence
+from typing import Any
 
 # The word on the PATH, and the only one AT knows.
 BINARY = "systemctl"
@@ -32,7 +33,7 @@ def present() -> bool:
     return found() is not None
 
 
-def run(args: Sequence[str], **kw: object) -> subprocess.CompletedProcess:
+def run(args: Sequence[str], **kw: Any) -> subprocess.CompletedProcess:
     """One call to the manager, always for THIS person's session (`--user`) —
     the host environment never touches the system's own units.
 
@@ -44,7 +45,7 @@ def run(args: Sequence[str], **kw: object) -> subprocess.CompletedProcess:
         [found() or BINARY, "--user", *(str(part) for part in args)],
         capture_output=True,
         text=True,
-        **kw,  # type: ignore[arg-type]
+        **kw,
     )
 
 

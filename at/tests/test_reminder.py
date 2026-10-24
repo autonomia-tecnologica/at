@@ -41,7 +41,7 @@ from pathlib import Path
 from unittest import mock
 
 from at import i18n
-from at.core import actors, boot, files, notifier, permissions, reminder, tables
+from at.core import actors, boot, files, permissions, reminder, tables
 from at.data import schema, store
 from at.i18n import tr
 from at.ui import ask as door

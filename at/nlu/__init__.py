@@ -36,6 +36,13 @@ from at.nlu.normalizer import canonical
 from at.nlu.proposal import Proposal
 from at.nlu.reading import Intent, Question, Reading, Refused, Residue, Value
 
+# The package's public face: these names are imported here to be reached as
+# `nlu.KINDS`, `nlu.Reading`, ... and not for use in this module.
+__all__ = [
+    "KINDS", "Intent", "Proposal", "Question", "Reading", "Refused", "Residue", "Value",
+    "canonical", "match", "resolve",
+]
+
 # The key of the switch in `app/settings.json`. Turning the interpreter off takes
 # it out of the core API and the word out of the tree, and takes nothing else.
 SWITCH = "interpreter"

@@ -195,7 +195,7 @@ def _folders_in_the_language(ask: Ask | None, said_so: bool = False) -> list[Rep
         report.append(("boot.migration.folders.collision", {"names": _spelled(collisions)}))
     elif moves:
         if said_so or _confirm(ask, moves):
-            for internal, current, target in moves:
+            for _internal, current, target in moves:
                 current.rename(target)
             report.append(("boot.migration.folders.moved", {"names": _spelled(moves)}))
         else:

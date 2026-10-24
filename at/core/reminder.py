@@ -47,7 +47,6 @@ bookkeeping and not an act a person or a via performed (§3).
 from __future__ import annotations
 
 import re
-
 from datetime import date, datetime, timedelta
 
 from at.core import tables

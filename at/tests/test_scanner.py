@@ -55,7 +55,6 @@ from at.core import (
     boot,
     files,
     migrations,
-    paths,
     permissions,
     scanner,
     tables,

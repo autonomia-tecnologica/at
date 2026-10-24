@@ -29,7 +29,6 @@ import hashlib
 import json
 import shutil
 import sys
-import tempfile
 import urllib.request
 from pathlib import Path
 

@@ -21,13 +21,12 @@
                "Helvetica Neue", Arial, sans-serif;
   --font-brand: "Quicksand", "Nunito Sans", system-ui, sans-serif;
 
-  /* ===== radius scale: BOXIER THAN BEFORE ====================
-     8/14/20 read soft, almost plush; a quieter, more tailored house asks for
-     a corner that is barely there — present enough that nothing looks cut,
-     never round enough to look friendly. */
-  --r-sm: 4px;
-  --r-md: 8px;
-  --r-lg: 12px;
+  /* ===== radius scale: the same as at-dark =================================
+     Both house themes declare 8/14/20, so a corner does not change with the
+     theme (a test holds the two together). */
+  --r-sm: 8px;
+  --r-md: 14px;
+  --r-lg: 20px;
 
   /* ===== surfaces (canvas → card → raised) ================================
      ICE, NOT WHITE: the floor is a warm, barely-there grey — not
@@ -88,6 +87,9 @@
   --success-text: #15803d;
   --warning-text: #b45309;
   --danger-text: #b91c1c;
+  --danger-ink: #fff;
+  --danger-hover: color-mix(in srgb, var(--danger) 85%, #000);
+  --switch-knob: #fff;
   --info-text: #1d4ed8;
 
   /* ===== elevation: almost nothing, and neutral ==============

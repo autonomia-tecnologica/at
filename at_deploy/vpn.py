@@ -33,6 +33,7 @@ from __future__ import annotations
 import json
 import subprocess
 from collections.abc import Callable, Sequence
+from typing import Any
 
 # The word on the PATH that serves the role today. It is the ONLY place the brand
 # is written (the module's docstring argues why).
@@ -44,7 +45,7 @@ BINARY = "tailscale"
 TIMEOUT = 10
 
 
-def run(args: Sequence[str], **kw: object) -> subprocess.CompletedProcess:
+def run(args: Sequence[str], **kw: Any) -> subprocess.CompletedProcess:
     """One question to the agent — the seam, and the only one.
 
     The binary is resolved here and never by the caller, exactly as
@@ -58,7 +59,7 @@ def run(args: Sequence[str], **kw: object) -> subprocess.CompletedProcess:
         capture_output=True,
         text=True,
         timeout=TIMEOUT,
-        **kw,  # type: ignore[arg-type]
+        **kw,
     )
 
 

@@ -12,7 +12,6 @@ from at import __version__
 from at.i18n import tr
 from at.ui.words import Node, completion_words, section, width
 
-
 # The container environment's words, nested under `container` (2026-10-03: a
 # second environment — the host's own systemd, below — arrived, and a word
 # typed bare stopped being able to say which one it meant; the eight that

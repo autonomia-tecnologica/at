@@ -33,6 +33,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+
 # O que um consumidor recebe: o caminho ABSOLUTO do arquivo cuja escrita o
 # vigia viu. Nenhum outro campo — o resto é do consumidor perguntar ao próprio
 # arquivo, e um `Event` maior seria um campo a mais para nunca ser lido.

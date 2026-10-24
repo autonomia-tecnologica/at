@@ -15,14 +15,14 @@ here reaches the network, and nothing here scans anything.
 
 from __future__ import annotations
 
+import hashlib
 import io
 import os
 import subprocess
-import hashlib
 import tarfile
-import zipfile
 import tempfile
 import unittest
+import zipfile
 from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock

@@ -21,7 +21,7 @@ from unittest import mock
 
 from at import i18n
 from at.core import actors, boot
-from at.services import authelia, caddy
+from at.services import authelia
 from at.tests.payloads import needs, required
 
 
@@ -155,6 +155,31 @@ class TheConfiguration(FolderCase):
         self.assertEqual(config, authelia.directory() / authelia.CONFIG)
         self.assertTrue(config.is_file())
         self.assertTrue((authelia.directory() / authelia.USERS).is_file())
+
+    def test_the_theme_with_both_sides_wears_the_auto_palette(self):
+        with mock.patch.dict(os.environ, {"AT_THEME": "at"}):
+            self.assertEqual(authelia.palette(), "auto")
+            text = authelia.configuration_yaml("at.localhost", 9091, 443)
+        self.assertIn("theme: auto", text)
+
+    def test_a_one_sided_theme_pins_its_side(self):
+        from at.ui.webapp import app
+        for sides, expected in ((["light"], "light"), (["dark"], "dark")):
+            with mock.patch.object(app, "theme_sides", return_value=sides):
+                self.assertEqual(authelia.palette(), expected)
+
+    def test_the_configuration_points_at_the_brand_assets(self):
+        text = authelia.configuration_yaml("at.localhost", 9091, 443)
+        self.assertIn(f'asset_path: "{authelia.assets_directory()}"', text)
+
+    def test_write_lands_the_logo_and_a_valid_favicon(self):
+        authelia.write("at.localhost", 9091, 443)
+        where = authelia.assets_directory()
+        logo = (where / "logo.png").read_bytes()
+        self.assertTrue(logo.startswith(b"\x89PNG"))
+        ico = (where / "favicon.ico").read_bytes()
+        self.assertEqual(ico[:6], b"\x00\x00\x01\x00\x01\x00")
+        self.assertEqual(ico[22:], logo)
 
     def test_secrets_are_drawn_once_and_kept(self):
         first = authelia.session_secret()

@@ -515,7 +515,7 @@ function measure(): void {
   const css = getComputedStyle(document.documentElement);
   const chPx = widthOf("0".repeat(50)) / 50 || 0;
   const measurePx = (parseFloat(css.getPropertyValue("--measure")) || 66) * chPx;
-  const padPx = 2 * (parseFloat(css.getPropertyValue("--cell-pad")) || 0);
+  const padPx = 2 * (parseFloat(css.getPropertyValue("--density-cell-pad")) || 0);
 
   // `flexible` marks the column the reading measure CAPPED — the one holding a
   // long text. It is the one that gives up room on a narrow screen.
@@ -545,7 +545,7 @@ function measure(): void {
     // gutter on both sides, at every window width (F3).
     const body = document.getElementById("body");
     const page = body?.querySelector<HTMLElement>(".page") ?? null;
-    const pagePad = 2 * (parseFloat(css.getPropertyValue("--page-pad-x")) || 20);
+    const pagePad = 2 * (parseFloat(css.getPropertyValue("--page-gutter")) || 20);
     const panelW = Math.min(page?.clientWidth || body?.clientWidth || window.innerWidth,
                             parseFloat(css.getPropertyValue("--page-max")) || Infinity) - pagePad;
     const floor = 5 * chPx + padPx + 1; // where the text wraps instead of vanishing
@@ -722,7 +722,8 @@ function cancelEdit(): void {
                 : undefined"
               :draggable="!rule && name !== 'id'"
               :class="{ 'drop-before': dropMark && dropMark.name === name && !dropMark.after,
-                        'drop-after': dropMark && dropMark.name === name && dropMark.after }"
+                        'drop-after': dropMark && dropMark.name === name && dropMark.after,
+                        'id-col': name === 'id' }"
               @click="toggleSort(name)"
               v-context-menu="openHeaderMenu"
               @dragstart="onDragStart($event, name)"

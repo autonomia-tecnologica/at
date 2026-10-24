@@ -62,9 +62,9 @@ def table(rows: Sequence[Sequence[str]]) -> str:
     The widths are measured from what is ABOUT to be printed, so a column is as
     wide as its widest cell and never as wide as somebody guessed.
     """
-    widths = [max(len(cell) for cell in column) for column in zip(*rows)]
+    widths = [max(len(cell) for cell in column) for column in zip(*rows, strict=False)]
     return "\n".join(
-        "  ".join(cell.ljust(width) for cell, width in zip(row, widths)).rstrip()
+        "  ".join(cell.ljust(width) for cell, width in zip(row, widths, strict=False)).rstrip()
         for row in rows
     )
 

@@ -26,6 +26,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 from collections.abc import Sequence
+from typing import Any
 
 # The word on the PATH, and the only one AT knows.
 BINARY = "podman"
@@ -45,7 +46,7 @@ def present() -> bool:
     return found() is not None
 
 
-def run(args: Sequence[str], **kw: object) -> subprocess.CompletedProcess:
+def run(args: Sequence[str], **kw: Any) -> subprocess.CompletedProcess:
     """One call to the runtime — the seam, and the only one.
 
     The binary is resolved HERE and never by the caller, so nothing outside this
@@ -62,7 +63,7 @@ def run(args: Sequence[str], **kw: object) -> subprocess.CompletedProcess:
         [found() or BINARY, *(str(part) for part in args)],
         capture_output=True,
         text=True,
-        **kw,  # type: ignore[arg-type]
+        **kw,
     )
 
 

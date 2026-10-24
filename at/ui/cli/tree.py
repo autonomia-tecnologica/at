@@ -26,7 +26,6 @@ from at.data import schema
 from at.i18n import tr
 from at.ui.words import Node, completion_words, section, width
 
-
 # The settings' word. The object is NOT a table — there is no schema to generate
 # the word from — so it is declared here, beside `lang` and `admin`, which are
 # the other words about the folder itself. What it ANSWERS is not written here:

@@ -26,6 +26,7 @@ from __future__ import annotations
 import importlib
 import re
 from datetime import date, datetime, time, timedelta
+from typing import cast
 
 from at import i18n
 from at.core import tables
@@ -165,7 +166,7 @@ def split(
         reading = _read_quietly(reader, piece, moment)
         if isinstance(reading, Value):
             rest = " ".join([*words[:start], *words[start + size:]]).strip()
-            return rest, reading.value
+            return rest, cast(str, reading.value)
     longest = min(MAX_PHRASE, len(words))
     for size in range(longest, 0, -1):
         for start in range(len(words) - size, -1, -1):
@@ -188,7 +189,7 @@ def split(
             if isinstance(reading, Value):
                 head = start - 1 if _announced(language, folded, start) else start
                 rest = " ".join([*words[:head], *words[start + size:]]).strip()
-                return rest, reading.value
+                return rest, cast(str, reading.value)
     return None
 
 

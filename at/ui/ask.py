@@ -99,10 +99,9 @@ import json
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
 from at import i18n, nlu
-from at.nlu import matcher
 from at.core import (
     actors,
     assist,
@@ -126,6 +125,7 @@ from at.core import (
 )
 from at.data import schema
 from at.i18n import tr
+from at.nlu import matcher
 from at.services import gitleaks
 from at.ui import words
 
@@ -265,7 +265,7 @@ def ask(
         # A BARE VERB carries the action it named forward — the one thing a
         # surface needs to complete it from whatever arrives next, the way
         # `lib/chat.ts` reads "sim"/"não" against an open CONFIRM question.
-        awaiting = refused.kw.get("canonical") if refused.key == "nlu.error.no_table_bare" else None
+        awaiting = cast("str | None", refused.kw.get("canonical")) if refused.key == "nlu.error.no_table_bare" else None
         return Result("refused", None, str(refused), REFUSED, assist=hinted, awaiting=awaiting)
     if isinstance(proposed, nlu.Intent):
         return Result("intent", None, tr(proposed.key), OK,
@@ -1596,7 +1596,7 @@ def _listing(
         if on_day is not None:
             # Named the way the person asked it: the DAY, not a field nobody
             # said — "nenhum lembrete em 03/10/2026", not "nada aqui ainda".
-            when = tables.text_of(reminder.REMINDER, matcher.open_day_field(table), on_day.isoformat())
+            when = tables.text_of(reminder.REMINDER, matcher.open_day_field(table) or "", on_day.isoformat())
             return OK, tr("table.reminder.list.empty_on_day", date=when), None, None
         described = _described(table, values, ranges)
         if described:

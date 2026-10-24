@@ -112,10 +112,10 @@ from at.core import actors, files, gate, paths, strongbox, tables
 from at.core.migrations import is_yes
 from at.encryption import vault
 from at.i18n import tr
+from at.services import authelia as authelia_service
 from at.services import caddy as caddy_service
 from at.ui import words
 from at.ui.webapp import keys as webapp_keys
-
 from at_deploy import podman, vpn
 
 # What a person answers with, injected the way `boot` and `lang` take theirs: a
@@ -1257,7 +1257,9 @@ def _identity_conf() -> str:
     lines = [
         f"# {tr('services.identity-provider.file.header')}",
         "---",
-        "theme: auto",
+        # A paleta do tema ativo (uma das quatro do Authelia); logo e favicon
+        # ficam fora do container por ora — o escritor de arquivos aqui é só de texto.
+        f"theme: {authelia_service.palette()}",
         # O endereço do container, e não uma publicação: o que sai dele é o que
         # o runtime mapeia (§7a) — e o NOME do serviço é como a borda e o WebApp
         # o alcançam, os dois na mesma rede. **O CAMINHO é o do portal**, e é o
@@ -1356,7 +1358,7 @@ class Service:
     # A tuple, or a callable that answers one when the environment comes up —
     # the SITE's is the second, and `ports_of` is the one reader that knows.
     ports: Callable[[], tuple[Port, ...]] | tuple[Port, ...] = ()
-    mounts: tuple[Mount | Mirror, ...] = ()
+    mounts: tuple[Mount | Mirror | Gate, ...] = ()
     command: Callable[[], tuple[str, ...]] | None = None
     # What the service is TOLD about the environment it is part of — the
     # environment's own words, handed to the container as its variables. A
@@ -1905,7 +1907,7 @@ def inside(url: str, headers: dict[str, str]) -> int | None:
     asked = podman.run(
         ["run", "--rm", "-i",
          "--network", NETWORK,
-         "--entrypoint", "curl", _service(CADDY).image.reference(),
+         "--entrypoint", "curl", _caddy_image().reference(),
          "-s", "-o", "/dev/null", "-w", "%{http_code}",
          "-K", "-", url],
         input=_as_curl_config(headers),
@@ -1943,7 +1945,7 @@ def through_edge(url: str, headers: dict[str, str]) -> int | None:
     asked = podman.run(
         ["run", "--rm", "-i",
          "--network", NETWORK,
-         "--entrypoint", "curl", _service(CADDY).image.reference(),
+         "--entrypoint", "curl", _caddy_image().reference(),
          "-s", "-o", "/dev/null", "-w", "%{http_code}", "-k",
          "-K", "-", url],
         input=_as_curl_config(headers, connect=(name, port, container(CADDY))),
@@ -2244,6 +2246,13 @@ def bring_up(ask: Ask | None = None, secret: Ask | None = None) -> str:
 def _service(name: str) -> Service | None:
     """A service of the manifest by its name, or `None` — the manifest is the list."""
     return next((service for service in SERVICES if service.name == name), None)
+
+
+def _caddy_image() -> Image:
+    """The edge's pinned image — the manifest always carries the Caddy."""
+    service = _service(CADDY)
+    assert service is not None
+    return service.image
 
 
 def restart(name: str, secret: Ask | None = None) -> bool:

@@ -71,6 +71,7 @@ BINARY = "authelia"
 STAMP = "platform"
 CONFIG = "configuration.yml"
 USERS = "users.yml"
+ASSETS = "assets"
 DB = "db.sqlite3"
 NOTIFICATIONS = "notifications.txt"
 
@@ -318,6 +319,57 @@ def _quoted(value: str) -> str:
     return f'"{escaped}"'
 
 
+def palette() -> str:
+    """The one of Authelia's four palettes (`light`, `dark`, `grey`, `auto`)
+    that the instance's active theme maps to.
+
+    A theme that ships both sides (`at`) wears `auto`, which follows the
+    browser's own scheme exactly as the AT's pages do; a theme with one side
+    pins that side. `grey` is never chosen: no AT theme maps to it.
+    """
+    from at.ui.webapp import app  # lazy: the webapp imports this module
+
+    row = app.active_theme(None)
+    sides = app.theme_sides(str(row.get("id"))) if row else []
+    if sides == ["light"]:
+        return "light"
+    if sides == ["dark"]:
+        return "dark"
+    return "auto"
+
+
+def _brand_dir() -> Path:
+    return Path(__file__).resolve().parents[1] / "ui" / "webapp" / "assets" / "icons"
+
+
+def favicon_ico(png: bytes) -> bytes:
+    """A one-image `.ico` that wraps a PNG (the format allows it), so the
+    favicon is the AT's own mark and not a second drawing."""
+    width = int.from_bytes(png[16:20], "big")
+    height = int.from_bytes(png[20:24], "big")
+    header = (0).to_bytes(2, "little") + (1).to_bytes(2, "little") + (1).to_bytes(2, "little")
+    entry = bytes([width % 256, height % 256, 0, 0]) + (1).to_bytes(2, "little") \
+        + (32).to_bytes(2, "little") + len(png).to_bytes(4, "little") \
+        + (22).to_bytes(4, "little")
+    return header + entry + png
+
+
+def assets_directory() -> Path:
+    """`App/services/authelia/assets/` — what Authelia's `server.asset_path`
+    reads: `logo.png` and `favicon.ico`, the only brand files it accepts."""
+    return directory() / ASSETS
+
+
+def write_brand() -> Path:
+    """Put the AT's mark where Authelia reads its logo and favicon."""
+    where = assets_directory()
+    where.mkdir(parents=True, exist_ok=True)
+    png = (_brand_dir() / "icon-192.png").read_bytes()
+    files.atomic_write_bytes(where / "logo.png", png)
+    files.atomic_write_bytes(where / "favicon.ico", favicon_ico(png))
+    return where
+
+
 def configuration_yaml(host: str, listen_port: int, public_port: int,
                        rules: tuple[str, ...] = ()) -> str:
     """Authelia's configuration — the bundle's own gate, declared by `at-cli`.
@@ -340,9 +392,10 @@ def configuration_yaml(host: str, listen_port: int, public_port: int,
     """
     portal_url = f"{caddy.address(host, public_port)}{caddy.PORTAL}"
     lines = [
-        "theme: auto",
+        f"theme: {palette()}",
         "server:",
         f"  address: {_quoted(f'tcp://{LOOPBACK}:{listen_port}{caddy.PORTAL}')}",
+        f"  asset_path: {_quoted(str(assets_directory()))}",
         "log:",
         "  level: info",
         "session:",
@@ -381,6 +434,7 @@ def write(host: str, listen_port: int, public_port: int,
     """Write the configuration and the users file; answer where the config is."""
     directory().mkdir(parents=True, exist_ok=True)
     files.atomic_write_text(directory() / USERS, users_yaml())
+    write_brand()
     where = directory() / CONFIG
     files.atomic_write_text(
         where, configuration_yaml(host, listen_port, public_port, rules)

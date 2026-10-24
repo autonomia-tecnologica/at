@@ -25,7 +25,6 @@ from collections.abc import Callable, Sequence
 from at import __version__
 from at.core import actors, boot, files, install, licenses, paths, tables
 from at.i18n import tr
-
 from at_deploy import environment, host, tree
 from at_deploy.environment import HOSTED, INSTALL, PROVISIONED, UP, UPDATED
 

@@ -25,7 +25,7 @@ from pathlib import Path
 from unittest import mock
 
 from at import i18n, nlu
-from at.core import boot, assist, jev, secrets, settings, tables
+from at.core import assist, boot, jev, secrets, settings, tables
 from at.data import schema, store
 from at.ui.cli import OK, REFUSED, USAGE, _assist, main
 

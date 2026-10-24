@@ -26,12 +26,10 @@ Working Folder is never touched; none of them needs a network or a model.
 
 from __future__ import annotations
 
-import io
 import os
 import tempfile
 import unittest
 from contextlib import redirect_stdout
-from datetime import datetime
 from io import StringIO
 from pathlib import Path
 from unittest import mock
@@ -50,7 +48,6 @@ from at.core import (
 )
 from at.data import schema, store
 from at.i18n import tr
-from at.ui import ask as door
 from at.ui.cli import main, tree
 from at.ui.webapp import app as webapp
 

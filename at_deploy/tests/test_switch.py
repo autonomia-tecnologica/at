@@ -29,13 +29,11 @@ from unittest import mock
 
 from at import i18n
 from at.core import actors, boot, files, gate
-from at.encryption import vault
 from at.services import caddy
 from at.ui.webapp import app as webapp
-
 from at_deploy import environment as env
 from at_deploy import podman, switch, vpn
-from at_deploy.cli import OK, REFUSED, USAGE, services, main
+from at_deploy.cli import OK, REFUSED, USAGE, main, services
 
 # A Chave Principal que a suíte digita (item 50, §4). A virada é uma das portas
 # por onde alguém sobe o ambiente, e é ela que sela o que a subida sorteia.

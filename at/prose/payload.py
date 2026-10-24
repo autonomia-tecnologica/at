@@ -9,15 +9,16 @@ store and the engine, and answers dicts.
 
 from __future__ import annotations
 
+from typing import cast
+
 from at import i18n
 from at.core import permissions, tables
 from at.data import schema, store
 
 
 def declared_fields(table: str) -> dict:
-    declared = schema.of(table) or {}
-    declared = declared.get("fields")
-    return declared if isinstance(declared, dict) else {}
+    fields = (schema.of(table) or {}).get("fields")
+    return fields if isinstance(fields, dict) else {}
 
 
 def label_key(table: str, name: str) -> str | None:
@@ -33,7 +34,8 @@ def field_payload(table: str, name: str, field: dict) -> dict:
     """
     key = label_key(table, name)
     refs = field.get("ref") or []
-    choices = field.get("enum") if isinstance(field.get("enum"), dict) else {}
+    enum = field.get("enum")
+    choices = enum if isinstance(enum, dict) else {}
     return {
         "name": name,
         "labels": i18n.labels(key) if key else None,
@@ -54,7 +56,7 @@ def field_payload(table: str, name: str, field: dict) -> dict:
         "hide": field.get("hide") or [],
         "refs": [
             {"key": target,
-             "labels": i18n.labels(schema.name_key(target, many=True)) if schema.name_key(target) else None}
+             "labels": i18n.labels(cast(str, schema.name_key(target, many=True))) if schema.name_key(target) else None}
             for target in refs
         ],
     }
