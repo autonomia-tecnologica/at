@@ -89,7 +89,7 @@ The **People** entry holds the two system tables of the access ceiling, each row
 
 - The theme holds for the whole WebApp, **the login screen included**: there is no page of AT that escapes the Design System, and the entrance is the first impression it has to make.
 
-- The Authelia portal is **not** an AT screen, and there is no way to dress it with the Design System: Authelia accepts a logo, a favicon, translated texts and one of four palettes, and nothing beyond that. So its theme stays as neutral as possible, and the `FAQ.md` says whose screen that is — educating about what the person is actually using is part of the product.
+- The Authelia portal is **not** an AT screen, and there is no way to dress it with the Design System: Authelia accepts a logo, a favicon, translated texts and one of four palettes, and nothing beyond that. What the AT writes into the `asset_path` is `logo.png`, `favicon.ico` and, under `locales/en` and `locales/pt-BR`, only the title (`Login - AT · {{authelia}}` / `Entrar - AT · {{authelia}}`): Authelia requires `{{authelia}}` in every text, so its name stays and the AT sits beside it. So its theme stays as neutral as possible, and the `FAQ.md` says whose screen that is — educating about what the person is actually using is part of the product.
 
 #### Templates
 

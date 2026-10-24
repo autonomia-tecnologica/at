@@ -360,13 +360,35 @@ def assets_directory() -> Path:
     return directory() / ASSETS
 
 
+TITLES = {
+    "en": "Login - AT · {{authelia}}",
+    "pt-BR": "Entrar - AT · {{authelia}}",
+}
+
+
+def write_locales(where: Path) -> None:
+    """The portal's title carries the AT beside Authelia's own name: it
+    requires the `{{authelia}}` placeholder in every override (so the name
+    stays), and the AT enters next to it. Only that one key, `en` and
+    `pt-BR` fixed (the screen's language comes from the browser)."""
+    import json
+    for language, title in TITLES.items():
+        folder = where / "locales" / language
+        folder.mkdir(parents=True, exist_ok=True)
+        files.atomic_write_text(
+            folder / "portal.json",
+            json.dumps({"Login - {{authelia}}": title}, ensure_ascii=False) + "\n",
+        )
+
+
 def write_brand() -> Path:
-    """Put the AT's mark where Authelia reads its logo and favicon."""
+    """Put the AT's mark where Authelia reads its logo, favicon and title."""
     where = assets_directory()
     where.mkdir(parents=True, exist_ok=True)
     png = (_brand_dir() / "icon-192.png").read_bytes()
     files.atomic_write_bytes(where / "logo.png", png)
     files.atomic_write_bytes(where / "favicon.ico", favicon_ico(png))
+    write_locales(where)
     return where
 
 

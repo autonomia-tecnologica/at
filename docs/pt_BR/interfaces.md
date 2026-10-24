@@ -89,7 +89,7 @@ A entrada **Pessoas** guarda as duas tabelas de sistema do teto de acesso, e cad
 
 - O tema vale para o WebApp inteiro, **tela de login incluída**: não existe página do AT que escape do Design System, e a entrada é a primeira impressão que ele tem que causar.
 
-- O portal do Authelia **não** é uma tela do AT, e não há como vesti-lo com o Design System: o Authelia aceita logo, favicon, textos traduzidos e uma de quatro paletas, e nada além disso. Então o tema dele fica o mais neutro possível, e o `FAQ.md` diz de quem é aquela tela — educar sobre o que a pessoa está usando de fato faz parte do produto.
+- O portal do Authelia **não** é uma tela do AT, e não há como vesti-lo com o Design System: o Authelia aceita logo, favicon, textos traduzidos e uma de quatro paletas, e nada além disso. O que o AT escreve no `asset_path` é o `logo.png`, o `favicon.ico` e, em `locales/en` e `locales/pt-BR`, só o título (`Login - AT · {{authelia}}` / `Entrar - AT · {{authelia}}`): o Authelia exige o `{{authelia}}` em cada texto, então o nome dele fica e o AT entra ao lado. Então o tema dele fica o mais neutro possível, e o `FAQ.md` diz de quem é aquela tela — educar sobre o que a pessoa está usando de fato faz parte do produto.
 
 #### Templates
 

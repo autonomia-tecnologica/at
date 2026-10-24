@@ -141,6 +141,17 @@ class TheConfiguration(FolderCase):
         self.assertIn("domain: at.localhost", text)
         self.assertNotIn("redis:", text)
 
+    def test_the_brand_writes_the_title_with_the_at_beside_authelia(self):
+        import json
+        where = authelia.write_brand()
+        for language, start in (("en", "Login"), ("pt-BR", "Entrar")):
+            text = (where / "locales" / language / "portal.json").read_text()
+            data = json.loads(text)
+            self.assertEqual(list(data), ["Login - {{authelia}}"])
+            title = data["Login - {{authelia}}"]
+            self.assertIn("{{authelia}}", title)
+            self.assertTrue(title.startswith(f"{start} - AT"))
+
     def test_a_public_port_other_than_443_is_spelled_out(self):
         text = authelia.configuration_yaml("192.168.1.10", 9091, 8443)
         self.assertIn("https://192.168.1.10:8443/authelia", text)
