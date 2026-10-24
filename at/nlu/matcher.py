@@ -233,7 +233,7 @@ def match(
     residue = _joined(leftover, words, marks).strip()
     primary = schema.primary(table)
     if residue and primary:
-        values[primary] = polish_text(table, primary, residue) if action == "create" else residue
+        values[primary] = polish_text(table, primary, residue, language) if action == "create" else residue
     # UM PEDIDO QUE NÃO DIZ O QUE CRIAR (20/10/2026): "cria uma tarefa", sozinha,
     # não é uma linha vazia — é uma pergunta. O campo que a pessoa não disse é o
     # PRINCIPAL da tabela, e é o que ela ainda tem de escrever; a resposta vai

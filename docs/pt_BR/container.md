@@ -59,6 +59,7 @@
 #### d. Corretor ortográfico e gramatical (processo do AT)
 
 - O padrão do AT para correção de textos é LanguageTool, hoje a ferramenta que cumpre o serviço `spelling-checker` (§4). Ela serve para sublinhar os erros na tela de edição e para a correção de texto do chat. Bem útil.
+- **A correção do chat é só caixa e acento.** Ao criar por frase, o texto de prosa recebe a maiúscula inicial e, com o serviço no ar, só os achados de sugestão única que são a mesma palavra sem caixa e sem acento (`nao` → `não`). Palavra trocada, sugestão múltipla, sigla e nome já em maiúscula ficam como escritos; serviço fora do ar, o texto segue só com a maiúscula. No editor ainda não há autocorreção.
 
 - **Não é container, nem neste caminho.** O corretor é um processo que o próprio AT sobe, como o Caddy, o Authelia e o gitleaks: o `at-cli webapp` o desempacota em `App/services/spelling-checker/`, o sobe em `127.0.0.1` numa porta que ele escolhe e lembra enquanto o corretor vive, e o derruba quando o WebApp cai. Vale nos dois caminhos, e o `at-deploy` não o orquestra.
 

@@ -59,6 +59,7 @@
 #### d. The spelling and grammar checker (a process of AT)
 
 - AT's default for text correction is LanguageTool, today the tool that fulfils the `spelling-checker` service (§4). It serves to underline errors on the editing screen and for the chat's text correction. Quite useful.
+- **The chat's correction is case and accent only.** When creating by sentence, prose text gets its initial capital and, with the service up, only the findings with a single suggestion that are the same word once case and accents are folded (`nao` → `não`). A swapped word, several suggestions, acronyms and names already in capital letters stay as written; with the service down, the text goes on with the capital only. The editor corrects nothing by itself yet.
 
 - **It is not a container, not even on this path.** The checker is a process AT itself brings up, like Caddy, Authelia and gitleaks: `at-cli webapp` unpacks it into `App/services/spelling-checker/`, starts it on `127.0.0.1` on a port it chooses and remembers while the checker lives, and takes it down when the WebApp goes down. It holds on both paths, and `at-deploy` does not orchestrate it.
 
