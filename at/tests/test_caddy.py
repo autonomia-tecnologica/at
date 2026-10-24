@@ -50,11 +50,14 @@ SPEC = ROOT / "at-cli.spec"
 
 def free_port() -> int:
     """A port nothing is on, asked of the system and given straight back."""
-    holder = socket.socket()
-    holder.bind((webapp.HOST, 0))
-    port = holder.getsockname()[1]
-    holder.close()
-    return port
+    while True:
+        holder = socket.socket()
+        holder.bind((webapp.HOST, 0))
+        port = holder.getsockname()[1]
+        holder.close()
+        # Never the instance's: its edge is on 8443 and its services in 12380-12499.
+        if port != 8443 and not 12380 <= port <= 12499:
+            return port
 
 
 def built_once_at(built: mock.Mock, port: int, host: str) -> None:
@@ -932,9 +935,12 @@ class TheBundle(FolderCase):
 
         caddy.draw_gate()
 
-        self.authelia_port = authelia.free_port()
+        self.authelia_port = free_port()
         authelia_config = authelia.write(self.HOST_NAME, self.authelia_port, self.port)
         self.authelia_process = authelia.start(authelia_config, log=False)
+        # Registered at once: a failing `setUp` never reaches `tearDown`, and the
+        # process would outlive the suite.
+        self.addCleanup(authelia.stop, self.authelia_process)
         self.wait_for(self.authelia_port, self.authelia_process)
 
         config = caddy.write_caddyfile(
@@ -942,11 +948,10 @@ class TheBundle(FolderCase):
             auth=f"{caddy.LOOPBACK}:{self.authelia_port}",
         )
         self.process = caddy.start(config, log=False)
+        self.addCleanup(caddy.stop, self.process)
         self.wait_for_tls()
 
     def tearDown(self):
-        caddy.stop(self.process)
-        authelia.stop(self.authelia_process)
         self.server.shutdown()
         self.server.server_close()
         self.thread.join(timeout=5)
