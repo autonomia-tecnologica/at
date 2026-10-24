@@ -84,6 +84,12 @@ DATAS = [
     # só neste artefato: o `at-deploy` não tem palavra de varredura, e embarcar
     # ali pagaria os megabytes por uma porta que ninguém bate.
     ("at/vendor/gitleaks", "at/vendor/gitleaks"),
+    # O serviço `spelling-checker` (LanguageTool): um tarball ÚNICO com o JRE
+    # mínimo (jlink) e o servidor, montado por `python3 -m release.spelling_checker`
+    # e pinado por sha256 no `manifest.json` da pasta. Viaja só neste artefato
+    # (o `at-deploy` não tem corretor) e é desempacotado em
+    # `App/services/spelling-checker/` por `services/spelling_checker.py`.
+    ("at/vendor/spelling-checker", "at/vendor/spelling-checker"),
     # The notices of everything above, and of everything the import graph brings
     # on its own (item 27). The artifact is ONE file, so a third party's licence
     # has nowhere to sit beside it: the texts travel INSIDE, and `at-cli license`

@@ -56,9 +56,15 @@
 
 - **A porta do WebApp é a que o AT serve por padrão, e ela não é publicada.** Expor move o endereço que a pessoa alcança, nunca o que o WebApp escuta — e quem o alcança é a borda, na rede que os dois dividem, ou ninguém.
 
-#### d. Instalar corretor ortográfico e gramatical como container (opcional)
+#### d. Corretor ortográfico e gramatical (processo do AT)
 
-- O padrão do AT para correção de textos é LanguageTool, hoje a ferramenta que cumpre o serviço `spelling-checker` (§4). Ela serve para sublinhar os erros na tela de edição. Bem útil.
+- O padrão do AT para correção de textos é LanguageTool, hoje a ferramenta que cumpre o serviço `spelling-checker` (§4). Ela serve para sublinhar os erros na tela de edição e para a correção de texto do chat. Bem útil.
+
+- **Não é container, nem neste caminho.** O corretor é um processo que o próprio AT sobe, como o Caddy, o Authelia e o gitleaks: o `at-cli webapp` o desempacota em `App/services/spelling-checker/`, o sobe em `127.0.0.1` numa porta que ele escolhe e lembra enquanto o corretor vive, e o derruba quando o WebApp cai. Vale nos dois caminhos, e o `at-deploy` não o orquestra.
+
+- **Vendorizado com JRE mínimo.** O que viaja é um tarball só, montado por `python3 -m release.spelling_checker`: um JRE cortado com `jlink` (Temurin 21) e o servidor do LanguageTool 6.6, só com inglês e português. As duas origens têm o `sha256` pinado em `at/vendor/spelling-checker/manifest.json`, e o AT recusa desempacotar um tarball que não bata com o pino do manifesto. O corretor roda sem rede: um servidor local, sem tabelas de sequências de palavras e sem envio de nada. O preço é o tamanho: o tarball tem uns 105 MB (o release cresce isso) e ocupa uns 160 MB desempacotado na Pasta de Trabalho.
+
+- **Indisponível nunca derruba nada.** Sem tarball para a plataforma, com um que não bate com o pino, ou com um processo que não sobe, o AT segue e diz uma linha; quem pergunta ao corretor recebe "indisponível". Hoje o tarball existe só para Linux x64; em Windows e macOS o corretor fica indisponível, como o portão do Authelia ([paths](paths.md)).
 
 - Este é o corretor do **texto da pessoa**, em tempo de execução. O corretor dos documentos do repositório é outro, e é ferramenta de desenvolvimento ([derivation §3](derivation.md)).
 

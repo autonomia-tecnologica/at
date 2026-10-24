@@ -67,7 +67,9 @@ PROOFS = {
     "Apache-2.0": "Apache License",
     "GPL-2.0-or-later WITH Bootloader-exception":
         "SPDX-License-Identifier: (GPL-2.0-or-later WITH Bootloader-exception)",
+    "GPL-2.0-only WITH Classpath-exception-2.0": '"CLASSPATH" EXCEPTION TO THE GPL',
     "ISC": "Permission to use, copy, modify",
+    "LGPL-2.1-or-later": "GNU LESSER GENERAL PUBLIC LICENSE",
     "MIT": "Permission is hereby granted",
     "MIT-0": "MIT No Attribution",
     "OFL-1.1": "SIL OPEN FONT LICENSE",

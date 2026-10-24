@@ -73,7 +73,7 @@
 
 - O Wizard Tkinter exibe as possibilidades de instalação do ambiente. No modo avançado habilitado, o Wizard apresenta a renderização do arquivo de configurações, permitindo modificar quaisquer uma. Segue a escolha de designer de algumas ferramentas, como VS Code, que possuem a base das configurações em JSON, mas permitem a alteração na UI.
 
-- Cada serviço pode ter dados persistidos. Nesse caso, eles moram em `App/services/<serviço>`, como `App/services/vpn` ou `App/services/spelling-checker`. O nome do serviço é canônico e não muda com a ferramenta que o cumpre: `spelling-checker` é o serviço, LanguageTool é quem o cumpre hoje (§7d), e o que um dia o substituir não renomeia pastas nem chaves. O que é rótulo de exibição é chave de `i18n`.
+- Cada serviço pode ter dados persistidos. Nesse caso, eles moram em `App/services/<serviço>`, como `App/services/vpn` ou `App/services/spelling-checker`. O nome do serviço é canônico e não muda com a ferramenta que o cumpre: `spelling-checker` é o serviço, LanguageTool é quem o cumpre hoje (§7d) — como um processo que o próprio AT sobe e desce, e não como container —, e o que um dia o substituir não renomeia pastas nem chaves. O que é rótulo de exibição é chave de `i18n`.
 
 - Essa pasta não é conveniência, é condição de entrada: um serviço só entra no §7 se o estado persistente dele couber aí dentro. Serviço que guarda a vida dele em algum volume que ninguém copia deixa o backup da pasta mentir.
 

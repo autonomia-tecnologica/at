@@ -38,7 +38,7 @@
   - O estado persistente de todo serviço mora na Pasta de Trabalho; serviço cujo estado não couber lá não entra — [Configurações gerais](architecture.md#configurações-gerais).
   - **Nenhuma extensão executa código hoje.** A primeira classe é dado puro, e código é a última opção — [Extensões](extensions.md).
   - O tema do portal de autenticação não é o do AT: ele fica o mais neutro possível, e o `FAQ.md` explica o que está por baixo — [Interfaces](interfaces.md).
-  - Autenticador, WebApp, corretor e VPN rodam em containers isolados no caminho container — [Caminho container](container.md).
+  - Autenticador, WebApp e VPN rodam em containers isolados no caminho container — [Caminho container](container.md).
   - A execução é sem privilégio, com elevação só por pedido explícito — [Permissão de acesso](#permissão-de-acesso).
   - Pacotes e imagens são fixados em versão e hashing — [Dependência externa](#dependência-externa).
 

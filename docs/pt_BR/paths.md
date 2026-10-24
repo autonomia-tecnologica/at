@@ -16,9 +16,11 @@
 
 - **O portão do Authelia só existe onde o fornecedor publica o binário.** O Authelia só tem release para Linux e FreeBSD; em Windows e macOS o caminho hospedado sobe **sem** o portão do bundle (o Caddy e o gitleaks viajam, o Authelia não). Nessas plataformas, expor o AT fora do laço local não é suportado.
 
+- **O corretor só existe onde o tarball dele foi montado.** O `spelling-checker` (LanguageTool com JRE mínimo, processo do AT; §7d) hoje viaja só para Linux x64. Em Windows e macOS ele fica **indisponível**: o AT sobe normalmente, diz uma linha, e quem pergunta ao corretor recebe "indisponível".
+
 ### Caminho container
 
-- É o **`at-deploy`** montando um ambiente de serviços em containers de imagens fixadas (§7). Aqui existe isolamento, e ele existe por um motivo específico: **conter o raio de explosão de cada serviço**. O comprometimento do provedor de identidade alcança a autenticação e nada mais; o do corretor alcança o corretor. O que cada serviço expõe é o que ele se propõe a fazer, e nada além.
+- É o **`at-deploy`** montando um ambiente de serviços em containers de imagens fixadas (§7). Aqui existe isolamento, e ele existe por um motivo específico: **conter o raio de explosão de cada serviço**. O comprometimento do provedor de identidade alcança a autenticação e nada mais. O corretor ortográfico não entra nessa conta: é um processo que o AT sobe nos dois caminhos, sem container (§7d). O que cada serviço expõe é o que ele se propõe a fazer, e nada além.
 
 - Serviço que precisa falar com o AT — e não o AT com ele — tem o escopo delimitado: credencial com papel declarado, e só o que aquele papel permite. Mínimo privilégio, aplicado — e quem alcança um serviço de fora passa antes pelo portão do site, provado por Basic na própria requisição; depois da pergunta é a borda quem carrega a credencial do AT, nunca a da pessoa.
 

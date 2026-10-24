@@ -62,7 +62,7 @@ Yes, it does. There are many more advanced applications for specific parts of AT
 
 ### Where to run AT
 
-The idea is for AT to run on a machine. A Turing-compatible one. It can be your desktop, your notebook, your NAS, a VPS. I would like it to be light — light in what the binary demands from the machine, not in the size of the artifact, which carries the interpreter and the libraries packed in. But I am not in the mood to learn Go or Rust. So Python it is. "Everybody" knows Python. And if an ESP32 runs Micropython, it is because I can aim far here.
+The idea is for AT to run on a machine. A Turing-compatible one. It can be your desktop, your notebook, your NAS, a VPS. I would like it to be light — light in what the binary demands from the machine, not in the size of the artifact, which carries the interpreter, the libraries and the checker (a minimal JRE and LanguageTool, about 105 MB) packed in. But I am not in the mood to learn Go or Rust. So Python it is. "Everybody" knows Python. And if an ESP32 runs Micropython, it is because I can aim far here.
 
 AT has two paths of use, and both are supported: the **hosted** one, where it is the binary and the folder, and the **container** one, where it builds an environment of services. The choice belongs to the person, and they can change their mind later; what each path guarantees, and what it does not, is in [§6](paths.md).
 

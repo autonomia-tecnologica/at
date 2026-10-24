@@ -1,0 +1,24 @@
+{
+  "service": "spelling-checker",
+  "tool": "LanguageTool",
+  "platform": "linux-x64",
+  "note": "The pin of the spelling-checker payload. The two upstream archives are NOT committed (250 MB and 208 MB); `python3 -m release.spelling_checker` downloads each, refuses it unless its sha256 is the one below, joins a jlink JRE and a trimmed LanguageTool into the payload, and writes the payload's own sha256 here. `at/services/spelling_checker.py` refuses to unpack a payload whose hash is not this one.",
+  "jdk": {
+    "name": "Eclipse Temurin JDK",
+    "version": "21.0.13+9",
+    "file": "OpenJDK21U-jdk_x64_linux_hotspot_21.0.13_9.tar.gz",
+    "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.13%2B9/OpenJDK21U-jdk_x64_linux_hotspot_21.0.13_9.tar.gz",
+    "sha256": "d7f5d5cf865a2902b70ff549b97586a7d3f234e016f041ab447ea740c7d66d1c"
+  },
+  "languagetool": {
+    "name": "LanguageTool",
+    "version": "6.6",
+    "file": "LanguageTool-6.6.zip",
+    "url": "https://languagetool.org/download/LanguageTool-6.6.zip",
+    "sha256": "53600506b399bb5ffe1e4c8dec794fd378212f14aaf38ccef9b6f89314d11631"
+  },
+  "payload": {
+    "file": "spelling-checker-linux-x64.tar.xz",
+    "sha256": "7ef020ade2a1a958bbb40a9f82ed6991a05d815ece78dbc2fec697480dd53eb4"
+  }
+}

@@ -160,6 +160,7 @@ from at.core import (
     reminder,
     risk,
     settings,
+    spelling,
     strongbox,
     tables,
     versioning,
@@ -168,7 +169,7 @@ from at.core import (
 from at.data import schema, store
 from at.prose import listing as prose
 from at.prose import payload as shape
-from at.services import authelia, caddy
+from at.services import authelia, caddy, spelling_checker
 from at.ui import ask as door
 from at.ui.webapp import events, keys, session, strongbox_links
 
@@ -3200,6 +3201,40 @@ def _report_taken(where: str, port: int) -> None:
 on_serving: list[Callable[[str, str], None]] = []
 
 
+def _terminate_as_interrupt() -> Callable[[], None]:
+    """Make SIGTERM raise `KeyboardInterrupt` in the main thread; answer the undo."""
+    import signal
+    import threading
+
+    if threading.current_thread() is not threading.main_thread():
+        return lambda: None
+
+    def handler(signum, frame):
+        raise KeyboardInterrupt
+
+    previous = signal.signal(signal.SIGTERM, handler)
+    return lambda: signal.signal(signal.SIGTERM, previous)
+
+
+def _spawn_spelling_checker():
+    """Bring the `spelling-checker` up beside the server; `None` when it cannot."""
+    from at.i18n import tr
+
+    if not spelling_checker.AUTOSTART:
+        return None
+    if spelling_checker.platform_name() is None or spelling_checker.payload() is None:
+        print(tr("spelling.no_payload", platform=spelling_checker.label()))
+        return None
+    if not spelling_checker.unpacked():
+        print(tr("spelling.unpacking", where=spelling_checker.directory()))
+    process = spelling_checker.bring_up()
+    if process is None:
+        print(tr("spelling.start_failed"))
+        return None
+    print(tr("spelling.up", port=spelling.port()))
+    return process
+
+
 def run(port: int = DEFAULT_PORT, public_port: int | None = None,
         host: str | None = None, include_caddy: bool = True) -> int:
     """Put AT on a port — in HTTP, or behind the Caddy's TLS.
@@ -3395,12 +3430,22 @@ def run(port: int = DEFAULT_PORT, public_port: int | None = None,
     # And the backup's own job is declared before it beats once (TASK-133): the
     # round that copies the folder on its own has no other door to be born by.
     start_clock(server)
+    # The `spelling-checker` service (§4, §7d), spawned by this process and
+    # gone with it. It is never a reason for AT not to be here: when it cannot
+    # come up the line below says so, and whoever asks it gets "unavailable".
+    checker = _spawn_spelling_checker()
+    # SIGTERM is how a service manager (and `instance-up.sh`) stops this
+    # process: without turning it into the Ctrl-C below, the `finally` would not
+    # run and the checker's JVM would outlive AT.
+    restore = _terminate_as_interrupt()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         # Ctrl-C is how a person stops a server; it is not a failure.
         pass
     finally:
+        restore()
+        spelling_checker.stop(checker)
         caddy.stop(process)
         # E o Authelia FICA DE PÉ: a sessão da pessoa vive nele, e derrubá-lo
         # aqui seria perdê-la a cada reinício do `at-cli`. Quem o reinicia é a

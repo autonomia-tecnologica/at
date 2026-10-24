@@ -16,9 +16,11 @@
 
 - **The Authelia gate exists only where the vendor publishes the binary.** Authelia has releases for Linux and FreeBSD only; on Windows and macOS the hosted path comes up **without** the bundle's gate (Caddy and gitleaks travel, Authelia does not). On those platforms, exposing AT beyond the local loop is not supported.
 
+- **The checker exists only where its tarball was built.** The `spelling-checker` (LanguageTool with a minimal JRE, a process of AT; §7d) travels today for Linux x64 only. On Windows and macOS it is **unavailable**: AT comes up normally, says one line, and whoever asks the checker gets "unavailable".
+
 ### Container path
 
-- It is **`at-deploy`** building an environment of services in containers from pinned images (§7). Here there is isolation, and it exists for a specific reason: **containing the blast radius of each service**. A compromise of the identity provider reaches authentication and nothing else; the checker's reaches the checker. What each service exposes is what it sets out to do, and nothing beyond.
+- It is **`at-deploy`** building an environment of services in containers from pinned images (§7). Here there is isolation, and it exists for a specific reason: **containing the blast radius of each service**. A compromise of the identity provider reaches authentication and nothing else. The spelling checker is not part of that account: it is a process AT brings up on both paths, with no container (§7d). What each service exposes is what it sets out to do, and nothing beyond.
 
 - A service that needs to talk to AT — and not AT to the service — has a delimited scope: a credential with a declared role, and only what that role allows. Least privilege, applied — and whoever reaches a service from outside goes through the site's gate first, proved by Basic on the request itself; past that ask the edge is what carries AT's own credential, never the person's.
 

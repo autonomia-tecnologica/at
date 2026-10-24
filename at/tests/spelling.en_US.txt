@@ -191,3 +191,5 @@ iframe
 js
 sandboxed
 freebsd
+jre
+temurin

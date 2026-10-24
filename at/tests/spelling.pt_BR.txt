@@ -335,3 +335,5 @@ css
 iframe
 sandbox
 freebsd
+jre
+temurin

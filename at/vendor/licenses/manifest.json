@@ -70,6 +70,14 @@
       "text": "at/vendor/licenses/gitleaks/LICENSE",
       "note": "The scanner `secret scan` walks the folder with (item 32). The vendor's tarball travels byte for byte in at/vendor/gitleaks/, and the tarball carries its own LICENSE beside the binary; this copy is the same bytes, so the CLI can answer without unpacking an 8 MB archive. The same release also travels for the CI matrix: gitleaks_8.30.1_windows_x64.zip and gitleaks_8.30.1_darwin_arm64.tar.gz, each checked against the release checksums.txt."
     },
+    "languagetool": {
+      "name": "LanguageTool",
+      "version": "6.6",
+      "license": "LGPL-2.1-or-later",
+      "artifacts": ["at-cli"],
+      "text": "at/vendor/licenses/languagetool/LICENSE",
+      "note": "The spelling-checker service's tool (2026-10-24). The server travels trimmed inside at/vendor/spelling-checker/ (English and Portuguese only; no jar is modified, so the LGPL's relink promise holds), from the upstream LanguageTool-6.6.zip pinned by sha256 in that folder's manifest.json. The text is the upstream COPYING.txt; its bundled libraries carry their own notices in third-party-licenses/ inside the payload."
+    },
     "libsodium": {
       "name": "libsodium",
       "version": null,
@@ -108,6 +116,14 @@
       "artifacts": ["at-cli", "at-deploy"],
       "text": "at/vendor/licenses/python/LICENSE.txt",
       "note": "The frozen artifact carries the interpreter itself, and the PSF licence is the one it is distributed under. The patch level is not declared because it changes with every rebuild of the pinned base and the licence does not."
+    },
+    "temurin": {
+      "name": "Eclipse Temurin JRE (jlink)",
+      "version": "21.0.13+9",
+      "license": "GPL-2.0-only WITH Classpath-exception-2.0",
+      "artifacts": ["at-cli"],
+      "text": "at/vendor/licenses/temurin/LICENSE",
+      "note": "The minimal runtime LanguageTool runs on, cut with jlink from the Temurin 21.0.13+9 JDK pinned by sha256 in at/vendor/spelling-checker/manifest.json. The text is the JDK's own legal/java.base/LICENSE (GPLv2 with the Classpath exception); the runtime's own legal/ folder travels inside the payload."
     },
     "vue": {
       "name": "Vue",

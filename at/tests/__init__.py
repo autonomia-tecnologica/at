@@ -11,7 +11,11 @@ boundary between them is affirmed in `at_deploy/tests/test_boundary.py`.
 from __future__ import annotations
 
 from at.core import files
-from at.services import caddy
+from at.services import caddy, spelling_checker
+
+# No test that runs the WebApp spawns a JVM: the lifecycle has its own tests,
+# with a fake process.
+spelling_checker.AUTOSTART = False
 
 # The gate secret the suite works with when it has to EXIST. The deploy draws it
 # at installation (`at_deploy/environment.py`, §7b) and `at-cli` reads it — so a

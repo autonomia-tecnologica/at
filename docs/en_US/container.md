@@ -56,9 +56,15 @@
 
 - **The WebApp's port is the one AT serves by default, and it is not published.** Exposing moves the address the person reaches, never the one the WebApp listens on — and who reaches it is the edge, on the network the two share, or nobody at all.
 
-#### d. Install the spelling and grammar checker as a container (optional)
+#### d. The spelling and grammar checker (a process of AT)
 
-- AT's default for text correction is LanguageTool, today the tool that fulfils the `spelling-checker` service (§4). It serves to underline errors on the editing screen. Quite useful.
+- AT's default for text correction is LanguageTool, today the tool that fulfils the `spelling-checker` service (§4). It serves to underline errors on the editing screen and for the chat's text correction. Quite useful.
+
+- **It is not a container, not even on this path.** The checker is a process AT itself brings up, like Caddy, Authelia and gitleaks: `at-cli webapp` unpacks it into `App/services/spelling-checker/`, starts it on `127.0.0.1` on a port it chooses and remembers while the checker lives, and takes it down when the WebApp goes down. It holds on both paths, and `at-deploy` does not orchestrate it.
+
+- **Vendorized with a minimal JRE.** What travels is a single tarball, built by `python3 -m release.spelling_checker`: a JRE cut with `jlink` (Temurin 21) and the LanguageTool 6.6 server, with English and Portuguese only. Both origins have their `sha256` pinned in `at/vendor/spelling-checker/manifest.json`, and AT refuses to unpack a tarball that does not match the manifest's pin. The checker runs offline: a local server, no n-grams and nothing uploaded. The price is size: the tarball is about 105 MB (the release grows by that much) and takes about 160 MB unpacked in the Working Folder.
+
+- **Unavailable never takes anything down.** With no tarball for the platform, one that does not match its pin, or a process that does not start, AT goes on and says one line; whoever asks the checker gets "unavailable". Today the tarball exists for Linux x64 only; on Windows and macOS the checker is unavailable, like the Authelia gate ([paths](paths.md)).
 
 - This is the checker of the **person's text**, at run time. The checker of the repository's documents is another one, and it is a development tool ([derivation §3](derivation.md)).
 

@@ -38,7 +38,7 @@
   - The persistent state of every service lives in the Working Folder; a service whose state does not fit there does not come in — [General settings](architecture.md#general-settings).
   - **No extension executes code today.** The first class is pure data, and code is the last option — [Extensions](extensions.md).
   - The theme of the authentication portal is not AT's: it stays as neutral as possible, and the `FAQ.md` explains what is underneath — [Interfaces](interfaces.md).
-  - Authenticator, WebApp, checker and VPN run in isolated containers on the container path — [Container path](container.md).
+  - Authenticator, WebApp and VPN run in isolated containers on the container path — [Container path](container.md).
   - Execution is without privilege, with elevation only on explicit request — [Privilege](#privilege).
   - Packages and images are pinned in version and hashing — [External dependency](#external-dependency).
 

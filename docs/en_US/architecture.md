@@ -73,7 +73,7 @@
 
 - The Tkinter Wizard displays the installation possibilities of the environment. With advanced mode enabled, the Wizard presents the rendering of the settings file, allowing any of them to be modified. It follows the design choice of some tools, such as VS Code, which have the base of the settings in JSON but allow the change in the UI.
 
-- Each service may have persisted data. In that case, it lives in `App/services/<service>`, such as `App/services/vpn` or `App/services/spelling-checker`. The service name is canonical and does not change with the tool that fulfils it: `spelling-checker` is the service, LanguageTool is who fulfils it today (§7d), and whatever replaces it one day renames neither folders nor keys. What is a display label is an `i18n` key.
+- Each service may have persisted data. In that case, it lives in `App/services/<service>`, such as `App/services/vpn` or `App/services/spelling-checker`. The service name is canonical and does not change with the tool that fulfils it: `spelling-checker` is the service, LanguageTool is who fulfils it today (§7d) — as a process AT itself brings up and takes down, not as a container — and whatever replaces it one day renames neither folders nor keys. What is a display label is an `i18n` key.
 
 - That folder is not a convenience, it is a condition of entry: a service only enters §7 if its persistent state fits in there. A service that keeps its life in some volume nobody copies makes the folder backup lie.
 

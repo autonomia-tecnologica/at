@@ -62,7 +62,7 @@ Sim, ele tenta. Tem muitas aplicações mais avançadas para partes específicas
 
 ### Onde executar o AT
 
-A ideia do AT é que rode em uma máquina. Uma Turing-compatível. Pode ser seu desktop, seu notebook, seu NAS, uma VPS. Eu gostaria que fosse leve — leve no que o binário exige da máquina, não no tamanho do artefato, que carrega o interpretador e as bibliotecas empacotados. Mas não estou a fim de aprender Go ou Rust. Então vamos de Python. "Todo mundo" sabe Python. E se um ESP32 roda Micropython, é porque posso almejar ir longe aqui.
+A ideia do AT é que rode em uma máquina. Uma Turing-compatível. Pode ser seu desktop, seu notebook, seu NAS, uma VPS. Eu gostaria que fosse leve — leve no que o binário exige da máquina, não no tamanho do artefato, que carrega o interpretador, as bibliotecas e o corretor (um JRE mínimo e o LanguageTool, uns 105 MB) empacotados. Mas não estou a fim de aprender Go ou Rust. Então vamos de Python. "Todo mundo" sabe Python. E se um ESP32 roda Micropython, é porque posso almejar ir longe aqui.
 
 O AT tem dois caminhos de uso, e os dois são suportados: o **hospedado**, em que ele é o binário e a pasta, e o **container**, em que ele monta um ambiente de serviços. A escolha é da pessoa, e ela pode mudar de ideia depois; o que cada caminho garante, e o que não garante, está no [§6](paths.md).
 

@@ -1,0 +1,14 @@
+{
+  "pt_BR": {
+    "unpacking": "Extraindo o corretor (LanguageTool e o JRE dele) para {where}…",
+    "no_payload": "Este binário não carrega o corretor para {platform}: o AT segue sem ele, e quem o consulta recebe \"indisponível\".",
+    "start_failed": "O corretor não subiu: o AT segue sem ele, e quem o consulta recebe \"indisponível\".",
+    "up": "Corretor subindo em 127.0.0.1:{port} (desce junto com o AT)."
+  },
+  "en_US": {
+    "unpacking": "Unpacking the spelling checker (LanguageTool and its JRE) into {where}…",
+    "no_payload": "This binary carries no spelling checker for {platform}: AT goes on without it, and whoever asks it gets \"unavailable\".",
+    "start_failed": "The spelling checker did not come up: AT goes on without it, and whoever asks it gets \"unavailable\".",
+    "up": "Spelling checker coming up on 127.0.0.1:{port} (it goes down with AT)."
+  }
+}
