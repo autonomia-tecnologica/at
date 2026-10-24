@@ -43,6 +43,7 @@ from unittest import mock
 from at import i18n
 from at.core import boot, licenses, paths
 from at.services import caddy, gitleaks
+from at.tests.payloads import needs
 from at.ui.cli import main as cli_main
 from at_deploy.cli import main as deploy_main
 
@@ -214,6 +215,7 @@ class TheArtifacts(unittest.TestCase):
         # to say a licence. Held equal, so a copy cannot rot.
         for key, service in (("caddy", caddy), ("gitleaks", gitleaks)):
             with self.subTest(component=key):
+                needs(self, service)
                 payload = service.payload()
                 assert payload is not None
                 with tarfile.open(payload, "r:gz") as archive:

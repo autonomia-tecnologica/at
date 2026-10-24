@@ -1,0 +1,26 @@
+{
+  "service": "caddy",
+  "tool": "Caddy",
+  "version": "2.11.4",
+  "note": "The pin of the vendored payloads. The archives are NOT committed: `python3 -m release.fetch` downloads each from the vendor's official release, refuses it unless its sha256 is the one below, and writes it here under this name. Anything that does not match is deleted and never used.",
+  "files": [
+    {
+      "file": "caddy_2.11.4_linux_amd64.tar.gz",
+      "platform": "linux-x64",
+      "url": "https://github.com/caddyserver/caddy/releases/download/v2.11.4/caddy_2.11.4_linux_amd64.tar.gz",
+      "sha256": "527fbf917c39189a1e3b31d34fa955601680b2d5c8055d2a87b8b9588dec7bb9"
+    },
+    {
+      "file": "caddy_2.11.4_mac_arm64.tar.gz",
+      "platform": "macos-arm64",
+      "url": "https://github.com/caddyserver/caddy/releases/download/v2.11.4/caddy_2.11.4_mac_arm64.tar.gz",
+      "sha256": "9efb0af2d6cf09cfb5053c0e51721b9b3d4956d346234f39368d943d25a3c9a7"
+    },
+    {
+      "file": "caddy_2.11.4_windows_amd64.zip",
+      "platform": "windows-x64",
+      "url": "https://github.com/caddyserver/caddy/releases/download/v2.11.4/caddy_2.11.4_windows_amd64.zip",
+      "sha256": "1708333f79e274c7697285afe6d592ab39314e0b131e9ec6bea08ad27df62ebf"
+    }
+  ]
+}

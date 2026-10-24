@@ -22,6 +22,7 @@ from unittest import mock
 from at import i18n
 from at.core import actors, boot
 from at.services import authelia, caddy
+from at.tests.payloads import needs, required
 
 
 class FolderCase(unittest.TestCase):
@@ -44,6 +45,7 @@ class FolderCase(unittest.TestCase):
 
 class ThePayload(unittest.TestCase):
     def test_the_payload_of_this_platform_is_here(self):
+        needs(self, authelia)
         found = authelia.payload()
         self.assertIsNotNone(
             found,
@@ -51,11 +53,13 @@ class ThePayload(unittest.TestCase):
         )
 
     def test_the_name_carries_the_platform_it_serves(self):
+        needs(self, authelia)
         found = authelia.payload()
         assert found is not None
         self.assertEqual(found.name, f"authelia-v4.39.28-{authelia.platform_name()}.tar.gz")
 
     def test_the_tarball_is_the_vendors_own(self):
+        needs(self, authelia)
         found = authelia.payload()
         assert found is not None
         with tarfile.open(found, "r:gz") as archive:
@@ -81,6 +85,7 @@ class ThePayload(unittest.TestCase):
         self.assertIn('("at/vendor/authelia", "at/vendor/authelia")', spec)
 
 
+@required(authelia)
 class TheUnpacking(FolderCase):
     def test_it_lands_in_the_instance_folder(self):
         where = authelia.ensure()
@@ -158,6 +163,7 @@ class TheConfiguration(FolderCase):
         self.assertTrue((authelia.directory() / authelia.SESSION_SECRET).is_file())
 
 
+@required(authelia)
 class TheValidation(FolderCase):
     """The real binary's own `validate-config` — not a guess about the YAML."""
 

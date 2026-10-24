@@ -1,0 +1,14 @@
+{
+  "service": "authelia",
+  "tool": "Authelia",
+  "version": "4.39.28",
+  "note": "The pin of the vendored payloads. The archives are NOT committed: `python3 -m release.fetch` downloads each from the vendor's official release, refuses it unless its sha256 is the one below, and writes it here under this name. Anything that does not match is deleted and never used.",
+  "files": [
+    {
+      "file": "authelia-v4.39.28-linux-amd64.tar.gz",
+      "platform": "linux-x64",
+      "url": "https://github.com/authelia/authelia/releases/download/v4.39.28/authelia-v4.39.28-linux-amd64.tar.gz",
+      "sha256": "e8ad9ff965cbf3b93138945e13cb4b7874c999c254772b2bb77952863177699c"
+    }
+  ]
+}

@@ -14,6 +14,8 @@
 
 - **Expor o AT pelo caminho hospedado com o Authelia é um caminho de primeira classe.** O Authelia vendorizado sobe como subprocesso no bundle, pela mesma receita do `--include-caddy`, e é o portão do próprio caminho hospedado. O que o caminho hospedado **não** tem é o isolamento por container — e é essa falta de isolamento, e não a ausência de portão, que o segura em `A` e não em `S` ([A postura de segurança](rules.md#a-postura-de-segurança)). O isolamento por container continua sendo só do §7.
 
+- **Os binários de terceiros não estão no clone.** Caddy, `gitleaks`, Authelia e o tarball do corretor ficam fixados por `manifest.json` (nome, versão, URL oficial, `sha256`) e puxados por `python3 -m release.fetch`, que o clone precisa rodar antes de rodar ou empacotar o AT ([Dependência externa](rules.md#dependência-externa)).
+
 - **O portão do Authelia só existe onde o fornecedor publica o binário.** O Authelia só tem release para Linux e FreeBSD; em Windows e macOS o caminho hospedado sobe **sem** o portão do bundle (o Caddy e o gitleaks viajam, o Authelia não). Nessas plataformas, expor o AT fora do laço local não é suportado.
 
 - **O corretor só existe onde o tarball dele foi montado.** O `spelling-checker` (LanguageTool com JRE mínimo, processo do AT; §7d) hoje viaja só para Linux x64. Em Windows e macOS ele fica **indisponível**: o AT sobe normalmente, diz uma linha, e quem pergunta ao corretor recebe "indisponível".

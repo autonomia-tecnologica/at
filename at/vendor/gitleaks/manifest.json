@@ -1,0 +1,26 @@
+{
+  "service": "gitleaks",
+  "tool": "gitleaks",
+  "version": "8.30.1",
+  "note": "The pin of the vendored payloads. The archives are NOT committed: `python3 -m release.fetch` downloads each from the vendor's official release, refuses it unless its sha256 is the one below, and writes it here under this name. Anything that does not match is deleted and never used.",
+  "files": [
+    {
+      "file": "gitleaks_8.30.1_linux_x64.tar.gz",
+      "platform": "linux-x64",
+      "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz",
+      "sha256": "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+    },
+    {
+      "file": "gitleaks_8.30.1_darwin_arm64.tar.gz",
+      "platform": "macos-arm64",
+      "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_darwin_arm64.tar.gz",
+      "sha256": "b40ab0ae55c505963e365f271a8d3846efbc170aa17f2607f13df610a9aeb6a5"
+    },
+    {
+      "file": "gitleaks_8.30.1_windows_x64.zip",
+      "platform": "windows-x64",
+      "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_windows_x64.zip",
+      "sha256": "d29144deff3a68aa93ced33dddf84b7fdc26070add4aa0f4513094c8332afc4e"
+    }
+  ]
+}

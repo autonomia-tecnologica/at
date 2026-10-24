@@ -84,3 +84,13 @@ desktop.ini
 /data
 /prose
 /.bill
+
+# --- Vendored payloads (pinned by manifest.json, pulled by `python3 -m release.fetch`)
+/at/vendor/caddy/*
+!/at/vendor/caddy/manifest.json
+/at/vendor/gitleaks/*
+!/at/vendor/gitleaks/manifest.json
+/at/vendor/authelia/*
+!/at/vendor/authelia/manifest.json
+/at/vendor/spelling-checker/*
+!/at/vendor/spelling-checker/manifest.json

@@ -37,7 +37,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from release import floor, sbom
+from release import fetch, floor, sbom
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
@@ -140,6 +140,22 @@ def main(argv: list[str] | None = None) -> int:
     if not (ROOT / WEBAPP).is_dir():
         print(f"{WEBAPP} is not there: the WebApp has to be built first "
               f"(`npm run build` in at/ui/webapp), and the spec collects it.")
+        return 1
+
+    # The vendored payloads are pinned by manifest and NOT versioned: they are
+    # pulled here, before the copy, so the scratch tree carries all of them and
+    # the specs go on embedding `at/vendor/*` exactly as before. A payload that
+    # could not be had with its pinned hash is no build at all.
+    try:
+        fetch.fetch()
+    except fetch.FetchError as error:
+        print(f"The vendored payloads are not all there: {error}")
+        print("Run `python3 -m release.fetch` and fix what it reports.")
+        return 1
+    absent = fetch.missing()
+    if absent:
+        print("The vendored payloads are missing after the fetch: "
+              + ", ".join(f"{i['service']}/{i['file']}" for i in absent))
         return 1
 
     scratch = Path(tempfile.mkdtemp(prefix="at-release-"))

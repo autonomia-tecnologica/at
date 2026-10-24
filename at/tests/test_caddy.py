@@ -38,6 +38,7 @@ from unittest import mock
 
 from at import i18n
 from at.core import actors, boot, paths, settings
+from at.tests.payloads import needs, required
 from at.encryption import vault
 from at.services import authelia, caddy
 from at.tests import POLL, drawn_gate
@@ -94,6 +95,7 @@ class ThePayload(unittest.TestCase):
     """The bytes that travel inside the binary, in the repository they travel from."""
 
     def test_the_payload_of_this_platform_is_here(self):
+        needs(self, caddy)
         found = caddy.payload()
         self.assertIsNotNone(
             found,
@@ -102,11 +104,13 @@ class ThePayload(unittest.TestCase):
         )
 
     def test_the_name_carries_the_platform_it_serves(self):
+        needs(self, caddy)
         found = caddy.payload()
         assert found is not None
         self.assertEqual(found.name, f"caddy_2.11.4_{caddy.platform_name()}.tar.gz")
 
     def test_the_tarball_is_the_vendors_own(self):
+        needs(self, caddy)
         # The README and the LICENSE inside are the vendor's, and they are the
         # reason the payload is a tarball and not a bare binary: an artifact that
         # carries Caddy carries what Caddy is distributed with.
@@ -131,6 +135,7 @@ class ThePayload(unittest.TestCase):
             self.assertEqual(caddy.platform_name(), "linux_amd64")
 
     def test_the_other_platforms_tarballs_are_the_vendors_own_bytes(self):
+        needs(self, caddy, 'caddy_2.11.4_windows_amd64.zip', 'caddy_2.11.4_mac_arm64.tar.gz')
         # The CI matrix builds Windows x64 and macOS arm64: their archives travel
         # byte for byte, pinned by the sha256 the SHA-512 of the release checked.
         pins = {
@@ -170,6 +175,7 @@ class ThePayload(unittest.TestCase):
         self.assertIn('("at/vendor/caddy", "at/vendor/caddy")', spec)
 
 
+@required(caddy)
 class TheUnpacking(FolderCase):
     """`App/services/caddy/` — the binary, the stamp, and the rule that it happens once."""
 
@@ -455,6 +461,7 @@ class TheCaddyfile(FolderCase):
         self.assertIn("https://localhost:12400 {", self.written(port=12400))
 
 
+@required(caddy)
 class TheAdaptedGate(FolderCase):
     """O Caddyfile do portão, lido pelo Caddy DE VERDADE.
 
@@ -584,6 +591,7 @@ class TheAdaptedGate(FolderCase):
         self.assertNotIn('"root": "/data"', served)
 
 
+@required(caddy)
 class TheExposedRun(FolderCase):
     """`run` with the flag: the Caddy's port in front, the WebApp behind.
 
@@ -763,6 +771,7 @@ class TheBlink(unittest.TestCase):
         self.assertTrue(caddy.started(alive))
 
 
+@required(caddy)
 class TheRealTls(FolderCase):
     """The claim a browser can check: TLS, on the loop, from the real Caddy.
 
@@ -891,6 +900,7 @@ class TheRealTls(FolderCase):
         self.fail(f"the Caddy did not answer on {self.url()} in {timeout}s")
 
 
+@required(caddy)
 class TheBundle(FolderCase):
     """TASK-177: the real gate, in front of the real WebApp, with no container.
 

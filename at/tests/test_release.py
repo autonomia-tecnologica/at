@@ -322,7 +322,8 @@ class TheSbom(unittest.TestCase):
     def test_caddy_is_versioned_by_its_own_tarball_and_hashed_from_it(self):
         tarball = caddy.payload()
         if tarball is None:
-            self.skipTest("no vendored Caddy for this machine's platform")
+            self.skipTest("no vendored Caddy for this machine's platform "
+                          "(run `python3 -m release.fetch`)")
         component = self.by_name("caddy")
         name = caddy.platform_name()
         self.assertEqual(

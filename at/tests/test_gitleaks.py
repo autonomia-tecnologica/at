@@ -30,6 +30,7 @@ from unittest import mock
 from at import i18n
 from at.core import boot
 from at.services import gitleaks
+from at.tests.payloads import needs, required
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -43,6 +44,7 @@ class ThePayload(unittest.TestCase):
     """The bytes that travel inside the binary, in the repository they travel from."""
 
     def test_the_payload_of_this_platform_is_here(self):
+        needs(self, gitleaks)
         found = gitleaks.payload()
         self.assertIsNotNone(
             found,
@@ -51,6 +53,7 @@ class ThePayload(unittest.TestCase):
         )
 
     def test_the_name_carries_the_version_and_the_platform(self):
+        needs(self, gitleaks)
         found = gitleaks.payload()
         assert found is not None
         self.assertEqual(
@@ -58,6 +61,7 @@ class ThePayload(unittest.TestCase):
         )
 
     def test_the_tarball_is_the_vendors_own(self):
+        needs(self, gitleaks)
         # The README and the LICENSE inside are the vendor's, and they are the
         # reason the payload is a tarball and not a bare binary: an artifact that
         # carries gitleaks carries what gitleaks is distributed with.
@@ -80,6 +84,7 @@ class ThePayload(unittest.TestCase):
             self.assertEqual(gitleaks.platform_name(), "darwin_arm64")
 
     def test_the_other_platforms_archives_are_the_vendors_own_bytes(self):
+        needs(self, gitleaks, 'gitleaks_8.30.1_windows_x64.zip', 'gitleaks_8.30.1_darwin_arm64.tar.gz')
         # The CI matrix builds Windows x64 and macOS arm64: their archives travel
         # byte for byte, pinned by the sha256 of the release's own checksums.txt.
         pins = {
@@ -122,6 +127,7 @@ class ThePayload(unittest.TestCase):
         self.assertNotIn(line, (ROOT / "at-deploy.spec").read_text(encoding="utf-8"))
 
 
+@required(gitleaks)
 class TheUnpacking(unittest.TestCase):
     """`App/services/gitleaks/` — the binary, the stamp, and the rule that it happens once."""
 

@@ -17,3 +17,10 @@ the person's own file — the real Working Folder, what a session owes it, and w
 is still missing there — and it is not part of the product: the repository does
 not carry it and does not name it beyond this line. A clone that does not have
 the file owes nothing; one that has it starts by reading it.
+
+## Vendored binaries
+
+Third-party binaries (Caddy, gitleaks, Authelia, the spelling-checker) are not in
+the repository: `at/vendor/*/manifest.json` pins each one by name, version,
+official URL and sha256. A fresh clone runs `python3 -m release.fetch` before
+running or packing AT (`release.build` does it by itself).
