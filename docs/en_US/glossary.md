@@ -27,7 +27,7 @@ Each name has one meaning, and names that would touch each other do not coexist.
 | **posture** | the measured security state of the environment: the graded functions and the grade |
 | **grade** | the letter of a graded function, from `F` to `S`; the environment's is the weakest link |
 | **functionality** | a capability the person recognizes, with levels and dependencies |
-| **plugin** / **extension** | what teaches AT something; today pure data only, with a manifest and a hash |
+| **plugin** / **extension** | what teaches AT something or adds a screen to it; pure data or a frontend in a sandboxed iframe, always with a manifest and a hash |
 | **review** | the acceptance of a plugin, tied to the hash, in one of three modes |
 | **Main Key** | what the person knows and types — at least 16 characters, and it is a phrase; it is the same string that proves the first admin and unlocks the Vault, and from it the **derived keys** derive, per service |
 | **manifesto** | the seed of this repository, visible in the git history; and `manifest.json` is just the file that has that name |

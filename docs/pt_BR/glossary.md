@@ -27,7 +27,7 @@ Cada nome tem um só significado, e nomes que se encostariam não convivem. Semp
 | **postura** | o estado de segurança do ambiente, medido: as funções graduadas e a nota |
 | **nota** | a letra de uma função graduada, de `F` a `S`; a do ambiente é o elo mais fraco |
 | **funcionalidade** | uma capacidade que a pessoa reconhece, com níveis e dependências |
-| **plugin** / **extensão** | o que ensina algo ao AT; hoje só dado puro, com manifesto e hash |
+| **plugin** / **extensão** | o que ensina algo ao AT ou acrescenta uma tela a ele; dado puro ou frontend em iframe sandbox, sempre com manifesto e hash |
 | **review** | a aceitação de um plugin, amarrada à hash, em um de três modos |
 | **Chave Principal** | o que a pessoa sabe e digita — no mínimo 16 caracteres, e é uma frase; é a mesma string que prova o primeiro admin e destrava o Cofre, e dela derivam as **chaves derivadas**, por serviço |
 | **manifesto** | a semente deste repositório, visível no histórico do git; e `manifest.json` é só o arquivo que tem esse nome |
