@@ -134,7 +134,11 @@ class TheCoreIsOneSource(unittest.TestCase):
         self.assertEqual(
             {path.stem for path in sources(DEPLOY) if path.stem != "__init__"},
             {"cli", "tree", "__main__", "environment", "podman", "vpn",
-             "switch", "wizard", "host", "systemd"},
+             "switch", "wizard", "host", "systemd",
+             "environment_base", "environment_paths", "environment_models",
+             "environment_pins", "environment_secrets", "environment_edge",
+             "environment_identity", "environment_webapp", "environment_run",
+             "environment_probe"},
         )
 
 

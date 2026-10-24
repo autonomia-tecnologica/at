@@ -23,6 +23,7 @@
   /* F2: the scale is by ROLE, 14px body; weights are 400/500/600. */
   --icon-sm: 12px;
   --icon-md: 14px;
+  --icon-lg: 30px;
   --type-caption: 12px;
   --type-body-sm: 13px;
   --type-body: 14px;
@@ -617,7 +618,7 @@ button.opt { background: none; border: 0; font: inherit; width: 100%; text-align
   animation: balloon-in var(--dur-4) var(--ease-enter);
 }
 .balloon-bubble:hover { background: var(--accent-hover); }
-.balloon-bubble::before { --i: url("/icons/at2-nav-chat.svg"); width: 1.5em; height: 1.5em; }
+.balloon-bubble::before { --i: url("/icons/at2-nav-chat.svg"); width: var(--icon-lg); height: var(--icon-lg); }
 
 .toast {
   position: fixed; z-index: 25; left: var(--space-5); bottom: var(--space-5);

@@ -18,6 +18,7 @@ import { showError, poke } from "../lib/views";
 import { openPop } from "../lib/pop";
 import { OFFLINE_TABLE, offlineState, writeTask } from "../lib/offline";
 import FieldValue from "./FieldValue.vue";
+import EmptyState from "./EmptyState.vue";
 import RecordPop from "./pops/RecordPop.vue";
 import type { FieldSpec, RecordField, RecordRef, RecordRow } from "../lib/record";
 
@@ -218,7 +219,7 @@ async function addCard(): Promise<void> {
           </span>
           <span v-if="deadlineText(rec)" class="task-card-deadline">{{ deadlineText(rec) }}</span>
         </button>
-        <p v-if="!(grouped[status.key] || []).length" class="empty">{{ word("no_records") }}</p>
+        <EmptyState v-if="!(grouped[status.key] || []).length" icon="note" :title="word('no_records')" />
       </div>
     </div>
   </div>

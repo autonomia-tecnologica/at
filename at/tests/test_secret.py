@@ -476,8 +476,8 @@ class TheEntry(SecretCase):
         )
         self.assertEqual(callers, [
             "at/core/actors.py", "at/core/assist.py", "at/core/backup.py",
-            "at/core/secrets.py", "at/core/strongbox.py", "at/core/tables.py",
-            "at/services/caddy.py", "at_deploy/environment.py",
+            "at/core/secrets.py", "at/core/strongbox.py", "at/core/tables_types.py",
+            "at/services/caddy.py", "at_deploy/environment.py", "at_deploy/environment_secrets.py",
         ])
 
     def test_the_surface_that_reaches_the_vault_is_the_deploy_and_no_screen(self):
@@ -501,7 +501,7 @@ class TheEntry(SecretCase):
             for path in (ROOT / "at_deploy").rglob("*.py")
             if "tests" not in path.parts and reaches_vault(path)
         )
-        self.assertEqual(reached, ["at_deploy/environment.py"])
+        self.assertEqual(reached, ["at_deploy/environment.py", "at_deploy/environment_secrets.py"])
         for path in (ROOT / "at" / "ui").rglob("*.py"):
             if "tests" in path.parts:
                 continue

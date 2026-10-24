@@ -14,6 +14,7 @@ import { openPop } from "../lib/pop";
 import { toast } from "../lib/toast";
 import NamePop from "./pops/NamePop.vue";
 import FileTreeNode from "./FileTreeNode.vue";
+import EmptyState from "./EmptyState.vue";
 
 export interface FileNode {
   dirs: Map<string, FileNode>;
@@ -90,7 +91,7 @@ function openEmptyMenu(ev: MouseEvent): void {
 
 <template>
   <div v-if="error" class="empty">{{ error }}</div>
-  <div v-else-if="!tree.dirs.size && !tree.files.length" class="empty"
-       v-context-menu="openEmptyMenu">{{ word("no_records") }}</div>
+  <EmptyState v-else-if="!tree.dirs.size && !tree.files.length" icon="folder"
+              :title="word('no_records')" v-context-menu="openEmptyMenu" />
   <FileTreeNode v-else :node="tree" :prefix="rootPath" />
 </template>

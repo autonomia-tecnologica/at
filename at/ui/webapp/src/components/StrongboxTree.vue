@@ -11,6 +11,7 @@ import { api } from "../lib/api";
 import { word } from "../lib/store";
 import { nav } from "../lib/views";
 import StrongboxTreeNode, { type StrongboxNode } from "./StrongboxTreeNode.vue";
+import EmptyState from "./EmptyState.vue";
 
 interface Listing {
   files: { path: string }[];
@@ -52,6 +53,6 @@ watch(() => nav.tick, load);
 
 <template>
   <div v-if="error" class="empty">{{ error }}</div>
-  <div v-else-if="!tree.dirs.size && !tree.files.length" class="empty">{{ word("no_records") }}</div>
+  <EmptyState v-else-if="!tree.dirs.size && !tree.files.length" icon="folder" :title="word('no_records')" />
   <StrongboxTreeNode v-else :node="tree" />
 </template>
