@@ -34,7 +34,10 @@ function loaded(): Turn[] {
   }
 }
 
-export const chatState = reactive({ turns: loaded() as Turn[] });
+// `pending` is the sentence the engine has not answered yet (NEVER persisted,
+// and NEVER a turn: a turn, once remembered, is the record). The view reads it
+// to draw the "thinking" bubble while the answer is on its way.
+export const chatState = reactive({ turns: loaded() as Turn[], pending: null as string | null });
 
 // THE TURN A YES OR A NO WOULD ANSWER, and THE SENTENCE A BARE VERB LEFT
 // OPEN — never a field ON a turn, and never written back into one: a turn,
@@ -156,6 +159,15 @@ export async function send(
 ): Promise<void> {
   const text = sentence.trim();
   if (!text) return;
+  chatState.pending = text;
+  try {
+    await route(text, mainKey, confirmed);
+  } finally {
+    chatState.pending = null;
+  }
+}
+
+async function route(text: string, mainKey?: string, confirmed?: boolean): Promise<void> {
   if (!mainKey && !confirmed && open) {
     const said = folds(text);
     if (YES_WORDS.includes(said)) {

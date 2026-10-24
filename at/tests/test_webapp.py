@@ -4078,6 +4078,16 @@ class TheNotesSection(ServerCase):
                         i18n.reset()
                         self.assertNotEqual(i18n.tr(f"webapp.{word}"), f"webapp.{word}")
 
+    def test_the_thinking_bubble_speaks_the_catalog_and_respects_reduced_motion(self):
+        self.assertIn("chat_thinking", webapp.PAGE_WORDS)
+        for language in i18n.SUPPORTED:
+            with mock.patch.dict(os.environ, {"AT_LANG": language}):
+                i18n.reset()
+                self.assertNotEqual(i18n.tr("webapp.chat_thinking"), "webapp.chat_thinking")
+        css = (Path(webapp.__file__).parent / "assets" / "base.css").read_text(encoding="utf-8")
+        self.assertRegex(
+            css, r"@media \(prefers-reduced-motion: reduce\) \{ \.dots i \{ animation: none;")
+
 
 if __name__ == "__main__":
     unittest.main()

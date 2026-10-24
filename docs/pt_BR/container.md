@@ -65,6 +65,8 @@
 
 - **Vendorizado com JRE mínimo.** O que viaja é um tarball só, montado por `python3 -m release.spelling_checker`: um JRE cortado com `jlink` (Temurin 21) e o servidor do LanguageTool 6.6, só com inglês e português. As duas origens têm o `sha256` pinado em `at/vendor/spelling-checker/manifest.json`, e o AT recusa desempacotar um tarball que não bata com o pino do manifesto. O corretor roda sem rede: um servidor local, sem tabelas de sequências de palavras e sem envio de nada. O preço é o tamanho: o tarball tem uns 105 MB (o release cresce isso) e ocupa uns 160 MB desempacotado na Pasta de Trabalho.
 
+- **Aquecido na subida.** O LanguageTool só carrega as regras de um idioma na primeira consulta (segundos); por isso, depois de subir o corretor, o WebApp manda em segundo plano uma consulta à toa por idioma suportado, e a primeira correção do chat não paga isso. O aquecimento nunca trava a subida, nunca escreve nada e falha em silêncio.
+
 - **Indisponível nunca derruba nada.** Sem tarball para a plataforma, com um que não bate com o pino, ou com um processo que não sobe, o AT segue e diz uma linha; quem pergunta ao corretor recebe "indisponível". Hoje o tarball existe só para Linux x64; em Windows e macOS o corretor fica indisponível, como o portão do Authelia ([paths](paths.md)).
 
 - Este é o corretor do **texto da pessoa**, em tempo de execução. O corretor dos documentos do repositório é outro, e é ferramenta de desenvolvimento ([derivation §3](derivation.md)).

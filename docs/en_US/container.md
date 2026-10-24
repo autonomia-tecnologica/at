@@ -65,6 +65,8 @@
 
 - **Vendorized with a minimal JRE.** What travels is a single tarball, built by `python3 -m release.spelling_checker`: a JRE cut with `jlink` (Temurin 21) and the LanguageTool 6.6 server, with English and Portuguese only. Both origins have their `sha256` pinned in `at/vendor/spelling-checker/manifest.json`, and AT refuses to unpack a tarball that does not match the manifest's pin. The checker runs offline: a local server, no n-grams and nothing uploaded. The price is size: the tarball is about 105 MB (the release grows by that much) and takes about 160 MB unpacked in the Working Folder.
 
+- **Warmed on the way up.** LanguageTool loads a language's rules only on its first query (seconds), so once the checker is up the WebApp sends, in the background, one throwaway query per supported language, and the chat's first correction does not pay for it. The warm-up never blocks the boot, never writes anything and fails silently.
+
 - **Unavailable never takes anything down.** With no tarball for the platform, one that does not match its pin, or a process that does not start, AT goes on and says one line; whoever asks the checker gets "unavailable". Today the tarball exists for Linux x64 only; on Windows and macOS the checker is unavailable, like the Authelia gate ([paths](paths.md)).
 
 - This is the checker of the **person's text**, at run time. The checker of the repository's documents is another one, and it is a development tool ([derivation §3](derivation.md)).

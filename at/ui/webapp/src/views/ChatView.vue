@@ -14,7 +14,7 @@
 // When there is nothing to say, the box says it in the catalog's own words rather
 // than in a sentence of its own.
 
-import { ref, nextTick, watchEffect } from "vue";
+import { ref, nextTick, watch, watchEffect } from "vue";
 import { chatState, send as sendTurn } from "../lib/chat";
 import { store, word } from "../lib/store";
 import { setTrail } from "../lib/views";
@@ -25,6 +25,24 @@ const busy = ref(false);
 const log = ref<HTMLElement | null>(null);
 
 watchEffect(() => setTrail(word("chat")));
+
+// THE "THINKING" BUBBLE (24/10/2026): three dots where the answer will be, but
+// only once the wait passes `THINKING_AFTER_MS` — an instant answer never
+// flashes them. The person's own sentence is shown at once (it left the box).
+const THINKING_AFTER_MS = 250;
+const thinking = ref(false);
+let thinkingTimer: ReturnType<typeof setTimeout> | undefined;
+
+watch(() => chatState.pending, (pending) => {
+  clearTimeout(thinkingTimer);
+  thinking.value = false;
+  if (pending === null) return;
+  void scrolled();
+  thinkingTimer = setTimeout(() => {
+    thinking.value = true;
+    void scrolled();
+  }, THINKING_AFTER_MS);
+});
 
 // THE NEWEST IS THE ONE READ: the conversation grows downward, and what was
 // just asked is what the person is looking for. A scroll, never a reflow of
@@ -89,6 +107,13 @@ async function retry(sentence: string, mainKey: string): Promise<void> {
       </div>
       <AskTurn v-for="(turn, index) in chatState.turns" :key="index" :turn="turn"
                @retry="(key) => retry(turn.sentence, key)" />
+      <div v-if="chatState.pending !== null" class="turn turn-pending">
+        <p class="said">{{ chatState.pending }}</p>
+        <div v-if="thinking" class="answer-msg thinking" role="status">
+          <span class="sr-only">{{ word("chat_thinking") }}</span>
+          <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+        </div>
+      </div>
     </div>
     <p v-if="store.assist && !store.jev_ready" class="chat-notice">
       {{ word("jev_not_configured") }}

@@ -219,3 +219,51 @@ class TheLife(Folder):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TheWarmUp(unittest.TestCase):
+    """The WebApp warms each supported language in the background (no JVM)."""
+
+    def setUp(self):
+        from at.ui.webapp import app
+
+        self.app = app
+        self.process = mock.Mock()
+        self.process.poll.return_value = None
+
+    def run_warm(self, check, ready=True):
+        with mock.patch.object(spelling, "port", return_value=1), \
+                mock.patch.object(service, "ready", return_value=ready), \
+                mock.patch.object(spelling, "check", side_effect=check) as fake:
+            thread, stop = self.app._warm_spelling_checker(self.process)
+            thread.join(timeout=5)
+            self.assertFalse(thread.is_alive())
+            return fake
+
+    def test_warms_every_supported_language(self):
+        fake = self.run_warm(lambda text, language: [])
+        self.assertEqual([c.args[1] for c in fake.call_args_list], list(i18n.SUPPORTED))
+
+    def test_does_not_block_the_caller(self):
+        gate = threading.Event()
+        with mock.patch.object(spelling, "port", return_value=1), \
+                mock.patch.object(service, "ready", return_value=True), \
+                mock.patch.object(spelling, "check", side_effect=lambda t, l: gate.wait(5)):
+            thread, stop = self.app._warm_spelling_checker(self.process)
+            self.assertTrue(thread.is_alive())
+            stop.set()
+            gate.set()
+            thread.join(timeout=5)
+            self.assertFalse(thread.is_alive())
+
+    def test_swallows_errors(self):
+        def boom(text, language):
+            raise RuntimeError("down")
+
+        self.run_warm(boom)
+
+    def test_not_ready_asks_nothing(self):
+        self.assertEqual(self.run_warm(lambda t, l: [], ready=False).call_count, 0)
+
+    def test_no_process_no_thread(self):
+        self.assertIsNone(self.app._warm_spelling_checker(None))

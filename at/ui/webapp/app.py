@@ -650,7 +650,7 @@ PAGE_WORDS = (
     # The interpreter's box, the switch that hides the balloon, and the ruler of
     # the demand filter (§4).
     "chat", "ask", "ask_hint", "proposal", "interpreter", "balloon", "balloon_close",
-    "chat_cleared",
+    "chat_cleared", "chat_thinking",
     # A ABERTURA DO CHAT E OS SEUS EXEMPLOS (20/10/2026): o que a conversa diz
     # quando ainda não há conversa, e as quatro frases que mostram o que ela
     # entende — clicáveis, porque um exemplo que se digita não ensina ninguém a
@@ -3235,6 +3235,43 @@ def _spawn_spelling_checker():
     return process
 
 
+WARM_TEXT = "Warm up."
+
+
+def _warm_spelling_checker(process):
+    """Warm the checker in the background; returns `(thread, stop)` or `None`.
+
+    LanguageTool loads a language's rules on the FIRST query for it (seconds),
+    so the first correction of the chat would pay for it. A daemon thread waits
+    for the service and sends one throwaway query per supported language. It
+    never blocks the boot, never raises, never writes: a failed warm-up is
+    silent, and `stop` (or the process going down) ends it.
+    """
+    if process is None:
+        return None
+    import threading
+
+    from at.i18n import SUPPORTED
+
+    stop = threading.Event()
+
+    def work():
+        try:
+            port = spelling.port()
+            if port is None or not spelling_checker.ready(port):
+                return
+            for language in SUPPORTED:
+                if stop.is_set() or process.poll() is not None:
+                    return
+                spelling.check(WARM_TEXT, language)
+        except Exception:  # noqa: BLE001 — warming is never a reason to fail
+            return
+
+    thread = threading.Thread(target=work, name="spelling-warmup", daemon=True)
+    thread.start()
+    return thread, stop
+
+
 def run(port: int = DEFAULT_PORT, public_port: int | None = None,
         host: str | None = None, include_caddy: bool = True) -> int:
     """Put AT on a port — in HTTP, or behind the Caddy's TLS.
@@ -3434,6 +3471,7 @@ def run(port: int = DEFAULT_PORT, public_port: int | None = None,
     # gone with it. It is never a reason for AT not to be here: when it cannot
     # come up the line below says so, and whoever asks it gets "unavailable".
     checker = _spawn_spelling_checker()
+    warming = _warm_spelling_checker(checker)
     # SIGTERM is how a service manager (and `instance-up.sh`) stops this
     # process: without turning it into the Ctrl-C below, the `finally` would not
     # run and the checker's JVM would outlive AT.
@@ -3445,7 +3483,11 @@ def run(port: int = DEFAULT_PORT, public_port: int | None = None,
         pass
     finally:
         restore()
+        if warming is not None:
+            warming[1].set()
         spelling_checker.stop(checker)
+        if warming is not None:
+            warming[0].join(timeout=1)
         caddy.stop(process)
         # E o Authelia FICA DE PÉ: a sessão da pessoa vive nele, e derrubá-lo
         # aqui seria perdê-la a cada reinício do `at-cli`. Quem o reinicia é a
