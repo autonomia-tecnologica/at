@@ -17,6 +17,7 @@ from at.prose import payload
 from at.ui import cli
 from at.ui.cli import main
 from at.ui.webapp import app as webapp
+from at.ui.webapp import launch as webapp_launch
 from at.ui.webapp import local
 
 
@@ -149,8 +150,8 @@ class JsonOut(unittest.TestCase):
             def server_close(self):
                 pass
 
-        with mock.patch.object(webapp, "make_server", return_value=Server()), \
-             mock.patch.object(webapp, "start_clock"), redirect_stdout(real):
+        with mock.patch.object(webapp_launch, "make_server", return_value=Server()), \
+             mock.patch.object(webapp_launch, "start_clock"), redirect_stdout(real):
             code = main(["webapp", "--no-caddy", "--port", "12399", "--json"])
         self.assertEqual(code, 0)
         self.assertEqual(len(seen[0].strip().splitlines()), 1)

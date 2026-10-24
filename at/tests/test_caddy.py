@@ -43,6 +43,7 @@ from at.services import authelia, caddy
 from at.tests import POLL, drawn_gate
 from at.tests.payloads import needs, required
 from at.ui.webapp import app as webapp
+from at.ui.webapp import launch as webapp_launch
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = ROOT / "at-cli.spec"
@@ -619,7 +620,7 @@ class TheExposedRun(FolderCase):
         built = mock.Mock()
         built.return_value.server_address = ("127.0.0.1", 41234)
         with ExitStack() as stack:
-            stack.enter_context(mock.patch.object(webapp, "make_server", built))
+            stack.enter_context(mock.patch.object(webapp_launch, "make_server", built))
             started = stack.enter_context(
                 mock.patch.object(caddy, "start", mock.Mock())
             )
@@ -664,7 +665,7 @@ class TheExposedRun(FolderCase):
         built = mock.Mock()
         built.return_value.server_address = ("127.0.0.1", 41234)
         with ExitStack() as stack:
-            stack.enter_context(mock.patch.object(webapp, "make_server", built))
+            stack.enter_context(mock.patch.object(webapp_launch, "make_server", built))
             stack.enter_context(mock.patch.object(caddy, "start", mock.Mock()))
             stack.enter_context(mock.patch.object(caddy, "started", return_value=False))
             self._patch_bundle(stack)
@@ -723,7 +724,7 @@ class TheAddress(FolderCase):
     def served(self, **kw) -> mock.Mock:
         """The server AT would build, taken away — the address is what is read."""
         built = mock.Mock()
-        with mock.patch.object(webapp, "make_server", built):
+        with mock.patch.object(webapp_launch, "make_server", built):
             with redirect_stdout(io.StringIO()):
                 code = webapp.run(12399, **kw)
         self.assertEqual(code, 0)

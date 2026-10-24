@@ -56,7 +56,9 @@ from at.i18n import tr
 from at.ui import ask as door
 from at.ui.cli import OK, REFUSED, USAGE, _backup, main
 from at.ui.webapp import app as webapp
+from at.ui.webapp import clock as webapp_clock
 from at.ui.webapp import keys as webapp_keys
+from at.ui.webapp import launch as webapp_launch
 
 PHRASE = "uma-frase-de-dezesseis"
 OTHER_PHRASE = "outra-frase-tambem-longa"
@@ -598,8 +600,8 @@ class TheDeclaration(BackupCase):
             actors.create_admin("Rafael", PHRASE)
         server = mock.Mock()
         server.server_address = ("127.0.0.1", 0)
-        with mock.patch.object(webapp, "make_server", return_value=server), \
-                mock.patch.object(webapp, "beat"):
+        with mock.patch.object(webapp_launch, "make_server", return_value=server), \
+                mock.patch.object(webapp_clock, "beat"):
             with redirect_stdout(io.StringIO()):
                 webapp.run(0, include_caddy=False)
         self.assertEqual(len(self.declared()), 1)

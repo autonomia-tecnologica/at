@@ -63,7 +63,9 @@ from at.i18n import tr
 from at.ui import ask as door
 from at.ui.cli import main
 from at.ui.webapp import app as webapp
+from at.ui.webapp import clock as webapp_clock
 from at.ui.webapp import keys as webapp_keys
+from at.ui.webapp import launch as webapp_launch
 
 # The instant the suite's clock reads. It is handed in and never taken from the
 # machine: a test that reads the clock twice is a test that disagrees with itself.
@@ -662,9 +664,9 @@ class TheProcess(ClockCase):
         reached = threading.Event()
         server = mock.Mock()
         server.server_address = ("127.0.0.1", 0)
-        with mock.patch.object(webapp, "make_server", return_value=server):
+        with mock.patch.object(webapp_launch, "make_server", return_value=server):
             with mock.patch.object(
-                webapp, "beat", side_effect=lambda *_a, **_kw: reached.set()
+                webapp_clock, "beat", side_effect=lambda *_a, **_kw: reached.set()
             ):
                 with redirect_stdout(StringIO()):
                     webapp.run(0, include_caddy=False)
@@ -674,7 +676,7 @@ class TheProcess(ClockCase):
     def test_the_raw_server_does_not_start_it(self):
         # The route tests build a bare server, and nothing of theirs may read an
         # hour the machine chose: the clock is `run`'s, and only `run`'s.
-        with mock.patch.object(webapp, "beat") as beaten:
+        with mock.patch.object(webapp_clock, "beat") as beaten:
             server = webapp.make_server(0)
         try:
             beaten.assert_not_called()
