@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from at import convert
-from at.core import backup, files, install, licenses, paths, secrets
+from at.core import backup, files, install, licenses, paths, search, secrets
 from at.i18n import tr
 from at.prose import listing as prose
 from at.ui import ask as door
 from at.ui.ask import OK, REFUSED
-from at.ui.cli import tree
+from at.ui.cli import jsonout, tree
 from at.ui.cli.common import Ask
 from at.ui.cli.common import readers as _readers
 from at.ui.cli.common import reject as _reject
@@ -116,6 +116,31 @@ def _license(rest: list[str], texts: bool = False) -> int:
             continue
         return _reject("license")
     print(licenses.report(paths.ARTIFACT, texts=texts))
+    return OK
+
+
+def _search(rest: list[str]) -> int:
+    """`at-cli search <termo>` — the live search over files and tables (B-21).
+
+    The term is ONE argument (a phrase the shell split in two is two phrases),
+    and `--json` carries the hits as data under `hits`. Nothing is written, so a
+    search that finds nothing is not a failure: it answers and exits `0`.
+    """
+    if len(rest) != 1 or not rest[0].strip():
+        return _reject("search")
+    term = rest[0].strip()
+    hits = search.search(term)
+    jsonout.attach("hits", hits)
+    if not hits:
+        print(tr("cli.search.none", term=term))
+        return OK
+    for hit in hits:
+        if hit["kind"] == search.FILE:
+            key = "cli.search.file.name" if hit["field"] == search.NAME else "cli.search.file.content"
+            print(tr(key, where=hit["where"], line=hit["line"], snippet=hit["snippet"]))
+        else:
+            print(tr("cli.search.row", table=hit["where"], id=hit["id"],
+                     field=hit["field"], snippet=hit["snippet"]))
     return OK
 
 

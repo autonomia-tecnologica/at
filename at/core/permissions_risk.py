@@ -65,6 +65,9 @@ RISK_BY_ACTION: dict[str, float] = {
     # `cli convert` escreve um arquivo novo em `Convertidos/`, a partir de um
     # que já existia em `Arquivos/` — o mesmo porquê de um `create`.
     "convert": RISK_WRITE,
+    # `cli search` READS the files and the searchable fields and writes nothing
+    # — a read like a listing (B-21).
+    "search": RISK_READ,
     # `help show` lê o que o binário oferece e não muda nada da pasta — o
     # mesmo porquê de `list`/`view`/`read`.
     "show": RISK_READ,

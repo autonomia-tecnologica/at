@@ -2317,7 +2317,7 @@ class TheCeiling(ServerCase):
     # one that has to answer before anybody is in.
     READS = ("/api/state", "/api/projects", "/api/orphans", "/api/project/1",
              "/api/tree", "/api/events", "/api/file?path=nota.md",
-             "/api/file/bytes?path=nota.md",
+             "/api/file/bytes?path=nota.md", "/api/search?q=nota",
              "/api/table/task", "/api/strongbox", "/api/strongbox/download?token=x")
     WRITES = (
         ("/api/file", {"path": "nota.md", "text": "x", "base": ""}),

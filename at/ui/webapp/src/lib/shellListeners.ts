@@ -11,6 +11,7 @@ import { applyDensity } from "./density";
 import { applyNav } from "./nav";
 import { watchNarrow } from "./breakpoint";
 import { popStack, closePop } from "./pop";
+import { searchState, openSearch, closeSearch } from "./search";
 import { shortcutsState, arm, disarm, act, isTyping } from "./shortcuts";
 
 export async function installListeners(): Promise<void> {
@@ -31,6 +32,15 @@ export async function installListeners(): Promise<void> {
   // its shortcut or disarms — a key that names nothing is not a key left
   // half-pressed.
   document.addEventListener("keydown", ev => {
+    // THE GLOBAL SEARCH (B-21): `/` opens it, never inside a field, and Escape
+    // closes it before anything else reads the key.
+    if (ev.key === "Escape" && searchState.open) { closeSearch(); return; }
+    if (ev.key === "/" && !ev.ctrlKey && !ev.metaKey && !ev.altKey && !searchState.open
+        && !isTyping(ev.target)) {
+      ev.preventDefault();
+      openSearch();
+      return;
+    }
     if (ev.key === "Escape") {
       if (popStack.length) { closePop(); return; }
       if (isTyping(ev.target)) return;

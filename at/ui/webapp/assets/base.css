@@ -597,6 +597,19 @@ button.opt { background: none; border: 0; font: inherit; width: 100%; text-align
 .dialog h2 { margin: 0; font-size: var(--type-title); font-weight: var(--weight-semibold); }
 .dialog p { margin: 0; color: var(--text-secondary); }
 .dialog .refused { color: var(--danger-text); }
+/* ===== global search (B-21) ============================================= */
+
+.dialog.search { top: 20%; transform: translate(-50%, 0); }
+.search-results { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.search-hit {
+  display: grid; grid-template-columns: 1fr auto; gap: var(--space-1) var(--space-3);
+  padding: var(--space-2) var(--space-3); border-radius: var(--r-md); cursor: pointer;
+}
+.search-hit.on { background: var(--surface-2); }
+.search-where { font-weight: var(--weight-semibold); overflow-wrap: anywhere; }
+.search-detail { color: var(--text-tertiary); font-size: var(--type-body-sm); }
+.search-snippet { grid-column: 1 / -1; color: var(--text-secondary); font-size: var(--type-body-sm); overflow-wrap: anywhere; }
+
 .dialog-actions { display: flex; justify-content: flex-end; gap: var(--space-3); }
 .dialog-facts { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-3); margin: 0; }
 .dialog-facts dt { color: var(--text-tertiary); }

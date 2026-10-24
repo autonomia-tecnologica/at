@@ -56,6 +56,9 @@ WORDS: tuple[Node, ...] = (
     # The `services` word is NOT here, and its absence is the artifact boundary:
     # the environment of §7 left this binary whole and became `at-deploy`
     # (item 27), whose own tree carries it. `at-cli` keeps the folder and the app.
+    # The live search over the files and the searchable fields (B-21): reads,
+    # writes nothing. The term travels as the one argument.
+    Node("search", "cli.search.about"),
     Node("admin", "cli.admin.about"),
     Node("lang", "cli.lang.about"),
     # The dry run of the slang layer (TASK-180, fatia 2/3): what Jev would

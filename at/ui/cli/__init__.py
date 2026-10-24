@@ -22,7 +22,7 @@ from at.ui.ask import OK, REFUSED, USAGE
 from at.ui.cli import jsonout, tree
 from at.ui.cli.common import Ask
 from at.ui.cli.common import reject as _reject
-from at.ui.cli.file_words import _backup, _convert, _installed, _license
+from at.ui.cli.file_words import _backup, _convert, _installed, _license, _search
 from at.ui.cli.object_words import _OWN_ACTS, _ask, _job, _setting, _table  # noqa: F401
 from at.ui.cli.person_words import _admin, _assist, _lang
 from at.ui.cli.webapp_word import _webapp
@@ -104,6 +104,9 @@ def _dispatch(words: list[str]) -> int:
 
     if word == "convert":
         return _convert(rest)
+
+    if word == "search":
+        return _search(rest)
 
     if word == "admin":
         return _admin(rest)

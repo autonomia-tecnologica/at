@@ -26,6 +26,7 @@ import Balloon from "./components/Balloon.vue";
 import Toast from "./components/Toast.vue";
 import Hint from "./components/Hint.vue";
 import ConfirmDialog from "./components/ConfirmDialog.vue";
+import SearchOverlay from "./components/SearchOverlay.vue";
 import StrongboxViewer from "./components/StrongboxViewer.vue";
 import LoginView from "./views/LoginView.vue";
 import SetupView from "./views/SetupView.vue";
@@ -172,6 +173,8 @@ defineExpose({ refresh });
          em vez da caixa do navegador — `lib/confirm.ts` é a porta, e este é o
          único lugar que a monta. -->
     <ConfirmDialog />
+    <!-- A BUSCA GLOBAL (B-21): a camada aberta por `/`, montada uma vez só. -->
+    <SearchOverlay />
     <!-- O LEITOR DO COFRE (TASK-155): uma camada por cima de tudo, montada
          uma vez só aqui — o arquivo selado abre por qualquer lugar (o painel,
          a seção), e quem o desenha não pertence a nenhum dos dois. -->

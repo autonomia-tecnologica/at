@@ -80,6 +80,9 @@ PAGE_WORDS = (
     # uma pasta sem nota diz. E o "salvar" do formulário que edita uma linha —
     # a porta que faltava para um campo que não é escolha (TASK-198).
     "notes", "new_note", "notes_none", "save",
+    # A BUSCA GLOBAL (B-21): o overlay aberto por `/`.
+    "search", "search_placeholder", "search_none_title", "search_none_text",
+    "search_start", "search_name", "search_line",
     "move_to_project", "records", "hidden", "no_records", "error", "filter",
     # THE SPECIMEN (`/design`): its own sentences, in both languages.
     "ds_theme", "ds_text_roles", "ds_type_scale", "ds_colour", "ds_buttons", "ds_inputs", "ds_chips",

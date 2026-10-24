@@ -105,6 +105,8 @@ def _structured(words: list[str], code: int, extra: dict) -> dict:
     found: dict = {}
     if "version" in extra:
         found["version"] = extra["version"]
+    if "hits" in extra:
+        found["hits"] = extra["hits"]
     table = words[0]
     action = words[1] if len(words) > 1 else "list"
     if "row" in extra:

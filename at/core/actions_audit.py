@@ -67,6 +67,7 @@ WEB_PERMISSIONS: tuple[str, ...] = (
     "role:list",
     "prose:read",
     "prose:edit",
+    "cli:search",
     "nlu:ask",
     "assist:ask",
     "strongbox:read",

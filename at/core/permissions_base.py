@@ -171,7 +171,7 @@ EXTRA: dict[str, tuple[str, ...]] = {
     # escreve o porquê de cada um.
     "webapp": ("run",),
     "backup": ("make", "restore"),
-    "cli": ("admin", "lang", "convert"),
+    "cli": ("admin", "lang", "convert", "search"),
     # TASK-186, fatia 3/4: `help` É um objeto e um verbo (a pessoa, ao decidir
     # esta fatia) — ao contrário de `admin`/`lang`/`convert`, que são verbos
     # SOLTOS sem objeto próprio e por isso compartilham `cli`, `help` tem os
@@ -199,6 +199,7 @@ WORD_PERMISSIONS: dict[str, tuple[str, ...]] = {
     "webapp": ("webapp:run",),
     "backup": ("backup:make", "backup:restore"),
     "convert": ("cli:convert",),
+    "search": ("cli:search",),
     "admin": ("cli:admin",),
     "lang": ("cli:lang",),
     "assist": ("assist:ask",),

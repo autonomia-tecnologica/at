@@ -12,12 +12,15 @@ import `app` at the top.
 from __future__ import annotations
 
 from at import i18n
-from at.core import jobs, notifier, permissions, projects, push, reminder, strongbox, tables
+from at.core import jobs, notifier, permissions, projects, push, reminder, search, strongbox, tables
 from at.data import schema, store
 from at.prose import listing as prose
 from at.prose import payload as shape
 from at.ui.webapp.entry import catalogue_payload, entry_payload, state_payload
 from at.ui.webapp.routes_base import RouteBase
+
+# The overlay shows a screenful, not the folder: the engine stops at this many.
+SEARCH_LIMIT = 50
 
 
 class GetRoutes(RouteBase):
@@ -86,6 +89,17 @@ class GetRoutes(RouteBase):
                     for path in prose.listed()
                 ],
             })
+            return
+
+        if rest == ["search"]:
+            # B-21, fatia 2: the overlay asks the SAME engine `at-cli search`
+            # does. It searches files AND tables, so the demand is the engine's
+            # own object (`cli:search`), not `prose:read` alone.
+            if not self._may("cli:search"):
+                return
+            term = query.get("q", [""])[0].strip()
+            hits = search.search(term, SEARCH_LIMIT) if term else []
+            self._json({"hits": hits})
             return
 
         if rest == ["events"]:
