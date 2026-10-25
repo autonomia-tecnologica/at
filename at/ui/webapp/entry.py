@@ -84,6 +84,8 @@ PAGE_WORDS = (
     "search", "search_placeholder", "search_none_title", "search_none_text",
     "search_start", "search_name", "search_line",
     "move_to_project", "records", "hidden", "no_records", "error", "filter",
+    # O INTERVALO DE DATA do filtro (B-37): as duas pontas, "de" e "até".
+    "date_from", "date_until",
     # THE SPECIMEN (`/design`): its own sentences, in both languages.
     "ds_theme", "ds_text_roles", "ds_type_scale", "ds_colour", "ds_buttons", "ds_inputs", "ds_chips",
     "ds_cards_table", "ds_overlays", "ds_empty", "ds_small", "ds_medium", "ds_large", "ds_quiet", "ds_ghost",

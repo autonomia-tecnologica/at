@@ -1258,6 +1258,10 @@ html.no-motion .dots i { animation: none; opacity: .6; }
 /* THE SAME MARGIN A TABLE GETS FOR FREE (`#body table`, above) */
 .board-add { margin: 0; }
 .board-add input { width: 100%; }
+/* the board's filters: one button per filterable column; the accent says one is on */
+.board-filters { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0; }
+.board-filters .btn.on { color: var(--accent); }
+.opt.range { display: flex; flex-direction: column; gap: var(--space-1); }
 .board {
   display: grid; gap: var(--space-4);
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));

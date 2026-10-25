@@ -17,6 +17,7 @@ import { post } from "../lib/api";
 import { showError, poke } from "../lib/views";
 import { openPop } from "../lib/pop";
 import { OFFLINE_TABLE, offlineState, writeTask } from "../lib/offline";
+import { useFilters } from "../lib/tableFilters";
 import FieldValue from "./FieldValue.vue";
 import EmptyState from "./EmptyState.vue";
 import RecordPop from "./pops/RecordPop.vue";
@@ -60,10 +61,20 @@ const statuses = computed(() => {
   return Object.entries(spec?.enum || {}).map(([key, labels]) => ({ key, labels }));
 });
 
+// THE FILTERS ARE THE TABLE'S (`useFilters`): the same ones `TableView` draws on
+// the column heads, the same preference (`at.filters`, per table.field) — what
+// is left out in one is left out in the other. A column of days filters by
+// interval. The PROJECT is not offered: the projects tree is the door for it,
+// and the other filters add to the tree's cut. `id` is a number, not a cut.
+const schemaFields = computed<FieldSpec[]>(() => props.schema || []);
+const { isOn, visible, toggleFilter } = useFilters(props, schemaFields);
+const filterable = computed(() =>
+  schemaFields.value.filter(f => f.filterable && f.name !== "project" && f.name !== "id"));
+
 const grouped = computed(() => {
   const out: Record<string, RecordRow[]> = {};
   for (const status of statuses.value) out[status.key] = [];
-  for (const rec of props.records) {
+  for (const rec of visible.value) {
     const status = String(rawOf(rec, "status") ?? "");
     (out[status] ||= []).push(rec);
   }
@@ -196,6 +207,11 @@ async function addCard(): Promise<void> {
   <form v-if="entity === OFFLINE_TABLE && allowCreate" class="board-add" @submit.prevent="addCard">
     <input v-model="draft" type="text" :placeholder="word('new_task')" :aria-label="word('new_task')">
   </form>
+  <div v-if="filterable.length" class="board-filters">
+    <button v-for="f in filterable" :key="f.name" type="button" class="btn btn-sm btn-ghost"
+            :class="{ on: isOn(f.name) }" :title="word('filter')"
+            @click.stop="toggleFilter($event, f.name)">{{ label(f.labels) || f.name }}</button>
+  </div>
   <div class="board">
     <div v-for="status in statuses" :key="status.key" class="board-col"
          :data-state="status.key" :class="{ over: overColumn === status.key }"

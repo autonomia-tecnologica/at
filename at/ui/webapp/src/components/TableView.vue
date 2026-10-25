@@ -78,7 +78,7 @@ const { byName, ALL, limitOf, enumOf, shownText } = useCells(fields);
 const columnKey = computed(() => props.viewKey || props.entity);
 const page = computed(() => props.page || props.entity);
 
-const { filters, visible, dropFilter, toggleFilter } = useFilters(props, fields);
+const { isOn, visible, dropFilter, toggleFilter } = useFilters(props, fields);
 const { sort, ordered, toggleSort } = useSort(visible);
 
 // Hiding a column DROPS its filter and its sort: a filter nobody can see goes on
@@ -155,7 +155,7 @@ const { editValue, editInputEl, isEditing, cellEditable, onCellClick, commitEdit
             <span v-if="(byName[name]?.refs || []).length" class="to">→</span>
             <span v-if="sort && sort.name === name" class="arrow">{{ sort.dir > 0 ? " ▲" : " ▼" }}</span>
             <button v-if="byName[name]?.filterable" type="button" class="fbtn"
-                    :class="{ on: !!filters[name] }"
+                    :class="{ on: isOn(name) }"
                     :title="word('filter')" :aria-label="word('filter')"
                     @click.stop="toggleFilter($event, name)"></button>
           </th>
