@@ -521,6 +521,28 @@ class TheSpecimen(unittest.TestCase):
         self.assertNotIn("design", (src / "components" / "Sidebar.vue").read_text(encoding="utf-8").lower())
 
 
+class TheTitlesAreInNormalCase(unittest.TestCase):
+    """B-36: only the table header (`th`) is upper case; titles are `--type-title`."""
+
+    def test_no_rule_outside_th_sets_text_transform_uppercase(self):
+        src = Path(webapp.__file__).parent / "src"
+        sheets = [ASSETS / "base.css", *src.rglob("*.vue"), *src.rglob("*.css")]
+        for sheet in sheets:
+            text = without_comments(sheet.read_text(encoding="utf-8"))
+            for selector, body in re.findall(r"([^{}]+)\{([^{}]*)\}", text):
+                if re.search(r"text-transform:\s*uppercase", body):
+                    names = [n.strip() for n in selector.split(",")]
+                    self.assertTrue(all(re.search(r"(^|[\s>+~])th$", n) for n in names),
+                                    f"{sheet.name}: {selector.strip()}")
+
+    def test_the_sidebar_and_the_card_titles_read_the_title_size(self):
+        text = without_comments((ASSETS / "base.css").read_text(encoding="utf-8"))
+        for head in (r"nav \.folder,\s*nav \.file\[data-view=\"reminders\"\]", r"\.cards h2"):
+            body = re.search(head + r"[^{]*\{([^}]*)\}", text).group(1)
+            self.assertIn("var(--type-title)", body)
+            self.assertNotIn("letter-spacing", body)
+
+
 class TheDensity(unittest.TestCase):
     def test_compact_is_an_attribute_that_only_overrides_tokens(self):
         base = Path(webapp.__file__).parent / "assets" / "base.css"

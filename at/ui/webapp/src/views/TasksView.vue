@@ -27,6 +27,7 @@
 import { ref, computed, watch, onMounted } from "vue";
 import { api } from "../lib/api";
 import StatStrip from "../components/StatStrip.vue";
+import EmptyState from "../components/EmptyState.vue";
 import { store, setFields, word, label, kindLabel } from "../lib/store";
 import { nav, open, setTrail, showError, TASKS_KEY } from "../lib/views";
 import type { TablePayload, RecordRow, RecordField } from "../lib/record";
@@ -134,6 +135,7 @@ watch(() => nav.tick, load);
          where its tasks are, and a summary is not a second way to read them. -->
     <section class="cards">
       <h2>{{ projectsLabel }}</h2>
+      <EmptyState v-if="!projectRows.length" icon="folder" :title="word('no_records')" />
       <button v-for="project in projectRows" :key="project.id" type="button" class="card"
               @click="openProject(project.id)">
         <span class="card-top">
