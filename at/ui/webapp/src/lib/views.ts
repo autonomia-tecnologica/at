@@ -154,6 +154,40 @@ export function openFolder(segments: string[]): void {
   open(FILES_KEY, null);
 }
 
+// THE FOLDER IS IN THE ADDRESS (B-27): `/files/Notas/Diario`. Moving between
+// folders inside the browser is a REAL history step (`pushState`), so the
+// browser's Back returns to the folder that was seen; `push = false` is the
+// correction of a place that no longer exists (`replaceState`).
+export function stepFolder(segments: string[], push = true): void {
+  filesFolder.segments = [...segments];
+  const path = addressOf(FILES_KEY, null);
+  if (location.pathname === path) return;
+  if (push) history.pushState(null, "", path);
+  else history.replaceState(null, "", path);
+}
+
+// Back/forward over those steps: the address says the folder, the page follows.
+// Only addresses of the files section are read; any other is not ours.
+export function folderOfAddress(pathname: string): string[] | null {
+  let parts: string[];
+  try {
+    parts = decodeURIComponent(pathname).split("/").filter(Boolean);
+  } catch {
+    return null;
+  }
+  return parts[0] === FILES_KEY ? parts.slice(1) : null;
+}
+
+window.addEventListener("popstate", () => {
+  const folder = folderOfAddress(location.pathname);
+  if (!folder) return;
+  filesFolder.segments = folder;
+  if (nav.current?.view !== FILES_KEY) {
+    nav.current = { view: FILES_KEY, id: null };
+    nav.path.length = 0;
+  }
+});
+
 // THE PANEL'S NUMBER for the view ON SCREEN. The count the server sends is the
 // STORE'S total, and the filter that hides rows is the person's — the server
 // cannot know it, so the filtered count comes from whoever holds the rows: the
@@ -350,6 +384,7 @@ function note(): void {
 export function addressOf(view: string, id: number | null): string {
   const pieces = view.split(":").join("/").split("/").map(encodeURIComponent);
   if (id !== null) pieces.push(String(id));
+  if (view === FILES_KEY) pieces.push(...filesFolder.segments.map(encodeURIComponent));
   return "/" + pieces.join("/");
 }
 

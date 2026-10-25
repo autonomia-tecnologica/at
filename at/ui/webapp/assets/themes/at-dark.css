@@ -24,20 +24,29 @@
   --r-lg: 20px;
 
   /* ===== surfaces ============================================================= */
-  --surface-0: #120b1f;
-  --surface-1: #180f28;
-  --surface-2: #1c1230;
+  --surface-canvas: #120b1f;
+  --surface-card: #180f28;
+  --surface-raised: #1c1230;
+  --surface-sunken: #0d0716;
   /* THE TEXT ROLES: violet-tinted neutrals with the chroma
      turned down (H 262), so the text stays in the brand's family without
      reading purple. Worst-case ratios on the three surfaces: 16.3 / 8.2 / 6.4. */
-  --neutral-high:  #f6f4fa;
-  --neutral-mid: #b3acc4;
-  --neutral-low: #9d97b0;
-  --text-primary: var(--neutral-high);
-  --text-secondary: var(--neutral-mid);
-  --text-tertiary: var(--neutral-low);
-  --border-soft: #2c2047;
-  --border-strong: #3a2c5c;
+  --neutral-50: #f6f4fa;
+  --neutral-100: #e6e2ee;
+  --neutral-200: #cdc8da;
+  --neutral-300: #b3acc4;
+  --neutral-400: #9d97b0;
+  --neutral-500: #7a6ea0;
+  --neutral-600: #4a3d70;
+  --neutral-700: #3a2c5c;
+  --neutral-800: #2c2047;
+  --neutral-900: #1c1230;
+  --neutral-950: #120b1f;
+  --text-primary: var(--neutral-50);
+  --text-secondary: var(--neutral-300);
+  --text-tertiary: var(--neutral-400);
+  --border-subtle: #2c2047;
+  --border-default: #3a2c5c;
   --border-control: #7a6ea0;
   --row-hover: #211738;
   --control-track: #2f2150;
@@ -87,10 +96,8 @@
      black at a different opacity — named once, so deepening the night is one
      number and not a hunt through every rule that happens to agree today. */
   --shadow-rgb: 0 0 0;
-  --shadow-xs: 0 1px 2px rgb(var(--shadow-rgb) / 40%);
-  --shadow-sm: 0 4px 14px rgb(var(--shadow-rgb) / 45%);
-  --shadow-card: 0 14px 36px rgb(var(--shadow-rgb) / 50%), 0 2px 8px rgb(var(--shadow-rgb) / 35%);
-  --shadow-lg: 0 32px 80px rgb(var(--shadow-rgb) / 60%), 0 10px 24px rgb(var(--shadow-rgb) / 40%);
+  --shadow-e1: 0 2px 8px rgb(var(--shadow-rgb) / 40%);
+  --shadow-e2: 0 12px 32px rgb(var(--shadow-rgb) / 60%);
 
   /* ===== scrollbars ============================================================= */
   --scrollbar-thumb: #362a54;
@@ -103,7 +110,7 @@
      go, so the one thing left to carry the boundary is the fill itself. The
      report was the rail: collapsed, there is no label left to say "this is the
      panel", only the strip's own colour against the page's — so the gap to
-     `--surface-0` (#120b1f) has to be a STEP, not the one-channel nudge this
+     `--surface-canvas` (#120b1f) has to be a STEP, not the one-channel nudge this
      used to be. */
   --nav-bg: #08050f;
   --nav-border: rgb(255 255 255 / 6%);

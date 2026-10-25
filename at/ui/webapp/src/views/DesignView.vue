@@ -32,7 +32,7 @@ const TYPE_SCALE: [string, string, number][] = [
   ["--type-caption", "ds_caption", 12],
 ];
 const STEPS = [50, 100, 200, 300, 400, 500, 600, 700, 800];
-const SURFACES = ["--surface-0", "--surface-1", "--surface-2", "--border-soft", "--border-strong"];
+const SURFACES = ["--surface-canvas", "--surface-card", "--surface-raised", "--surface-sunken", "--border-subtle", "--border-default"];
 const STATES = ["success", "warning", "danger", "info"];
 const CHIPS = ["todo", "doing", "done", "cancelled", "low", "high", "critical"];
 const SPACES = ["1", "2", "3", "4", "6", "8", "12", "16"];
@@ -172,7 +172,7 @@ async function showDialog(): Promise<void> {
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 .swatch {
   min-width: 56px; height: 40px; padding: 0 var(--space-2); display: inline-flex; align-items: center;
-  border: 1px solid var(--border-soft); border-radius: var(--r-sm);
+  border: 1px solid var(--border-subtle); border-radius: var(--r-sm);
   font-size: var(--type-caption); color: var(--text-secondary);
 }
 .swatch.ink { height: auto; min-height: 40px; }

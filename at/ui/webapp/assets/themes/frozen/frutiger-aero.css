@@ -28,9 +28,9 @@
   --r-lg: 22px;
 
   /* ===== surfaces ========================================================== */
-  --surface-0: #bfe4f0;
-  --surface-1: #eef8fc;
-  --surface-2: #e5f0f5;
+  --surface-canvas: #bfe4f0;
+  --surface-card: #eef8fc;
+  --surface-raised: #e5f0f5;
   --ink-1: #0b3b50;
   --ink-2: #37697f;
   --ink-3: #6a8fa0;
@@ -43,8 +43,8 @@
   --warning-text: var(--warning);
   --danger-text: var(--danger);
   --info-text: var(--info);
-  --border-soft: #cfe9f2;
-  --border-strong: #8aacb9;
+  --border-subtle: #cfe9f2;
+  --border-default: #8aacb9;
   --row-hover: #f5fbfd;
   --control-track: #dcecf3;
 
@@ -74,18 +74,16 @@
   --info-soft: #eff4ff;
 
   /* ===== elevation ========================================================= */
-  --shadow-xs: 0 1px 2px rgb(11 59 80 / 10%);
-  --shadow-sm: 0 3px 10px rgb(11 59 80 / 12%), 0 1px 3px rgb(11 59 80 / 9%);
-  --shadow-card: 0 10px 30px rgb(11 59 80 / 12%), 0 2px 8px rgb(11 59 80 / 8%);
-  --shadow-lg: 0 28px 70px rgb(11 59 80 / 26%), 0 10px 24px rgb(11 59 80 / 14%);
+  --shadow-e1: 0 2px 8px rgb(11 59 80 / 8%);
+  --shadow-e2: 0 12px 32px rgb(11 59 80 / 16%);
 
   /* ===== scrollbars ========================================================= */
   --scrollbar-thumb: rgba(10, 110, 168, .35);
   --scrollbar-thumb-hover: rgba(10, 110, 168, .62);
 
   /* ===== the chrome ========================================================= */
-  --nav-bg: #d3e1e7; /* a step off --surface-1, so the topbar (also --surface-1) never reads as the same panel */
-  --nav-border: var(--border-soft);
+  --nav-bg: #d3e1e7; /* a step off --surface-card, so the topbar (also --surface-card) never reads as the same panel */
+  --nav-border: var(--border-subtle);
   --nav-edge: 4px 0 24px rgb(11 59 80 / 18%);
   --nav-ink-1: var(--ink-1);
   --nav-ink-2: var(--ink-2);

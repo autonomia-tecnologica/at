@@ -4,7 +4,7 @@
    not is the chrome — the letter-initial file icons (`P`, `M`, `J`, `O`) and
    every per-component tuning (the popover's own padding, the switch's own
    geometry) are gone, folded into the one shared set and the one shared
-   scale every theme now reads. `--nav-bg` is a step off `--surface-1`
+   scale every theme now reads. `--nav-bg` is a step off `--surface-card`
    (2026-10-03) — the topbar reads it bare, so the sidebar needs its OWN
    value or the two panels fuse into one shape with a seam down the middle.
 
@@ -28,9 +28,9 @@
   --r-lg: 12px;
 
   /* ===== surfaces ========================================================== */
-  --surface-0: #14161a;
-  --surface-1: #1b1e24;
-  --surface-2: #26292f;
+  --surface-canvas: #14161a;
+  --surface-card: #1b1e24;
+  --surface-raised: #26292f;
   --ink-1: #d8dee9;
   --ink-2: #8b95a5;
   --ink-3: #636c7a;
@@ -43,8 +43,8 @@
   --warning-text: var(--warning);
   --danger-text: var(--danger);
   --info-text: var(--info);
-  --border-soft: #2a2f38;
-  --border-strong: #5f636a;
+  --border-subtle: #2a2f38;
+  --border-default: #5f636a;
   --row-hover: #232833;
   --control-track: #232833;
 
@@ -74,18 +74,16 @@
   --info-soft: #10233e;
 
   /* ===== elevation ========================================================= */
-  --shadow-xs: 0 1px 2px rgb(0 0 0 / 40%);
-  --shadow-sm: 0 4px 14px rgb(0 0 0 / 45%);
-  --shadow-card: 0 14px 36px rgb(0 0 0 / 50%), 0 2px 8px rgb(0 0 0 / 35%);
-  --shadow-lg: 0 32px 80px rgb(0 0 0 / 60%), 0 10px 24px rgb(0 0 0 / 40%);
+  --shadow-e1: 0 2px 8px rgb(0 0 0 / 40%);
+  --shadow-e2: 0 12px 32px rgb(0 0 0 / 60%);
 
   /* ===== scrollbars ========================================================= */
   --scrollbar-thumb: rgba(82, 90, 105, .6);
   --scrollbar-thumb-hover: #525a69;
 
   /* ===== the chrome ========================================================= */
-  --nav-bg: #3b3e43; /* a step off --surface-1, so the topbar (also --surface-1) never reads as the same panel */
-  --nav-border: var(--border-soft);
+  --nav-bg: #3b3e43; /* a step off --surface-card, so the topbar (also --surface-card) never reads as the same panel */
+  --nav-border: var(--border-subtle);
   --nav-edge: 4px 0 28px rgb(0 0 0 / 50%);
   --nav-ink-1: var(--ink-1);
   --nav-ink-2: var(--ink-2);

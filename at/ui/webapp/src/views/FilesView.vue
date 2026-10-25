@@ -18,7 +18,7 @@ import { api } from "../lib/api";
 import StatStrip from "../components/StatStrip.vue";
 import EmptyState from "../components/EmptyState.vue";
 import { word } from "../lib/store";
-import { nav, open, setTrail, showError, filesFolder } from "../lib/views";
+import { nav, open, setTrail, showError, filesFolder, stepFolder } from "../lib/views";
 
 interface Listing {
   root: string;
@@ -81,15 +81,19 @@ const entries = computed(() => {
 });
 
 function enter(name: string): void {
-  here.value = [...here.value, name];
-  trail();
+  stepFolder([...here.value, name]);
 }
 
 // THE CRUMBS: `to` is how many segments of `here` stay; 0 is the root.
 function goTo(to: number): void {
-  here.value = here.value.slice(0, to);
-  trail();
+  stepFolder(here.value.slice(0, to));
 }
+
+// The address is the source: a step, Back/Forward or a link moves `filesFolder`.
+watch(() => filesFolder.segments.join("/"), () => {
+  here.value = [...filesFolder.segments];
+  trail();
+});
 
 // A FILE OPENS THE FILE'S OWN PAGE — the same door the tree uses, so the two
 // ways in land in the same room.
@@ -108,7 +112,7 @@ async function load(): Promise<void> {
     listing.value = await api<Listing>("/api/tree");
     // A folder that vanished with the reload (its last file was moved) is a place
     // that no longer exists: back to the root rather than an empty ghost.
-    if (here.value.length && !inside.value.length) here.value = [];
+    if (here.value.length && !inside.value.length) stepFolder([], false);
     trail();
   } catch (err) {
     listing.value = null;

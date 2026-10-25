@@ -15,7 +15,7 @@ import { refresh, booted, startBoot } from "./lib/shellBoot";
 import { installListeners } from "./lib/shellListeners";
 import { signedIn, session } from "./lib/session";
 import { store, label, word } from "./lib/store";
-import { balloon, trail, stepLink, pageTitle, fillsPage, frame, isWrite } from "./lib/shellRoute";
+import { balloon, trail, stepLink, pageTitle, fillsPage, widensPage, frame, isWrite } from "./lib/shellRoute";
 import { onMounted } from "vue";
 import { toggleNav, navRail } from "./lib/nav";
 import { offlineState } from "./lib/offline";
@@ -144,15 +144,18 @@ defineExpose({ refresh });
              width (`base.css`, `.page`). The page header names the screen — the
              last step of the trail, the same words the band above ends in —
              and every view sits under it with no outer margin of its own. -->
-        <div v-if="frame" class="page" :class="{ 'page--fill': fillsPage }">
+        <div v-if="frame" class="page" :class="{ 'page--fill': fillsPage, 'page--wide': widensPage }">
           <div v-if="pageTitle" class="page-header">
             <h1 class="page-title">{{ pageTitle }}</h1>
           </div>
-          <!-- THE SCREEN CHANGE (F6): the new page fades in on its own (`base.css`,
-               `.page > :not(.page-header)`) — no `<Transition>` here: a leave that
-               waits for the old page to finish held the new one back whenever the
-               old page's root had no animation to end. -->
-          <component :is="frame.component" v-bind="frame.props" :key="frame.key" />
+          <!-- THE SCREEN CHANGE (F6, B-26): the new page fades in (`base.css`,
+               `.page > :not(.page-header)`) and the old one fades OUT over it,
+               taken out of the flow while it leaves — no out-in mode: that
+               mode held the new page back until the old one finished, and
+               held it forever when the old root had nothing to end. -->
+          <Transition leave-active-class="view-leave-active">
+            <component :is="frame.component" v-bind="frame.props" :key="frame.key" />
+          </Transition>
         </div>
       </div>
     </main>

@@ -3,7 +3,7 @@
 
 import { computed } from "vue";
 import { store, word, tableOf } from "./store";
-import { nav, ui, isKind, viewFor, open, openFolder, markPage, resumePath, CHAT_KEY, NLU_UI_ENABLED, ORPHANS_KEY, BOARD_KEY, FILE_PREFIX, PROJECT_PREFIX, WRITE_PREFIX, TABLES_TASK_KEY } from "./views";
+import { nav, ui, isKind, viewFor, open, openFolder, folderOfAddress, filesFolder, markPage, resumePath, CHAT_KEY, FILES_KEY, NLU_UI_ENABLED, ORPHANS_KEY, BOARD_KEY, FILE_PREFIX, PROJECT_PREFIX, WRITE_PREFIX, TABLES_TASK_KEY } from "./views";
 import { loadPrefs, SELECT_KEY } from "./prefs";
 import { balloonOn } from "./balloon";
 import KindView from "../views/KindView.vue";
@@ -66,6 +66,14 @@ export function stepLink(i: number): (() => void) | null {
 export const pageTitle = computed(() => trail.value[trail.value.length - 1] || "");
 export const fillsPage = computed(() => nav.current?.view === CHAT_KEY);
 
+// The pages that hold a wide thing — a table's grid, or the task board — read
+// up to `--page-wide-max` (`base.css`, `.page--wide`) instead of `--page-max`.
+export const widensPage = computed(() => {
+  const view = nav.current?.view;
+  if (!view) return false;
+  return isKind(view) || view === BOARD_KEY || view === ORPHANS_KEY || view.startsWith(PROJECT_PREFIX);
+});
+
 // The page the panel shows: whoever draws it is the module that registered itself
 // for it, and a table's own table is what is left over when nobody claims the
 // view. The shell knows no page by heart.
@@ -115,6 +123,7 @@ function askedFromUrl(): { view: string; id: number | null } | null {
   const parts = pathParts();
   if (!parts.length) return null;
   const [head, ...rest] = parts;
+  if (head === FILES_KEY) return offered(FILES_KEY) ? { view: FILES_KEY, id: null } : null;
   const key = rest.length ? `${head}:${rest.join("/")}` : head;
   if (offered(key)) return { view: key, id: null };
   // A table with no page of its own takes the second piece as the RECORD, which
@@ -137,6 +146,8 @@ function pathParts(): string[] {
 export function showSaved(): void {
   const asked = askedFromUrl();
   if (asked) {
+    // `/files/<folder...>`: the folder comes with the link (B-27).
+    if (asked.view === FILES_KEY) filesFolder.segments = folderOfAddress(location.pathname) || [];
     open(asked.view, asked.id);
     return;
   }

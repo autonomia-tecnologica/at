@@ -2,8 +2,8 @@
    system (2026-10-03): the ramp generator this file's siblings use does not
    apply to a theme with no hue, so the "brand ramp" below is a straight
    grey scale, built the same way the old file's greys were — the same black,
-   in alpha. `--border-soft` softened from solid black to black at 18%, and
-   `--border-strong` is the solid black the old `--line` always was: the new
+   in alpha. `--border-subtle` softened from solid black to black at 18%, and
+   `--border-default` is the solid black the old `--line` always was: the new
    system draws a border in two weights where the old one drew one, and a
    theme with no colour still has to answer both.
 
@@ -25,9 +25,9 @@
   --r-lg: 0px;
 
   /* ===== surfaces ========================================================== */
-  --surface-0: #ffffff;
-  --surface-1: #ffffff;
-  --surface-2: #f4f4f4;
+  --surface-canvas: #ffffff;
+  --surface-card: #ffffff;
+  --surface-raised: #f4f4f4;
   --ink-1: #000000;
   --ink-2: rgba(0, 0, 0, .55);
   --ink-3: rgba(0, 0, 0, .35);
@@ -40,8 +40,8 @@
   --warning-text: var(--warning);
   --danger-text: var(--danger);
   --info-text: var(--info);
-  --border-soft: rgba(0, 0, 0, .18);
-  --border-strong: #000000;
+  --border-subtle: rgba(0, 0, 0, .18);
+  --border-default: #000000;
   --row-hover: rgba(0, 0, 0, .07);
   --control-track: rgba(0, 0, 0, .12);
 
@@ -71,18 +71,16 @@
   --info-soft: #eff4ff;
 
   /* ===== elevation ========================================================= */
-  --shadow-xs: 0 1px 2px rgb(0 0 0 / 10%);
-  --shadow-sm: 0 3px 10px rgb(0 0 0 / 12%), 0 1px 3px rgb(0 0 0 / 9%);
-  --shadow-card: 0 10px 30px rgb(0 0 0 / 12%), 0 2px 8px rgb(0 0 0 / 8%);
-  --shadow-lg: 0 28px 70px rgb(0 0 0 / 26%), 0 10px 24px rgb(0 0 0 / 14%);
+  --shadow-e1: 0 2px 8px rgb(0 0 0 / 8%);
+  --shadow-e2: 0 12px 32px rgb(0 0 0 / 16%);
 
   /* ===== scrollbars ========================================================= */
   --scrollbar-thumb: rgba(0, 0, 0, .18);
   --scrollbar-thumb-hover: rgba(0, 0, 0, .35);
 
   /* ===== the chrome ========================================================= */
-  --nav-bg: #e6e6e6; /* a step off --surface-1, so the topbar (also --surface-1) never reads as the same panel */
-  --nav-border: var(--border-soft);
+  --nav-bg: #e6e6e6; /* a step off --surface-card, so the topbar (also --surface-card) never reads as the same panel */
+  --nav-border: var(--border-subtle);
   --nav-edge: 4px 0 24px rgb(0 0 0 / 18%);
   --nav-ink-1: var(--ink-1);
   --nav-ink-2: var(--ink-2);

@@ -33,21 +33,30 @@
      the flat `#fff` a screenshot turns into a glare — and a card is ONE step
      lighter than the floor it sits on, which is what lets it read as raised
      with almost no shadow at all. */
-  --surface-0: #f6f5f2;
-  --surface-1: #fdfcfa;
-  --surface-2: #f1efea;
+  --surface-canvas: #f6f5f2;
+  --surface-card: #fdfcfa;
+  --surface-raised: #f1efea;
+  --surface-sunken: #eeebe5;
   /* THE TEXT ROLES: every text colour is one of three, and
      each is built so its ratio holds on EVERY surface of this side (canvas,
      card, sunken): 15.6 / 9.2 / 6.1 at the worst. No text uses a step lighter
      than 600; a border colour never paints text. */
-  --neutral-low: #5c5953;
-  --neutral-mid: #45423e;
-  --neutral-high: #1d1c1a;
-  --text-primary: var(--neutral-high);
-  --text-secondary: var(--neutral-mid);
-  --text-tertiary: var(--neutral-low);
-  --border-soft: #e8e5de;
-  --border-strong: #d6d2c9;
+  --neutral-50: #faf9f6;
+  --neutral-100: #f1efea;
+  --neutral-200: #e3e0d7;
+  --neutral-300: #d0ccc2;
+  --neutral-400: #aaa69d;
+  --neutral-500: #8a867d;
+  --neutral-600: #5c5953;
+  --neutral-700: #45423e;
+  --neutral-800: #2f2d2a;
+  --neutral-900: #1d1c1a;
+  --neutral-950: #11100f;
+  --text-primary: var(--neutral-900);
+  --text-secondary: var(--neutral-700);
+  --text-tertiary: var(--neutral-600);
+  --border-subtle: #e8e5de;
+  --border-default: #d6d2c9;
   --border-control: #8a867d;
   --row-hover: #f2f0ea;
   --control-track: #e3e0d7;
@@ -104,16 +113,14 @@
      theme casts as a shadow or a wash is ONE number, here, not a find-and-
      replace across every rule that happens to agree with it today. */
   --shadow-rgb: 20 18 15;
-  --shadow-xs: 0 1px 2px rgb(var(--shadow-rgb) / 4%);
-  --shadow-sm: 0 2px 6px rgb(var(--shadow-rgb) / 5%);
-  --shadow-card: 0 4px 16px rgb(var(--shadow-rgb) / 6%);
-  --shadow-lg: 0 16px 40px rgb(var(--shadow-rgb) / 10%);
+  --shadow-e1: 0 2px 8px rgb(var(--shadow-rgb) / 8%);
+  --shadow-e2: 0 12px 32px rgb(var(--shadow-rgb) / 16%);
 
   /* ===== scrollbars =========================================================
      THE SAME GREY AS THE STRONG BORDER, NAMED, NOT RETYPED: a scrollbar thumb
      is a border this system draws with the mouse, not a colour of its own —
      so it reads the one token, and the two can never drift apart by accident. */
-  --scrollbar-thumb: var(--border-strong);
+  --scrollbar-thumb: var(--border-default);
   --scrollbar-thumb-hover: #c3beb3;
 
   /* ===== the chrome: an overlay panel, THE SAME QUIET SURFACE AS THE PAGE

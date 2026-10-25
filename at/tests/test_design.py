@@ -216,7 +216,9 @@ class TheTokenContract(unittest.TestCase):
             theme = next(t for t in self.themes if t.name == name)
             own_reads = read_of(theme.read_text(encoding="utf-8"))
             read_somewhere = set(self._reads_for(theme)) | self.by_name | set(own_reads)
-            unused = sorted(declared - read_somewhere)
+            # The neutral ramp (50..950) is a palette declared whole, by design; the
+            # text roles read some of its steps, the rest are the scale's own.
+            unused = sorted(t for t in declared - read_somewhere if not t.startswith("--neutral-"))
             self.assertEqual(unused, [], f"{name} declares unread {unused}")
 
     def test_the_two_sides_declare_the_same_names(self):
@@ -416,7 +418,7 @@ class TheTextRoles(unittest.TestCase):
     """
 
     FLOORS = {"--text-primary": 7.0, "--text-secondary": 4.5, "--text-tertiary": 4.5}
-    SURFACES = ("--surface-0", "--surface-1", "--surface-2")
+    SURFACES = ("--surface-canvas", "--surface-card", "--surface-raised", "--surface-sunken")
 
     @classmethod
     def setUpClass(cls):
@@ -453,6 +455,19 @@ class TheTextRoles(unittest.TestCase):
             for surface in self.SURFACES:
                 got = _ratio(tokens["--border-control"], tokens[surface])
                 self.assertGreaterEqual(got, 3.0, f"{name} --border-control on {surface}: {got:.2f}")
+
+    def test_the_neutral_ramp_and_the_hairline_roles_are_declared_and_ordered(self):
+        for name, tokens in self.themes.items():
+            for step in (50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950):
+                self.assertIn(f"--neutral-{step}", tokens, name)
+            self.assertIn("--border-subtle", tokens, name)
+            self.assertIn("--border-default", tokens, name)
+            for surface in self.SURFACES:
+                sub = _ratio(tokens["--border-subtle"], tokens[surface])
+                dflt = _ratio(tokens["--border-default"], tokens[surface])
+                self.assertGreater(sub, 1.0, f"{name} --border-subtle on {surface}")
+                self.assertGreaterEqual(dflt, sub, f"{name} --border-default on {surface}")
+                self.assertGreaterEqual(_ratio(tokens["--border-control"], tokens[surface]), dflt)
 
     def test_the_placeholder_reads_a_role_that_holds_its_ratio(self):
         body = without_comments(self.base)
@@ -517,6 +532,25 @@ class TheDensity(unittest.TestCase):
         self.assertIn("at.density", boot)
 
 
+class ThePageWide(unittest.TestCase):
+    """B-24: `.page--wide` lets the table and the board read up to 1600px."""
+
+    SRC = Path(webapp.__file__).parent / "src"
+
+    def test_the_class_reads_a_token_declared_at_1600(self):
+        text = without_comments((ASSETS / "base.css").read_text(encoding="utf-8"))
+        self.assertIn("--page-wide-max: 1600px;", text)
+        self.assertIn(".page--wide { max-width: var(--page-wide-max); }", text)
+
+    def test_the_shell_puts_it_on_the_table_and_the_board(self):
+        app = (self.SRC / "App.vue").read_text(encoding="utf-8")
+        self.assertIn("'page--wide': widensPage", app)
+        route = (self.SRC / "lib" / "shellRoute.ts").read_text(encoding="utf-8")
+        body = route.split("export const widensPage", 1)[1].split("});", 1)[0]
+        for needle in ("isKind(view)", "BOARD_KEY", "ORPHANS_KEY", "PROJECT_PREFIX"):
+            self.assertIn(needle, body)
+
+
 if __name__ == "__main__":
     unittest.main()
 
@@ -540,7 +574,7 @@ class TheDesignPlanRules(unittest.TestCase):
                 self.assertEqual(value.strip(), "none", f"{sorted(names)} floats: box-shadow {value}")
 
     # Elevation tokens may appear only where something floats or is a control's own lift.
-    # `.btn` / `.btn:hover` / `.switch::after` rest on the page and still wear `--shadow-xs/sm`:
+    # `.btn` / `.btn:hover` / `.switch::after` rest on the page and still wear `--shadow-e1`:
     # kept here as KNOWN exceptions (B-4 pendencies), so a NEW resting shadow fails.
     ELEVATED = {".pop", ".dialog", ".balloon-bubble", ".toast", ".shortcut-hint"}
     KNOWN_RESTING = {".btn", ".btn:hover", ".switch::after"}
@@ -553,6 +587,17 @@ class TheDesignPlanRules(unittest.TestCase):
                     continue  # none, focus ring, inset edge, 1px ring: not elevation
                 self.assertLessEqual(names, self.ELEVATED | self.KNOWN_RESTING,
                                      f"{sorted(names)} rests on the page with an elevation: {value}")
+
+    def test_the_themes_declare_two_elevation_levels_and_the_hover_does_not_lift(self):
+        # B-22: --shadow-e1 and --shadow-e2, and nothing else named --shadow-<level>.
+        for name in ("at.css", "at-dark.css"):
+            text = without_comments((THEMES / name).read_text(encoding="utf-8"))
+            declared = set(re.findall(r"(--shadow-[\w-]+)\s*:", text))
+            self.assertEqual(declared - {"--shadow-rgb"}, {"--shadow-e1", "--shadow-e2"}, name)
+        for selectors, body in re.findall(r"([^{}]+)\{([^{}]*)\}", self.css):
+            if ":hover" in selectors:
+                self.assertNotIn("--shadow-e", body, f"{selectors.strip()} lifts on hover")
+        self.assertNotRegex(self.css, r"--shadow-(xs|sm|card|lg)\b")
 
     # Hairlines (a border, ring or edge up to 3px) are not "sizes"; the rest of the literals below
     # are the KNOWN backlog of the px-to-token migration. The set may only shrink.
@@ -601,6 +646,41 @@ class TheDesignPlanRules(unittest.TestCase):
             for source in PAGE_SOURCES:
                 self.assertNotIn(name, source.read_text(encoding="utf-8"), source.name)
 
+    def test_the_open_fold_takes_its_content_height_and_never_zero(self):
+        css = (ASSETS / "base.css").read_text(encoding="utf-8")
+        self.assertNotRegex(css, r"flex:\s*1 1 0;\s*min-height:\s*0")
+        rule = re.search(r"#kinds > \.foldable\.grouped:not\(\.closed\)\s*\{([^}]*)\}", css).group(1)
+        self.assertIn("flex: 0 1 auto", rule)
+        self.assertRegex(rule, r"min-height:\s*var\(--fold-floor")
+        self.assertRegex(css, r"grid-template-rows var\(--dur-4\)")
+        self.assertRegex(css, r"@media \(prefers-reduced-motion: reduce\) \{ \.foldable \{ transition: none; \} \}")
+
+    def test_no_transition_waits_for_the_old_one_to_leave(self):
+        for source in PAGE_SOURCES:
+            if source.suffix == ".vue":
+                self.assertNotRegex(source.read_text(encoding="utf-8"), r"mode=.out-in", source.name)
+
+    def test_every_leave_class_a_view_declares_animates_and_has_its_reduced_motion(self):
+        css = without_comments((ASSETS / "base.css").read_text(encoding="utf-8"))
+        reduced = css[css.index("@media (prefers-reduced-motion: reduce) {\n  *,"):]
+        found = set()
+        for source in PAGE_SOURCES:
+            if source.suffix != ".vue":
+                continue
+            for name in re.findall(r'leave-active-class="([\w-]+)"', source.read_text(encoding="utf-8")):
+                found.add(name)
+                rule = re.search(r"\.%s\s*\{([^}]*)\}" % re.escape(name), css)
+                self.assertIsNotNone(rule, name)
+                self.assertRegex(rule.group(1), r"animation:\s*[\w-]+-out var\(--dur-[1-4]\)", name)
+                self.assertIn(":not(.%s)" % name, reduced, name)
+        self.assertIn("view-leave-active", found)
+
+    def test_the_screen_that_leaves_leaves_out_of_the_flow_over_the_new_one(self):
+        css = without_comments((ASSETS / "base.css").read_text(encoding="utf-8"))
+        rule = re.search(r"\.page > \.view-leave-active\s*\{([^}]*)\}", css).group(1)
+        self.assertIn("position: absolute", rule)
+        self.assertRegex(re.search(r"\.page\s*\{([^}]*)\}", css).group(1), r"position:\s*relative")
+
     def test_the_empty_state_is_a_room_not_a_line(self):
         rule = re.search(r"\.empty-state\s*\{([^}]*)\}", self.css).group(1)
         self.assertIn("min-height: 240px", rule)
@@ -610,3 +690,23 @@ class TheDesignPlanRules(unittest.TestCase):
         self.assertNotRegex(self.css, r"::before\s*\{[^}]*(?<![-\w])(?:width|height):\s*1[0-9]px")
         self.assertIn("--icon-sm:", self.css)
         self.assertIn("--icon-md:", self.css)
+
+
+class TheFilesFolderIsInTheUrl(unittest.TestCase):
+    """B-27: the Files browser's folder rides in the address (`/files/a/b`)."""
+
+    SRC = Path(webapp.__file__).parent / "src"
+
+    def test_the_address_carries_the_folder_and_steps_are_history(self):
+        views = (self.SRC / "lib" / "views.ts").read_text(encoding="utf-8")
+        self.assertIn("pieces.push(...filesFolder.segments.map(encodeURIComponent))", views)
+        self.assertIn("history.pushState(null, \"\", path)", views)
+        self.assertIn("window.addEventListener(\"popstate\"", views)
+        self.assertIn("parts[0] === FILES_KEY ? parts.slice(1) : null", views)
+
+    def test_a_link_to_a_folder_opens_it_and_the_screen_steps_through_it(self):
+        route = (self.SRC / "lib" / "shellRoute.ts").read_text(encoding="utf-8")
+        self.assertIn("filesFolder.segments = folderOfAddress(location.pathname)", route)
+        view = (self.SRC / "views" / "FilesView.vue").read_text(encoding="utf-8")
+        self.assertIn("stepFolder([...here.value, name])", view)
+        self.assertIn("watch(() => filesFolder.segments.join(\"/\")", view)
