@@ -90,7 +90,7 @@ COVERED_PERMISSIONS = (
     "backup:make",
     "backup:restore",
     "secret:scan",
-    "secret:install_hooks",
+    "secret:install-hooks",
     "job:run",
     "job:approve",
     "job:refuse",
@@ -130,9 +130,9 @@ class TheModifiersOfAnAct(unittest.TestCase):
         self.assertEqual(permissions.modifiers("secret:scan"), ())
 
     def test_secret_install_hooks_carries_its_one_flag(self):
-        names = {m.name for m in permissions.modifiers("secret:install_hooks")}
+        names = {m.name for m in permissions.modifiers("secret:install-hooks")}
         self.assertEqual(names, {"--repo"})
-        for modifier in permissions.modifiers("secret:install_hooks"):
+        for modifier in permissions.modifiers("secret:install-hooks"):
             self.assertEqual(modifier.kind, permissions.FLAG)
 
     def test_every_covered_modifier_has_the_right_shape(self):

@@ -55,6 +55,11 @@ class Dispatch(unittest.TestCase):
         for node in tree.roots():
             self.assertIn(node.name, text)
 
+    def test_ajuda_is_help(self):
+        self.assertEqual(self.run_words("ajuda"), self.run_words("help"))
+        code, _ = self.run_words("ajuda", "extra")
+        self.assertEqual(code, 2)
+
     def test_version_answers_with_the_packaged_version(self):
         code, text = self.run_words("version")
         self.assertEqual(code, 0)
@@ -254,6 +259,18 @@ class TheLanguage(unittest.TestCase):
         code, text = self.run_lang("en_US", "--include-app-folders")
         self.assertEqual(code, OK)
         self.assertTrue((self.root / "Tables").is_dir())
+
+    def test_include_subcommands_says_the_spelled_words(self):
+        code, text = self.run_lang("pt_BR", "--include-subcommands")
+        self.assertEqual(code, OK)
+        self.assertIn("help → ajuda", text)
+        code, text = self.run_lang("en_US", "--include-subcommands")
+        self.assertEqual(code, OK)
+        self.assertIn("no subcommand word", text)
+
+    def test_include_subcommands_without_a_code_is_a_usage_error(self):
+        code, _ = self.run_lang("--include-subcommands")
+        self.assertEqual(code, USAGE)
 
     def test_the_flag_without_a_code_is_a_usage_error(self):
         # It decorates a CHOICE: there is no language for the folders to take

@@ -7,6 +7,7 @@ from at.core import actors, assist, migrations, tables
 from at.i18n import tr
 from at.ui import ask as door
 from at.ui.ask import OK, REFUSED, USAGE
+from at.ui.cli import tree
 from at.ui.cli.common import Ask
 from at.ui.cli.common import readers as _readers
 from at.ui.cli.common import reject as _reject
@@ -74,6 +75,20 @@ def _admin(
     return OK
 
 
+def _say_subcommand_words(code: str) -> None:
+    """`--include-subcommands`: the subcommand words the language spells its own way.
+
+    The table is `tree.SUBCOMMAND_WORDS`, and it holds only the spellings the
+    `cli` already answers to (`ajuda`, `pedir`) — a language with none says so.
+    """
+    spelled = tree.SUBCOMMAND_WORDS.get(code, {})
+    if not spelled:
+        print(tr("cli.lang.subcommands.none", code=code))
+        return
+    pairs = ", ".join(f"{word} → {own}" for word, own in spelled.items())
+    print(tr("cli.lang.subcommands", code=code, words=pairs))
+
+
 def _lang(rest: list[str], ask: Ask | None = None) -> int:
     """`at-cli lang` — the language AT speaks, and the choice of it.
 
@@ -101,10 +116,13 @@ def _lang(rest: list[str], ask: Ask | None = None) -> int:
     include_folders = "--include-app-folders" in words
     if include_folders:
         words.remove("--include-app-folders")
+    include_subcommands = "--include-subcommands" in words
+    if include_subcommands:
+        words.remove("--include-subcommands")
     if len(words) > 1:
         return _reject("lang")
     if not words:
-        if include_folders:
+        if include_folders or include_subcommands:
             return _reject("lang")
         print(tr(
             "cli.lang.line",
@@ -124,6 +142,8 @@ def _lang(rest: list[str], ask: Ask | None = None) -> int:
     print(tr("cli.lang.chosen", code=code))
     migrations.offer_language(ask if ask is not None else _readers()[0],
                              include_folders=include_folders)
+    if include_subcommands:
+        _say_subcommand_words(code)
     return OK
 
 

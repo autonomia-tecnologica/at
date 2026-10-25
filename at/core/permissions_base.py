@@ -45,11 +45,11 @@ SECRET = "secret"
 # `NARROWED` and nowhere else, exactly as the `job`'s own three acts are.
 SCAN = "scan"
 
-# The SECRET's second own act — `at-cli secret install_hooks`: the varredura
+# The SECRET's second own act — `at-cli secret install-hooks`: the varredura
 # becomes the `pre-commit`/`pre-push` of a repository's own `.git/hooks/`
 # (`core.hooks`). It writes two files and reads nothing of any table, so it is
 # an act of its own exactly the way `SCAN` is, and not one of the engine's six.
-INSTALL_HOOKS = "install_hooks"
+INSTALL_HOOKS = "install-hooks"
 
 # The name of the `reminder` object, and the act that is its OWN — `at-cli
 # reminder due` (item 29's first slice). `REMINDER` is read off the table
@@ -102,7 +102,7 @@ NARROWED: dict[str, dict[str, tuple[str, ...]]] = {
     },
     # `secret scan` reads the folder and reports what it found — it writes no
     # row, so it is a read on §4's scale and it is nobody's approval but the
-    # administrator's. `secret install_hooks` WRITES — two files, in a
+    # administrator's. `secret install-hooks` WRITES — two files, in a
     # repository's own `.git/hooks/` — so it sits beside `scan` as the
     # object's second own act, and a closing and a deletion stay the two
     # permissions the table does not have.

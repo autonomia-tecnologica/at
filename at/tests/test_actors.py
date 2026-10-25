@@ -659,7 +659,7 @@ class TheCatalogue(ActorCase):
     def test_every_permission_is_written_object_colon_action(self):
         for permission in permissions.all_permissions():
             with self.subTest(permission=permission):
-                self.assertRegex(permission, r"^[a-z_]+:[a-z_]+$")
+                self.assertRegex(permission, r"^[a-z_]+:[a-z_-]+$")
 
     def test_a_label_is_a_word_and_not_a_key(self):
         written = permissions.label("task:create")

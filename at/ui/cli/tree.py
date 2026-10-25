@@ -90,6 +90,15 @@ WORDS: tuple[Node, ...] = (
 # one door — the same way `webapp` answers to `run`.
 ASK = Node("ask", "cli.ask.about", (Node("pedir", "cli.ask.pedir.about"),))
 
+# The subcommand words a language spells its own way (`at-cli lang <code>
+# --include-subcommands`). Only the spellings the `cli` already answers to are
+# here: `ajuda` is `help`, `pedir` is `ask`. `en_US` is the canonical spelling
+# and carries none.
+SUBCOMMAND_WORDS: dict[str, dict[str, str]] = {
+    "pt_BR": {"help": "ajuda", "ask": "pedir"},
+    "en_US": {},
+}
+
 # The four words that are the artifact's OWN INTERFACE, and not an act on the
 # Working Folder — so none of them has a permission to carry (TASK-186, fatia
 # 1/4, `help` carved out of it in fatia 3/4 — the person's own call, below).

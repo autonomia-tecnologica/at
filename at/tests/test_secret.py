@@ -356,7 +356,7 @@ class ThePermissions(SecretCase):
         # are measured in `test_scanner.py`/`test_hooks.py`.
         self.assertEqual(
             permissions.catalogue().get("secret"),
-            ("read", "edit", "scan", "install_hooks"),
+            ("read", "edit", "scan", "install-hooks"),
         )
         self.assertTrue(permissions.is_known("secret:read"))
         self.assertTrue(permissions.is_known("secret:edit"))
@@ -380,7 +380,7 @@ class ThePermissions(SecretCase):
         node = next(node for node in tree.table_nodes() if node.name == "secret")
         self.assertEqual(
             [child.name for child in node.children],
-            ["list", "view", "create", "edit", "scan", "install_hooks"],
+            ["list", "view", "create", "edit", "scan", "install-hooks"],
         )
 
     def test_the_closing_and_the_deletion_are_not_words_of_this_table(self):
@@ -401,7 +401,7 @@ class ThePermissions(SecretCase):
                 for name in permissions.carried(role)
                 if name.startswith("secret:")
             ),
-            ["secret:edit", "secret:install_hooks", "secret:read", "secret:scan"],
+            ["secret:edit", "secret:install-hooks", "secret:read", "secret:scan"],
         )
 
     def test_a_read_is_a_read_and_a_write_is_a_write(self):

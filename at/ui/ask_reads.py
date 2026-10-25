@@ -184,7 +184,7 @@ def _shown(finding: scanner.Finding) -> str:
 
 
 def install_hooks(args: list[str]) -> tuple[int, str]:
-    """`secret install_hooks` — the varredura becomes `git`'s own portão.
+    """`secret install-hooks` — the varredura becomes `git`'s own portão.
 
     **The act is the table's own, and it does not walk `run`.** It writes two
     files into a repository's own `.git/hooks/` and no row of any table, so it

@@ -375,11 +375,11 @@ def _once_needs_a_day(ask: Ask | None) -> list[Report]:
 # (`permissions.NARROWED`), the same shape migration sixteen already handed
 # over for `secret:scan`: a role born before this swap carries none of it,
 # because it was built from the catalogue of its own day.
-HOOKS_PERMISSIONS = ("secret:install_hooks",)
+HOOKS_PERMISSIONS = ("secret:install-hooks",)
 
 
 def _hooks(ask: Ask | None) -> list[Report]:
-    """Migração vinte e nove: `secret install_hooks`, e o teto sobre ele.
+    """Migração vinte e nove: `secret install-hooks`, e o teto sobre ele.
 
     A mesma razão da dezesseis: a linha é do AT, e a troca só ADICIONA
     (`_hand_over`). Nada mais na pasta muda — o ato escreve dois arquivos fora

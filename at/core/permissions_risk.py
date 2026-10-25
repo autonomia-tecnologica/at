@@ -41,10 +41,10 @@ RISK_BY_ACTION: dict[str, float] = {
     # The scan READS the folder: it reports what it found and corrects nothing
     # (`secrets scan`), so it is a read like a listing and it moves no ceiling.
     "scan": RISK_READ,
-    # `secret install_hooks` WRITES two files into a repository's own
+    # `secret install-hooks` WRITES two files into a repository's own
     # `.git/hooks/` — the same reason `make`/`convert` sit at this number, and
     # not above it: it changes nothing of what the system ALLOWS.
-    "install_hooks": RISK_WRITE,
+    "install-hooks": RISK_WRITE,
     # `due` READS the store: it says which reminders a day is about and writes
     # no row, the same reason `scan` is a read and not a write.
     "due": RISK_READ,

@@ -1,4 +1,4 @@
-"""`at-cli secret install_hooks` — the varredura becomes `git`'s own portão.
+"""`at-cli secret install-hooks` — the varredura becomes `git`'s own portão.
 
 `core.scanner` already reports what a folder carries that it should not; this
 module is the second half, written into the session itself: it writes

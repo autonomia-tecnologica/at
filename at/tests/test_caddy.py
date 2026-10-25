@@ -514,11 +514,23 @@ class TheAdaptedGate(FolderCase):
         routes = self.routes(text)
         self.assertEqual(len(routes), 3)
         self.assertEqual(routes[0]["match"],
-                         [{"path": ["/manifest.webmanifest", "/icons/*"]}])
+                         [{"path": ["/sw.js", "/manifest.webmanifest", "/icons/*"]}])
         self.assertEqual(routes[1]["match"],
                          [{"path": [caddy.PORTAL, f"{caddy.PORTAL}/*"]}])
         self.assertIsNone(routes[2].get("match"),
                           "o resto do site tem de ser o fallback, e não um caminho")
+
+    def test_only_the_pwa_paths_leave_the_gate(self):
+        # Sem rede e sem o binário do Caddy: o que o AT escreve. `/sw.js` e o
+        # manifesto saem do portão, e nenhum outro caminho além dos ícones.
+        text = caddy.caddyfile("localhost", 12399, 41234,
+                               gate="segredo-sorteado", auth="127.0.0.1:9091")
+        matchers = [line.strip() for line in text.splitlines()
+                    if line.strip().startswith("@")]
+        self.assertEqual(matchers, [
+            "@pwa path /sw.js /manifest.webmanifest /icons/*",
+            f"@portal path {caddy.PORTAL} {caddy.PORTAL}/*",
+        ])
 
     def test_the_pwa_utility_goes_straight_to_the_webapp(self):
         # O manifesto e os ícones, SEM a pergunta: o Chrome busca o manifesto
@@ -529,7 +541,7 @@ class TheAdaptedGate(FolderCase):
                                gate="segredo-sorteado", auth="127.0.0.1:9091")
         pwa = self.routes(text)[0]
         self.assertEqual(pwa["match"],
-                         [{"path": ["/manifest.webmanifest", "/icons/*"]}])
+                         [{"path": ["/sw.js", "/manifest.webmanifest", "/icons/*"]}])
         drawn = json.dumps(pwa)
         self.assertIn("127.0.0.1:41234", drawn)
         self.assertNotIn(caddy.AUTH_URI, drawn)

@@ -72,7 +72,7 @@ def _dispatch(words: list[str]) -> int:
 
     word, rest = words[0], words[1:]
 
-    if word in ("help", "--help", "-h"):
+    if word in ("help", "ajuda", "--help", "-h"):
         if rest:
             return _reject(word)
         print(tree.as_text())

@@ -1,4 +1,4 @@
-"""`at-cli secret install_hooks` — the varredura becomes `git`'s own portão.
+"""`at-cli secret install-hooks` — the varredura becomes `git`'s own portão.
 
 `.claude/CLAUDE.md` already names the practice by hand: scan before a commit,
 scan before a push, refuse the one and the other when the folder is not clean.
@@ -59,7 +59,7 @@ class HooksCase(unittest.TestCase):
     def cli(self, *words: str) -> tuple[int, str]:
         output = io.StringIO()
         with redirect_stdout(output):
-            code = main(["secret", "install_hooks", *words])
+            code = main(["secret", "install-hooks", *words])
         return code, output.getvalue()
 
 
@@ -101,7 +101,7 @@ class TheInstall(HooksCase):
 
 
 class TheCLI(HooksCase):
-    """`secret install_hooks`, through `main` — usage, refusal and the word."""
+    """`secret install-hooks`, through `main` — usage, refusal and the word."""
 
     def test_extra_arguments_without_repo_are_a_usage_error(self):
         code, _ = self.cli("--unknown")

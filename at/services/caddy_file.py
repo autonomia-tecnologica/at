@@ -95,8 +95,10 @@ def caddyfile(host: str, port: int, backend: int, gate: str | None = None,
     portal, so the portal itself cannot be asked about — asking is what sends
     the browser there; and the PWA's manifest and icons cannot be asked about
     either, because the browser fetches the manifest WITHOUT credentials and
-    never reaches the provider through the ask. The three `handle`s below are
-    the whole of it: the PWA's paths go STRAIGHT to the WebApp, the portal's
+    never reaches the provider through the ask; nor can `/sw.js`, because a
+    stale service worker updates itself with no session and would be sent to
+    the portal. The three `handle`s below are
+    the whole of it: the PWA's paths (`/sw.js`, the manifest, the icons) go STRAIGHT to the WebApp, the portal's
     path goes STRAIGHT to the provider, and everything else goes through the ask
     and then to the WebApp. Caddy sorts a matched `handle` before the bare one,
     which is the fallback, so the matched paths win where they match and the
@@ -155,13 +157,16 @@ def caddyfile(host: str, port: int, backend: int, gate: str | None = None,
         # O UTILITÁRIO DO PWA É PÚBLICO, E TEM QUE SER. O Chrome busca o
         # MANIFESTO sem credenciais (`credentials: omit`, o que a spec manda),
         # e atrás do ask ele nunca chega — sem manifesto lido não existe
-        # "Instalar app", por mais ícones que haja. São dois caminhos, e só
-        # dois: o manifesto e os ícones — metadado e imagem, nenhum dado da
+        # "Instalar app", por mais ícones que haja. São três caminhos, e só
+        # eles: o service worker (`/sw.js`), o manifesto e os ícones — o
+        # worker velho do navegador busca a versão nova SEM sessão, e atrás do
+        # ask levaria 302 para o portal e nunca se atualizaria. Código estático
+        # e imagem, nenhum dado da
         # pasta, e nada que a lista de `.enc` ou o claro de um arquivo toque.
         # Vão direto ao WebApp, sem o `forward_auth` e sem o cabeçalho do
         # portão: quem os serve é o `_static`, que não pergunta nada.
         lines += [
-            "\t@pwa path /manifest.webmanifest /icons/*",
+            "\t@pwa path /sw.js /manifest.webmanifest /icons/*",
             "\thandle @pwa {",
             f"\t\treverse_proxy {behind}:{backend}",
             "\t}",
