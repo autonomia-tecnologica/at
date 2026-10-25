@@ -93,6 +93,42 @@ class Dispatch(unittest.TestCase):
         code, _ = self.run_words("help", "extra")
         self.assertEqual(code, 2)
 
+    def test_a_word_help_shows_only_its_subtree(self):
+        code, text = self.run_words("backup", "help")
+        self.assertEqual(code, OK)
+        self.assertIn("at-cli backup", text)
+        self.assertIn("make", text)
+        self.assertIn("restore", text)
+        # nothing of the rest of the tree
+        for other in ("webapp", "license", "install"):
+            self.assertNotIn(other, text)
+        self.assertNotIn(i18n.tr("cli.help.no_args"), text)
+        # a table is a word with a subtree too
+        code, text = self.run_words("task", "help")
+        self.assertEqual(code, OK)
+        self.assertIn("create", text)
+        self.assertNotIn("backup", text)
+
+    def test_a_word_help_with_something_after_it_names_what_failed(self):
+        code, text = self.run_words("backup", "help", "extra")
+        self.assertEqual(code, 2)
+        self.assertIn(i18n.tr("cli.error.surplus_argument", word="help", argument="extra"), text)
+
+    def test_a_word_that_takes_an_argument_keeps_help_as_the_argument(self):
+        code, text = self.run_words("search", "help")
+        self.assertEqual(code, OK)
+        self.assertNotIn("at-cli search", text)
+
+    def test_the_rejection_names_the_word_that_failed(self):
+        code, text = self.run_words("backup", "nope")
+        self.assertEqual(code, 2)
+        self.assertIn(i18n.tr("cli.error.unknown_word", word="nope"), text)
+        code, text = self.run_words("help", "extra")
+        self.assertIn(i18n.tr("cli.error.surplus_argument", word="help", argument="extra"), text)
+        code, text = self.run_words("backup", "make", "a", "b")
+        self.assertEqual(code, 2)
+        self.assertIn(i18n.tr("cli.error.surplus_argument", word="make", argument="b"), text)
+
     def test_the_language_word_answers(self):
         code, text = self.run_words("lang")
         self.assertEqual(code, OK)

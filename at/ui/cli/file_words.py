@@ -12,6 +12,8 @@ from at.ui.cli import jsonout, tree
 from at.ui.cli.common import Ask
 from at.ui.cli.common import readers as _readers
 from at.ui.cli.common import reject as _reject
+from at.ui.cli.common import reject_extra as _reject_extra
+from at.ui.cli.common import reject_unknown as _reject_unknown
 
 # ----------------------------------------------------------------- the backup ---
 
@@ -25,11 +27,13 @@ def _backup(rest: list[str], secret: Ask | None = None) -> int:
     destination with no tool to reach it or a folder `restore` refuses never
     gets as far as asking a person to type it.
     """
+    if rest and rest[0] not in (backup.MAKE, backup.RESTORE):
+        return _reject_unknown(rest[0])
+    if len(rest) > 2:
+        return _reject_extra(rest[0], rest[2])
     if len(rest) != 2:
         return _reject("backup")
     action, target = rest[0], rest[1]
-    if action not in (backup.MAKE, backup.RESTORE):
-        return _reject("backup")
     if secret is None:
         secret = _readers()[1]
     if secret is None:

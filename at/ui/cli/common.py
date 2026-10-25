@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from at.i18n import tr
 from at.ui import ask as door
 from at.ui.ask import USAGE
 
@@ -18,6 +19,19 @@ def readers() -> tuple[Ask | None, Ask | None]:
     from at.ui import cli
 
     return cli._readers()
+
+
+def reject_extra(word: str, argument: str) -> int:
+    """The refusal that names WHAT failed: the argument the word did not take."""
+    print(door.surplus(word, argument))
+    return USAGE
+
+
+def reject_unknown(word: str) -> int:
+    """The refusal of a sub-word nobody declared: it names that sub-word."""
+    print(tr("cli.error.unknown_word", word=word))
+    print(tr("cli.error.usage"))
+    return USAGE
 
 
 def reject(word: str) -> int:

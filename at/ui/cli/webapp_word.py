@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from at.ui.cli.common import reject as _reject
+from at.ui.cli.common import reject_unknown as _reject_unknown
 
 
 def _webapp(rest: list[str]) -> int:
@@ -58,7 +59,9 @@ def _webapp(rest: list[str]) -> int:
         if flag == "--no-caddy":
             include_caddy = False
             continue
-        if flag not in (*PORT_FLAGS, *PUBLIC_PORT_FLAGS, "--host") or not args:
+        if flag not in (*PORT_FLAGS, *PUBLIC_PORT_FLAGS, "--host"):
+            return _reject_unknown(flag)
+        if not args:
             return _reject("webapp")
         value, args = args[0], args[1:]
         if flag == "--host":

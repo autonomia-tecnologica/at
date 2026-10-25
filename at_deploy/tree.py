@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from at import __version__
 from at.i18n import tr
-from at.ui.words import Node, completion_words, section, width
+from at.ui.words import Node, completion_words, scoped, section, width
 
 # The container environment's words, nested under `container` (2026-10-03: a
 # second environment — the host's own systemd, below — arrived, and a word
@@ -105,6 +105,16 @@ def host_words() -> tuple[str, ...]:
 def completion() -> tuple[tuple[str, tuple[str, ...]], ...]:
     """Every word the completion offers — which is every word the help does."""
     return completion_words(roots())
+
+
+def scoped_text(word: str) -> str | None:
+    """The help of one root word: only the words under it, in the top help's
+    shape. `None` for a root with nothing under it."""
+    node = next((n for n in roots() if n.name == word), None)
+    if node is None or not node.children:
+        return None
+    return scoped(node, "deploy.help.title", "deploy.help.scoped_usage",
+                  "deploy.help.words", version=__version__)
 
 
 def as_text() -> str:

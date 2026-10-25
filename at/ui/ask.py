@@ -115,7 +115,7 @@ from at.i18n import tr
 # The door's pieces live in their own modules; every name a caller reached by
 # `at.ui.ask.<name>` is read back here, so the door stays ONE address.
 from at.ui.ask_backup import _backed, _main_key, backup_message  # noqa: F401
-from at.ui.ask_base import OK, PROJECT, REFUSED, TASK, USAGE, _sets, _sign, rejected  # noqa: F401
+from at.ui.ask_base import OK, PROJECT, REFUSED, TASK, USAGE, _sets, _sign, rejected, surplus  # noqa: F401
 from at.ui.ask_jobs import _ceiling, _fired, _ran, _round, job, tick  # noqa: F401
 from at.ui.ask_listing import (  # noqa: F401
     _bare_day,

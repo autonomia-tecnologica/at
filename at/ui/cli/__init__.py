@@ -22,10 +22,12 @@ from at.ui.ask import OK, REFUSED, USAGE
 from at.ui.cli import jsonout, tree
 from at.ui.cli.common import Ask
 from at.ui.cli.common import reject as _reject
+from at.ui.cli.common import reject_extra as _reject_extra
 from at.ui.cli.file_words import _backup, _convert, _installed, _license, _search
 from at.ui.cli.object_words import _OWN_ACTS, _ask, _job, _setting, _table  # noqa: F401
 from at.ui.cli.person_words import _admin, _assist, _lang
 from at.ui.cli.webapp_word import _webapp
+from at.ui.words import HELP_WORDS
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -72,15 +74,15 @@ def _dispatch(words: list[str]) -> int:
 
     word, rest = words[0], words[1:]
 
-    if word in ("help", "ajuda", "--help", "-h"):
+    if word in HELP_WORDS:
         if rest:
-            return _reject(word)
+            return _reject_extra(word, rest[0])
         print(tree.as_text())
         return OK
 
     if word in ("version", "--version", "-V"):
         if rest:
-            return _reject(word)
+            return _reject_extra(word, rest[0])
         print(tr("cli.version.line", version=__version__))
         jsonout.attach("version", __version__)
         # A completion written for zsh is not on its `fpath` until the person's
@@ -92,6 +94,15 @@ def _dispatch(words: list[str]) -> int:
         if folder is not None:
             print(tr("install.completion.fpath", folder=folder))
         return OK
+
+    # `<word> help`: the subtree of that word, and only it.
+    if rest[:1] and rest[0] in HELP_WORDS:
+        scoped = tree.scoped_text(word)
+        if scoped is not None:
+            if rest[1:]:
+                return _reject_extra(rest[0], rest[1])
+            print(scoped)
+            return OK
 
     if word == "license":
         return _license(rest)

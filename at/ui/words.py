@@ -69,6 +69,23 @@ def table(rows: Sequence[Sequence[str]]) -> str:
     )
 
 
+HELP_WORDS = ("help", "ajuda", "--help", "-h")
+"""The spellings that ask for the help, at the root and after a word."""
+
+
+def scoped(node: Node, title_key: str, usage_key: str, words_key: str, **title: str) -> str:
+    """The help of ONE word: the top help's shape, only the words under it.
+
+    Same title, same `usage` line (with the word in it) and same block of
+    words; nothing else of the root's help (the tables, `--json`, the
+    no-args sentence) is about a subtree.
+    """
+    column = width(node.children)
+    lines = [tr(title_key, **title), "", tr(usage_key, word=node.name)]
+    lines += section(node.children, column, words_key)
+    return "\n".join(lines)
+
+
 def section(nodes: tuple[Node, ...], column: int, title_key: str) -> list[str]:
     """One block of the help: the word, what it is, and the words under it."""
     described = [(node, tr(node.about)) for node in nodes]

@@ -49,3 +49,8 @@ def _sets(args: list[str]) -> tuple[dict[str, str], list[str]]:
 def rejected(word: str) -> str:
     """The sentence a surface reads when a word was given the wrong arguments."""
     return tr("cli.error.rejected_arguments", word=word)
+
+
+def surplus(word: str, argument: str) -> str:
+    """The sentence for an argument the word did not take: it names the argument."""
+    return tr("cli.error.surplus_argument", word=word, argument=argument)

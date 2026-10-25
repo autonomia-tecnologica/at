@@ -4,7 +4,7 @@
 
 - When AT opens with no word at all, the binary brings the app itself up — the way `at-cli webapp` does — and opens the browser on it: the "Control Panel" is the WebApp, on an ephemeral port and behind a one-time token the process draws at boot. There is no Tkinter interface any more: what the person sees is the same page `at-cli webapp` serves, only opened by the binary itself, with nobody typing a port or a URL.
 
-- Calling the binary straight from the terminal, with no word, loads this Panel in the browser. Any other parameter passed makes the program act as a `cli`. `at-cli help` (or `at-cli ajuda`) shows how to use the cli completely.
+- Calling the binary straight from the terminal, with no word, loads this Panel in the browser. Any other parameter passed makes the program act as a `cli`. `at-cli help` (or `at-cli ajuda`) shows how to use the cli completely. `<word> help` (for example `at-cli backup help`, `at-deploy container help`) shows only that word's subtree, in the same format. And a refusal names what failed: the unknown sub-word, or the argument left over — never the group.
 
 - The command line works for everything in AT. Any functionality it exposes, whether in the REST API (used by the WebApp frontend) or in the WebApp itself, is reachable from the command line.
 

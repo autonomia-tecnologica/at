@@ -2313,6 +2313,30 @@ class TheDoor(FolderCase):
         self.assertEqual(code, USAGE)
         self.assertIn(i18n.tr("deploy.error.unknown_word", word="run"), text)
 
+    def test_a_group_help_shows_only_its_subtree(self):
+        for group, words in (("container", tree.environment_words()),
+                             ("host", tree.host_words())):
+            with self.subTest(group=group):
+                code, text = self.quiet(main, [group, "help"])
+                self.assertEqual(code, OK)
+                self.assertIn(f"at-deploy {group}", text)
+                for word in words:
+                    self.assertIn(word, text)
+                self.assertNotIn("license", text)
+                self.assertNotIn("uninstall", text)
+        code, text = self.quiet(main, ["container", "help", "x"])
+        self.assertEqual(code, USAGE)
+        self.assertIn(
+            i18n.tr("deploy.error.surplus_argument", word="help", argument="x"), text)
+
+    def test_the_rejection_names_the_argument_that_failed(self):
+        code, text = self.quiet(main, ["container", "up", "extra"])
+        self.assertEqual(code, USAGE)
+        self.assertIn(
+            i18n.tr("deploy.error.surplus_argument", word="up", argument="extra"), text)
+        code, text = self.quiet(main, ["container", "nope"])
+        self.assertIn(i18n.tr("deploy.error.unknown_word", word="nope"), text)
+
     def test_the_help_offers_every_root_word_of_the_environment(self):
         code, text = self.quiet(main, ["help"])
         self.assertEqual(code, OK)

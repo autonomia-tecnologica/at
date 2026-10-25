@@ -2,6 +2,7 @@
   "pt_BR": {
     "help.title": "at-deploy {version}",
     "help.usage": "at-deploy <palavra>",
+    "help.scoped_usage": "at-deploy {word} <palavra>",
     "help.words": "Palavras",
     "help.no_args": "Sem palavra, o at-deploy imprime esta ajuda.",
     "install.about": "Põe o at-deploy no PATH, e o completion do shell",
@@ -26,11 +27,13 @@
     "error.unknown_word": "Palavra desconhecida: {word}.",
     "error.usage": "Use `at-deploy help` para ver as palavras.",
     "error.rejected_arguments": "A palavra {word} não aceita argumento nesta versão.",
+    "error.surplus_argument": "A palavra {word} não aceita o argumento {argument}.",
     "error.read_only": "Modo somente leitura: nada foi escrito em {where}."
   },
   "en_US": {
     "help.title": "at-deploy {version}",
     "help.usage": "at-deploy <word>",
+    "help.scoped_usage": "at-deploy {word} <word>",
     "help.words": "Words",
     "help.no_args": "With no word, at-deploy prints this help.",
     "install.about": "Puts at-deploy on the PATH, and the shell's completion",
@@ -55,6 +58,7 @@
     "error.unknown_word": "Unknown word: {word}.",
     "error.usage": "Use `at-deploy help` to see the words.",
     "error.rejected_arguments": "The word {word} takes no argument in this version.",
+    "error.surplus_argument": "The word {word} does not take the argument {argument}.",
     "error.read_only": "Read-only mode: nothing was written to {where}."
   }
 }

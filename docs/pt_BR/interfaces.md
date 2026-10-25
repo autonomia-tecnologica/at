@@ -4,7 +4,7 @@
 
 - Ao abrir o AT sem nenhuma palavra, o binário sobe o próprio app — como `at-cli webapp` — e abre o navegador nele: o "Painel de Controle" é o WebApp, numa porta efêmera e por trás de um token de uso único que o processo sorteia no boot. Não existe mais uma interface em Tkinter: o que a pessoa vê é a mesma página que `at-cli webapp` serve, só que aberta por ela mesma, sem ninguém digitar porta nem URL.
 
-- Chamar o binário direto do terminal, sem palavra, carrega esse Painel no navegador. Qualquer outro parâmetro passado faz o programa agir como uma `cli`. `at-cli ajuda`, ou `at-cli help`, mostra como usar a cli completamente.
+- Chamar o binário direto do terminal, sem palavra, carrega esse Painel no navegador. Qualquer outro parâmetro passado faz o programa agir como uma `cli`. `at-cli ajuda`, ou `at-cli help`, mostra como usar a cli completamente. `<palavra> help` (por exemplo `at-cli backup help`, `at-deploy container help`) mostra só a subárvore daquela palavra, no mesmo formato. E uma recusa nomeia o que falhou: a sub-palavra desconhecida, ou o argumento que sobrou — nunca o grupo.
 
 - A linha de comando funciona para tudo do AT. Qualquer funcionalidade que ele exponha, seja na API REST (utilizada pelo frontend do WebApp), seja no WebApp em si, é acessível pela linha de comando.
 

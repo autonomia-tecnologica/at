@@ -24,7 +24,7 @@ from at import __version__, nlu
 from at.core import permissions
 from at.data import schema
 from at.i18n import tr
-from at.ui.words import Node, completion_words, section, width
+from at.ui.words import Node, completion_words, scoped, section, width
 
 # The settings' word. The object is NOT a table — there is no schema to generate
 # the word from — so it is declared here, beside `lang` and `admin`, which are
@@ -174,6 +174,19 @@ def find(name: str) -> Node | None:
 def completion() -> tuple[tuple[str, tuple[str, ...]], ...]:
     """Every word the completion offers — which is every word the help does."""
     return completion_words(roots())
+
+
+def scoped_text(word: str) -> str | None:
+    """The help of one word: only the words under it, in the top help's shape.
+
+    `None` when the word has no subtree to show (a word that takes an argument
+    — `search`, `convert`, the interpreter's — keeps `help` as its argument).
+    """
+    node = find(word)
+    if node is None or not node.children or word in ask_words():
+        return None
+    return scoped(node, "cli.help.title", "cli.help.scoped_usage", "cli.help.words",
+                  version=__version__)
 
 
 def as_text() -> str:

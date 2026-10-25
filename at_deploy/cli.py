@@ -45,6 +45,9 @@ WORDS = tree.environment_words()
 # The host environment's two words, the same guarantee, one level down.
 HOST_WORDS = tree.host_words()
 
+# The spellings that ask for the help, at the root and after a word.
+HELP_WORDS = ("help", "--help", "-h")
+
 # The one word that takes an argument, and it is a NAME: the gate asserts a name
 # and the `users.yml` it derives is keyed by one (§7b). The tree carries what a
 # word IS and not how it is spelled after it, which is why this is said here.
@@ -82,15 +85,15 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     word, rest = words[0], words[1:]
 
-    if word in ("help", "--help", "-h"):
+    if word in HELP_WORDS:
         if rest:
-            return _reject(word)
+            return _reject_extra(word, rest[0])
         print(tree.as_text())
         return OK
 
     if word in ("version", "--version", "-V"):
         if rest:
-            return _reject(word)
+            return _reject_extra(word, rest[0])
         print(tr("deploy.version.line", version=__version__))
         return OK
 
@@ -98,19 +101,39 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _license(rest)
 
     if word == "container":
-        if not rest or rest[0] not in WORDS:
-            print(tr("deploy.error.unknown_word", word=rest[0] if rest else word))
-            print(tr("deploy.error.usage"))
+        if not rest:
+            # A group alone is not a failure of any word under it: it shows
+            # what is under it, and is still a usage error (nothing ran).
+            print(tree.scoped_text(word))
             return USAGE
+        if rest[0] in HELP_WORDS:
+            if rest[1:]:
+                return _reject_extra(rest[0], rest[1])
+            print(tree.scoped_text(word))
+            return OK
+        if rest[0] not in WORDS:
+            return _unknown(rest[0])
         return services(rest)
 
     if word == "host":
-        if not rest or rest[0] not in HOST_WORDS:
-            print(tr("deploy.error.unknown_word", word=rest[0] if rest else word))
-            print(tr("deploy.error.usage"))
+        if not rest:
+            # A group alone is not a failure of any word under it: it shows
+            # what is under it, and is still a usage error (nothing ran).
+            print(tree.scoped_text(word))
             return USAGE
+        if rest[0] in HELP_WORDS:
+            if rest[1:]:
+                return _reject_extra(rest[0], rest[1])
+            print(tree.scoped_text(word))
+            return OK
+        if rest[0] not in HOST_WORDS:
+            return _unknown(rest[0])
         return _host(rest)
 
+    return _unknown(word)
+
+
+def _unknown(word: str) -> int:
     print(tr("deploy.error.unknown_word", word=word))
     print(tr("deploy.error.usage"))
     return USAGE
@@ -191,14 +214,14 @@ def services(
         return _reject(word)
     if word == ARGUMENT:
         if len(args) > 1:
-            return _reject(word)
+            return _reject_extra(word, args[1])
         if not args:
             # The word needs to know WHOSE credential, and saying which words
             # exist would not say that: the usage is this word's own.
             print(tr("deploy.credential.ask"))
             return USAGE
     elif args:
-        return _reject(word)
+        return _reject_extra(word, args[0])
 
     if word == "status":
         environment.status()
@@ -398,6 +421,12 @@ def _license(rest: list[str], texts: bool = False) -> int:
         return _reject("license")
     print(licenses.report(paths.DEPLOY, texts=texts))
     return OK
+
+
+def _reject_extra(word: str, argument: str) -> int:
+    """The refusal that names what failed: the argument the word did not take."""
+    print(tr("deploy.error.surplus_argument", word=word, argument=argument))
+    return USAGE
 
 
 def _reject(word: str) -> int:
