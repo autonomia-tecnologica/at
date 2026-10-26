@@ -540,11 +540,12 @@ class TheTitlesAreInNormalCase(unittest.TestCase):
                     self.assertTrue(all(re.search(r"(^|[\s>+~])th$", n) for n in names),
                                     f"{sheet.name}: {selector.strip()}")
 
-    def test_the_sidebar_and_the_card_titles_read_the_title_size(self):
+    def test_the_sidebar_reads_the_body_size_and_the_card_titles_the_title_size(self):
         text = without_comments((ASSETS / "base.css").read_text(encoding="utf-8"))
-        for head in (r"nav \.folder,\s*nav \.file\[data-view=\"reminders\"\]", r"\.cards h2"):
+        for head, size in ((r"nav \.folder,\s*nav \.file\[data-view=\"reminders\"\]", "var(--type-body)"),
+                           (r"\.cards h2", "var(--type-title)")):
             body = re.search(head + r"[^{]*\{([^}]*)\}", text).group(1)
-            self.assertIn("var(--type-title)", body)
+            self.assertIn(size, body)
             self.assertNotIn("letter-spacing", body)
 
 
