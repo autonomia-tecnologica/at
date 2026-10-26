@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import cast
 
 from at import convert, i18n
-from at.core import actors, assist, audit, files, jobs, permissions, tables
+from at.core import actors, assist, audit, files, jobs, permissions, spelling, tables
 from at.prose import listing as prose
 from at.prose import payload as shape
 from at.ui import ask as door
@@ -53,6 +53,35 @@ class AiRoutes(RouteBase):
             self._json({"error": f"read-only: {error.where}"}, 403)
             return
         self._json({"path": target.name})
+
+    def _post_spell(self) -> None:
+        """`{text, language}` -> `{available, findings}`: what the spelling-checker
+        found. Offsets and lengths leave in the UTF-16 units a browser string
+        counts (the motor's are code points); nothing here corrects anything.
+        `available: false` is the service being down — the page goes on without.
+        """
+        payload = self._body()
+        if payload is None:
+            return
+        text, language = payload.get("text"), payload.get("language")
+        if not isinstance(text, str) or language not in ("pt_BR", "en_US"):
+            self._json({"error": "bad request"}, 400)
+            return
+        found = spelling.check(text, language)
+        if found is None:
+            self._json({"available": False, "findings": []})
+            return
+        out = []
+        for item in found:
+            start = spelling.utf16_units(text, item.offset)
+            end = spelling.utf16_units(text, item.offset + item.length)
+            out.append({
+                "offset": start,
+                "length": end - start,
+                "message": item.message,
+                "suggestions": list(item.suggestions[:6]),
+            })
+        self._json({"available": True, "findings": out})
 
     def _post_ask(self) -> None:
         """One sentence through the interpreter's door: the proposal, and then.

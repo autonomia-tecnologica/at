@@ -137,3 +137,9 @@ def _utf16_to_index(text: str):
         table.extend([index] * (2 if ord(char) >= 0x10000 else 1))
     table.append(len(text))
     return lambda unit: table[min(unit, len(table) - 1)]
+
+
+def utf16_units(text: str, index: int) -> int:
+    """The inverse of the table above: a code-point `index` of `text` in the
+    UTF-16 units a browser's string indexes (`slice`, `selectionStart`) count."""
+    return len(text[:index].encode("utf-16-le")) // 2

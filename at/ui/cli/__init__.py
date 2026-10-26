@@ -21,7 +21,6 @@ from at.ui import ask as door  # noqa: F401 — the name stays reachable here
 from at.ui.ask import OK, REFUSED, USAGE
 from at.ui.cli import jsonout, tree
 from at.ui.cli.common import Ask
-from at.ui.cli.common import reject as _reject
 from at.ui.cli.common import reject_extra as _reject_extra
 from at.ui.cli.file_words import _backup, _convert, _installed, _license, _search
 from at.ui.cli.object_words import _OWN_ACTS, _ask, _job, _setting, _table  # noqa: F401

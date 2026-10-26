@@ -1,0 +1,87 @@
+/* tipography, light — cream paper and book type: serif, a book's measure, a brown accent.
+   Contract: the scales live in `base.css`; this file is only colour, face and corner. */
+
+:root {
+  --font-sans: "Iowan Old Style", "Palatino Linotype", Palatino, "URW Palladio L",
+               Georgia, serif;
+  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, "URW Palladio L",
+               Georgia, serif;
+  --r-sm: 3px;
+  --r-md: 6px;
+  --r-lg: 10px;
+  --surface-canvas: #faf4e8;
+  --surface-card: #ece2cc;
+  --surface-raised: #e4dac5;
+  --surface-sunken: #ddd2ba;
+  --neutral-50: #faf4e8;
+  --neutral-100: #e4ded3;
+  --neutral-200: #cdc8be;
+  --neutral-300: #b7b3a9;
+  --neutral-400: #a19d94;
+  --neutral-500: #8a8780;
+  --neutral-600: #74716b;
+  --neutral-700: #5e5b56;
+  --neutral-800: #484641;
+  --neutral-900: #31302c;
+  --neutral-950: #1b1a17;
+  --text-primary: #1b1a17;
+  --text-secondary: #463f33;
+  --text-tertiary: #564e3f;
+  --border-subtle: #d6caaf;
+  --border-default: #bfb297;
+  --border-control: #7d7259;
+  --row-hover: #e6dcc6;
+  --control-track: #d6caaf;
+  --accent-50: #f8f3ef;
+  --accent-100: #eee5dd;
+  --accent-200: #dac9ba;
+  --accent-300: #c6ad96;
+  --accent-400: #b29272;
+  --accent-500: #9e764f;
+  --accent-600: #8a5a2b;
+  --accent-700: #6f4620;
+  --accent-800: #58361a;
+  --accent: var(--accent-600);
+  --accent-hover: var(--accent-700);
+  --accent-active: var(--accent-800);
+  --accent-ink: #ffffff;
+  --accent-soft: var(--accent-50);
+  --accent-ring: rgb(138 90 43 / 35%);
+  --success: #16a34a;
+  --success-soft: #ecfdf3;
+  --warning: #d97706;
+  --warning-soft: #fffaeb;
+  --danger: #dc2626;
+  --danger-soft: #fef2f2;
+  --info: #2563eb;
+  --info-soft: #eff4ff;
+  --success-text: #15803d;
+  --warning-text: #b45309;
+  --danger-text: #b91c1c;
+  --info-text: #1d4ed8;
+  --danger-ink: #fff;
+  --danger-hover: color-mix(in srgb, var(--danger) 85%, #000);
+  --switch-knob: #fff;
+  --shadow-rgb: 20 18 15;
+  --shadow-e1: 0 2px 8px rgb(var(--shadow-rgb) / 8%);
+  --shadow-e2: 0 12px 32px rgb(var(--shadow-rgb) / 16%);
+  --scrollbar-thumb: var(--border-default);
+  --scrollbar-thumb-hover: #a89c82;
+  --nav-bg: #d3cab6;
+  --nav-border: rgb(var(--shadow-rgb) / 10%);
+  --nav-edge: 0 16px 48px rgb(var(--shadow-rgb) / 12%);
+  --nav-ink-1: var(--text-primary);
+  --nav-ink-2: var(--text-secondary);
+  --nav-ink-3: var(--text-tertiary);
+  --nav-item-hover: rgb(var(--shadow-rgb) / 5%);
+  --nav-item-on-bg: rgb(138 90 43 / 16%);
+  --nav-item-on-ink: var(--text-primary);
+  --nav-item-on-edge: var(--accent-400);
+  --accent-ink-on-nav: var(--accent-500);
+  --nav-brand-bg: var(--accent);
+  --nav-brand-ink: var(--accent-ink);
+  --locale-raw: none;
+  --locale-name: inline;
+  --locale-flag: none;
+  --measure: 62ch;
+}

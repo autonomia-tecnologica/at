@@ -119,7 +119,7 @@ PAGE_WORDS = (
     "disable", "disable_confirm", "declare", "declare_table", "declare_act",
     "declare_when", "declare_id",
     "back", "confirm_cancel", "confirm_ok", "write", "saving",
-    "saved", "save_failed", "chars", "words", "language_name", "language_flag",
+    "saved", "save_failed", "chars", "words", "spell_none", "language_name", "language_flag",
     "ft_text", "ft_markdown", "ft_python", "ft_json", "ft_yaml", "ft_shell",
     "ft_dockerfile", "ft_binary", "ft_other",
     "bucket_code", "bucket_text", "bucket_data", "bucket_image", "bucket_other",

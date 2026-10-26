@@ -346,7 +346,6 @@ nav button {
   transition: background-color var(--dur-2) var(--ease-enter), color var(--dur-2) var(--ease-enter);
 }
 nav button:hover { background: var(--nav-item-hover); color: var(--nav-ink-1); }
-/* The open row says so twice, and the two say the same thing */
 /* THE STATE IS A COLOUR AND A BAR, AND NEVER A TYPE */
 nav button.on {
   background: var(--nav-item-on-bg); color: var(--nav-item-on-ink);
@@ -929,7 +928,7 @@ pre.text { overflow-wrap: break-word; white-space: pre-wrap; word-break: break-w
 }
 .write-page .text { margin: var(--space-8); white-space: pre-wrap; }
 .write-page-stage { position: relative; min-height: 100vh; min-height: 100dvh; box-sizing: border-box; }
-.write-highlight, .write-page-field {
+.write-highlight, .write-spell, .write-page-field {
   margin: 0; border: 0; box-sizing: border-box; width: 100%;
   padding: var(--space-5);
   font: inherit; font-size: var(--type-body-lg); line-height: var(--leading-normal);
@@ -943,6 +942,8 @@ pre.text { overflow-wrap: break-word; white-space: pre-wrap; word-break: break-w
 }
 .write-page-field:focus-visible { outline: none; }
 /* THE MIRROR, BEHIND A FIELD MADE TRANSPARENT (markdown only) */
+.write-spell { position: absolute; inset: 0; overflow: hidden; pointer-events: none; user-select: none; color: transparent; }
+.write-spell .spell-miss { text-decoration: underline wavy var(--danger); text-underline-offset: 0.15em; }
 .write-highlight { position: absolute; inset: 0; overflow: hidden; pointer-events: none; user-select: none; }
 .write-page-stage.md .write-page-field { position: relative; color: transparent; caret-color: var(--text-primary); }
 .write-highlight .md-mark { color: var(--text-tertiary); }

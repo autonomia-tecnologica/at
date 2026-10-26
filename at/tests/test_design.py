@@ -90,20 +90,28 @@ class TheRegistry(unittest.TestCase):
         self.assertEqual(row["id"], webapp.DEFAULT_THEME)
 
 
-class TheFrozenThemes(unittest.TestCase):
-    """The seven community themes are frozen, not deleted (2026-10-22)."""
+class TheThemes(unittest.TestCase):
+    """`at`, `console`, `tipography` and `paper`, each in both sides (B-39)."""
 
-    def test_they_are_out_of_the_registry_and_out_of_the_door(self):
+    IDS = {"at", "console", "tipography", "paper"}
+
+    def test_the_registry_has_the_four_themes_each_with_both_sides(self):
         ids = {row["id"] for row in webapp.theme_rows()}
-        self.assertEqual(ids, {"at"})
-        self.assertEqual(webapp.active_theme("gothic")["id"], webapp.DEFAULT_THEME)
-        self.assertEqual(webapp.theme_css("gothic", True),
-                         (THEMES / "at-dark.css").read_text(encoding="utf-8"))
+        self.assertEqual(ids, self.IDS)
+        for ident in ids:
+            self.assertEqual(webapp.theme_sides(ident), ["light", "dark"], ident)
 
-    def test_the_files_and_the_rows_stay_for_the_day_they_return(self):
-        frozen = THEMES / "frozen"
-        self.assertEqual(len(list(frozen.glob("*.css"))), 7)
-        self.assertEqual(len((frozen / "themes.jsonl").read_text(encoding="utf-8").splitlines()), 7)
+    def test_the_retired_themes_and_the_frozen_folder_are_gone(self):
+        self.assertFalse((THEMES / "frozen").exists())
+        for ident in ("comunidade", "frutiger-aero", "gothic", "hotel"):
+            self.assertEqual(webapp.active_theme(ident)["id"], webapp.DEFAULT_THEME)
+
+    def test_each_side_answers_its_own_file(self):
+        for ident in self.IDS:
+            self.assertEqual(webapp.theme_css(ident, True),
+                             (THEMES / f"{ident}-dark.css").read_text(encoding="utf-8"))
+            self.assertEqual(webapp.theme_css(ident, False),
+                             (THEMES / f"{ident}.css").read_text(encoding="utf-8"))
 
 
 class TheTokenContract(unittest.TestCase):
@@ -128,9 +136,6 @@ class TheTokenContract(unittest.TestCase):
         cls.read = read_of(cls.base)
         cls._base_cache["base.css"] = cls.read
         cls.by_name = read_by_the_page()
-        # Only the ACTIVE themes: `themes/frozen/` (the seven community themes,
-        # frozen 2026-10-22) is outside this glob on purpose — it is outside
-        # the token and contrast contracts until the owner thaws it.
         cls.base_declared = declared_in(cls.base)
         cls.themes = sorted(THEMES.glob("*.css"))
         cls.declared = {theme.name: declared_in(theme.read_text(encoding="utf-8"))
@@ -508,7 +513,7 @@ class TheSpecimen(unittest.TestCase):
                 inside = False
         self.assertLessEqual(count / len(text.split("\n")), 0.10)
 
-    def test_the_old_ink_lives_only_in_the_frozen_themes(self):
+    def test_the_old_ink_lives_nowhere(self):
         for css in ASSETS.rglob("*.css"):
             if "frozen" in css.parts:
                 continue

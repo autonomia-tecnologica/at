@@ -461,6 +461,11 @@ class Handler(
                 return
             self._post_convert()
             return
+        if segments == ["api", "spell"]:
+            if not self._may("prose:edit"):
+                return
+            self._post_spell()
+            return
         if segments == ["api", "strongbox", "open"]:
             if not self._may("strongbox:read"):
                 return

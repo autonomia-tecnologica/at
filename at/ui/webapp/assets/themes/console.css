@@ -1,0 +1,87 @@
+/* console, light — the terminal look the AT always had: monospaced, short corner, blue accent.
+   Contract: the scales live in `base.css`; this file is only colour, face and corner. */
+
+:root {
+  --font-sans: ui-monospace, "Cascadia Code", "Fira Code", Consolas,
+               "Liberation Mono", Menlo, monospace;
+  --font-display: ui-monospace, "Cascadia Code", "Fira Code", Consolas,
+               "Liberation Mono", Menlo, monospace;
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --surface-canvas: #f3f5f8;
+  --surface-card: #fbfcfd;
+  --surface-raised: #e9edf2;
+  --surface-sunken: #e2e7ee;
+  --neutral-50: #fbfcfd;
+  --neutral-100: #e4e5e6;
+  --neutral-200: #ccced0;
+  --neutral-300: #b5b7b9;
+  --neutral-400: #9ea0a3;
+  --neutral-500: #86888c;
+  --neutral-600: #6f7175;
+  --neutral-700: #585a5f;
+  --neutral-800: #414348;
+  --neutral-900: #292c32;
+  --neutral-950: #12151b;
+  --text-primary: #1a1e26;
+  --text-secondary: #3b4452;
+  --text-tertiary: #4d5767;
+  --border-subtle: #dde2ea;
+  --border-default: #c4ccd8;
+  --border-control: #6b7686;
+  --row-hover: #edf0f5;
+  --control-track: #d9dfe8;
+  --accent-50: #e8eefc;
+  --accent-100: #d7e1f8;
+  --accent-200: #b6c7f0;
+  --accent-300: #94ade8;
+  --accent-400: #7293e0;
+  --accent-500: #5179d8;
+  --accent-600: #2f5fd0;
+  --accent-700: #244aa6;
+  --accent-800: #1b3a85;
+  --accent: var(--accent-600);
+  --accent-hover: var(--accent-700);
+  --accent-active: var(--accent-800);
+  --accent-ink: #ffffff;
+  --accent-soft: var(--accent-50);
+  --accent-ring: rgb(47 95 208 / 35%);
+  --success: #16a34a;
+  --success-soft: #ecfdf3;
+  --warning: #d97706;
+  --warning-soft: #fffaeb;
+  --danger: #dc2626;
+  --danger-soft: #fef2f2;
+  --info: #2563eb;
+  --info-soft: #eff4ff;
+  --success-text: #15803d;
+  --warning-text: #b45309;
+  --danger-text: #b91c1c;
+  --info-text: #1d4ed8;
+  --danger-ink: #fff;
+  --danger-hover: color-mix(in srgb, var(--danger) 85%, #000);
+  --switch-knob: #fff;
+  --shadow-rgb: 20 18 15;
+  --shadow-e1: 0 2px 8px rgb(var(--shadow-rgb) / 8%);
+  --shadow-e2: 0 12px 32px rgb(var(--shadow-rgb) / 16%);
+  --scrollbar-thumb: var(--border-default);
+  --scrollbar-thumb-hover: #aab4c4;
+  --nav-bg: #e9edf2;
+  --nav-border: rgb(var(--shadow-rgb) / 10%);
+  --nav-edge: 0 16px 48px rgb(var(--shadow-rgb) / 12%);
+  --nav-ink-1: var(--text-primary);
+  --nav-ink-2: var(--text-secondary);
+  --nav-ink-3: var(--text-tertiary);
+  --nav-item-hover: rgb(var(--shadow-rgb) / 5%);
+  --nav-item-on-bg: rgb(47 95 208 / 16%);
+  --nav-item-on-ink: var(--text-primary);
+  --nav-item-on-edge: var(--accent-400);
+  --accent-ink-on-nav: var(--accent-500);
+  --nav-brand-bg: var(--accent);
+  --nav-brand-ink: var(--accent-ink);
+  --locale-raw: inline;
+  --locale-name: none;
+  --locale-flag: none;
+  --measure: 66ch;
+}

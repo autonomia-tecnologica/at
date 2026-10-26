@@ -17,8 +17,10 @@
 // what is TYPED is still a plain `<textarea>` — the caret, the selection, the
 // undo stack, all the browser's own.
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
-import { api } from "../lib/api";
-import { word } from "../lib/store";
+import { api, post } from "../lib/api";
+import { word, store } from "../lib/store";
+import { openPop } from "../lib/pop";
+import SpellPop from "../components/pops/SpellPop.vue";
 import { pageReadsOnItsOwn, pageLoaded, open, FILE_PREFIX } from "../lib/views";
 import { useWriting, writingState } from "../lib/writing";
 import { downloadFile, isSaveGesture } from "../lib/download";
@@ -80,9 +82,82 @@ function grow(): void {
   node.style.height = node.scrollHeight + "px";
 }
 
+// THE UNDERLINE. The text is sent to the spelling-checker after a pause in the
+// typing; what comes back is a list of spans in the text THAT WAS SENT, so the
+// marks live only while the field still holds exactly that text — any edit
+// drops them until the next answer. Unavailable (or a failure) is just no
+// marks: the editor goes on as it was. Nothing is ever corrected on its own.
+interface Finding { offset: number; length: number; message: string; suggestions: string[] }
+const SPELL_DELAY_MS = 800;
+const findings = ref<Finding[]>([]);
+let spellText = "";
+let spellTimer: ReturnType<typeof setTimeout> | null = null;
+let spellSeq = 0;
+
+const escapeHtml = (t: string): string => t.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c] as string);
+
+const marks = computed(() => {
+  if (!findings.value.length) return "";
+  const text = spellText;
+  let out = "";
+  let at = 0;
+  for (const f of findings.value) {
+    if (f.offset < at) continue;
+    out += escapeHtml(text.slice(at, f.offset)) + '<span class="spell-miss">'
+      + escapeHtml(text.slice(f.offset, f.offset + f.length)) + "</span>";
+    at = f.offset + f.length;
+  }
+  return out + escapeHtml(text.slice(at));
+});
+
+async function checkSpelling(): Promise<void> {
+  const sent = draft.value;
+  const mine = ++spellSeq;
+  try {
+    const answer = await post<{ available: boolean; findings: Finding[] }>(
+      "/api/spell", { text: sent, language: store.lang });
+    if (mine !== spellSeq || draft.value !== sent) return;
+    spellText = sent;
+    findings.value = answer.available ? answer.findings : [];
+  } catch {
+    if (mine === spellSeq) findings.value = [];
+  }
+}
+
+function scheduleSpelling(): void {
+  spellSeq++;
+  findings.value = [];
+  if (spellTimer) clearTimeout(spellTimer);
+  if (!isProse.value) return;
+  spellTimer = setTimeout(() => void checkSpelling(), SPELL_DELAY_MS);
+}
+
+function onFieldClick(event: MouseEvent): void {
+  const node = el.value;
+  if (!node || !findings.value.length || draft.value !== spellText) return;
+  if (node.selectionStart !== node.selectionEnd) return;
+  const caret = node.selectionStart;
+  const hit = findings.value.find(f => caret >= f.offset && caret <= f.offset + f.length);
+  if (!hit) return;
+  const wrong = spellText.slice(hit.offset, hit.offset + hit.length);
+  const apply = (value: string): void => {
+    // The text may have moved since the popup opened: swap only if the word is
+    // still where it was.
+    if (draft.value.slice(hit.offset, hit.offset + hit.length) !== wrong) return;
+    draft.value = draft.value.slice(0, hit.offset) + value + draft.value.slice(hit.offset + hit.length);
+    onInput();
+    node.focus();
+    const end = hit.offset + value.length;
+    node.setSelectionRange(end, end);
+  };
+  openPop("spell", SpellPop, { suggestions: hit.suggestions, apply },
+    { point: { x: event.clientX, y: event.clientY } });
+}
+
 function onInput(): void {
   writer.touch(draft.value);
   grow();
+  scheduleSpelling();
 }
 
 function flush(): void {
@@ -141,6 +216,7 @@ onMounted(async () => {
   document.addEventListener("keydown", onKeydown);
   await load();
   grow();
+  scheduleSpelling();
   el.value?.focus();
   document.addEventListener("visibilitychange", flush);
 });
@@ -148,6 +224,8 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   document.removeEventListener("keydown", onKeydown);
   document.removeEventListener("visibilitychange", flush);
+  if (spellTimer) clearTimeout(spellTimer);
+  spellSeq++;
   flush();
   writer.leave();
 });
@@ -175,8 +253,9 @@ onBeforeUnmount(() => {
         </header>
         <div class="write-page-stage" :class="{ md: isProse }">
           <div v-if="isProse" class="write-highlight" aria-hidden="true" v-html="highlighted"></div>
+          <div v-if="isProse && marks" class="write-spell" aria-hidden="true" v-html="marks"></div>
           <textarea ref="el" v-model="draft" class="write-page-field" spellcheck="false"
-                    @input="onInput"></textarea>
+                    @input="onInput" @click="onFieldClick"></textarea>
         </div>
       </template>
     </template>

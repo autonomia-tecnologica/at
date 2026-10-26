@@ -44,6 +44,7 @@ from at.core import (
     risk,
     secrets,
     settings,
+    spelling,
     strongbox,
     tables,
 )
@@ -1314,6 +1315,40 @@ class TheConvertRoute(ServerCase):
     def test_a_missing_file_is_refused(self):
         status, _ = self.post("/api/convert", {"path": "nao-existe.md", "to": "pdf"})
         self.assertEqual(status, 404)
+
+
+class TheSpellRoute(ServerCase):
+    """`POST /api/spell` — os achados do corretor, em unidades UTF-16 (o que a
+    página conta). Sem rede e sem modelo: o motor é um stub."""
+
+    def test_offsets_leave_in_utf16_units_after_an_astral_char(self):
+        text = "😀 erroo aqui"  # o emoji ocupa 2 unidades UTF-16 e 1 ponto de código
+        finding = spelling.Finding(offset=2, length=5, rule="R", suggestions=("erro",),
+                                   message="m")
+        with mock.patch.object(spelling, "check", return_value=[finding]):
+            status, answer = self.post("/api/spell", {"text": text, "language": "pt_BR"})
+        self.assertEqual(status, 200)
+        self.assertTrue(answer["available"])
+        item = answer["findings"][0]
+        self.assertEqual((item["offset"], item["length"]), (3, 5))
+        self.assertEqual(text.encode("utf-16-le")[item["offset"] * 2:(item["offset"] + item["length"]) * 2]
+                         .decode("utf-16-le"), "erroo")
+        self.assertEqual(item["suggestions"], ["erro"])
+
+    def test_unavailable_is_not_an_error(self):
+        with mock.patch.object(spelling, "check", return_value=None):
+            status, answer = self.post("/api/spell", {"text": "oi", "language": "pt_BR"})
+        self.assertEqual(status, 200)
+        self.assertEqual(answer, {"available": False, "findings": []})
+
+    def test_nothing_found_is_available_and_empty(self):
+        with mock.patch.object(spelling, "check", return_value=[]):
+            _, answer = self.post("/api/spell", {"text": "oi", "language": "en_US"})
+        self.assertEqual(answer, {"available": True, "findings": []})
+
+    def test_a_bad_request(self):
+        self.assertEqual(self.post("/api/spell", {"text": 1, "language": "pt_BR"})[0], 400)
+        self.assertEqual(self.post("/api/spell", {"text": "a", "language": "xx"})[0], 400)
 
 
 class TheRemindersDoor(ServerCase):

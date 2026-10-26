@@ -1,10 +1,7 @@
 <script setup lang="ts">
-// O LADO (claro/escuro/sistema). SÓ UM TEMA COM OS DOIS LADOS TEM O QUE ESCOLHER
-// (2026-10-04): os outros ficaram com o lado que já vestiam por padrão
-// (`gothic`/`console`/`hotel` escuro, os quatro que restam claro) e não têm mais
-// o arquivo do lado que perderam — `row.sides` é o que o SERVIDOR leu do disco,
-// nunca um palpite desta tela. Sem os dois lados, não há radiogroup: não existe
-// ajuste a mostrar por um tema que não carrega escolha nenhuma.
+// O LADO (claro/escuro/sistema). SÓ UM TEMA COM OS DOIS LADOS TEM O QUE ESCOLHER:
+// `row.sides` é o que o SERVIDOR leu do disco, nunca um palpite desta tela. Sem
+// os dois lados, não há radiogroup. Hoje todos os temas têm os dois.
 import { computed, ref } from "vue";
 import { store, word } from "../../lib/store";
 import { DARK_STATES, chooseDark, darkState, themeState } from "../../lib/theme";
