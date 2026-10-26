@@ -111,6 +111,9 @@ KNOWN = (
     BACKUP_DESTINATION,
     BACKUP_INTERVAL,
     "folders",
+    # `at-cli lang <code> --include-subcommands`: the language the folder chose
+    # the subcommand words for (`ui/cli/tree.py` reads it; absent = canonical).
+    "subcommands",
     "schema",
 )
 
@@ -207,6 +210,14 @@ def put(key: str, value: Any) -> str:
         raise Refused("setting.error.reserved", setting=name)
     save({**load(), name: value})
     return name
+
+
+def drop(key: str) -> None:
+    """Remove one key from the file; a key that is not there is not an error."""
+    carried = load()
+    if key in carried:
+        del carried[key]
+        save(carried)
 
 
 def literal(text: str) -> Any:

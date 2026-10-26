@@ -20,8 +20,8 @@ product (item 27).
 
 from __future__ import annotations
 
-from at import __version__, nlu
-from at.core import permissions
+from at import __version__, i18n, nlu
+from at.core import permissions, settings
 from at.data import schema
 from at.i18n import tr
 from at.ui.words import Node, completion_words, scoped, section, width
@@ -91,13 +91,86 @@ WORDS: tuple[Node, ...] = (
 ASK = Node("ask", "cli.ask.about", (Node("pedir", "cli.ask.pedir.about"),))
 
 # The subcommand words a language spells its own way (`at-cli lang <code>
-# --include-subcommands`). Only the spellings the `cli` already answers to are
-# here: `ajuda` is `help`, `pedir` is `ask`. `en_US` is the canonical spelling
-# and carries none.
+# --include-subcommands`). Keys are the canonical (en_US) words, wherever they
+# stand in the tree — a table, a loose word or an action; values are the
+# language's spelling. `en_US` is the canonical spelling and carries none. The
+# spellings are plain ASCII on purpose (no accents: they are typed on a shell).
 SUBCOMMAND_WORDS: dict[str, dict[str, str]] = {
-    "pt_BR": {"help": "ajuda", "ask": "pedir"},
+    "pt_BR": {
+        # tables
+        "task": "tarefa", "project": "projeto", "note": "nota",
+        "reminder": "lembrete", "actor": "ator", "role": "papel",
+        "secret": "segredo", "audit": "auditoria", "job": "job",
+        # actions
+        "list": "listar", "view": "ver", "create": "criar", "edit": "editar",
+        "cancel": "cancelar", "delete": "apagar", "due": "vencidos",
+        "scan": "varrer", "install-hooks": "instalar-ganchos", "run": "rodar",
+        "approve": "aprovar", "refuse": "recusar", "declare": "declarar",
+        "disable": "desativar",
+        # loose words
+        "ask": "pedir", "help": "ajuda", "webapp": "webapp", "backup": "copia",
+        "make": "fazer", "restore": "restaurar", "convert": "converter",
+        "search": "buscar", "admin": "admin", "lang": "idioma",
+        "assist": "assistir", "setting": "configuracao", "install": "instalar",
+        "uninstall": "desinstalar", "license": "licenca", "version": "versao",
+    },
     "en_US": {},
 }
+
+# The settings key that remembers the folder CHOSE the subcommand words of a
+# language (the language code it chose them for). The words are in force only
+# while it equals the active language: a language changed without the flag
+# (`lang` drops the key) puts every word back to the canonical spelling.
+SUBCOMMANDS_KEY = "subcommands"
+
+
+def active_words() -> dict[str, str]:
+    """The canonical → spelled map in force now; empty when the folder never
+    chose the words (or chose them for another language)."""
+    code = i18n.active_code()
+    try:
+        chosen = settings.get(SUBCOMMANDS_KEY)
+    except (OSError, settings.SettingsError):
+        return {}
+    return SUBCOMMAND_WORDS.get(code, {}) if chosen == code else {}
+
+
+def canonical(words: list[str]) -> list[str]:
+    """The typed words read back to the canonical spelling.
+
+    Both spellings dispatch: the language's word and the en_US one. Only the
+    first two positions are words (the rest are arguments), and the second is
+    read only against the children of the first.
+    """
+    spelled = active_words()
+    if not words or not spelled:
+        return words
+    back = {own: word for word, own in spelled.items()}
+    out = list(words)
+    out[0] = back.get(out[0], out[0])
+    node = find(out[0])
+    if len(out) > 1 and node is not None:
+        children = {child.name for child in node.children}
+        if back.get(out[1]) in children:
+            out[1] = back[out[1]]
+    return out
+
+
+def respell(node: Node) -> Node:
+    """A node as the active language writes it — for the help only."""
+    spelled = active_words()
+    if not spelled:
+        return node
+    name = spelled.get(node.name, node.name)
+    children: list[Node] = []
+    for child in node.children:
+        own = spelled.get(child.name, child.name)
+        # An alias that spells like its own parent (`ask`'s `pedir` in pt_BR)
+        # would show one door twice.
+        if own != name and all(own != seen.name for seen in children):
+            children.append(Node(own, child.about, child.children))
+    return Node(name, node.about, tuple(children))
+
 
 # The four words that are the artifact's OWN INTERFACE, and not an act on the
 # Working Folder — so none of them has a permission to carry (TASK-186, fatia
@@ -185,14 +258,15 @@ def scoped_text(word: str) -> str | None:
     node = find(word)
     if node is None or not node.children or word in ask_words():
         return None
-    return scoped(node, "cli.help.title", "cli.help.scoped_usage", "cli.help.words",
+    return scoped(respell(node), "cli.help.title", "cli.help.scoped_usage", "cli.help.words",
                   version=__version__)
 
 
 def as_text() -> str:
     """The help, in the active language."""
-    declared = table_nodes()
-    column = width(roots())
+    declared = tuple(respell(node) for node in table_nodes())
+    spelled_words = tuple(respell(node) for node in words())
+    column = width(tuple(respell(node) for node in roots()))
 
     lines = [
         tr("cli.help.title", version=__version__),
@@ -202,6 +276,6 @@ def as_text() -> str:
     ]
     if declared:
         lines += section(declared, column, "cli.help.tables")
-    lines += section(words(), column, "cli.help.words")
+    lines += section(spelled_words, column, "cli.help.words")
     lines += ["", tr("cli.help.no_args")]
     return "\n".join(lines)

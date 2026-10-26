@@ -300,6 +300,7 @@ class TheLanguage(unittest.TestCase):
         code, text = self.run_lang("pt_BR", "--include-subcommands")
         self.assertEqual(code, OK)
         self.assertIn("help → ajuda", text)
+        self.assertIn("task → tarefa", text)
         code, text = self.run_lang("en_US", "--include-subcommands")
         self.assertEqual(code, OK)
         self.assertIn("no subcommand word", text)
@@ -314,6 +315,127 @@ class TheLanguage(unittest.TestCase):
         code, text = self.run_lang("--include-app-folders")
         self.assertEqual(code, USAGE)
         self.assertIn("lang", text)
+
+
+class TheSubcommandWords(unittest.TestCase):
+    """`at-cli lang <code> --include-subcommands` — the table, the choice kept in
+    the settings, and help and dispatch following it."""
+
+    def setUp(self):
+        self.scratch = tempfile.TemporaryDirectory()
+        environ = {key: value for key, value in os.environ.items() if key != "AT_LANG"}
+        environ["AT_ROOT"] = str(Path(self.scratch.name))
+        self.env = mock.patch.dict(os.environ, environ, clear=True)
+        self.env.start()
+        i18n.reset()
+        with redirect_stdout(io.StringIO()):
+            boot.create_working_folder()
+        self.say("lang", "pt_BR", "--include-subcommands")
+
+    def tearDown(self):
+        self.env.stop()
+        i18n.reset()
+        self.scratch.cleanup()
+
+    def say(self, *words: str) -> tuple[int, str]:
+        output = io.StringIO()
+        i18n.reset()
+        with redirect_stdout(output):
+            code = main(list(words))
+        i18n.reset()
+        return code, output.getvalue()
+
+    def test_the_table_is_complete_and_plain_ascii(self):
+        table = tree.SUBCOMMAND_WORDS["pt_BR"]
+        self.assertEqual(len(table), 9 + 14 + 16)
+        for own in table.values():
+            self.assertTrue(own.isascii(), own)
+        self.assertEqual(table["install-hooks"], "instalar-ganchos")
+        self.assertEqual(table["backup"], "copia")
+        self.assertEqual(tree.SUBCOMMAND_WORDS["en_US"], {})
+
+    def test_every_table_word_is_a_word_of_the_tree(self):
+        known = {"ask", "help"}
+        for node in tree.roots():
+            known.add(node.name)
+            known |= {child.name for child in node.children}
+        self.assertLessEqual(set(tree.SUBCOMMAND_WORDS["pt_BR"]), known)
+
+    def test_the_flag_records_the_choice_in_the_settings(self):
+        from at.core import settings
+
+        self.assertEqual(settings.get(tree.SUBCOMMANDS_KEY), "pt_BR")
+
+    def test_without_the_flag_nothing_is_recorded(self):
+        from at.core import settings
+
+        self.say("lang", "pt_BR")
+        self.assertIsNone(settings.get(tree.SUBCOMMANDS_KEY))
+        code, text = self.say("help")
+        self.assertIn("task", text)
+        self.assertNotIn("tarefa", text)
+
+    def test_help_speaks_the_language(self):
+        code, text = self.say("ajuda")
+        self.assertEqual(code, OK)
+        for word in ("tarefa", "copia", "configuracao", "licenca", "versao"):
+            self.assertIn(word, text)
+        self.assertIn("listar", text)
+        self.assertNotIn("  task ", text)
+
+    def test_a_word_help_speaks_the_language(self):
+        code, text = self.say("tarefa", "ajuda")
+        self.assertEqual(code, OK)
+        self.assertIn("tarefa", text)
+        self.assertIn("criar", text)
+        self.assertIn("apagar", text)
+
+    def test_dispatch_accepts_both_spellings(self):
+        for words in (("tarefa", "listar"), ("task", "list"),
+                      ("tarefa", "list"), ("task", "listar")):
+            with self.subTest(words=words):
+                code, _ = self.say(*words)
+                self.assertEqual(code, OK)
+
+    def test_the_actions_of_an_own_act_dispatch_in_both_spellings(self):
+        for words in (("segredo", "varrer"), ("secret", "scan"),
+                      ("lembrete", "vencidos")):
+            with self.subTest(words=words):
+                code, _ = self.say(*words)
+                self.assertEqual(code, OK)
+
+    def test_the_loose_words_dispatch_in_both_spellings(self):
+        for words in (("versao",), ("version",), ("idioma",), ("configuracao", "listar"),
+                      ("licenca",)):
+            with self.subTest(words=words):
+                code, _ = self.say(*words)
+                self.assertEqual(code, OK)
+
+    def test_pedir_reads_back_to_the_interpreters_word(self):
+        # Not run: the interpreter is a model. What dispatch sees is the point.
+        self.assertEqual(tree.canonical(["pedir", "uma frase"]), ["ask", "uma frase"])
+        self.assertEqual(tree.canonical(["ask", "uma frase"]), ["ask", "uma frase"])
+        self.assertEqual(tree.canonical(["copia", "restaurar", "x"]),
+                         ["backup", "restore", "x"])
+
+    def test_an_unknown_word_still_costs_a_usage_error(self):
+        code, _ = self.say("tarefas")
+        self.assertEqual(code, USAGE)
+
+    def test_changing_the_language_without_the_flag_goes_back_to_en_US(self):
+        self.say("lang", "en_US")
+        code, text = self.say("help")
+        self.assertNotIn("tarefa", text)
+        self.assertIn("task", text)
+        code, _ = self.say("tarefa", "listar")
+        self.assertEqual(code, USAGE)
+        code, _ = self.say("task", "list")
+        self.assertEqual(code, OK)
+
+    def test_the_completion_stays_canonical(self):
+        names = {name for name, _ in tree.completion()}
+        self.assertIn("task", names)
+        self.assertNotIn("tarefa", names)
 
 
 class TheWebappWords(unittest.TestCase):

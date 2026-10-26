@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from at import i18n
-from at.core import actors, assist, migrations, tables
+from at.core import actors, assist, migrations, settings, tables
 from at.i18n import tr
 from at.ui import ask as door
 from at.ui.ask import OK, REFUSED, USAGE
@@ -78,8 +78,9 @@ def _admin(
 def _say_subcommand_words(code: str) -> None:
     """`--include-subcommands`: the subcommand words the language spells its own way.
 
-    The table is `tree.SUBCOMMAND_WORDS`, and it holds only the spellings the
-    `cli` already answers to (`ajuda`, `pedir`) — a language with none says so.
+    The table is `tree.SUBCOMMAND_WORDS`; the choice is already recorded in the
+    settings when this runs, and help and dispatch follow it. A language with
+    no word of its own says so.
     """
     spelled = tree.SUBCOMMAND_WORDS.get(code, {})
     if not spelled:
@@ -139,6 +140,12 @@ def _lang(rest: list[str], ask: Ask | None = None) -> int:
         return USAGE
 
     i18n.write_active(code)
+    # The subcommand words are a choice made WITH the language: the flag
+    # records it, and a language chosen without the flag puts them back.
+    if include_subcommands:
+        settings.put(tree.SUBCOMMANDS_KEY, code)
+    else:
+        settings.drop(tree.SUBCOMMANDS_KEY)
     print(tr("cli.lang.chosen", code=code))
     migrations.offer_language(ask if ask is not None else _readers()[0],
                              include_folders=include_folders)

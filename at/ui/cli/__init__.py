@@ -40,6 +40,10 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 def _dispatch(words: list[str]) -> int:
+    # The language's subcommand words (`lang --include-subcommands`) read back
+    # to the canonical ones first, so everything below — permissions, the
+    # completion, the audit — only ever sees one spelling.
+    words = tree.canonical(words)
     # `install` and `uninstall` run BEFORE the Working Folder is confirmed, and
     # they are the only words that do. Every other word is ABOUT the folder —
     # what it holds, how it is spoken — and the folder belongs to the binary, so
