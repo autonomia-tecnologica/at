@@ -170,7 +170,7 @@ class TheRepository(ScratchCase):
             self.assertIn(derived, written)
         # And NEVER what the person wrote: the folders and the settings they own
         # are the history's whole point (§4).
-        for kept in ("Tabelas/", "Arquivos/", "Projetos/", "settings.json", "App/i18n/"):
+        for kept in ("Tabelas/", "Biblioteca/", "Projetos/", "settings.json", "App/i18n/"):
             self.assertNotIn(kept, written)
 
     def test_generated_dirs_is_the_one_list_the_ignore_and_the_scanner_share(self):
@@ -273,7 +273,7 @@ class TheRepository(ScratchCase):
         (prose.root() / "nota.md").write_text("olá\n", encoding="utf-8")
         status, _ = prose.write("nota.md", "olá, mundo\n", "")
         self.assertEqual(status, 200)
-        self.assertEqual(self.versions()[0], "Arquivos/nota.md escrito.")
+        self.assertEqual(self.versions()[0], "Biblioteca/nota.md escrito.")
 
     def test_a_write_whose_git_fails_does_not_bring_the_action_down(self):
         self.born()

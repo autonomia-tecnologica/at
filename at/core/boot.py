@@ -162,7 +162,7 @@ def _write_agent_note() -> None:
 
     Written ONCE, like the welcome note and for the same reason: it is the
     folder's, and a note that comes back is a note arguing with whoever deleted
-    it. It is deliberately NOT inside `Arquivos/` — that folder is the person's
+    it. It is deliberately NOT inside `Biblioteca/` — that folder is the person's
     material, and this one is the folder's own.
     """
     note = paths.agent_note()

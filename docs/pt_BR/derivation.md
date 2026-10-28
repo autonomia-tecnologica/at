@@ -92,7 +92,7 @@ Os dois specs — `at-cli.spec` e `at-deploy.spec` — são o único lugar que d
 
 A pasta em que o binário foi aberto é a pasta do binário, e essa pasta é a Pasta de Trabalho (§3). Na primeira execução o AT descreve a pasta e pergunta antes de escrever qualquer coisa; `App/settings.json` é o que faz uma pasta ser uma pasta configurada.
 
-**O nome no disco é a face; a máquina lê o nome interno.** Cada pasta tem um nome interno — `app`, `data`, `prose`, `projects`, `shared`, `harness` e `cofre` —, e é ele que o motor usa e que as declarações citam. O nome que a pessoa lê vem do idioma ativo, e a tabela de `paths.py` é a única que o conhece: `Tabelas/`, `Arquivos/`, `Projetos/`, `Compartilhada/` e `Cofre/` em `pt_BR`; `Tables/`, `Files/`, `Projects/`, `Shared/` e `Vault/` em `en_US`. Duas pastas são a exceção, e as duas são deliberadas: a pasta da instância não segue o idioma, porque o idioma mora dentro dela — `App/` nos dois —, e a `Harness/` não segue porque o `pt_BR` tomou a palavra inteira, então os dois idiomas a escrevem igual.
+**O nome no disco é a face; a máquina lê o nome interno.** Cada pasta tem um nome interno — `app`, `data`, `prose`, `projects`, `shared`, `harness` e `cofre` —, e é ele que o motor usa e que as declarações citam. O nome que a pessoa lê vem do idioma ativo, e a tabela de `paths.py` é a única que o conhece: `Tabelas/`, `Biblioteca/`, `Projetos/`, `Compartilhada/` e `Cofre/` em `pt_BR`; `Tables/`, `Library/`, `Projects/`, `Shared/` e `Vault/` em `en_US`. As grafias `Arquivos/` e `Files/` são as aposentadas de `prose/` — a resolução ainda as aceita, e é por isso que uma pasta que não migrou não some. Duas pastas são a exceção, e as duas são deliberadas: a pasta da instância não segue o idioma, porque o idioma mora dentro dela — `App/` nos dois —, e a `Harness/` não segue porque o `pt_BR` tomou a palavra inteira, então os dois idiomas a escrevem igual.
 
 Uma pasta nasce com:
 
@@ -106,7 +106,7 @@ App/plugins/              as extensões, e o estado de review de cada uma
 App/services/<serviço>/   o estado persistente de cada serviço (§4)
 Tabelas/schema/*.json     as tabelas de sistema, escritas pelo produto
 Tabelas/*.jsonl           as linhas (chegam com a primeira escrita)
-Arquivos/                 tudo o que não é dado estruturado, com a nota de boas-vindas
+Biblioteca/               tudo o que não é dado estruturado, com a nota de boas-vindas
 Projetos/                 o que pertence a um projeto — nomeada, ainda vazia
 Compartilhada/            o que for compartilhado com outras pessoas — nomeada, ainda vazia
 Harness/                  o que governa quem trabalha na pasta — nomeada, ainda vazia

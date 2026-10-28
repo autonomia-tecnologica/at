@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -214,14 +215,14 @@ class TheFoldersFollowTheLanguage(FolderCase):
         output = self.caught_up("s")
         self.assertLess(
             output.index(i18n.tr("boot.migration.capital.moved")),
-            output.index(i18n.tr("boot.migration.folders.notice", names="data → Tabelas, prose → Arquivos")),
+            output.index(i18n.tr("boot.migration.folders.notice", names="data → Tabelas, prose → Biblioteca")),
         )
 
     def test_the_rename_is_offered_and_applied(self):
         self.legacy("app")
         output = self.caught_up("s")
         self.assertTrue((self.root / "Tabelas").is_dir())
-        self.assertTrue((self.root / "Arquivos").is_dir())
+        self.assertTrue((self.root / "Biblioteca").is_dir())
         self.assertFalse((self.root / "data").exists())
         self.assertFalse((self.root / "prose").exists())
         self.assertIn("data → Tabelas", output)
@@ -229,7 +230,7 @@ class TheFoldersFollowTheLanguage(FolderCase):
     def test_what_breaks_outside_is_said_before_the_question(self):
         self.legacy("app")
         self.caught_up("n")
-        names = "data → Tabelas, prose → Arquivos"
+        names = "data → Tabelas, prose → Biblioteca"
         self.assertIn(i18n.tr("boot.migration.folders.notice", names=names), self.said[0])
         self.assertEqual(self.answers[0], i18n.tr("boot.migration.folders.confirm", names=names))
 
@@ -238,7 +239,7 @@ class TheFoldersFollowTheLanguage(FolderCase):
         output = self.caught_up("n")
         self.assertTrue((self.root / "data").is_dir())
         self.assertFalse((self.root / "Tabelas").exists())
-        self.assertIn(i18n.tr("boot.migration.folders.declined", names="data → Tabelas, prose → Arquivos"), output)
+        self.assertIn(i18n.tr("boot.migration.folders.declined", names="data → Tabelas, prose → Biblioteca"), output)
 
     def test_a_declined_folder_is_still_found_and_used(self):
         # The whole point of the tolerance: declining must leave AT WORKING,
@@ -386,6 +387,109 @@ class TheServicesFindTheirHouse(FolderCase):
         self.forgotten()
         output = self.caught_up()
         self.assertIn(i18n.tr("boot.migration.services.kept"), output)
+
+
+class TheProseFolderTakesItsNewName(FolderCase):
+    """Migração trinta e um: `Arquivos/` → `Biblioteca/` (`Files/` → `Library/`).
+
+    O nome novo é decisão do produto, e a pasta que já existe tem de chegar nele
+    sem pergunta e sem depender da oferta de idioma, que cala quando a decisão
+    já está gravada.
+    """
+
+    def only(self, ident: int = 31) -> None:
+        """A pasta já migrou tudo, MENOS a migração que este teste prova."""
+        ids = [item.ident for item in migrations.MIGRATIONS if item.ident != ident]
+        migrations.stamp_file().write_text(json.dumps(ids) + "\n", encoding="utf-8")
+
+    def retired(self, name: str) -> Path:
+        """A pasta da prosa com a grafia aposentada, e um arquivo dentro dela."""
+        shutil.rmtree(self.root / "Biblioteca")
+        old = self.root / name
+        old.mkdir()
+        (old / "nota.md").write_text("olá\n", encoding="utf-8")
+        return old
+
+    def test_the_retired_name_becomes_the_new_one_with_its_content(self):
+        self.born()
+        old = self.retired("Arquivos")
+        self.only()
+        output = self.caught_up()
+        self.assertFalse(old.exists())
+        self.assertTrue((self.root / "Biblioteca").is_dir())
+        self.assertEqual(
+            (self.root / "Biblioteca" / "nota.md").read_text(encoding="utf-8"),
+            "olá\n",
+        )
+        self.assertIn(
+            i18n.tr("boot.migration.prose.moved", names="Arquivos → Biblioteca"),
+            output,
+        )
+        # Sem pergunta: o nome novo é do produto, não uma escolha da pessoa.
+        self.assertEqual(self.asked, [])
+
+    def test_the_english_face_follows_its_language(self):
+        self.born()
+        old = self.retired("Files")
+        with mock.patch.dict(os.environ, {"AT_LANG": "en_US"}):
+            i18n.reset()
+            self.only()
+            output = self.caught_up()
+            said = i18n.tr("boot.migration.prose.moved", names="Files → Library")
+        self.assertFalse(old.exists())
+        self.assertEqual(
+            (self.root / "Library" / "nota.md").read_text(encoding="utf-8"),
+            "olá\n",
+        )
+        self.assertIn(said, output)
+
+    def test_two_folders_are_reported_and_not_chosen_between(self):
+        self.born()
+        self.retired("Arquivos")
+        (self.root / "Biblioteca").mkdir()
+        (self.root / "Biblioteca" / "outra.md").write_text("eu\n", encoding="utf-8")
+        self.only()
+        output = self.caught_up()
+        self.assertEqual(
+            (self.root / "Arquivos" / "nota.md").read_text(encoding="utf-8"),
+            "olá\n",
+        )
+        self.assertEqual(
+            (self.root / "Biblioteca" / "outra.md").read_text(encoding="utf-8"),
+            "eu\n",
+        )
+        self.assertIn(i18n.tr("boot.migration.prose.collision"), output)
+
+    def test_a_folder_already_named_right_has_nothing_to_do(self):
+        self.born()
+        self.only()
+        output = self.caught_up()
+        self.assertTrue((self.root / "Biblioteca").is_dir())
+        self.assertFalse((self.root / "Arquivos").exists())
+        self.assertIn(i18n.tr("boot.migration.prose.kept"), output)
+
+    def test_it_moves_without_a_terminal(self):
+        self.born()
+        old = self.retired("Arquivos")
+        self.only()
+        with mock.patch("sys.stdin.isatty", return_value=False):
+            with redirect_stdout(StringIO()):
+                boot.ensure_working_folder()
+        self.assertFalse(old.exists())
+        self.assertTrue((self.root / "Biblioteca" / "nota.md").is_file())
+
+    def test_it_does_not_touch_a_spelling_of_another_language(self):
+        # Uma instância pt_BR que recusou um renomeio de idioma no passado: a
+        # pasta fala `Files/`, e a migração não a arrasta para `Library/` — quem
+        # a lê é a resolução.
+        self.born()
+        old = self.retired("Files")
+        self.only()
+        output = self.caught_up()
+        self.assertTrue((old / "nota.md").is_file())
+        self.assertFalse((self.root / "Library").exists())
+        self.assertEqual(paths.prose_dir(), old)
+        self.assertIn(i18n.tr("boot.migration.prose.kept"), output)
 
 
 # ------------------------------------------------------- the declaration ---
@@ -1112,7 +1216,7 @@ class TheStamp(FolderCase):
         again = StringIO()
         with redirect_stdout(again):
             boot.ensure_working_folder(ask=lambda question: self.fail("asked again"))
-        notice = i18n.tr("boot.migration.folders.notice", names="data → Tabelas, prose → Arquivos")
+        notice = i18n.tr("boot.migration.folders.notice", names="data → Tabelas, prose → Biblioteca")
         self.assertNotIn(notice, again.getvalue())
 
     def test_the_stamp_names_what_ran(self):
@@ -1170,7 +1274,7 @@ class TheLanguageOffer(FolderCase):
         self.assertIn(
             i18n.tr(
                 "boot.migration.folders.declined",
-                names="Tabelas → Tables, Arquivos → Files, "
+                names="Tabelas → Tables, Biblioteca → Library, "
                       "Projetos → Projects, Compartilhada → Shared",
             ),
             first,
@@ -1188,10 +1292,10 @@ class TheLanguageOffer(FolderCase):
         self.born("pt_BR")
         self.changed_to("en_US")
         self.silent("s")
-        for name in ("Tables", "Files", "Projects", "Shared"):
+        for name in ("Tables", "Library", "Projects", "Shared"):
             with self.subTest(folder=name):
                 self.assertTrue((self.root / name).is_dir(), name)
-        for name in ("Tabelas", "Arquivos", "Projetos", "Compartilhada"):
+        for name in ("Tabelas", "Biblioteca", "Projetos", "Compartilhada"):
             with self.subTest(folder=name):
                 self.assertFalse((self.root / name).exists(), name)
 

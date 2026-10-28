@@ -49,7 +49,7 @@ The panel has the entries:
 | entry | what it is |
 |---|---|
 | **Tarefas** | the **projects tree** — a project with the count of the tasks that name it, the subprojects indented, and last the **"no project"** node, which opens the tasks no project claims. A project opens a **page** carrying the tasks of its whole subtree, each row saying which subproject it came from. |
-| **Arquivos** | the tree of `prose/`, and the page of one file — read, and written in place when the server says it may be. |
+| **Biblioteca** | the tree of `prose/`, and the page of one file — read, and written in place when the server says it may be. |
 | **Tabelas** | the vocabulary: every declared table, with its count. |
 | **Pessoas** | the actors and the roles: who may act, with which ceiling. Only the admin opens it. |
 | **Serviços** | every configured service, its state and the tokens it needs. |

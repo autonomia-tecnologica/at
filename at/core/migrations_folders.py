@@ -1,5 +1,5 @@
-"""Migrations one to five: the folder itself — its names, its language, the
-note and the Harness it carries.
+"""The migrations of the folder itself — its names, its language, the note and
+the Harness it carries.
 
 Split from `at.core.migrations`, which re-exports everything here.
 """
@@ -69,11 +69,11 @@ def _capitalized_instance(ask: Ask | None) -> list[Report]:
 
 
 def _folders_in_the_language(ask: Ask | None, said_so: bool = False) -> list[Report]:
-    """`data/` → `Tabelas/`, `prose/` → `Arquivos/` — and the birth of the two
+    """`data/` → `Tabelas/`, `prose/` → `Biblioteca/` — and the birth of the two
     that are named here and filled later.
 
     This one ASKS, and it is the only one that does: the folders it renames are
-    the person's. `Arquivos/` is where the files they keep live, and what other
+    the person's. `Biblioteca/` is where the files they keep live, and what other
     tools point at them breaks — later, when that tool is opened. AT says it
     before and not after, and whoever declines keeps the name they had; the
     resolution finds it under every spelling, and the cost is that the folder
@@ -129,7 +129,14 @@ def _moves() -> tuple[list[tuple[str, Path, Path]], list[str]]:
     collisions: list[str] = []
     for internal in ("data", "prose", "projects", "shared"):
         target = root / paths.NAMES[internal][language]
-        found = [root / name for name in paths.candidates(internal) if (root / name).is_dir()]
+        # Only the CURRENT names: a retired face is migration 31's subject, and
+        # offering its rename here too would ask twice for one move — and the
+        # answer "no" would then apply to a move that happens regardless.
+        found = [
+            root / name
+            for name in paths.current_candidates(internal)
+            if (root / name).is_dir()
+        ]
         if len(found) > 1:
             # Two folders, one internal name: deciding between them is the
             # person's, and a migration that picked one would hide the other.
@@ -179,7 +186,7 @@ def _confirm(ask: Ask | None, moves: list[tuple[str, Path, Path]]) -> bool:
 
 
 def _spelled(entries) -> str:
-    """`data → Tabelas, prose → Arquivos` — or a bare list, for a birth."""
+    """`data → Tabelas, prose → Biblioteca` — or a bare list, for a birth."""
     parts = []
     for entry in entries:
         if isinstance(entry, tuple):
@@ -232,3 +239,44 @@ def _harness_folder(ask: Ask | None) -> list[Report]:
         return []
     target.mkdir(parents=True, exist_ok=True)
     return [("boot.migration.folders.born", {"names": target.name})]
+
+
+def _prose_in_its_new_name(ask: Ask | None) -> list[Report]:
+    """`Arquivos/` → `Biblioteca/` (`Files/` → `Library/`) — the folder's new
+    name, and the person already decided it.
+
+    This one does NOT ask. What it moves is the face the product itself gave the
+    person's folder, and the name on the other side is the product's decision,
+    not a choice forced on them: the previous name was the product's too, and
+    this is the same folder under the name the product now writes. There is
+    nothing of the person's to weigh.
+
+    **Only the ACTIVE language's face moves.** A folder in `pt_BR` carrying
+    `Files/` is a folder that declined a language rename in the past; it is not
+    this migration's, and the resolution still finds it (`paths.candidates`).
+    Renaming it to `Library/` would be following a language the folder is not
+    speaking.
+
+    **It is a migration and not `offer_language`.** That offer is silent once
+    the language decision is recorded — which is exactly the state of every
+    existing folder — so the rename would never be offered to them. The decision
+    of the new name is the product's, and it has to reach a folder that already
+    exists without depending on a question about language.
+
+    A collision is reported and NOT resolved: two folders for one internal name
+    are the person's to settle, and choosing one would hide the other. A folder
+    that already has the new name has nothing to do.
+    """
+    language = paths.active_language()
+    former = paths.FORMER["prose"].get(language)
+    if not former:
+        return [("boot.migration.prose.kept", {})]
+    root = paths.working_folder()
+    old = root / former
+    target = root / paths.NAMES["prose"][language]
+    if not old.is_dir():
+        return [("boot.migration.prose.kept", {})]
+    if target.exists():
+        return [("boot.migration.prose.collision", {})]
+    old.rename(target)
+    return [("boot.migration.prose.moved", {"names": f"{former} → {target.name}"})]

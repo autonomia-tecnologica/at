@@ -60,7 +60,7 @@ class FirstRun(unittest.TestCase):
         self.assertTrue((self.root / "App" / "settings.json").is_file())
         self.assertTrue((self.root / "App" / "i18n" / "active").is_file())
         self.assertTrue((self.root / "Tabelas").is_dir())
-        self.assertTrue((self.root / "Arquivos").is_dir())
+        self.assertTrue((self.root / "Biblioteca").is_dir())
         self.assertEqual(settings.load()["schema"], settings.SCHEMA)
 
     def test_the_folder_is_born_with_the_engines_row_and_no_person(self):
@@ -127,21 +127,21 @@ class FirstRun(unittest.TestCase):
 
     def test_the_folder_is_born_with_a_welcome_note_in_the_active_language(self):
         self.confirm()
-        welcome = self.root / "Arquivos" / i18n.tr("prose.welcome.filename")
+        welcome = self.root / "Biblioteca" / i18n.tr("prose.welcome.filename")
         self.assertTrue(welcome.is_file())
         self.assertEqual(welcome.read_text(encoding="utf-8"), i18n.tr("prose.welcome.body"))
 
     def test_the_folder_is_born_with_a_note_that_presents_it(self):
         """`AGENT.md`, at the root — where whoever works in the folder looks.
 
-        Not inside `Arquivos/`: that folder is the person's material, and the
+        Not inside `Biblioteca/`: that folder is the person's material, and the
         note is the folder's own (§0, item 25).
         """
         self.confirm()
         note = self.root / "AGENT.md"
         self.assertTrue(note.is_file())
         self.assertEqual(note.read_text(encoding="utf-8"), i18n.tr("folder.agent.body"))
-        self.assertFalse((self.root / "Arquivos" / "AGENT.md").exists())
+        self.assertFalse((self.root / "Biblioteca" / "AGENT.md").exists())
 
     def test_the_note_keeps_its_name_in_every_language(self):
         """The TEXT follows the language; the NAME does not.
@@ -182,7 +182,7 @@ class FirstRun(unittest.TestCase):
     def test_declining_writes_nothing(self):
         self.assertFalse(self.confirm("n"))
         self.assertFalse((self.root / "App").exists())
-        self.assertFalse((self.root / "Arquivos").exists())
+        self.assertFalse((self.root / "Biblioteca").exists())
 
     def test_without_a_terminal_it_refuses_rather_than_assume(self):
         with mock.patch.object(sys, "stdin", _NoTerminal()):
@@ -208,7 +208,7 @@ class FirstRun(unittest.TestCase):
             i18n.reset()
             self.confirm()
         self.assertTrue((self.root / "Tables").is_dir())
-        self.assertTrue((self.root / "Files").is_dir())
+        self.assertTrue((self.root / "Library").is_dir())
         self.assertTrue((self.root / "Projects").is_dir())
         self.assertTrue((self.root / "Shared").is_dir())
         self.assertTrue((self.root / "Vault").is_dir())

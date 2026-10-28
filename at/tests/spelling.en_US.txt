@@ -30,6 +30,7 @@ authelia
 backend
 bcp
 belo
+biblioteca
 caddyfile
 chave
 cli

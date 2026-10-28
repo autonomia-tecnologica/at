@@ -27,7 +27,7 @@ export interface Shortcut {
 export const SHORTCUTS: Shortcut[] = [
   { key: "C", labelKey: "settings", run: () => open(SETTINGS_KEY, null) },
   // The last `file:*` visited, or the section's own root with none yet.
-  { key: "A", labelKey: "files", run: () => open(lastFile() ?? FILES_KEY, null) },
+  { key: "B", labelKey: "files", run: () => open(lastFile() ?? FILES_KEY, null) },
   // The last project/orphans/"every task" visited, or "every task" with none yet.
   { key: "T", labelKey: "tasks", run: () => open(lastTasks() ?? store.types.task, null) },
 ];

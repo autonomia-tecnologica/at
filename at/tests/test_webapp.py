@@ -1264,7 +1264,7 @@ class TheBroadcaster(unittest.TestCase):
 
 
 class TheEvents(ServerCase):
-    """`/api/events` — a escrita em `Arquivos/` chega à aba aberta, sem
+    """`/api/events` — a escrita em `Biblioteca/` chega à aba aberta, sem
     recarregar (TASK-128, fatia 2/3).
 
     O vigia que varre de verdade vive em `beat()` (provado em `test_clock.py`);

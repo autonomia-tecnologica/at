@@ -23,8 +23,11 @@ the next migration, never an edit to one that shipped.
 **A migration handles its own impact and decides what to do with it.** Naming a
 folder moves a path, and what a person points at from OUTSIDE the folder — a
 vault of another tool, a backup script — is what breaks later, when that other
-tool is opened. That is why the rename that touches the person's own folders
-asks before it moves, and the two that touch only AT's own folder do not.
+tool is opened. That is why the rename that follows a language CHANGE asks
+before it moves: the language is the folder's, and declining is a cost the
+person chooses. The rename that adopts the product's own new name does not ask —
+there is no choice on the other side —, and neither do the moves that touch only
+AT's own folder.
 
 **A migration runs once; a language does not.** Changing the language renames
 the folders again, so that offer is NOT a migration — it is `offer_language`,
@@ -73,6 +76,7 @@ from at.core.migrations_folders import (  # noqa: F401
     _harness_folder,
     _legacy_instance,
     _moves,
+    _prose_in_its_new_name,
     _spelled,
 )
 from at.core.migrations_later import (  # noqa: F401
@@ -162,6 +166,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(28, _once_needs_a_day),
     Migration(29, _hooks),
     Migration(30, _notes),
+    Migration(31, _prose_in_its_new_name),
 )
 
 

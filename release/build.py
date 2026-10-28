@@ -61,10 +61,11 @@ ALWAYS = frozenset({
 # And what only the root carries — this checkout is also a Working Folder, and
 # the person's folder is not the product. `dist/` is here and not in `ALWAYS`
 # because the WebApp's own `dist/` DOES travel: excluding it would leave the
-# binary without a front page.
+# binary without a front page. The folders keep BOTH spellings: a checkout may
+# still carry the retired one (`Arquivos/`, `Files/`) beside the current one.
 AT_THE_ROOT = frozenset({
-    "dist", "Tabelas", "App", "Arquivos", "Projetos", "Compartilhada",
-    "Harness", "INSTANCE.md",
+    "dist", "Tabelas", "App", "Biblioteca", "Arquivos", "Projetos",
+    "Compartilhada", "Harness", "INSTANCE.md", "Library", "Files",
 })
 
 

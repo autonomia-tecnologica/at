@@ -610,7 +610,7 @@ class TheProcess(ClockCase):
         # chamadas acima, que nunca passam um servidor. O `Watcher` do Cofre
         # cria o SEU PRÓPRIO `vigia.Vigia` (por `strongbox.Cofre/`)
         # incondicionalmente — o que esta rodada NÃO cria é um segundo, para
-        # `Arquivos/`.
+        # `Biblioteca/`.
         with mock.patch.object(door, "tick"), mock.patch.object(door, "remind"), \
                 mock.patch.object(strongbox.Watcher, "tick"), \
                 mock.patch.object(webapp.vigia, "Vigia") as made:
@@ -618,7 +618,7 @@ class TheProcess(ClockCase):
         self.assertNotIn(mock.call(paths.prose_dir()), made.call_args_list)
 
     def test_the_page_vigia_round_publishes_when_arquivos_changes(self):
-        # A pasta vigiada é `Arquivos/` (`paths.prose_dir()`) — a mesma que
+        # A pasta vigiada é `Biblioteca/` (`paths.prose_dir()`) — a mesma que
         # `FileTree.vue` relê hoje ao cutucar. A PRIMEIRA varredura é muda
         # (`vigia.Vigia`'s own docstring), então a escrita entra ENTRE a
         # primeira e a segunda rodada — é para isso que `pause` existe aqui.

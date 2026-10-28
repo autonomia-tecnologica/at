@@ -225,7 +225,7 @@ class TheGate(unittest.TestCase):
         i18n.reset()
 
         self.assertEqual(hooks.install(self.repo).state, hooks.INSTALLED)
-        (extra / "Arquivos" / "nota.md").write_text(self.SECRET, encoding="utf-8")
+        (extra / "Biblioteca" / "nota.md").write_text(self.SECRET, encoding="utf-8")
 
         self._write("ok = True\n")
         blocked = self._git("commit", "-m", "clean repo, dirty working folder")

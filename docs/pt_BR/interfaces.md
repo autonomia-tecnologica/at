@@ -49,7 +49,7 @@ O painel tem as entradas:
 | entrada | o que é |
 |---|---|
 | **Tarefas** | a **árvore de projetos** — um projeto com a contagem das tarefas que o nomeiam, os subprojetos indentados, e por último o nó **"sem projeto"**, que abre as tarefas que projeto nenhum reivindica. Um projeto abre uma **página** com as tarefas de toda a sua subárvore, cada linha dizendo de que subprojeto ela veio. |
-| **Arquivos** | a árvore de `prose/` e a página de um arquivo — lida, e escrita no lugar quando o servidor diz que pode. |
+| **Biblioteca** | a árvore de `prose/` e a página de um arquivo — lida, e escrita no lugar quando o servidor diz que pode. |
 | **Tabelas** | o vocabulário: toda tabela declarada, com a sua contagem. |
 | **Pessoas** | os atores e os papéis: quem pode agir, com que teto. Só o admin abre. |
 | **Serviços** | cada serviço configurado, o estado dele e os tokens que ele precisa. |

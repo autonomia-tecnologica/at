@@ -46,8 +46,9 @@ HERE = Path(__file__).resolve().parent
 # is migrated by running AT in it, and the gate must hold either way.
 SKIP = {
     "node_modules", ".venv", ".git", "build", "dist", "hooks", ".claude",
-    "App", "app", "Tables", "Tabelas", "Files", "Arquivos",
-    "Projects", "Projetos", "Shared", "Compartilhada", "Harness",
+    "App", "app", "Tables", "Tabelas", "Biblioteca", "Library",
+    "Files", "Arquivos", "Projects", "Projetos", "Shared", "Compartilhada",
+    "Harness",
     "data", "prose",
 }
 

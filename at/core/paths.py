@@ -12,8 +12,9 @@ screen comes from `i18n`.
 
 A folder that refused a rename keeps the name it had, so the resolution accepts
 every name the product has ever given it — the active language's first, then the
-other language's, then the internal name itself. Without that, declining a
-rename would break AT instead of leaving the cost with whoever declined.
+other language's, then the retired faces, and the internal name itself last.
+Without that, declining a rename would break AT instead of leaving the cost with
+whoever declined.
 
 `AT_ROOT` overrides the resolution so a test — or a developer running
 `python3 -m at` from the checkout — can aim the engine somewhere else without
@@ -36,7 +37,7 @@ ROOT_ENV = "AT_ROOT"
 NAMES: dict[str, dict[str, str]] = {
     "app": {"pt_BR": "App", "en_US": "App"},
     "data": {"pt_BR": "Tabelas", "en_US": "Tables"},
-    "prose": {"pt_BR": "Arquivos", "en_US": "Files"},
+    "prose": {"pt_BR": "Biblioteca", "en_US": "Library"},
     "projects": {"pt_BR": "Projetos", "en_US": "Projects"},
     "shared": {"pt_BR": "Compartilhada", "en_US": "Shared"},
     # A pasta que sela sozinha (TASK-154) — irmã de `prose`, e não dentro dela:
@@ -48,13 +49,27 @@ NAMES: dict[str, dict[str, str]] = {
     "strongbox": {"pt_BR": "Cofre", "en_US": "Vault"},
     # Onde o `at/convert/` pousa o que gerou (TASK-165) — irmã de `prose` pela
     # mesma razão do Cofre: o que está aqui não é o material de origem, é o
-    # produto de uma conversão, e não se mistura com `Arquivos/`.
+    # produto de uma conversão, e não se mistura com `Biblioteca/`.
     "convert": {"pt_BR": "Convertidos", "en_US": "Converted"},
     # The one whose name is the same word in both languages, like `App/`: a
     # person looking for what an agent loads looks for `harness` in either, and
     # pt_BR took the word whole. It is declared here rather than spelled in the
     # code, which is what keeps the engine branching on the internal name.
     "harness": {"pt_BR": "Harness", "en_US": "Harness"},
+}
+
+# The faces a folder has carried BEFORE the one it carries today, by language,
+# and in the order they were declared. One home, like `NAMES`: the rename that
+# takes a folder from here to there is migration 31, and the resolution reads
+# this table so a folder that still carries a retired spelling is still found.
+#
+# The resolution accepting it is the promise the module's docstring makes: a
+# person who declined a rename — or a folder that has not migrated yet — cannot
+# see their material disappear because the name on disk is no longer the one the
+# product writes today. Declining a rename costs a name that disagrees with the
+# screen, never the files.
+FORMER: dict[str, dict[str, str]] = {
+    "prose": {"pt_BR": "Arquivos", "en_US": "Files"},
 }
 
 # The instance folder, and it is NOT localized — deliberately. The language
@@ -153,14 +168,44 @@ def working_folder() -> Path:
 
 
 def candidates(internal: str) -> tuple[str, ...]:
-    """Every name the folder may carry, in the order the resolution tries."""
+    """Every name the folder may carry, in the order the resolution tries.
+
+    The active language's face first, then the other language's, then the faces
+    this folder has carried before (`FORMER`), and the internal name last. A
+    folder that declined the rename of a former face — or that has not migrated
+    yet — is still the folder it names, and that is why every face is tried.
+    """
+    names = NAMES[internal]
+    active = active_language()
+    ordered = [names[active]] if active in names else []
+    ordered += [name for code, name in sorted(names.items()) if code != active]
+    for name in FORMER.get(internal, {}).values():
+        if name not in ordered:
+            ordered.append(name)
+    if internal not in ordered:
+        # The internal name itself, last: a folder hand-created under it, or one
+        # born before this table existed, is still the folder it names.
+        ordered.append(internal)
+    return tuple(ordered)
+
+
+def current_candidates(internal: str) -> tuple[str, ...]:
+    """The names the folder is CURRENTLY spelled with — no retired face.
+
+    The active language's name first, then the other language's, then the
+    internal name. It is what `_moves` reads: a retired face is migration 31's
+    subject, and offering its rename here as well would ask the same question
+    twice — migration 31 does it without asking, so the second question would
+    sometimes be answered "no" against a move that happens anyway.
+
+    The internal name stays because a folder born under it is still a folder the
+    language rename has to bring forward, and it is not a retired face.
+    """
     names = NAMES[internal]
     active = active_language()
     ordered = [names[active]] if active in names else []
     ordered += [name for code, name in sorted(names.items()) if code != active]
     if internal not in ordered:
-        # The internal name itself, last: a folder hand-created under it, or one
-        # born before this table existed, is still the folder it names.
         ordered.append(internal)
     return tuple(ordered)
 
@@ -211,7 +256,7 @@ def settings_file() -> Path:
 def agent_note() -> Path:
     """`AGENT.md`, at the folder's root — where such a reader looks first.
 
-    Not inside `Arquivos/`: that folder is the person's material, and this note
+    Not inside `Biblioteca/`: that folder is the person's material, and this note
     is the folder presenting itself. It is AT's, and AT writes it once.
     """
     return working_folder() / AGENT_NOTE
@@ -269,7 +314,7 @@ def data_dir() -> Path:
 
 
 def prose_dir() -> Path:
-    """`Arquivos/` — every file that is not structured data (§4)."""
+    """`Biblioteca/` — every file that is not structured data (§4)."""
     return folder("prose")
 
 
@@ -288,7 +333,7 @@ def shared_dir() -> Path:
 def strongbox_dir() -> Path:
     """`Cofre/` — the folder that seals on its own (TASK-152, TASK-154).
 
-    A sibling of `Arquivos/` and not a folder inside it: what a person drops
+    A sibling of `Biblioteca/` and not a folder inside it: what a person drops
     here is not loose material, it is asking to be ciphered — the vigia watches
     it and the Cofre's own consumer is the one that answers.
     """
@@ -298,9 +343,9 @@ def strongbox_dir() -> Path:
 def convert_dir() -> Path:
     """`Convertidos/` — what `at/convert/` produced (TASK-165).
 
-    A sibling of `Arquivos/`, for the same reason `Cofre/` is one: a converted
+    A sibling of `Biblioteca/`, for the same reason `Cofre/` is one: a converted
     DOCX or PDF is not source material, it is the OUTPUT of a conversion, and
-    mixing it into `Arquivos/` would make the tree it walks list its own
+    mixing it into `Biblioteca/` would make the tree it walks list its own
     output back at it.
     """
     return folder("convert")
