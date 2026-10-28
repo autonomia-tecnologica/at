@@ -21,6 +21,9 @@ export interface CatalogueEntry {
   action: string;
   action_label: string;
   label: string;
+  // O que o ato FAZ, em uma frase — é o que a árvore de Actions mostra no
+  // lugar do nome técnico. Vazio é o sinal para a linha esconder a nota.
+  description: string;
   risk: number;
   modifiers: Modifier[];
   reach: string[];

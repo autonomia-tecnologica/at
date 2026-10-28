@@ -12,6 +12,11 @@
 // agrupamento reaproveita `groupCatalogue` — os dois agrupam pelo OBJETO (o
 // cabeçalho é "Tarefas", e os verbos vêm abaixo); o que muda é só o que cada
 // linha mostra. Nenhum dos dois é uma segunda cópia do catálogo.
+//
+// A linha mostra o VERBO (`entry.action_label`) e, abaixo, a DESCRIÇÃO do que
+// ele faz (`entry.description`) — a frase que veio do catálogo no lugar do
+// nome técnico (`note:create`). Descrição vazia é uma permissão cujo texto
+// ainda falta: a linha esconde a nota em vez de mostrar um buraco.
 
 import { onMounted, ref } from "vue";
 import { fetchCatalogue, groupCatalogue } from "../lib/catalogue";
@@ -58,7 +63,7 @@ onMounted(load);
       <div class="row" v-for="entry in group.entries" :key="entry.key">
         <div>
           <b>{{ entry.action_label }}</b>
-          <div class="pop-note">{{ entry.key }}</div>
+          <div v-if="entry.description" class="pop-note">{{ entry.description }}</div>
           <ul v-if="entry.modifiers.length">
             <li v-for="modifier in entry.modifiers" :key="modifier.name">
               <span class="chip" :data-value="modifier.kind">

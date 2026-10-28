@@ -366,11 +366,17 @@ def catalogue_payload() -> dict:
     picker never needed: the modifiers each act accepts and the interfaces that
     reach it.
 
-    One entry per permission — the machine name, the label a person reads and the
-    risk it declares — and never a guess: whatever the catalogue does not name is
-    not here, which is exactly what makes the screen able to say that a role names
-    something that does not exist. The order is the catalogue's, so the picker
-    draws the list it was handed and sorts nothing.
+    One entry per permission — the machine name, the label a person reads, the
+    description of what the act does and the risk it declares — and never a
+    guess: whatever the catalogue does not name is not here, which is exactly
+    what makes the screen able to say that a role names something that does not
+    exist. The order is the catalogue's, so the picker draws the list it was
+    handed and sorts nothing.
+
+    **`description` travels with the entry** so the Actions tree writes the
+    sentence a person reads in place of the machine name; it comes from the same
+    catalog read as the labels (`permissions.description`), and an empty string
+    is the screen's word to hide the line.
 
     **`modifiers` and `reach` are read off the SAME declarations the fatias
     before this one wrote** (`permissions.modifiers`, `actions_audit.reach`), and
@@ -395,6 +401,7 @@ def catalogue_payload() -> dict:
                 "action": action,
                 "action_label": permissions.action_label(action),
                 "label": permissions.label(name),
+                "description": permissions.description(name),
                 "risk": permissions.risk(name),
                 "modifiers": [
                     {"name": modifier.name, "label": i18n.tr(modifier.key), "kind": modifier.kind}

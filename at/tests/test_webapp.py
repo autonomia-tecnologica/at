@@ -2742,6 +2742,9 @@ class TheRbacScreens(ServerCase):
     def test_every_entry_carries_the_words_and_the_risk(self):
         # The screen groups by OBJECT and writes the ACTION beside each check, so
         # the parts travel with the whole — the page cuts no label in two.
+        # The DESCRIPTION travels too: the Actions tree writes it under the verb
+        # in place of the machine name, and reading the catalog in the page
+        # would be the second home the words refuse (§3).
         _, _, body = self.get("/api/catalogue", headers=self.cookie())
         entry = next(
             one for one in json.loads(body)["permissions"] if one["key"] == "task:create"
@@ -2749,6 +2752,8 @@ class TheRbacScreens(ServerCase):
         self.assertEqual(entry["object"], "task")
         self.assertEqual(entry["object_label"], tables.table_name("task", many=True))
         self.assertEqual(entry["action_label"], i18n.tr("table.action.create"))
+        self.assertEqual(entry["description"], i18n.tr("permission.desc.task.create"))
+        self.assertNotEqual(entry["description"], "")
         self.assertEqual(entry["risk"], permissions.risk("task:create"))
         self.assertNotIn(entry["object_label"], ("permission.object.task", "task"))
 

@@ -66,6 +66,7 @@ from at.core.permissions_catalogue import (  # noqa: F401
 from at.core.permissions_labels import (  # noqa: F401
     action_key,
     action_label,
+    description,
     label,
     object_label,
 )

@@ -58,3 +58,25 @@ def action_label(name: str) -> str:
     key = action_key(name)
     written = tr(key)
     return written if written != key else name
+
+
+def description(permission: str) -> str:
+    """The sentence that says what the act DOES — `Cria uma tarefa.`
+
+    The permission's own key wins (`permission.desc.<object>.<action>`), so a
+    table's six acts each get their own sentence. When the catalog has none, the
+    VERB's fallback answers — the engine's block for its six, the catalogue's
+    for the acts an object declares of itself — and the fallback is the sentence
+    a new permission grows from until somebody writes its own. An absent
+    fallback answers the empty string: the screen that draws the line hides it,
+    and a gap stays a gap instead of a sentence composed out of words that do
+    not describe the act.
+    """
+    key = f"permission.desc.{permission.replace(':', '.')}"
+    written = tr(key)
+    if written != key:
+        return written
+    _, _, action = permission.partition(":")
+    fallback = f"{action_key(action)}.desc"
+    written = tr(fallback)
+    return written if written != fallback else ""

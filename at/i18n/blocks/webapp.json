@@ -259,7 +259,7 @@
     "unknown_permission": "O catálogo não conhece",
     "unknown_hint": "Estas permissões não existem no catálogo. Elas não concedem nada e seguem ditas aqui até alguém tirá-las do papel.",
     "credential_none": "Sem credencial",
-    "actions": "Actions",
+    "actions": "Ações",
     "actions_hint": "O catálogo inteiro, por objeto: cada ato que o alcança, os flags e argumentos que o ato aceita, e por qual porta (terminal, web, assist) ele é alcançado. É só leitura — nada aqui executa um ato de verdade.",
     "modifier_flag": "Flag",
     "modifier_argument": "Argumento",

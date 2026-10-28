@@ -203,6 +203,20 @@ class TheInterfacesThatReach(unittest.TestCase):
             set(permissions.all_permissions()),
         )
 
+    def test_every_permission_carries_a_description_of_its_own(self):
+        # O portão de COBERTURA: toda permissão do catálogo precisa de uma frase
+        # que diga o que o ato FAZ, porque é ela que a tela de Ações mostra no
+        # lugar do nome técnico. Diferente da própria permissão e do rótulo do
+        # verbo, a frase não pode ser um eco — repetir `note:create` ou "Criar"
+        # não ensina nada a quem lê.
+        for permission in permissions.all_permissions():
+            with self.subTest(permission=permission):
+                _, _, action = permission.partition(":")
+                written = permissions.description(permission)
+                self.assertNotEqual(written, "")
+                self.assertNotEqual(written, permission)
+                self.assertNotEqual(written, permissions.action_label(action))
+
     def test_the_hand_written_web_list_matches_the_catalogue(self):
         # `WEB_PERMISSIONS` é a parte escrita à mão (a rota é código, não
         # dado); este cruzamento é o que impede a lista de apodrecer — um nome
