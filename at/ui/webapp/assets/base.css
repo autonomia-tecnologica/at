@@ -77,6 +77,12 @@
   --page-gutter: var(--space-8);
   --page-header-gap: var(--space-6);
 
+  /* ----- safe area: the strip the system bars own (`env()` is 0 where nothing insets) ----- */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+
   /* ----- controls (F4): input, select and button share ONE height ----- */
   --control-h: 36px;
   --control-h-sm: 28px;
@@ -156,6 +162,8 @@ nav {
   position: fixed; top: 0; left: 0; bottom: 0; z-index: 25;
   width: var(--nav-w);
   display: flex; flex-direction: column; overflow: hidden;
+  /* the drawer keeps out of the system bars; the bottom also lifts `.side-foot` */
+  padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
   background: var(--nav-bg);
   border-right: 1px solid var(--nav-border);
   transform: translateX(-100%);
@@ -185,12 +193,14 @@ html.nav-open nav { transform: translateX(0); box-shadow: var(--nav-edge); }
 main {
   flex: 1; display: flex; flex-direction: column; min-width: 0;
   background-color: var(--surface-canvas);
+  /* the band above the header is the canvas — the header would paint it card */
+  padding-top: var(--safe-top);
 }
 header {
   display: flex; align-items: center; gap: var(--space-3);
   min-height: var(--header-h);
-  padding-inline: var(--space-8);
-  padding-inline-start: calc(var(--space-4) + var(--nav-toggle-box) + var(--space-3));
+  padding-inline: var(--space-8) calc(var(--space-8) + var(--safe-right));
+  padding-inline-start: calc(var(--safe-left) + var(--space-4) + var(--nav-toggle-box) + var(--space-3));
   background: var(--surface-card);
   border-bottom: 1px solid var(--border-subtle);
   color: var(--text-secondary);
@@ -199,7 +209,8 @@ header {
 /* THE PANEL'S OWN DOOR */
 .menu-toggle {
   position: fixed; z-index: 30;
-  top: calc((var(--header-h) - var(--nav-toggle-box)) / 2); left: var(--space-4);
+  top: calc(var(--safe-top) + (var(--header-h) - var(--nav-toggle-box)) / 2);
+  left: calc(var(--safe-left) + var(--space-4));
   display: inline-flex; align-items: center; justify-content: center;
   width: var(--nav-toggle-box); height: var(--nav-toggle-box);
   background: none; border: 0; border-radius: var(--r-sm);
@@ -237,7 +248,10 @@ header b { color: var(--text-primary); font-weight: var(--weight-semibold); }
 #head-right .name { display: var(--locale-name); }
 #head-right .flag { display: var(--locale-flag); }
 
-#body { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 0; }
+#body {
+  flex: 1; overflow-y: auto; overflow-x: hidden;
+  padding: 0 var(--safe-right) var(--safe-bottom) var(--safe-left);
+}
 
 /* ===== the page: the one owner of the margin (F3) ===== */
 .page {
@@ -249,7 +263,12 @@ header b { color: var(--text-primary); font-weight: var(--weight-semibold); }
 }
 .page--wide { max-width: var(--page-wide-max); }
 .page--fill { height: 100%; display: flex; flex-direction: column; }
-.page-header { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+.page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); min-width: 0; }
+.page-header:not(:has(.page-heading, .page-header-actions > *)) { display: none; }
+.page-heading { min-width: 0; flex: 1; }
+.page-desc { margin: var(--space-1) 0 0; color: var(--text-secondary); font-size: var(--type-body-sm); }
+.page-header-actions { margin-left: auto; flex-shrink: 0; }
+.page-header-actions .page-actions { justify-content: flex-end; }
 .page-title {
   margin: 0; min-width: 0;
   font-size: var(--type-page); font-weight: var(--weight-semibold);
@@ -297,7 +316,7 @@ nav hr.sep {
   margin: var(--space-3) var(--space-5); border: 0;
   border-top: 1px solid var(--nav-border);
 }
-/* THE PANEL'S TOP-LEVEL ROWS ARE ONE KIND OF ROW */
+/* THE PANEL'S TOP-LEVEL ROWS ARE ONE KIND OF ROW — and a tree row keeps their rhythm */
 nav .folder,
 nav .file[data-view="reminders"],
 nav .file[data-view="notes"] {
@@ -316,6 +335,7 @@ nav .folder > .t { margin-right: auto; }
 /* AND A FOLDER INSIDE THE TREE IS NOT A CHAPTER */
 nav .node {
   justify-content: flex-start; gap: var(--space-2);
+  margin-top: var(--space-2);
   color: var(--nav-ink-2);
 }
 nav .node:hover { color: var(--nav-ink-1); }
@@ -352,7 +372,7 @@ nav button.on {
   box-shadow: inset 3px 0 0 var(--nav-item-on-edge);
 }
 nav .file { color: var(--nav-ink-2); }
-nav .entry { justify-content: flex-start; gap: var(--space-2); align-items: center; }
+nav .entry { justify-content: flex-start; gap: var(--space-2); align-items: center; margin-top: var(--space-2); }
 /* A SEALED FILE IS A LEAF, NOT A DOOR */
 nav .entry.leaf {
   display: flex; align-items: center; gap: var(--space-2);
@@ -561,7 +581,6 @@ button.opt { background: none; border: 0; font: inherit; width: 100%; text-align
   background: var(--surface-card); border-bottom: 1px solid var(--border-subtle);
   color: var(--text-tertiary); font-size: var(--type-caption);
 }
-.file-page > .file-actions { margin-bottom: var(--space-3); }
 /* NO CELULAR: lateral menor, e só as palavras (os caracteres saem) */
 @media (max-width: 640px) {
   .file-bar { padding-inline: var(--space-3); gap: var(--space-3); }
@@ -625,7 +644,9 @@ button.opt { background: none; border: 0; font: inherit; width: 100%; text-align
 
 /* THE DOOR INTO `/chat` */
 .balloon-bubble {
-  position: fixed; z-index: 20; right: var(--space-5); bottom: var(--space-5);
+  position: fixed; z-index: 20;
+  right: calc(var(--space-5) + var(--safe-right));
+  bottom: calc(var(--space-5) + var(--safe-bottom));
   width: 56px; height: 56px; padding: 0; font-size: var(--type-page);
   display: flex; align-items: center; justify-content: center;
   background: var(--accent); color: var(--accent-ink);
@@ -638,8 +659,11 @@ button.opt { background: none; border: 0; font: inherit; width: 100%; text-align
 .balloon-bubble::before { --i: url("/icons/at2-nav-chat.svg"); width: var(--icon-lg); height: var(--icon-lg); }
 
 .toast {
-  position: fixed; z-index: 25; left: var(--space-5); bottom: var(--space-5);
-  width: min(var(--measure), calc(100vw - 2 * var(--space-5)));
+  position: fixed; z-index: 25;
+  left: calc(var(--space-5) + var(--safe-left));
+  bottom: calc(var(--space-5) + var(--safe-bottom));
+  width: min(var(--measure),
+            calc(100vw - 2 * var(--space-5) - var(--safe-left) - var(--safe-right)));
   display: flex; flex-direction: column; gap: var(--space-2);
   padding: var(--toast-pad); background: var(--surface-card);
   border-radius: var(--r-lg); box-shadow: var(--shadow-e2);
@@ -656,7 +680,9 @@ button.opt { background: none; border: 0; font: inherit; width: 100%; text-align
 @keyframes toast-empty { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 
 .shortcut-hint {
-  position: fixed; z-index: 25; left: var(--space-5); bottom: var(--space-5);
+  position: fixed; z-index: 25;
+  left: calc(var(--space-5) + var(--safe-left));
+  bottom: calc(var(--space-5) + var(--safe-bottom));
   display: flex; gap: var(--space-4);
   padding: var(--space-3) var(--space-4); background: var(--surface-card);
   border-radius: var(--r-lg); box-shadow: var(--shadow-e2);
@@ -1374,6 +1400,7 @@ html.no-motion *, html.no-motion *::before, html.no-motion *::after {
    `margin: 0`, and this one — same weight, later — is what gives the gap back. */
 .page > * + *, .file-page > * + *, .record-page > * + *, .design > * + *, .settings-page > * + * { margin-top: var(--space-6); }
 .page > .page-header + * { margin-top: var(--page-header-gap); }
+.page > .page-header:not(:has(.page-heading, .page-header-actions > *)) + * { margin-top: 0; }
 .page .hidden-count { margin-top: var(--space-3); }
 
 /* ===== responsive: the one literal band (contract with breakpoint.ts) ===== */
@@ -1468,6 +1495,7 @@ html.no-motion *, html.no-motion *::before, html.no-motion *::after {
 .strongbox-viewer {
   position: fixed; inset: 0; z-index: 40;
   display: flex; flex-direction: column;
+  padding: var(--safe-top) 0 var(--safe-bottom);
   background: var(--surface-card); color: var(--text-primary);
 }
 .strongbox-viewer .viewer-bar {

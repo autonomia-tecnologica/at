@@ -482,6 +482,37 @@ class TheLook(ServerCase):
         self.assertIn("text/javascript", headers["Content-Type"])
         self.assertIn(b"at.theme", body)
 
+    def test_the_manifest_is_the_immersive_app_it_installs(self):
+        # The installed app is IMMERSIVE (2026-10-28): the system bars are
+        # hidden and come back on the gesture, and the colours are the default
+        # theme's canvas — what the splash and the fleeting bars wear.
+        status, headers, body = self.get("/manifest.webmanifest")
+        self.assertEqual(status, 200)
+        self.assertIn("application/manifest+json", headers["Content-Type"])
+        manifest = json.loads(body)
+        self.assertEqual(manifest["display"], "fullscreen")
+        self.assertEqual(manifest["theme_color"], "#f6f5f2")
+        self.assertEqual(manifest["background_color"], "#f6f5f2")
+
+    @unittest.skipUnless((webapp.UI_DIR / "index.html").is_file(),
+                         "the page is not built: npm ci && npm run build")
+    def test_the_build_stretches_under_the_system_bars(self):
+        built = (webapp.UI_DIR / "index.html").read_text(encoding="utf-8")
+        self.assertIn(
+            'content="width=device-width, initial-scale=1, viewport-fit=cover"', built)
+        # The meta is the target the boot rewrites before the first paint.
+        self.assertIn('<meta name="theme-color" content="#f6f5f2">', built)
+
+    def test_the_bar_colour_is_read_from_the_theme_css_on_both_doors(self):
+        # `js/boot.js` and `lib/theme.ts` both take the bars' colour from the
+        # theme's own `--surface-canvas`; the two repeat the reading on purpose,
+        # so a file that loses it loses the bars in its own half of the run.
+        _, _, body = self.get("/js/boot.js")
+        page = (webapp.HERE / "src" / "lib" / "theme.ts").read_text(encoding="utf-8")
+        for source in (body.decode("utf-8"), page):
+            self.assertIn("theme-color", source)
+            self.assertIn("--surface-canvas", source)
+
 
 class TheAddress(ServerCase):
     """A view has a path — `/task`, `/task/3` — and the page owns the vocabulary."""

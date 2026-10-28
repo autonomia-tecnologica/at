@@ -20,6 +20,7 @@ import { label as worded, setFields, word } from "../lib/store";
 import { back, markPage, nav, openRef, poke, setTrail, showError } from "../lib/views";
 import TableView from "../components/TableView.vue";
 import MachineMint from "../components/MachineMint.vue";
+import PageActions from "../components/PageActions.vue";
 import type { RecordRow, TablePayload } from "../lib/record";
 
 const ACTOR = "actor";
@@ -168,7 +169,7 @@ watch(() => nav.current?.view, view => {
 <template>
   <!-- THE RECORD: who the actor is, and the credential it proves. -->
   <div v-if="record" class="record-page">
-    <div class="page-actions">
+    <PageActions>
       <button type="button" class="back" @click="stepBack">{{ word("back") }}</button>
       <span v-if="saved !== null" class="file-state" :class="{ bad: saved === false }">
         {{ word(saved ? "saved" : "save_failed") }}
@@ -176,7 +177,7 @@ watch(() => nav.current?.view, view => {
       <button type="button" class="btn" :disabled="saving" @click="save">
         {{ word("write") }}
       </button>
-    </div>
+    </PageActions>
 
     <div class="record-body">
       <div class="form">

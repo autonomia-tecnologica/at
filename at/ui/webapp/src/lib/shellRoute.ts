@@ -64,6 +64,20 @@ export function stepLink(i: number): (() => void) | null {
 // The title the page header says: the last step of the trail — the page's own
 // name. The chat fills the page's height instead of growing it.
 export const pageTitle = computed(() => trail.value[trail.value.length - 1] || "");
+
+// THE DESCRIPTION under the title: one short sentence per kind of screen, from
+// the catalog (`page_desc_<screen>`). A screen with no sentence says nothing.
+export const pageDescription = computed(() => {
+  const view = nav.current?.view || "";
+  let name = view;
+  if (view === TABLES_TASK_KEY) name = "tables_task";
+  else if (view.startsWith(FILE_PREFIX)) name = "file";
+  else if (view.startsWith(PROJECT_PREFIX)) name = "project";
+  else if (view.startsWith(ACTOR_PREFIX)) name = "actor";
+  else if (view.startsWith(ROLE_PREFIX)) name = "role";
+  else if (isKind(view)) name = "kind";
+  return name ? word("page_desc_" + name) : "";
+});
 export const fillsPage = computed(() => nav.current?.view === CHAT_KEY);
 
 // The pages that hold a wide thing — a table's grid, or the task board — read

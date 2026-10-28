@@ -2,6 +2,8 @@
    Contract: the scales live in `base.css`; this file is only colour, face and corner. */
 
 :root {
+  /* the system bars' own text and icons are drawn for this side */
+  color-scheme: dark;
   --font-sans: ui-monospace, "Cascadia Code", "Fira Code", Consolas,
                "Liberation Mono", Menlo, monospace;
   --font-display: ui-monospace, "Cascadia Code", "Fira Code", Consolas,

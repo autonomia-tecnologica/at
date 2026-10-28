@@ -37,6 +37,19 @@ function baseLink(): HTMLElement | null {
   return document.getElementById("base");
 }
 
+// THE SYSTEM BARS WEAR THE CANVAS of the theme and the side on screen. The
+// value is READ OFF the theme's CSS (`--surface-canvas`), the same reading
+// `js/boot.js` does: one palette, the CSS's. The two files repeat it ON
+// PURPOSE, as they already repeat the `at.theme`/`at.dark` keys — the boot is
+// classic and cannot import from here.
+function paintBars(): void {
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (!meta) return;
+  const canvas = getComputedStyle(document.documentElement)
+    .getPropertyValue("--surface-canvas").trim();
+  if (canvas) meta.setAttribute("content", canvas);
+}
+
 export function themeRow(id: string | null): ThemeRow | null {
   if (!id) return null;
   return store.themes.find(row => row.id === id) || null;
@@ -87,7 +100,18 @@ export function applyTheme(): ThemeRow | null {
   const params: string[] = [];
   if (savedTheme()) params.push("theme=" + encodeURIComponent(row.id));
   if (dark) params.push("dark");
-  node.setAttribute("href", "/theme.css" + (params.length ? "?" + params.join("&") : ""));
+  const href = "/theme.css" + (params.length ? "?" + params.join("&") : "");
+  if (node.getAttribute("href") !== href) {
+    node.setAttribute("href", href);
+    // The stylesheet on screen is still the OLD one when the `href` just
+    // moved, so the colour is read when the new one lands (and on `error`,
+    // for the same reason the boot waits for it there).
+    node.addEventListener("load", paintBars, { once: true });
+    node.addEventListener("error", paintBars, { once: true });
+  } else {
+    // The sheet already applied is this href's: nothing to wait for.
+    paintBars();
+  }
   // THE SECOND LINK, THE SAME DOOR, AND THE SAME QUERY (2026-09-28). Every
   // theme in the registry names no `base` of its own today and reads
   // `base.css` — but the `"base"` field still exists for a theme that wants a

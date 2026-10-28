@@ -6,8 +6,14 @@
 <html class="shell">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#ffffff">
+<!-- `viewport-fit=cover` is the EDGE-TO-EDGE page: the window stretches under
+     the system bars, and `base.css` pays the notches back with
+     `env(safe-area-inset-*)`. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- The canvas of the default `at` theme, the value before any choice runs.
+     `js/boot.js` rewrites it before the first paint with the canvas of the
+     theme and side that are really active. -->
+<meta name="theme-color" content="#f6f5f2">
 <title>AT</title>
 <!-- O PWA de verdade (TASK-162, fatia 2/2): o manifesto é o que deixa
      "instalar" fazer sentido, e o Service Worker (main.ts) é quem responde

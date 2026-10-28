@@ -14,6 +14,7 @@ import { nav, setTrail, setTrailLinks, open, back, openFolder, leave, markPage, 
 import { downloadFile, isSaveGesture } from "../lib/download";
 import { dirOf, fileOf } from "../lib/relative";
 import ProseField from "../components/ProseField.vue";
+import PageActions from "../components/PageActions.vue";
 
 interface FilePayload {
   path: string;
@@ -150,11 +151,11 @@ watch(() => nav.tick, () => void load());
   <div class="file-page">
     <!-- THE BAR OF OPTIONS, the system's own (`.page-actions`, as Record/Role/
          Actor): the step back is quiet, the edit is the action. -->
-    <div class="page-actions file-actions">
+    <PageActions>
       <button type="button" class="btn btn-quiet" @click="leaveToFolder">← {{ word("back") }}</button>
       <button v-if="payload && payload.writable && payload.text !== null" type="button"
               class="btn" @click="openWrite">{{ word("edit") }}</button>
-    </div>
+    </PageActions>
     <pre v-if="!payload" class="text">{{ error }}</pre>
     <!-- AN IMAGE IS VIEWED, NEVER EDITED (TASK-167) — and it opens INLINE, the
          way it always did. `src` never repeats the bytes already in `payload`

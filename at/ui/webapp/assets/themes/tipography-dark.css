@@ -2,6 +2,8 @@
    Contract: the scales live in `base.css`; this file is only colour, face and corner. */
 
 :root {
+  /* the system bars' own text and icons are drawn for this side */
+  color-scheme: dark;
   --font-sans: "Iowan Old Style", "Palatino Linotype", Palatino, "URW Palladio L",
                Georgia, serif;
   --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, "URW Palladio L",

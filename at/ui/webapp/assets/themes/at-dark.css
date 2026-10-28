@@ -13,6 +13,8 @@
    same way; only the scale under them differs. */
 
 :root {
+  /* the system bars' own text and icons are drawn for this side */
+  color-scheme: dark;
   /* ===== type ============================================================ */
   --font-sans: "Nunito Sans", system-ui, -apple-system, "Segoe UI", Roboto,
                "Helvetica Neue", Arial, sans-serif;

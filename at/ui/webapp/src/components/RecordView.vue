@@ -8,6 +8,7 @@
 
 import { store, label, word } from "../lib/store";
 import { back, markPage } from "../lib/views";
+import PageActions from "./PageActions.vue";
 import { openPop, closePop, isPopOpen } from "../lib/pop";
 import FieldValue from "./FieldValue.vue";
 import ProseField from "./ProseField.vue";
@@ -59,7 +60,7 @@ function goBack(): void {
 
 <template>
   <div class="record-page">
-    <div class="page-actions">
+    <PageActions :inline="popup">
       <!-- `btn-quiet`: the step back is a way OUT of the page and not its
            action, and a system that fills every button by default (base.css)
            has to be told which one is not the action. HOSTED IN THE PANEL
@@ -69,7 +70,7 @@ function goBack(): void {
         <template v-if="popup">× {{ record.shown_id }}</template>
         <template v-else>← {{ record.shown_id }} · {{ total }} {{ word("records") }}</template>
       </button>
-    </div>
+    </PageActions>
     <dl class="record-body">
       <template v-for="field in record.fields" :key="field.name">
         <dt>{{ label(spec(field.name)?.labels) || field.name }}</dt>

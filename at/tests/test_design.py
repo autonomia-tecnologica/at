@@ -114,6 +114,28 @@ class TheThemes(unittest.TestCase):
                              (THEMES / f"{ident}.css").read_text(encoding="utf-8"))
 
 
+class TheScreen(unittest.TestCase):
+    """The bars the platform draws, and the panel `paper` keeps monochrome."""
+
+    def test_every_theme_declares_the_colour_scheme_of_its_side(self):
+        # The system's own text and icons (the clock, the battery, the buttons)
+        # are drawn by the platform from this, so a dark side that says `light`
+        # leaves them black on black.
+        for theme in sorted(THEMES.glob("*.css")):
+            body = without_comments(theme.read_text(encoding="utf-8"))
+            side = "dark" if theme.stem.endswith("-dark") else "light"
+            found = re.search(r"color-scheme:\s*([^;]+);", body)
+            self.assertIsNotNone(found, theme.name)
+            self.assertEqual(found.group(1).strip(), side, theme.name)
+
+    def test_paper_paints_the_panel_with_the_page_colour_on_both_sides(self):
+        # The Kindle decision (2026-10-28): white beside white, black beside
+        # black. A `--nav-bg` with a life of its own is what this catches.
+        for name in ("paper.css", "paper-dark.css"):
+            tokens = _resolved((THEMES / name).read_text(encoding="utf-8"))
+            self.assertEqual(tokens["--nav-bg"], tokens["--surface-canvas"], name)
+
+
 class TheTokenContract(unittest.TestCase):
     """What `base.css` reads, every theme has to declare.
 

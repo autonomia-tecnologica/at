@@ -39,9 +39,36 @@ try {
   const dark = state === "dark" ||
     (state === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
   if (dark) params.push("dark");
-  if (params.length) {
-    document.getElementById("theme").setAttribute(
-      "href", "/theme.css?" + params.join("&"));
+  const themeLink = document.getElementById("theme");
+  if (themeLink) {
+    if (params.length) {
+      themeLink.setAttribute("href", "/theme.css?" + params.join("&"));
+    }
+    // THE SYSTEM BARS WEAR THE CANVAS. The `theme-color` meta sits in the
+    // `head` with the default theme's canvas, and the bar above the page would
+    // show that colour while the page wears another one. The value is READ OFF
+    // THE THEME'S OWN CSS (`--surface-canvas`), never copied into a table here:
+    // a second palette would be a second thing to keep in step, and the CSS is
+    // already the first. It belongs in this file for the same reason the link
+    // does — it is the step before the first paint, and it rides the theme.
+    const paintBars = () => {
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (!meta) return;
+      const canvas = getComputedStyle(document.documentElement)
+        .getPropertyValue("--surface-canvas").trim();
+      if (canvas) meta.setAttribute("content", canvas);
+    };
+    // TIMING: a link whose `href` just moved still has the OLD stylesheet
+    // applied, so the colour is read only when the new one says it loaded (and
+    // on `error` too — a bar with no colour is worse than a stale one). A link
+    // that did not move reads at once when its sheet is already there, and
+    // waits for `load` when it is not.
+    if (params.length || !themeLink.sheet) {
+      themeLink.addEventListener("load", paintBars, { once: true });
+      themeLink.addEventListener("error", paintBars, { once: true });
+    } else {
+      paintBars();
+    }
   }
   // THE SECOND STYLESHEET GOES THROUGH THE SAME DOOR, and by the ID alone — a
   // base has no side, so `dark` stays out of it. It is not an optimisation:

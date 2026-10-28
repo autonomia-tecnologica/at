@@ -2,6 +2,8 @@
    Contract: the scales live in `base.css`; this file is only colour, face and corner. */
 
 :root {
+  /* the system bars' own text and icons are drawn for this side */
+  color-scheme: light;
   --font-sans: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
   --font-display: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
   --r-sm: 0px;
@@ -65,7 +67,9 @@
   --shadow-e2: 0 12px 32px rgb(var(--shadow-rgb) / 16%);
   --scrollbar-thumb: #b3b3b3;
   --scrollbar-thumb-hover: #808080;
-  --nav-bg: #e6e6e6;
+  /* THE KINDLE: the panel is the page's own colour, white here and black in
+     the dark side — monochrome on purpose. */
+  --nav-bg: var(--surface-canvas);
   --nav-border: rgb(var(--shadow-rgb) / 10%);
   --nav-edge: 0 16px 48px rgb(var(--shadow-rgb) / 12%);
   --nav-ink-1: var(--text-primary);

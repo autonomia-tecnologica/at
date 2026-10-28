@@ -15,7 +15,7 @@ import { refresh, booted, startBoot } from "./lib/shellBoot";
 import { installListeners } from "./lib/shellListeners";
 import { signedIn, session } from "./lib/session";
 import { store, label, word } from "./lib/store";
-import { balloon, trail, stepLink, pageTitle, fillsPage, widensPage, frame, isWrite } from "./lib/shellRoute";
+import { balloon, trail, stepLink, pageTitle, pageDescription, fillsPage, widensPage, frame, isWrite } from "./lib/shellRoute";
 import { onMounted } from "vue";
 import { toggleNav, navRail } from "./lib/nav";
 import { offlineState } from "./lib/offline";
@@ -145,8 +145,15 @@ defineExpose({ refresh });
              last step of the trail, the same words the band above ends in —
              and every view sits under it with no outer margin of its own. -->
         <div v-if="frame" class="page" :class="{ 'page--fill': fillsPage, 'page--wide': widensPage }">
-          <div v-if="pageTitle" class="page-header">
-            <h1 class="page-title">{{ pageTitle }}</h1>
+          <!-- The header is ALWAYS here (its right side is where a screen
+               teleports its actions, `PageActions.vue`), and it is hidden
+               while it holds nothing. -->
+          <div class="page-header">
+            <div v-if="pageTitle" class="page-heading">
+              <h1 class="page-title">{{ pageTitle }}</h1>
+              <p v-if="pageDescription" class="page-desc">{{ pageDescription }}</p>
+            </div>
+            <div id="page-header-actions" class="page-header-actions"></div>
           </div>
           <!-- THE SCREEN CHANGE (F6, B-26): the new page fades in (`base.css`,
                `.page > :not(.page-header)`) and the old one fades OUT over it,
