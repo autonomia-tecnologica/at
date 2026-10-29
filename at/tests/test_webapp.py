@@ -920,13 +920,46 @@ class TheProjectBranch(ServerCase):
         self.assertEqual(rows[1]["parent"], 1)
         self.assertTrue(rows[-1].get("orphans"))
 
-    def test_a_line_counts_the_tasks_that_name_that_project_directly(self):
-        # Not the subtree: the number says how much of the day is under that
-        # name, and what the subtree holds is what the PAGE is for.
+    def test_a_line_counts_the_open_tasks_of_the_whole_subtree(self):
+        # The number on a line is everything still to do under that name,
+        # children included; the children's own lines break the total down.
         _, _, body = self.get("/api/projects")
         rows = {row["title"]: row["tasks"] for row in json.loads(body)["tree"]}
-        self.assertEqual(rows["Autonomia"], 1)
+        self.assertEqual(rows["Autonomia"], 2)  # TASK-2 direct + TASK-3 on Site
         self.assertEqual(rows["Site"], 1)
+
+    def test_a_line_does_not_count_a_done_or_a_cancelled_task(self):
+        # A closed task is history: it stays in the store and on the project's
+        # page, but it is not work left, so it inflates no number.
+        with redirect_stdout(io.StringIO()):
+            for status in ("done", "cancelled"):
+                tables.create(
+                    "task",
+                    {"text": f"{status} na Autonomia", "project": "1", "status": status},
+                )
+        _, _, body = self.get("/api/projects")
+        rows = {row["title"]: row["tasks"] for row in json.loads(body)["tree"]}
+        self.assertEqual(rows["Autonomia"], 2)
+
+    def test_a_hidden_subproject_does_not_inflate_its_parent(self):
+        with redirect_stdout(io.StringIO()):
+            hidden = tables.create(
+                "project", {"name": "Encerrado", "status": "done", "parent": "1"}
+            )
+            tables.create(
+                "task", {"text": "dentro do escondido", "project": str(hidden["id"])}
+            )
+        _, _, body = self.get("/api/projects")
+        rows = {row["title"]: row["tasks"] for row in json.loads(body)["tree"]}
+        self.assertEqual(rows["Autonomia"], 2)
+        # Its project is not on screen either, so nobody claims the task: it is
+        # an orphan, counted once — in the "no project" node, not in the parent.
+        _, _, body = self.get("/api/orphans")
+        texts = [
+            next(f["value"] for f in row["fields"] if f["name"] == "text")
+            for row in json.loads(body)["records"]
+        ]
+        self.assertIn("dentro do escondido", texts)
 
     def test_a_project_the_listing_does_not_show_does_not_claim_its_tasks(self):
         with redirect_stdout(io.StringIO()):
@@ -986,6 +1019,25 @@ class TheProjectBranch(ServerCase):
         _, _, body = self.get("/api/orphans")
         payload = json.loads(body)
         self.assertEqual([row["shown_id"] for row in payload["records"]], ["TASK-1"])
+
+    def test_the_orphan_node_counts_only_open_tasks(self):
+        with redirect_stdout(io.StringIO()):
+            tables.create("task", {"text": "já feita sem projeto", "status": "done"})
+        _, _, body = self.get("/api/projects")
+        orphan = next(row for row in json.loads(body)["tree"] if row.get("orphans"))
+        self.assertEqual(orphan["tasks"], 1)
+        # The page reads the same set the node counts, so the number and the
+        # list cannot disagree.
+        _, _, body = self.get("/api/orphans")
+        listed = [row["shown_id"] for row in json.loads(body)["records"]]
+        self.assertEqual(listed, ["TASK-1"])
+
+    def test_the_orphan_node_is_absent_when_nothing_is_open(self):
+        with redirect_stdout(io.StringIO()):
+            tables.edit("task", 1, {"status": "done"})
+        _, _, body = self.get("/api/projects")
+        rows = json.loads(body)["tree"]
+        self.assertFalse([row for row in rows if row.get("orphans")])
 
 
 class TheQueue(unittest.TestCase):

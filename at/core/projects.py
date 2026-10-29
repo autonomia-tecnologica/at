@@ -139,13 +139,28 @@ def _tasks_by_owner(projects: dict[int, dict]) -> dict[int, int]:
     return owners
 
 
-def orphans() -> list[dict]:
-    """The tasks no shown project claims, in the store's order."""
+def _open_tasks() -> dict[int, dict]:
+    """task number → row, for the tasks a listing carries.
+
+    `tables.rows` is the slice the table declares (`show`: todo and doing), the
+    same one the CLI's `list` obeys. A done or a cancelled task is history — it
+    stays in the store and on the project's page, but it is not work left, so it
+    inflates no number.
+    """
     if schema.of(TASK) is None:
-        return []
+        return {}
+    return {
+        number: row
+        for row in tables.rows(TASK)
+        if (number := store.number_of(row)) is not None
+    }
+
+
+def orphans() -> list[dict]:
+    """The open tasks no shown project claims, in the order the listing declares."""
     claimed = set(_tasks_by_owner(shown_projects()))
     return [
-        row for number, row in _rows(TASK).items() if number not in claimed
+        row for number, row in _open_tasks().items() if number not in claimed
     ]
 
 
@@ -181,15 +196,27 @@ def tree() -> list[dict]:
 
 
 def _counts(projects: dict[int, dict]) -> dict[int, int]:
-    """How many tasks each project names DIRECTLY — the count the panel prints.
+    """How much work is left in each project's WHOLE subtree — the number the
+    panel prints.
 
-    Direct, not the subtree: the line is the project, and the number says how
-    much of the day is under that name. What the subtree holds is what the PAGE
-    is for.
+    Only the open tasks count (`_open_tasks`, the table's `show` slice): a done
+    or a cancelled task is history. The number on a line is everything still to
+    do under that name, children included — the children's own lines are where
+    the total is broken down.
+
+    The subtree is read inside `projects`, so a subproject the listing hides
+    belongs to no scope here: its tasks fall to "no project", and counting them
+    in the parent too would count them twice.
     """
+    by_owner = _tasks_by_owner(projects)
+    open_tasks = _open_tasks()
     counts: dict[int, int] = {}
-    for owner in _tasks_by_owner(projects).values():
-        counts[owner] = counts.get(owner, 0) + 1
+    for number in projects:
+        scope = set(_subtree(projects, number))
+        counts[number] = sum(
+            1 for task, owner in by_owner.items()
+            if owner in scope and task in open_tasks
+        )
     return counts
 
 
