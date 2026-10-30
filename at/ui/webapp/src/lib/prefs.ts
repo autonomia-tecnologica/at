@@ -8,6 +8,7 @@ export const PREFS_KEY = "at.sidebar";   // what is open (the folds)
 export const FILTERS_KEY = "at.filters"; // which values a column leaves out
 export const COLUMNS_KEY = "at.columns"; // a table's order and its hidden
 export const SELECT_KEY = "at.select";   // what is open, so a reload returns there
+export const REMINDER_DAYS_KEY = "at.reminderDays"; // the reminders screen's horizon (7/30/90 days)
 
 export type Prefs = Record<string, any>;
 

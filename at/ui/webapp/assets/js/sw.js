@@ -119,9 +119,29 @@ self.addEventListener("fetch", event => {
 });
 
 // O PUSH — a notificação do PRÓPRIO PWA, e o que substituiu o ntfy. O AT manda
-// um payload `{title, body}` cifrado (Web Push, `at/core/push.py`); o push
-// service entrega ao navegador, e é AQUI que a notificação do sistema nasce.
-// Sem este listener o navegador não mostra nada, e a inscrição seria muda.
+// um payload `{title, body, data, actions}` cifrado (Web Push,
+// `at/core/push.py`); o push service entrega ao navegador, e é AQUI que a
+// notificação do sistema nasce. Sem este listener o navegador não mostra nada,
+// e a inscrição seria muda.
+//
+// O QUE VAI PARA A NOTIFICAÇÃO é o que o AT mandou, e nada inventado: `data`
+// (um objeto, o que o clique carrega consigo — aqui, `reminder` e `instance`) e
+// `actions` (no máximo dois botões, e só os que têm `action` e `title` string,
+// porque é o que a API desenha). O `url` do clique normal é acrescentado ao
+// `data`, e é ele que a notificação leva sem botão.
+function pushedData(raw) {
+  const data = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
+  return { ...data, url: "/" };
+}
+
+function pushedActions(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter(item => item && typeof item.action === "string" && typeof item.title === "string")
+    .slice(0, 2)
+    .map(item => ({ action: item.action, title: item.title }));
+}
+
 self.addEventListener("push", event => {
   let payload = {};
   try {
@@ -131,30 +151,82 @@ self.addEventListener("push", event => {
   }
   const title = typeof payload.title === "string" && payload.title ? payload.title : "AT";
   const body = typeof payload.body === "string" ? payload.body : "";
-  event.waitUntil(
-    self.registration.showNotification(title, {
-      body,
-      data: { url: "/" },
-    }),
-  );
+  const options = { body, data: pushedData(payload.data) };
+  const actions = pushedActions(payload.actions);
+  if (actions.length) options.actions = actions;
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
-// CLICAR na notificação traz o app para a frente — a janela que já existe é
-// focada, e só quando não há nenhuma é que uma nova se abre.
+// A ROTA DA SEÇÃO, e não a raiz: o clique abre a tela de Lembretes, do mesmo
+// jeito que `/tasks` é a tela de Tarefas. A janela que já existe é focada, e só
+// quando não há nenhuma é que uma nova se abre nesse endereço.
+const REMINDERS = "/reminders";
+
+function bringApp() {
+  return self.clients
+    .matchAll({ type: "window", includeUncontrolled: true })
+    .then(clients => {
+      for (const client of clients) {
+        if (client.url.indexOf(self.location.origin) === 0 && "focus" in client) {
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(REMINDERS);
+      return undefined;
+    });
+}
+
+// O BOTÃO "CONCLUIR" fecha a ocorrência DIRETO da notificação, e faz isso pela
+// MESMA porta que a tela usa: a rota `POST /api/reminders/close`, que deixa a
+// linha de auditoria e a versão. Este arquivo não escreve nada por conta
+// própria — ele chama a rota, e é o resultado dela que decide o que acontece.
+// O SUCESSO É O DA ROTA: HTTP ok, e o corpo sem `ok: false`. O `reminder` pode
+// vir `null` — um `once` fechado não deixa instância —, e isso ainda é um
+// fechamento que deu certo; um corpo ausente com HTTP 200 também vale. Só a
+// falha de HTTP, a rede que não responde ou um corpo que diz `ok: false` caem
+// no comportamento de sempre (focar ou abrir), porque fechar não aconteceu.
+function closeOccurrence(id, instance) {
+  return fetch("/api/reminders/close", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, instance }),
+  })
+    .then(response => {
+      if (!response.ok) return false;
+      return response
+        .json()
+        .then(answer => !answer || answer.ok !== false)
+        .catch(() => true); // HTTP 200 sem corpo legível ainda é sucesso
+    })
+    .catch(() => false);
+}
+
+// Fechou dali: as janelas abertas do app são avisadas para recarregarem os
+// lembretes (a tela escuta `at:reminders`), e nenhuma é aberta — a pessoa
+// resolveu na notificação e não pediu a tela.
+function tellTheApp() {
+  return self.clients
+    .matchAll({ type: "window", includeUncontrolled: true })
+    .then(clients => {
+      for (const client of clients) {
+        if (client.url.indexOf(self.location.origin) === 0 && "postMessage" in client) {
+          client.postMessage({ type: "at:reminders" });
+        }
+      }
+    });
+}
+
+// CLICAR na notificação: com o botão `close`, fecha a ocorrência e avisa o
+// app; sem ele (ou quando fechar falhou), traz o app para a frente.
 self.addEventListener("notificationclick", event => {
   event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || "/";
-  event.waitUntil(
-    self.clients
-      .matchAll({ type: "window", includeUncontrolled: true })
-      .then(clients => {
-        for (const client of clients) {
-          if (client.url.indexOf(self.location.origin) === 0 && "focus" in client) {
-            return client.focus();
-          }
-        }
-        if (self.clients.openWindow) return self.clients.openWindow(url);
-        return undefined;
-      }),
-  );
+  const data = event.notification.data || {};
+  if (event.action === "close" && data.reminder != null && data.instance) {
+    event.waitUntil(
+      closeOccurrence(data.reminder, data.instance).then(closed => (closed ? tellTheApp() : bringApp())),
+    );
+    return;
+  }
+  event.waitUntil(bringApp());
 });

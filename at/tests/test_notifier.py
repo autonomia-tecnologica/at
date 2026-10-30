@@ -221,6 +221,38 @@ class TheSend(FolderCase):
         self.assertFalse(ok)
         self.assertEqual(detail, "undelivered")
 
+    def test_the_payload_carries_data_and_actions_when_they_come(self):
+        subscription, private, auth = self.browser()
+        push.subscribe(subscription)
+        seen: list = []
+
+        def fake(request, timeout=None):
+            seen.append(request)
+            return Answer(201)
+
+        data = {"reminder": 7, "instance": "2026-10-05 09:00"}
+        actions = [{"action": "close", "title": "Concluir"}]
+        with mock.patch("urllib.request.urlopen", side_effect=fake):
+            push.send("AT", "Vence hoje", data=data, actions=actions)
+        payload = json.loads(self.decrypt(seen[0].data, private, auth))
+        self.assertEqual(payload["data"], data)
+        self.assertEqual(payload["actions"], actions)
+
+    def test_the_payload_carries_neither_when_they_are_empty(self):
+        subscription, private, auth = self.browser()
+        push.subscribe(subscription)
+        seen: list = []
+
+        def fake(request, timeout=None):
+            seen.append(request)
+            return Answer(201)
+
+        with mock.patch("urllib.request.urlopen", side_effect=fake):
+            push.send("AT", "oi")
+        payload = json.loads(self.decrypt(seen[0].data, private, auth))
+        self.assertNotIn("data", payload)
+        self.assertNotIn("actions", payload)
+
 
 class TheDoor(FolderCase):
     def test_publish_delegates_to_the_push_and_ignores_the_key(self):
@@ -228,7 +260,14 @@ class TheDoor(FolderCase):
         push.subscribe(subscription)
         with mock.patch.object(push, "send", return_value=(True, "201")) as send:
             self.assertEqual(notifier.publish("AT", "oi", KEY), (True, "201"))
-        send.assert_called_once_with("AT", "oi", urgency="high")
+        send.assert_called_once_with("AT", "oi", urgency="high", data=None, actions=None)
+
+    def test_publish_hands_data_and_actions_to_the_push(self):
+        data = {"reminder": 3, "instance": "2026-10-05 09:00"}
+        actions = [{"action": "close", "title": "Concluir"}]
+        with mock.patch.object(push, "send", return_value=(True, "201")) as send:
+            notifier.publish("AT", "oi", KEY, data=data, actions=actions)
+        send.assert_called_once_with("AT", "oi", urgency="high", data=data, actions=actions)
 
     def test_read_is_the_inbox_and_can_never_refuse(self):
         push.record("AT", "um aviso")

@@ -129,14 +129,17 @@ from urllib.parse import parse_qs, urlparse
 
 from at import __version__, convert, i18n  # noqa: F401
 from at.core import (
+    audit,
     gate,  # noqa: F401 — `webapp.gate` is patched by the tests
     jobs,
     permissions,
+    reminder,
     tables,
     vigia,  # noqa: F401 — `webapp.vigia` is patched by the tests
 )
 from at.data import schema
 from at.prose import payload as shape
+from at.ui import ask as door
 from at.ui.webapp import keys, session  # noqa: F401 — `webapp.keys` is read by `local.py`
 from at.ui.webapp.clock import (  # noqa: F401
     CLOCK_THREAD,
@@ -207,6 +210,7 @@ from at.ui.webapp.routes_gate import (  # noqa: F401
 from at.ui.webapp.routes_get import GetRoutes
 from at.ui.webapp.routes_offline import OFFLINE_WRITES, OfflineRoutes  # noqa: F401
 from at.ui.webapp.routes_push import PushRoutes
+from at.ui.webapp.routes_reminders import ReminderRoutes
 from at.ui.webapp.routes_send import CSP, MAX_BODY, SendRoutes  # noqa: F401
 from at.ui.webapp.routes_sse import EVENTS_HEARTBEAT, SseRoutes  # noqa: F401
 from at.ui.webapp.routes_strongbox import StrongboxRoutes
@@ -232,7 +236,7 @@ GATE_LOOPBACK_NAME = "at.localhost"
 
 class Handler(
     AiRoutes, FileRoutes, GateRoutes, GetRoutes, OfflineRoutes, PushRoutes,
-    SendRoutes, SseRoutes, StrongboxRoutes, TableRoutes,
+    ReminderRoutes, SendRoutes, SseRoutes, StrongboxRoutes, TableRoutes,
     BaseHTTPRequestHandler,
 ):
     server_version = "at-webapp/1"
@@ -488,6 +492,28 @@ class Handler(
             return
         if segments == ["api", "agent"]:
             self._post_agent()
+            return
+        if segments == ["api", "reminders", "close"]:
+            # Fechar é um `edit` da tabela `reminder`, e a demanda é a mesma que
+            # a escrita da tabela faz: o teto do ator, com a recusa virando
+            # linha (§3) — a mesma que `_post_table` escreve.
+            needed = permissions.needed(reminder.REMINDER, "edit")
+            actor = self._actor()
+            if not self._may(
+                needed,
+                owing=lambda: door.denied(
+                    reminder.REMINDER,
+                    "edit",
+                    actor=actor,
+                    via=audit.WEBAPP,
+                    reason=audit.DENIED,
+                    saying=i18n.tr(
+                        "permission.denied", permission=permissions.label(needed)
+                    ),
+                ),
+            ):
+                return
+            self._post_reminders_close()
             return
         if len(segments) == 3 and segments[0] == "api" and segments[1] == "table":
             self._post_table(segments[2])

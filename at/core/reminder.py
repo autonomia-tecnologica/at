@@ -77,6 +77,17 @@ SINCE = "since"
 # row as already notified.
 NOTIFIED = "notified"
 
+# A pessoa fechou esta ocorrência: "esta já foi". Mora na própria linha, no
+# MESMO formato de `notified` (`"AAAA-MM-DD HH:MM"`), e é o que `current`
+# consulta para não voltar a uma ocorrência já resolvida. O ato de fechar é da
+# pessoa e passa pela porta única (`door.run`, na fatia seguinte); o motor só lê
+# a lista e devolve a lista nova — nunca escreve na tabela.
+CLOSED = "closed"
+
+# Quantos fechamentos a linha guarda — o mesmo teto largo de `HISTORY`, para o
+# campo não crescer sem fim a cada ocorrência resolvida.
+CLOSED_HISTORY = 256
+
 ACTIVE = "active"
 
 DAILY = "daily"
@@ -227,13 +238,17 @@ HORIZON = 366
 
 
 def upcoming(row: dict, now: datetime | None = None) -> tuple[date, str] | None:
-    """O PRÓXIMO disparo da linha — o dia e a hora —, ou `None` se nunca mais vem.
+    """O PRÓXIMO disparo ESTRITAMENTE futuro da linha — dia e hora —, ou `None`
+    se nunca mais vem.
 
-    É o que a tela de Lembretes mostra e o que separa um lembrete de uma tarefa:
-    a tarefa tem prazo, o lembrete tem um PRÓXIMO toque. A regra é a de sempre,
-    lida de `occurs` (o dia) e `hours` (as horas) e nunca reescrita aqui —
-    procura-se para a frente, do dia de `now`, o primeiro dia que a recorrência
-    alcança com uma hora ainda por vir.
+    Não é a instância CORRENTE: `current` é quem responde pela ocorrência que já
+    passou e ainda não foi fechada, e é ela que a tela de Lembretes desenha.
+    Esta função só olha para a frente, do minuto de `now` em diante, e pula o
+    que já está em `closed`; hoje quem a exercita são os testes — um caller que
+    queira o "próximo" e não a instância aberta ainda a tem. A regra é a de
+    sempre, lida de `occurs` (o dia) e `hours` (as horas) e nunca reescrita
+    aqui: procura-se o primeiro dia que a recorrência alcança com uma hora ainda
+    por vir.
 
     "Ainda por vir" espelha a janela da rodada (`ask._covers`): a hora marcada
     vale do seu minuto em diante, e nada depois. A de hoje às 19:00, lida às
@@ -244,14 +259,109 @@ def upcoming(row: dict, now: datetime | None = None) -> tuple[date, str] | None:
     times = hours(row)
     if not times:
         return None
-    current = moment.hour * 60 + moment.minute
+    minute = moment.hour * 60 + moment.minute
     for step in range(HORIZON):
         when = day + timedelta(days=step)
         if not occurs(row, when):
             continue
         for hour in times:
-            if step > 0 or _minute(hour) >= current:
-                return when, hour
+            if step > 0 or _minute(hour) >= minute:
+                if not closed(row, when, hour):
+                    return when, hour
+    return None
+
+
+def current(row: dict, now: datetime | None = None) -> tuple[date, str, bool] | None:
+    """A instância CORRENTE da linha — `(dia, hora, vencido)`, ou `None`.
+
+    Só há UMA por lembrete, e a regra é a da pessoa: a ocorrência MAIS RECENTE
+    que já passou e não está em `closed`; se essa estiver fechada, NÃO se volta
+    para as anteriores — a vez é da PRIMEIRA ocorrência futura ainda aberta. É
+    o que recupera o atraso: fechar uma vencida aponta para a próxima ocorrência
+    depois de AGORA, e não para a do calendário depois da vencida.
+
+    Um `once` só tem a própria `on_date`: fechada a única ocorrência, não há
+    próxima e a linha some da lista. `paused`, `since`, `occurs` e `hours`
+    continuam mandando — uma linha pausada, sem `at` legível, ou sem ocorrência
+    nenhuma no horizonte não tem instância corrente. O `now` é injetado, como
+    `upcoming` já faz.
+    """
+    if not isinstance(row, dict) or row.get(STATUS) != ACTIVE:
+        return None
+    times = hours(row)
+    if not times:
+        return None
+    moment = now if now is not None else datetime.now()
+    if row.get(FREQ) == ONCE:
+        return _once_current(row, moment, times)
+    minute = moment.hour * 60 + moment.minute
+    recent = _recent(row, moment.date(), times, minute)
+    if recent is None:
+        return _next_open(row, moment, times)
+    day, hour = recent
+    if closed(row, day, hour):
+        return _next_open(row, moment, times)
+    return day, hour, True
+
+
+def _recent(
+    row: dict, day: date, times: list[str], minute: int
+) -> tuple[date, str] | None:
+    """A ocorrência mais recente em ou antes de `day`/`minute` (dia e hora)."""
+    for step in range(HORIZON):
+        when = day - timedelta(days=step)
+        if not occurs(row, when):
+            continue
+        for hour in reversed(times):
+            if step == 0 and _minute(hour) > minute:
+                continue
+            return when, hour
+    return None
+
+
+def _next_open(
+    row: dict, moment: datetime, times: list[str]
+) -> tuple[date, str, bool] | None:
+    """A primeira ocorrência estritamente depois de `moment` e ainda aberta."""
+    minute = moment.hour * 60 + moment.minute
+    day = moment.date()
+    for step in range(HORIZON):
+        when = day + timedelta(days=step)
+        if not occurs(row, when):
+            continue
+        for hour in times:
+            if step == 0 and _minute(hour) <= minute:
+                continue
+            if closed(row, when, hour):
+                continue
+            return when, hour, False
+    return None
+
+
+def _once_current(
+    row: dict, moment: datetime, times: list[str]
+) -> tuple[date, str, bool] | None:
+    """A instância de um `once`: a própria `on_date`, ou nenhuma."""
+    on_date = _day(row, ON_DATE)
+    if on_date is None or not occurs(row, on_date):
+        return None
+    minute = moment.hour * 60 + moment.minute
+    if on_date < moment.date():
+        hour = times[-1]
+        return None if closed(row, on_date, hour) else (on_date, hour, True)
+    if on_date > moment.date():
+        for hour in times:
+            if not closed(row, on_date, hour):
+                return on_date, hour, False
+        return None
+    # O próprio dia: a mais recente já passada decide o vencido; fechada, só as
+    # horas que ainda faltam podem ser a próxima — nunca uma hora anterior.
+    passed = [hour for hour in times if _minute(hour) <= minute]
+    if passed and not closed(row, on_date, passed[-1]):
+        return on_date, passed[-1], True
+    for hour in times:
+        if _minute(hour) > minute and not closed(row, on_date, hour):
+            return on_date, hour, False
     return None
 
 
@@ -260,14 +370,15 @@ def _minute(hour: str) -> int:
     return int(hour[:2]) * 60 + int(hour[3:])
 
 
-def _stamps(row: dict) -> list[str]:
-    """The "already pushed" marks the row carries, as `"AAAA-MM-DD HH:MM"`.
+def _stamps(row: dict, name: str) -> list[str]:
+    """The `"AAAA-MM-DD HH:MM"` marks the row carries under `name`.
 
-    Uma versão anterior gravava o DIA sozinho (`"2026-09-28"`); ele é lido como
-    um carimbo sem hora, então não casa com horário nenhum e as horas restantes
-    do dia ainda saem. O campo é do próprio round (§3), e o formato é dele.
+    Uma versão anterior gravava o DIA sozinho (`"2026-09-28"`) em `notified`;
+    ele é lido como um carimbo sem hora, então não casa com horário nenhum e as
+    horas restantes do dia ainda saem. O campo é do próprio round (§3), e o
+    formato é dele.
     """
-    held = row.get(NOTIFIED) if isinstance(row, dict) else None
+    held = row.get(name) if isinstance(row, dict) else None
     if isinstance(held, str):
         return [held]
     if isinstance(held, list):
@@ -283,7 +394,26 @@ def notified(row: dict, day: date, hour: str) -> bool:
     written to, or one whose `notified` was hand-edited to something else,
     answers `False` — the safe side for a round is asking again.
     """
-    return f"{day.isoformat()} {hour}" in _stamps(row)
+    return f"{day.isoformat()} {hour}" in _stamps(row, NOTIFIED)
+
+
+def closed(row: dict, day: date, hour: str) -> bool:
+    """Se esta ocorrência já foi fechada pela pessoa — o carimbo em `closed`."""
+    return f"{day.isoformat()} {hour}" in _stamps(row, CLOSED)
+
+
+def with_closed(row: dict, day: date, hour: str) -> list[str]:
+    """A lista NOVA de `closed`, com o carimbo acrescentado e sem repetir.
+
+    É PURA: devolve a lista e não escreve na tabela. O fechamento é ato da
+    pessoa e passa pela porta única (`door.run`), que deixa linha de auditoria e
+    versão — o motor não tem, de propósito, um `mark_closed` que escreva direto,
+    do jeito que `mark_notified` escreve o que é só contabilidade do round.
+    """
+    stamp = f"{day.isoformat()} {hour}"
+    stamps = [entry for entry in _stamps(row, CLOSED) if entry != stamp]
+    stamps.append(stamp)
+    return stamps[-CLOSED_HISTORY:]
 
 
 def mark_notified(row: dict, day: date, hour: str) -> dict:
@@ -299,6 +429,6 @@ def mark_notified(row: dict, day: date, hour: str) -> dict:
     if number is None or store.find(REMINDER, number) is None:
         return row
     stamp = f"{day.isoformat()} {hour}"
-    stamps = [entry for entry in _stamps(row) if entry != stamp]
+    stamps = [entry for entry in _stamps(row, NOTIFIED) if entry != stamp]
     stamps.append(stamp)
     return tables.edit(REMINDER, number, {NOTIFIED: stamps[-HISTORY:]})

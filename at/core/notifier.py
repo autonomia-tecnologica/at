@@ -28,15 +28,23 @@ TAGS = "bell"
 FIELDS = push.FIELDS
 
 
-def publish(title: str, body: str, key: bytes | None = None) -> tuple[bool, str]:
+def publish(
+    title: str,
+    body: str,
+    key: bytes | None = None,
+    data: dict | None = None,
+    actions: list[dict] | None = None,
+) -> tuple[bool, str]:
     """Manda um aviso a toda inscrição. `(ok, detalhe)`.
 
     `key` é aceito por compatibilidade e não usado: a cifra do Web Push é
     contra a chave do NAVEGADOR, e não há nada que o AT sele com a chave
-    derivada aqui. `(False, "no_subscribers")` é um aviso que não saiu porque
+    derivada aqui. `data` e `actions` vão como vêm: o primeiro é o que o clique
+    carrega consigo e o segundo são os botões que o sistema desenha na
+    notificação. `(False, "no_subscribers")` é um aviso que não saiu porque
     ninguém se inscreveu — o lembrete tenta de novo, como sempre.
     """
-    return push.send(title, body, urgency="high")
+    return push.send(title, body, urgency="high", data=data, actions=actions)
 
 
 def read(key: bytes | None = None) -> tuple[list[dict], str]:

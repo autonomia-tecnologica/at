@@ -466,3 +466,38 @@ def _remark_renamed() -> list[Report]:
         return []
     store.save("reminder", written)
     return [("boot.migration.reminder.renamed", {"names": ", ".join(moved)})]
+
+
+# O que ESTA troca acrescenta a uma declaração que JÁ está no disco — migração
+# trinta e dois, a mesma forma de nove, dezessete, vinte e sete e vinte e oito.
+#
+# **O lembrete passa a ter UMA instância corrente**, e o campo `closed` é a
+# memória dela: a pessoa fecha a ocorrência — o `(dia, hora)` que já passou — e o
+# carimbo mora na linha, no mesmo formato de `notified` (`"AAAA-MM-DD HH:MM"`).
+# Sem o campo na declaração, o ato de fechar é recusado (`error.unknown_field`)
+# e `current` não tem onde ler que a ocorrência já foi resolvida.
+REMINDER_CLOSED: dict[str, dict] = {
+    "reminder": {
+        "fields": {
+            "closed": {
+                "label": "table.reminder.field.closed",
+                "filterable": True,
+                "type": "list",
+            }
+        },
+    },
+}
+
+
+def _reminder_closed(ask: Ask | None) -> list[Report]:
+    """Migração trinta e dois: o lembrete ganha o campo que guarda os fechamentos.
+
+    A pessoa fecha a ocorrência e o campo guarda os carimbos; a pasta que já
+    existe ganha o nome na declaração, sem tocar as linhas — quem nunca fechou
+    nada continua com as linhas exatamente como estavam.
+
+    Não pergunta, pela mesma razão da vinte e sete: é declaração do produto, e o
+    corpo só ACRESCENTA — o que a pessoa escreveu por cima ganha o nome no
+    relato e fica onde está.
+    """
+    return _extend(REMINDER_CLOSED)

@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Callable
 
@@ -31,7 +31,7 @@ from at.ui.ask_listing import rendered
 def remind(
     now: datetime | None = None,
     key: bytes | None = None,
-    send: Callable[[str, str, bytes | None], tuple[bool, str]] | None = None,
+    send: Callable[..., tuple[bool, str]] | None = None,
 ) -> list[dict]:
     """One round of the clock's OTHER schedule: the reminders THIS PASS is about
     (§4, item 29's second slice — TASK-145).
@@ -58,6 +58,19 @@ def remind(
     module's own rule), so a row read here is asked for exactly one of the two
     sentences below.
 
+    **O push agora leva um botão que FECHA a ocorrência dali.** Cada aviso
+    carrega, em `data`, qual lembrete e qual instância ele está anunciando, e
+    em `actions` o botão `close` com o texto de `reminder.push.close`. Fechar
+    pela notificação é o MESMO ato da tela — a mesma rota, a mesma porta, a
+    mesma linha de auditoria e a mesma versão —, e não um segundo caminho de
+    escrita: o Service Worker só chama a rota que a tela já chama. A instância
+    anunciada é `(today, hour)` para uma linha de `due`; para uma de `warn` é a
+    ocorrência FUTURA sobre a qual o aviso fala — o primeiro dia de
+    `warn_days`, em ordem crescente, em que a recorrência cai —, porque fechar
+    o aviso antecipado é fechar a ocorrência que ele anuncia, e não a de hoje.
+    Uma ocorrência já em `closed` — a anunciada, que para `due` é a de hoje —
+    não é avisada de novo.
+
     `now` is the instant this pass reads (`datetime.now` when `None`) — the day
     AND the hour come off it, which is why the round can no longer be handed a
     bare calendar — `key` is the derived key this boot holds for the notifier's
@@ -76,20 +89,51 @@ def remind(
     push = send if send is not None else notifier.publish
     found = reminder.due(today)
     fired: list[dict] = []
-    for rows, said in (
-        (found["due"], "reminder.push.due"),
-        (found["warn"], "reminder.push.warn"),
+    for rows, said, warned in (
+        (found["due"], "reminder.push.due", False),
+        (found["warn"], "reminder.push.warn", True),
     ):
         for row in rows:
+            announced = _announced_day(row, today) if warned else today
+            if announced is None:
+                continue
             for hour in reminder.hours(row):
-                if not _covers(hour, moment) or reminder.notified(row, today, hour):
+                if (
+                    not _covers(hour, moment)
+                    or reminder.notified(row, today, hour)
+                    or reminder.closed(row, announced, hour)
+                ):
                     continue
-                ok, _ = push(notifier.TITLE, tr(said, text=row.get("text", "")), key)
+                ok, _ = push(
+                    notifier.TITLE,
+                    tr(said, text=row.get("text", "")),
+                    key=key,
+                    data={
+                        "reminder": row.get("id"),
+                        "instance": f"{announced.isoformat()} {hour}",
+                    },
+                    actions=[{"action": "close", "title": tr("reminder.push.close")}],
+                )
                 if ok:
                     reminder.mark_notified(row, today, hour)
                     if row not in fired:
                         fired.append(row)
     return fired
+
+
+def _announced_day(row: dict, today: date) -> date | None:
+    """O dia da ocorrência que um aviso de `warn` anuncia — o primeiro `warn_days`.
+
+    `warn_days` pode ser `[3, 1]`; um aviso vale para a ocorrência MAIS PRÓXIMA
+    que a janela alcança, então a leitura é em ordem crescente e para no
+    primeiro dia em que a recorrência cai. É esse dia, e não `today`, que o
+    botão de fechar deve fechar.
+    """
+    for days in sorted(reminder._warn_days(row)):
+        when = today + timedelta(days=days)
+        if reminder.occurs(row, when):
+            return when
+    return None
 
 
 def _covers(hour: str, moment: datetime) -> bool:

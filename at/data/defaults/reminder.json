@@ -94,6 +94,11 @@
     "notified": {
       "label": "table.reminder.field.notified",
       "filterable": true
+    },
+    "closed": {
+      "label": "table.reminder.field.closed",
+      "filterable": true,
+      "type": "list"
     }
   }
 }

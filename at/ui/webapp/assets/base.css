@@ -1231,6 +1231,23 @@ html.no-motion .dots i { animation: none; opacity: .6; }
 .reminder .meta { color: var(--text-tertiary); font-size: var(--type-body-sm); }
 .reminder .n { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 .reminder.paused { opacity: .55; }
+/* A LINHA VENCIDA FICA EM VERMELHO — o texto e a hora, e o título da seção. */
+.cards h2.reminder-overdue { color: var(--danger-text); }
+.reminder.overdue b, .reminder.overdue .n { color: var(--danger-text); }
+/* O CÍRCULO DE FECHAR, à esquerda da linha: o MESMO ato da notificação. */
+.reminder-done {
+  flex: none; width: 1.4em; height: 1.4em; padding: 0; align-self: center;
+  background: transparent; border: 1px solid var(--border-default);
+  border-radius: 50%; cursor: pointer;
+  transition: border-color var(--dur-2) var(--ease-enter);
+}
+.reminder-done:hover { border-color: var(--accent); }
+.reminder-done:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.reminder-done:disabled { opacity: .5; cursor: default; }
+.reminder-beyond { margin: 0; padding: 0 var(--card-pad); color: var(--text-tertiary); font-size: var(--type-body-sm); }
+.reminder-range { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.reminder-range .label { color: var(--text-tertiary); font-size: var(--type-body-sm); }
+.reminder-range .btn.on { color: var(--accent); }
 
 /* O NAVEGADOR DE ARQUIVOS (tela Arquivos): ver, abrir pasta, abrir arquivo */
 .fbar { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
@@ -1531,4 +1548,6 @@ html.no-motion *, html.no-motion *::before, html.no-motion *::after {
   :root { --sidebar-item-h: 40px; }
   th { height: 44px; }
   .radio-row, .check-row { min-height: 44px; }
+  .reminder-done { position: relative; }
+  .reminder-done::after { content: ""; position: absolute; inset: -0.9em; }
 }

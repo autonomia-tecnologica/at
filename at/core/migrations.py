@@ -85,6 +85,7 @@ from at.core.migrations_later import (  # noqa: F401
     NOTE_PERMISSIONS,
     NOTES,
     PROJECT_DESC_LIMIT,
+    REMINDER_CLOSED,
     STRONGBOX_GRANTED,
     _clock,
     _convert_folder,
@@ -95,6 +96,7 @@ from at.core.migrations_later import (  # noqa: F401
     _once_needs_a_day,
     _project_desc_limit,
     _remark_renamed,
+    _reminder_closed,
     _reminder_hour,
     _services_under_their_house,
     _silent_additions,
@@ -167,6 +169,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(29, _hooks),
     Migration(30, _notes),
     Migration(31, _prose_in_its_new_name),
+    Migration(32, _reminder_closed),
 )
 
 

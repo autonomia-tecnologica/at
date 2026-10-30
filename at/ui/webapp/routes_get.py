@@ -18,6 +18,12 @@ from at.prose import listing as prose
 from at.prose import payload as shape
 from at.ui.webapp.entry import catalogue_payload, entry_payload, state_payload
 from at.ui.webapp.routes_base import RouteBase
+from at.ui.webapp.routes_reminders import (
+    ORDER,
+    reminder_days,
+    reminder_item,
+    reminder_kind,
+)
 
 # The overlay shows a screenful, not the folder: the engine stops at this many.
 SEARCH_LIMIT = 50
@@ -153,13 +159,13 @@ class GetRoutes(RouteBase):
 
         if rest == ["reminders"]:
             # TASK-164: a metade "o que vem" da tela de Lembretes — os lembretes
-            # com o PRÓXIMO disparo CALCULADO. A recorrência é do motor
-            # (`reminder.upcoming`), e a página não a repete: a regra mora num
+            # com a INSTÂNCIA CORRENTE calculada. A recorrência é do motor
+            # (`reminder.current`), e a página não a repete: a regra mora num
             # lugar só. A demanda é a de listar a tabela, a mesma de toda
             # leitura dela.
             if not self._may(permissions.needed(reminder.REMINDER, "list")):
                 return
-            self._get_reminders()
+            self._get_reminders(query)
             return
 
         if rest == ["push", "key"]:
@@ -254,39 +260,49 @@ class GetRoutes(RouteBase):
         messages, _ = notifier.read()
         self._json({"messages": messages})
 
-    def _get_reminders(self) -> None:
-        """Os lembretes com o PRÓXIMO disparo — a metade "o que vem" (TASK-164).
+    def _get_reminders(self, query: dict) -> None:
+        """Os lembretes e a instância CORRENTE de cada um — a metade "o que vem"
+        (TASK-164), agora com um horizonte que se abre (`?days`).
 
-        **SÓ HOJE E AMANHÃ** (2026-10-05, pedido da pessoa): a seção é o que
-        precisa da atenção de AGORA, e o que toca depois disso não é "próximo",
-        é calendário — a tabela é quem o mostra por inteiro. Um lembrete que não
-        volta a tocar (um `paused`, um `once` vencido, um dia que o mês não tem)
-        não entra: não há disparo para apontar, e uma linha sem próximo na lista
-        do que VEM seria uma promessa que `occurs` já recusa.
+        **A instância é UMA por lembrete** (`reminder.current`): a ocorrência
+        mais recente que já passou e não foi fechada; fechada essa, a vez é da
+        próxima futura ainda aberta. É o que a tela fecha.
 
-        A ordem é a do relógio: o que toca primeiro vem primeiro.
+        **O horizonte é o da tela, e o vencido nunca é escondido.** `overdue`
+        entra SEMPRE, primeiro e com o mais antigo na frente — é o que precisa
+        da atenção de agora, e um horizonte curto não pode calar o que já venceu.
+        O de hoje vem depois; o que está por vir entra enquanto couber em
+        `?days` (padrão 7, de 1 a 366), e o que não cabe é contado em `hidden` —
+        a seção sabe dizer quanto deixou de fora em vez de fingir que não há.
 
-        As quatro colunas do schema (`freq`, `at`, `status`, `text`) e o
-        cálculo, e nada além: o `note` é do lembrete e não desta tela. `freq` e
-        `status` vão no TEXTO que a pessoa lê (`tables.text_of`, o mesmo que a
-        tabela usa) e não no enum cru — a página inventa palavra nenhuma.
+        A ordem é a do relógio dentro de cada faixa: o que toca primeiro vem
+        primeiro, e o id desempata.
+
+        As colunas do schema e o cálculo, e nada além: o `note` é do lembrete e
+        não desta tela. `freq` e `status` vão no TEXTO que a pessoa lê
+        (`tables.text_of`, o mesmo que a tabela usa) e não no enum cru — a
+        página inventa palavra nenhuma. `can_close` é a PERGUNTA do teto
+        (`_legal`), não uma recusa: a tela esconde o círculo de fechar quando o
+        ator não carrega `reminder:edit`.
         """
+        days = reminder_days(query)
         today = reminder.today()
-        upcoming = []
+        shown: list[dict] = []
+        hidden = 0
         for row in store.load(reminder.REMINDER):
-            when = reminder.upcoming(row)
-            if when is None or (when[0] - today).days > 1:
+            when = reminder.current(row)
+            if when is None:
                 continue
-            upcoming.append(
-                {
-                    "id": row.get("id"),
-                    "text": row.get("text"),
-                    "freq": tables.text_of(reminder.REMINDER, "freq", row.get("freq")),
-                    "at": row.get("at"),
-                    "status": tables.text_of(reminder.REMINDER, "status", row.get("status")),
-                    "active": row.get("status") == reminder.ACTIVE,
-                    "next": f"{when[0].isoformat()} {when[1]}",
-                }
-            )
-        upcoming.sort(key=lambda item: (item["next"], item["id"] or 0))
-        self._json({"reminders": upcoming})
+            day, hour, overdue = when
+            kind = reminder_kind(day, today, overdue)
+            if kind == "soon" and (day - today).days > days:
+                hidden += 1
+                continue
+            shown.append(reminder_item(row, day, hour, kind))
+        shown.sort(key=lambda item: (ORDER[item["kind"]], item["next"], item["id"] or 0))
+        self._json({
+            "reminders": shown,
+            "days": days,
+            "hidden": hidden,
+            "can_close": self._legal(permissions.needed(reminder.REMINDER, "edit")),
+        })

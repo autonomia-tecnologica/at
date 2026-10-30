@@ -986,10 +986,12 @@ class TheNotificationGuardArrives(FolderCase):
         """O `send` do round: o que saiu, e sem rede nenhuma."""
         calls: list[str] = []
 
-        def push(title: str, body: str, key) -> tuple[bool, str]:
+        def push(title: str, body: str, key=None, data=None, actions=None) -> tuple[bool, str]:
             calls.append(body)
+            push.sent.append({"data": data, "actions": actions})
             return True, "200"
 
+        push.sent = []
         return calls, push
 
     def test_an_old_folder_gains_the_field_the_round_marks_with(self):
@@ -1052,6 +1054,64 @@ class TheNotificationGuardArrives(FolderCase):
             ),
             output,
         )
+
+
+class TheClosingStampArrives(FolderCase):
+    """Migração trinta e dois: a declaração do lembrete ganha o `closed`.
+
+    O campo é a memória da instância corrente (`reminder.current`): a pessoa
+    fecha a ocorrência, o carimbo `"AAAA-MM-DD HH:MM"` mora na linha, e a
+    declaração da pasta precisa nomear o campo — sem ele `tables.edit` recusa a
+    marca (`error.unknown_field`). Nenhuma linha existente é tocada.
+    """
+
+    def only(self, ident: int = 32) -> None:
+        """A pasta já migrou tudo, MENOS a migração que este teste prova."""
+        ids = [item.ident for item in migrations.MIGRATIONS if item.ident != ident]
+        migrations.stamp_file().write_text(json.dumps(ids) + "\n", encoding="utf-8")
+
+    def old_reminder(self) -> dict:
+        """`reminder.json` como a versão anterior a esta escrevia."""
+        declared = json.loads(self.declaration("reminder").read_text(encoding="utf-8"))
+        declared["fields"].pop("closed", None)
+        return declared
+
+    def a_reminder(self) -> dict:
+        return tables.create(
+            "reminder",
+            {"text": "Beber água", "freq": "daily", "at": ["09:00"],
+             "status": "active", "since": "2026-09-01"},
+        )
+
+    def test_an_old_folder_gains_the_field_the_close_stamp_lives_in(self):
+        self.born()
+        self.rewrite(self.declaration("reminder"), self.old_reminder())
+        self.only()
+        self.caught_up()
+        declared = json.loads(self.declaration("reminder").read_text(encoding="utf-8"))
+        closed = declared["fields"]["closed"]
+        self.assertEqual(closed["label"], "table.reminder.field.closed")
+        self.assertTrue(closed["filterable"])
+        # `list` é o que faz o POST de tabela ler um valor separado por vírgula
+        # como lista de carimbos, do mesmo jeito que `notified`.
+        self.assertEqual(closed["type"], "list")
+
+    def test_the_existing_rows_are_not_touched(self):
+        self.born()
+        self.rewrite(self.declaration("reminder"), self.old_reminder())
+        self.a_reminder()
+        where = store.path("reminder")
+        before = where.read_text(encoding="utf-8")
+        self.only()
+        self.caught_up()
+        self.assertEqual(where.read_text(encoding="utf-8"), before)
+
+    def test_the_field_arrives_without_a_question(self):
+        self.born()
+        self.rewrite(self.declaration("reminder"), self.old_reminder())
+        self.only()
+        self.caught_up()
+        self.assertEqual(self.asked, [])
 
 
 class TheNotesArrive(FolderCase):

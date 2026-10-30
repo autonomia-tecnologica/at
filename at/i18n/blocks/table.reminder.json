@@ -22,6 +22,7 @@
     "field.status.paused": "Pausado",
     "field.since": "Desde",
     "field.notified": "Notificado em",
+    "field.closed": "Fechado em",
     "list.empty_on_day": "Nenhum lembrete em {date}."
   },
   "en_US": {
@@ -47,6 +48,7 @@
     "field.status.paused": "Paused",
     "field.since": "Since",
     "field.notified": "Notified on",
+    "field.closed": "Closed on",
     "list.empty_on_day": "No reminders on {date}."
   }
 }

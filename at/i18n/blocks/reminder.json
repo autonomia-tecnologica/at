@@ -4,13 +4,15 @@
     "due.warn": "Na janela de aviso:",
     "due.error.arguments": "Use `reminder due` ou `reminder due --at <AAAA-MM-DD>`.",
     "push.due": "Vence hoje: {text}",
-    "push.warn": "Vencimento próximo: {text}"
+    "push.warn": "Vencimento próximo: {text}",
+    "push.close": "Concluir"
   },
   "en_US": {
     "due.today": "Due on {date}:",
     "due.warn": "In the warning window:",
     "due.error.arguments": "Use `reminder due` or `reminder due --at <YYYY-MM-DD>`.",
     "push.due": "Due today: {text}",
-    "push.warn": "Coming due: {text}"
+    "push.warn": "Coming due: {text}",
+    "push.close": "Complete"
   }
 }

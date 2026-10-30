@@ -185,6 +185,99 @@ class Upcoming(unittest.TestCase):
         self.assertIsNone(reminder.upcoming(row(freq="daily"), datetime(2026, 10, 5, 8, 0)))
 
 
+class TheCurrent(unittest.TestCase):
+    """A UMA instância corrente da linha: a ocorrência mais recente que já
+    passou e não foi fechada; fechada essa, a próxima aberta depois de agora.
+
+    Sem pasta, sem store: `current` é aritmética de calendário, e o `now` é
+    injetado como em `upcoming`. Segunda-feira 05/10/2026 é o dia de referência.
+    """
+
+    def test_the_most_recent_past_occurrence_is_the_current_one(self):
+        r = row(freq="daily", at=["09:00", "18:00"])
+        self.assertEqual(
+            reminder.current(r, datetime(2026, 10, 5, 10, 0)),
+            (date(2026, 10, 5), "09:00", True),
+        )
+
+    def test_closing_the_past_occurrence_moves_to_the_next_open_one_today(self):
+        # Não anda um dia: fechada a de 09:00, a vez é da de 18:00, ainda hoje.
+        r = row(
+            freq="daily",
+            at=["09:00", "18:00"],
+            closed=["2026-10-05 09:00"],
+        )
+        self.assertEqual(
+            reminder.current(r, datetime(2026, 10, 5, 10, 0)),
+            (date(2026, 10, 5), "18:00", False),
+        )
+
+    def test_an_open_occurrence_from_yesterday_is_overdue(self):
+        r = row(freq="daily", at=["09:00", "18:00"])
+        self.assertEqual(
+            reminder.current(r, datetime(2026, 10, 5, 8, 0)),
+            (date(2026, 10, 4), "18:00", True),
+        )
+
+    def test_closing_yesterday_moves_to_the_next_one_after_now(self):
+        r = row(
+            freq="daily",
+            at=["09:00", "18:00"],
+            closed=["2026-10-04 18:00"],
+        )
+        self.assertEqual(
+            reminder.current(r, datetime(2026, 10, 5, 8, 0)),
+            (date(2026, 10, 5), "09:00", False),
+        )
+
+    def test_closing_a_future_occurrence_moves_forward_and_not_back(self):
+        r = row(
+            freq="daily",
+            at=["09:00"],
+            closed=["2026-10-05 09:00", "2026-10-06 09:00"],
+        )
+        self.assertEqual(
+            reminder.current(r, datetime(2026, 10, 5, 10, 0)),
+            (date(2026, 10, 7), "09:00", False),
+        )
+
+    def test_a_closed_once_has_no_current_instance(self):
+        r = row(
+            freq="once",
+            on_date="2026-10-01",
+            at=["09:00"],
+            closed=["2026-10-01 09:00"],
+        )
+        self.assertIsNone(reminder.current(r, datetime(2026, 10, 5, 10, 0)))
+
+    def test_an_open_once_in_the_past_is_overdue(self):
+        r = row(freq="once", on_date="2026-10-01", at=["09:00"])
+        self.assertEqual(
+            reminder.current(r, datetime(2026, 10, 5, 10, 0)),
+            (date(2026, 10, 1), "09:00", True),
+        )
+
+    def test_a_paused_row_has_no_current_instance(self):
+        r = row(freq="daily", status="paused", at=["09:00"])
+        self.assertIsNone(reminder.current(r, datetime(2026, 10, 5, 10, 0)))
+
+    def test_a_row_with_no_hours_has_no_current_instance(self):
+        self.assertIsNone(
+            reminder.current(row(freq="daily"), datetime(2026, 10, 5, 10, 0))
+        )
+
+    def test_upcoming_skips_a_closed_occurrence(self):
+        r = row(
+            freq="daily",
+            at=["09:00", "18:00"],
+            closed=["2026-10-05 09:00"],
+        )
+        self.assertEqual(
+            reminder.upcoming(r, datetime(2026, 10, 5, 8, 0)),
+            (date(2026, 10, 5), "18:00"),
+        )
+
+
 class Due(unittest.TestCase):
     """The day's split: what lands on it, and what is inside its warning."""
 
@@ -389,6 +482,54 @@ class TheNotified(ReminderCase):
         same = reminder.mark_notified(made, date(2026, 9, 28), "09:00")
         self.assertEqual(same, made)
 
+    def test_marking_writes_only_notified_and_never_touches_closed(self):
+        # O round escreve só o campo DELE; `closed` é da pessoa e da porta única.
+        made = self.marked()
+        reminder.mark_notified(made, date(2026, 9, 28), "09:00")
+        held = store.find("reminder", store.number_of(made))
+        self.assertEqual(held.get("notified"), ["2026-09-28 09:00"])
+        self.assertNotIn("closed", held)
+
+
+class TheClosing(ReminderCase):
+    """`with_closed`: a lista NOVA de fechamentos, sem escrever na tabela.
+
+    O fechamento é ato da pessoa e passa pela porta única (`door.run`); o motor
+    só lê os carimbos e devolve a lista que a porta vai gravar.
+    """
+
+    def a_reminder(self) -> dict:
+        return tables.create(
+            "reminder", row(freq="daily", text="Regar", at=["09:00", "18:00"])
+        )
+
+    def test_with_closed_is_pure_and_writes_nothing_to_the_table(self):
+        made = self.a_reminder()
+        stamps = reminder.with_closed(made, date(2026, 10, 5), "09:00")
+        self.assertEqual(stamps, ["2026-10-05 09:00"])
+        self.assertEqual(store.find("reminder", store.number_of(made)), made)
+        self.assertNotIn("closed", store.find("reminder", store.number_of(made)))
+
+    def test_the_same_stamp_is_never_duplicated(self):
+        made = self.a_reminder()
+        first = reminder.with_closed(made, date(2026, 10, 5), "09:00")
+        carried = {**made, "closed": first}
+        second = reminder.with_closed(carried, date(2026, 10, 5), "09:00")
+        self.assertEqual(second, ["2026-10-05 09:00"])
+
+    def test_the_history_keeps_only_the_latest_stamps(self):
+        made = self.a_reminder()
+        carried = {**made, "closed": ["2026-10-01 09:00", "2026-10-02 09:00"]}
+        with mock.patch.object(reminder, "CLOSED_HISTORY", 2):
+            stamps = reminder.with_closed(carried, date(2026, 10, 3), "09:00")
+        self.assertEqual(stamps, ["2026-10-02 09:00", "2026-10-03 09:00"])
+
+    def test_closed_reads_the_stamp_the_list_carries(self):
+        made = self.a_reminder()
+        carried = {**made, "closed": ["2026-10-05 09:00"]}
+        self.assertTrue(reminder.closed(carried, date(2026, 10, 5), "09:00"))
+        self.assertFalse(reminder.closed(carried, date(2026, 10, 5), "18:00"))
+
 
 class TheRound(ReminderCase):
     """`door.remind`: the clock's OTHER schedule, with the network taken away
@@ -401,13 +542,20 @@ class TheRound(ReminderCase):
     """
 
     def sent(self, ok: bool = True):
-        """A `send` seam that answers instead of reaching a real notifier."""
+        """A `send` seam that answers instead of reaching a real notifier.
+
+        `calls` keeps the three positional values the older tests read;
+        `push.sent` keeps the whole call — `data` and `actions` included —, que
+        é o que as provas do botão de fechar leem.
+        """
         calls: list[tuple[str, str, object]] = []
 
-        def push(title: str, body: str, key):
+        def push(title: str, body: str, key=None, data=None, actions=None):
             calls.append((title, body, key))
+            push.sent.append({"data": data, "actions": actions})
             return ok, "200" if ok else "failed"
 
+        push.sent = []
         return calls, push
 
     def test_a_due_reminder_is_pushed_once_and_marked(self):
@@ -458,6 +606,75 @@ class TheRound(ReminderCase):
         self.assertNotEqual(
             tr("reminder.push.warn", text="x"), tr("reminder.push.due", text="x")
         )
+
+    def test_a_due_push_carries_the_close_button_and_today_s_instance(self):
+        made = tables.create(
+            "reminder",
+            row(text="Regar a planta", freq="once", on_date="2026-10-05",
+                at=["09:00"]),
+        )
+        calls, push = self.sent()
+        door.remind(datetime(2026, 10, 5, 9, 0), key=b"k" * 32, send=push)
+        sent = push.sent[0]
+        self.assertEqual(
+            sent["actions"], [{"action": "close", "title": tr("reminder.push.close")}]
+        )
+        self.assertEqual(
+            sent["data"],
+            {"reminder": store.number_of(made), "instance": "2026-10-05 09:00"},
+        )
+
+    def test_a_warn_push_closes_the_day_it_warns_about_not_today(self):
+        tables.create(
+            "reminder",
+            row(text="Pagar o boleto", freq="once", on_date="2026-10-05",
+                warn_days=[2, 1], at=["09:00"]),
+        )
+        calls, push = self.sent()
+        door.remind(datetime(2026, 10, 3, 9, 0), send=push)
+        self.assertEqual(push.sent[0]["data"]["instance"], "2026-10-05 09:00")
+
+    def test_an_occurrence_already_closed_is_not_pushed(self):
+        made = tables.create(
+            "reminder",
+            row(text="Regar a planta", freq="daily", at=["09:00"]),
+        )
+        tables.edit(
+            "reminder", store.number_of(made), {reminder.CLOSED: ["2026-09-28 09:00"]}
+        )
+        calls, push = self.sent()
+        fired = door.remind(datetime(2026, 9, 28, 9, 0), send=push)
+        self.assertEqual(fired, [])
+        self.assertEqual(calls, [])
+
+    def test_a_warn_whose_announced_occurrence_is_closed_is_not_pushed(self):
+        made = tables.create(
+            "reminder",
+            row(text="Pagar o boleto", freq="once", on_date="2026-10-05",
+                warn_days=[2], at=["09:00"]),
+        )
+        tables.edit(
+            "reminder", store.number_of(made), {reminder.CLOSED: ["2026-10-05 09:00"]}
+        )
+        calls, push = self.sent()
+        fired = door.remind(datetime(2026, 10, 3, 9, 0), send=push)
+        self.assertEqual(fired, [])
+        self.assertEqual(calls, [])
+
+    def test_a_warn_closed_on_another_day_still_pushes(self):
+        made = tables.create(
+            "reminder",
+            row(text="Pagar o boleto", freq="once", on_date="2026-10-05",
+                warn_days=[2], at=["09:00"]),
+        )
+        tables.edit(
+            "reminder", store.number_of(made), {reminder.CLOSED: ["2026-10-04 09:00"]}
+        )
+        calls, push = self.sent()
+        fired = door.remind(datetime(2026, 10, 3, 9, 0), send=push)
+        self.assertEqual(len(fired), 1)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(push.sent[0]["data"]["instance"], "2026-10-05 09:00")
 
     def test_a_reminder_already_notified_this_hour_is_not_pushed_again(self):
         made = tables.create(

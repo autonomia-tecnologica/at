@@ -287,8 +287,21 @@ def _post(subscription: dict, payload: dict, stored: dict) -> tuple[bool, str]:
         return False, str(getattr(error, "reason", error))
 
 
-def send(title: str, body: str, urgency: str = "high") -> tuple[bool, str]:
+def send(
+    title: str,
+    body: str,
+    urgency: str = "high",
+    data: dict | None = None,
+    actions: list[dict] | None = None,
+) -> tuple[bool, str]:
     """Manda UM aviso a toda inscrição, e registra no `INBOX`. `(ok, detalhe)`.
+
+    **O payload é o que a notificação desenha, e o botão é o que ela carrega.**
+    `title`, `body` e `urgency` são de sempre; `data` é o que o clique na
+    notificação leva consigo (a ocorrência que o aviso é sobre, por exemplo) e
+    `actions` são os botões que o sistema desenha ao lado dela. Os dois entram
+    no payload SÓ quando vêm preenchidos — um `null` não é um campo que o
+    navegador espere, e mandá-lo seria pedir a ele que adivinhe.
 
     `ok` é verdadeiro quando PELO MENOS uma inscrição recebeu, que é o que faz
     o lembrete ser marcado como avisado — uma inscrição morta não pode fazer o
@@ -299,7 +312,11 @@ def send(title: str, body: str, urgency: str = "high") -> tuple[bool, str]:
     if not entries:
         return False, "no_subscribers"
     stored = _load()
-    payload = {"title": title, "body": body, "urgency": urgency}
+    payload: dict[str, object] = {"title": title, "body": body, "urgency": urgency}
+    if data:
+        payload["data"] = data
+    if actions:
+        payload["actions"] = actions
     delivered = ""
     for subscription in list(entries):
         ok, detail = _post(subscription, payload, stored)

@@ -23,7 +23,7 @@ import unittest
 import urllib.error
 import urllib.request
 from contextlib import contextmanager, redirect_stdout
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from unittest import mock
@@ -41,12 +41,14 @@ from at.core import (
     paths,
     permissions,
     projects,
+    reminder,
     risk,
     secrets,
     settings,
     spelling,
     strongbox,
     tables,
+    versioning,
 )
 from at.data import schema, store
 from at.encryption import vault
@@ -1435,15 +1437,24 @@ class TheSpellRoute(ServerCase):
 
 
 class TheRemindersDoor(ServerCase):
-    """`/api/reminders` — os lembretes com o PRÓXIMO disparo (TASK-164), que é o
-    que a metade "o que vem" da tela de Lembretes desenha. O cálculo é do motor
-    (`reminder.upcoming`); a rota só o entrega, com `freq` e `status` no texto
-    que a pessoa lê (o mesmo `tables.text_of` da tabela)."""
+    """`/api/reminders` — a instância CORRENTE de cada lembrete (TASK-164), que é
+    o que a tela de Lembretes desenha. O cálculo é do motor
+    (`reminder.current`); a rota só o entrega, com `freq` e `status` no texto que
+    a pessoa lê (o mesmo `tables.text_of` da tabela), num horizonte que a query
+    `days` abre, e dizendo quanto ficou de fora (`hidden`) e se o ator pode
+    fechar (`can_close`)."""
 
-    def test_it_hands_the_reminders_with_their_next_fire(self):
+    def reminder(self, values: dict) -> dict:
+        with redirect_stdout(io.StringIO()):
+            return tables.create("reminder", values)
+
+    def shown(self, query: str = "") -> dict:
+        _, _, body = self.get(f"/api/reminders{query}")
+        return json.loads(body)
+
+    def test_it_hands_the_reminders_with_their_current_instance(self):
         tables.create("reminder", {"text": "água", "freq": "daily", "at": "09:00,19:00"})
-        _, _, body = self.get("/api/reminders")
-        payload = json.loads(body)
+        payload = self.shown()
         self.assertEqual(len(payload["reminders"]), 1)
         item = payload["reminders"][0]
         self.assertEqual(item["text"], "água")
@@ -1452,29 +1463,207 @@ class TheRemindersDoor(ServerCase):
         self.assertEqual(item["status"], i18n.tr("table.reminder.field.status.active"))
         self.assertTrue(item["active"])
         self.assertIsNotNone(item["next"])
+        self.assertIn(item["kind"], {"overdue", "today", "soon"})
+        self.assertEqual(payload["days"], 7)
+        self.assertEqual(payload["hidden"], 0)
 
     def test_a_paused_reminder_is_left_out(self):
-        # Um `paused` não volta a tocar: não é "o que vem".
+        # Um `paused` não tem instância corrente: não é "o que vem".
         tables.create(
             "reminder",
             {"text": "quieto", "freq": "daily", "at": "09:00", "status": "paused"},
         )
-        _, _, body = self.get("/api/reminders")
-        self.assertEqual(json.loads(body), {"reminders": []})
-
-    def test_a_reminder_beyond_tomorrow_is_left_out(self):
-        # "Só hoje e amanhã" (2026-10-05): o que toca depois disso é calendário.
-        far = date.today() + timedelta(days=30)
-        tables.create(
-            "reminder",
-            {"text": "longe", "freq": "once", "on_date": far.isoformat(), "at": "09:00"},
+        self.assertEqual(
+            self.shown(),
+            {"reminders": [], "days": 7, "hidden": 0, "can_close": True},
         )
-        _, _, body = self.get("/api/reminders")
-        self.assertEqual(json.loads(body), {"reminders": []})
+
+    def test_an_overdue_instance_comes_first_even_with_a_small_horizon(self):
+        # Um `once` que já passou continua vencido e entra SEMPRE — um horizonte
+        # curto não pode calar o que já venceu. E ele vem antes de tudo.
+        past = date.today() - timedelta(days=10)
+        self.reminder({
+            "text": "vencido", "freq": "once", "on_date": past.isoformat(),
+            "at": "09:00", "since": past.isoformat(),
+        })
+        soon = date.today() + timedelta(days=3)
+        self.reminder(
+            {"text": "daqui a três", "freq": "once", "on_date": soon.isoformat(), "at": "09:00"}
+        )
+        self.assertEqual(
+            [(item["text"], item["kind"]) for item in self.shown()["reminders"]],
+            [("vencido", "overdue"), ("daqui a três", "soon")],
+        )
+        # Com horizonte de um dia, o de três dias sai da lista e é CONTADO.
+        narrow = self.shown("?days=1")
+        self.assertEqual([item["text"] for item in narrow["reminders"]], ["vencido"])
+        self.assertEqual(narrow["hidden"], 1)
+
+    def test_today_and_soon_are_told_apart(self):
+        # "Hoje" é o que vence hoje SEM ter passado — uma hora ainda por vir. O
+        # teste roda a qualquer hora: se não sobrar hora hoje, não há o que
+        # provar, e ele pula em vez de afirmar sobre um relógio que não tem.
+        now = datetime.now()
+        later = now + timedelta(hours=1)
+        if later.date() != now.date():
+            self.skipTest("não há hora segura ainda hoje para provar o 'today'")
+        today_at = f"{later.hour:02d}:00"
+        self.reminder(
+            {"text": "hoje", "freq": "once", "on_date": now.date().isoformat(), "at": today_at}
+        )
+        in_three = date.today() + timedelta(days=3)
+        self.reminder(
+            {"text": "em breve", "freq": "once", "on_date": in_three.isoformat(), "at": "09:00"}
+        )
+        kinds = {item["text"]: item["kind"] for item in self.shown()["reminders"]}
+        self.assertEqual(kinds, {"hoje": "today", "em breve": "soon"})
+
+    def test_the_horizon_defaults_to_a_week_and_opens_with_days(self):
+        far = date.today() + timedelta(days=30)
+        self.reminder(
+            {"text": "longe", "freq": "once", "on_date": far.isoformat(), "at": "09:00"}
+        )
+        default = self.shown()
+        self.assertEqual((default["reminders"], default["days"], default["hidden"]), ([], 7, 1))
+        # Aberto até o dia dele, ele entra como o que está por vir.
+        opened = self.shown("?days=30")
+        self.assertEqual([item["kind"] for item in opened["reminders"]], ["soon"])
+        self.assertEqual((opened["days"], opened["hidden"]), (30, 0))
+        # E um `days` que não é inteiro volta ao padrão.
+        garbage = self.shown("?days=abc")
+        self.assertEqual((garbage["reminders"], garbage["days"], garbage["hidden"]), ([], 7, 1))
+
+    def test_the_folder_that_asks_nobody_may_close(self):
+        # Sem sessão não há teto a perguntar: o `_legal` responde `True`, e a
+        # tela desenha o círculo de fechar. É a PERGUNTA, não uma recusa.
+        self.assertIs(self.shown()["can_close"], True)
 
     def test_a_folder_with_no_reminder_answers_with_an_empty_list(self):
+        self.assertEqual(
+            self.shown(),
+            {"reminders": [], "days": 7, "hidden": 0, "can_close": True},
+        )
+
+
+class TheReminderClosing(ServerCase):
+    """`POST /api/reminders/close` — o "esta já foi" da pessoa sobre a instância
+    corrente de um lembrete.
+
+    O ato passa pela porta única (`at.ui.ask.run`), então a linha de auditoria é
+    a mesma de toda escrita do WebApp; e o motor devolve a lista nova de
+    `closed`, nunca escrevendo na tabela por conta própria.
+    """
+
+    def reminder(self, values: dict) -> dict:
+        with redirect_stdout(io.StringIO()):
+            return tables.create("reminder", values)
+
+    def shown(self) -> list[dict]:
         _, _, body = self.get("/api/reminders")
-        self.assertEqual(json.loads(body), {"reminders": []})
+        return json.loads(body)["reminders"]
+
+    def close(self, pid: object, instance: object):
+        return self.post("/api/reminders/close", {"id": pid, "instance": instance})
+
+    def test_closing_the_overdue_instance_shows_the_next_without_overdue(self):
+        row = self.reminder({"text": "água", "freq": "daily", "at": "09:00"})
+        [item] = self.shown()
+        self.assertEqual(item["kind"], "overdue")
+        status, answer = self.close(row["id"], item["next"])
+        self.assertEqual(status, 200)
+        self.assertTrue(answer["ok"])
+        self.assertNotEqual(answer["reminder"]["next"], item["next"])
+        self.assertNotEqual(answer["reminder"]["kind"], "overdue")
+        [after] = self.shown()
+        self.assertEqual(after["next"], answer["reminder"]["next"])
+        self.assertNotEqual(after["kind"], "overdue")
+
+    def test_closing_a_future_instance_advances_to_the_following(self):
+        # Um `weekly` cujo `since` é amanhã não tem ocorrência passada: a
+        # instância corrente é a de amanhã, e fechá-la aponta para a da semana
+        # seguinte — nunca para um dia anterior.
+        tomorrow = date.today() + timedelta(days=1)
+        row = self.reminder({
+            "text": "semanal",
+            "freq": "weekly",
+            "on_weekday": [tomorrow.weekday()],
+            "at": "09:00",
+            "since": tomorrow.isoformat(),
+        })
+        [item] = self.shown()
+        self.assertEqual(item["next"], f"{tomorrow.isoformat()} 09:00")
+        self.assertEqual(item["kind"], "soon")
+        status, answer = self.close(row["id"], item["next"])
+        self.assertEqual(status, 200)
+        following = tomorrow + timedelta(days=7)
+        self.assertEqual(answer["reminder"]["next"], f"{following.isoformat()} 09:00")
+        self.assertNotEqual(answer["reminder"]["kind"], "overdue")
+
+    def test_closing_a_once_removes_it_and_answers_no_reminder(self):
+        soon = date.today() + timedelta(days=3)
+        row = self.reminder(
+            {"text": "uma vez", "freq": "once", "on_date": soon.isoformat(), "at": "09:00"}
+        )
+        [item] = self.shown()
+        status, answer = self.close(row["id"], item["next"])
+        self.assertEqual(status, 200)
+        self.assertIsNone(answer["reminder"])
+        self.assertEqual(self.shown(), [])
+
+    def test_a_body_that_names_no_occurrence_is_a_bad_request(self):
+        soon = date.today() + timedelta(days=3)
+        row = self.reminder(
+            {"text": "uma vez", "freq": "once", "on_date": soon.isoformat(), "at": "09:00"}
+        )
+        for instance in ("amanhã", "2026-01-01 09:00", f"{soon.isoformat()} 10:00"):
+            with self.subTest(instance=instance):
+                status, answer = self.close(row["id"], instance)
+                self.assertEqual(status, 400)
+                self.assertIn("error", answer)
+        self.assertIsNone(tables.find("reminder", row["id"]).get(reminder.CLOSED))
+
+    def test_an_unknown_reminder_is_not_found(self):
+        for pid in (999, "um"):
+            with self.subTest(pid=pid):
+                status, answer = self.close(pid, "2026-01-01 09:00")
+                self.assertEqual(status, 404)
+                self.assertIn("error", answer)
+
+    def test_closing_twice_neither_writes_again_nor_duplicates_the_stamp(self):
+        row = self.reminder({"text": "água", "freq": "daily", "at": "09:00"})
+        [item] = self.shown()
+        status, first = self.close(row["id"], item["next"])
+        self.assertEqual(status, 200)
+        written = tables.find("reminder", row["id"])
+        self.assertEqual(written[reminder.CLOSED].count(item["next"]), 1)
+        lines = len(store.load("audit"))
+        status, second = self.close(row["id"], item["next"])
+        self.assertEqual(status, 200)
+        self.assertEqual(second["reminder"], first["reminder"])
+        self.assertEqual(tables.find("reminder", row["id"]), written)
+        self.assertEqual(len(store.load("audit")), lines)
+
+    def test_the_close_leaves_the_door_s_line_and_its_version(self):
+        # A cadência padrão é periódica, então o teste pede a versão de toda
+        # escrita — e a mensagem do commit é a frase do motor, a mesma que a
+        # pessoa leu: a porta é uma só, e o `git log` conta a mesma história.
+        settings.save({**settings.load(), versioning.KEY: versioning.EVERY_WRITE})
+        row = self.reminder({"text": "água", "freq": "daily", "at": "09:00"})
+        [item] = self.shown()
+        status, _ = self.close(row["id"], item["next"])
+        self.assertEqual(status, 200)
+        line = store.load("audit")[-1]
+        self.assertEqual(line[audit.WHAT], "reminder:edit")
+        self.assertEqual(line[audit.VIA], audit.WEBAPP)
+        self.assertEqual(line[audit.STATUS], audit.OK)
+        # A pasta que não pergunta ninguém age como o motor: a linha cita a
+        # linha dele, porque foi o núcleo quem validou e escreveu.
+        self.assertEqual(line[audit.ACTOR], store.number_of(actors.engine_row()))
+        message = versioning.run(["log", "-1", "--format=%s"]).stdout.strip()
+        self.assertEqual(
+            message,
+            i18n.tr("table.edited", id=tables.format_id(reminder.REMINDER, row["id"])),
+        )
 
 
 class TheStrongboxDoor(ServerCase):
@@ -2436,7 +2625,8 @@ class TheCeiling(ServerCase):
     READS = ("/api/state", "/api/projects", "/api/orphans", "/api/project/1",
              "/api/tree", "/api/events", "/api/file?path=nota.md",
              "/api/file/bytes?path=nota.md", "/api/search?q=nota",
-             "/api/table/task", "/api/strongbox", "/api/strongbox/download?token=x")
+             "/api/table/task", "/api/reminders", "/api/strongbox",
+             "/api/strongbox/download?token=x")
     WRITES = (
         ("/api/file", {"path": "nota.md", "text": "x", "base": ""}),
         ("/api/file/create", {"path": "nova.md", "dir": False}),
@@ -2451,6 +2641,7 @@ class TheCeiling(ServerCase):
         ]}),
         ("/api/convert", {"path": "nota.md", "to": "pdf"}),
         ("/api/strongbox/open", {"path": "nao-existe.enc"}),
+        ("/api/reminders/close", {"id": 1, "instance": "2026-01-01 09:00"}),
     )
 
     def setUp(self):
@@ -2563,6 +2754,18 @@ class TheCeiling(ServerCase):
             )[0],
             403,
         )
+
+    def test_the_page_is_told_whether_the_actor_may_close_a_reminder(self):
+        # `can_close` é a PERGUNTA do teto, não uma recusa: quem lê os lembretes
+        # mas não carrega `reminder:edit` continua vendo a seção, e a tela
+        # esconde o círculo de fechar em vez de oferecer um ato que será negado.
+        self.person("reminder:list", name="Só lê")
+        status, _, body = self.get("/api/reminders", headers=self.cookie("Só lê"))
+        self.assertEqual(status, 200)
+        self.assertIs(json.loads(body)["can_close"], False)
+        self.person("reminder:list,reminder:edit", name="Pode fechar")
+        _, _, body = self.get("/api/reminders", headers=self.cookie("Pode fechar"))
+        self.assertIs(json.loads(body)["can_close"], True)
 
     def test_the_role_is_read_on_every_request(self):
         # The ceiling lives in the store and not in the session: a role edited

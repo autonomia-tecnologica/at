@@ -73,9 +73,13 @@ PAGE_WORDS = (
     # não nomeia, o verbo genérico de renomear, o rótulo do campo de nome do
     # formulário inline, e a opção "sem pai" do seletor de mover.
     "new_subproject", "rename", "name", "no_parent",
-    # A TELA DE LEMBRETES (TASK-164): a seção, as duas metades, e o que uma
-    # pasta sem lembrete e um dia sem aviso dizem.
-    "reminders", "reminders_coming", "reminders_rang", "reminders_none", "reminders_quiet",
+    # A TELA DE LEMBRETES (TASK-164): a seção, as três faixas do que vem
+    # (vencidos, hoje, em breve), o horizonte e o que ele esconde, o fechar de
+    # uma linha, as duas metades, e o que uma pasta sem lembrete e um dia sem
+    # aviso dizem.
+    "reminders", "reminders_coming", "reminders_overdue", "reminders_today",
+    "reminders_soon", "reminders_beyond", "reminders_days", "reminders_close",
+    "reminders_rang", "reminders_none", "reminders_quiet",
     # A SEÇÃO DE NOTAS (TASK-198): a seção, o botão que nasce uma nota, e o que
     # uma pasta sem nota diz. E o "salvar" do formulário que edita uma linha —
     # a porta que faltava para um campo que não é escolha (TASK-198).
