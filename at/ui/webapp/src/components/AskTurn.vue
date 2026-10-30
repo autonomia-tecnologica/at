@@ -43,7 +43,7 @@ const when = computed(() => {
 // (`Balloon`/`ChatView` both already hold the road to `ask`); this component
 // only reads the typing and hands the key up.
 //
-// A CAUTIOUS question (`turn.confirm`) is answered the same way any other
+// A CONFIRMATION question (`turn.confirm`) is answered the same way any other
 // message is — typed in the box, "sim" or "não", read by `lib/chat.ts`'s own
 // `send` before it ever reaches the engine. This is a chat, not a form: there
 // is no button here for it, and none to click.

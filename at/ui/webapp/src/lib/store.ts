@@ -69,13 +69,9 @@ export const store = reactive({
   types: {} as Record<string, string>, // a DECLARED type → the table declaring it
   fields: [] as FieldSpec[], // the schema of the table ON SCREEN
   interpreter: true, // the CORE's switch: off, there is no box, balloon or chat
-  // TASK-180, fatia 3/3: the assist's own two knobs — whether Jev is asked at
-  // all once the matcher gives up (`assist`), and what a non-`refuse` tier
-  // does once Jev has answered (`assist_mode`, `"cautious"` born default). The
-  // second field keeps the server's own spelling (`FieldSpec.max_length`'s own
-  // precedent) rather than a camelCase this file would have to translate.
+  // TASK-180, fatia 3/3: the assist's own switch — whether Jev is asked at
+  // all once the matcher gives up (`assist`).
   assist: true,
-  assist_mode: "cautious",
   // SE A CREDENCIAL DO JEV ESTÁ CONFIGURADA (um `secret` de escopo `jev`). Sem
   // ela o Jev não é consultado, e o chat diz "Jev não configurado".
   jev_ready: false,
@@ -99,7 +95,6 @@ export function applyState(state: Partial<typeof store>): void {
   // does not carry it leaves the interpreter where it was.
   if (typeof state.interpreter === "boolean") store.interpreter = state.interpreter;
   if (typeof state.assist === "boolean") store.assist = state.assist;
-  if (typeof state.assist_mode === "string") store.assist_mode = state.assist_mode;
   if (typeof state.jev_ready === "boolean") store.jev_ready = state.jev_ready;
   if (state.risk) store.risk = state.risk as Risk;
   store.versioning = (state.versioning as Labels | null) ?? null;

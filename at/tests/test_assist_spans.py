@@ -2,10 +2,9 @@
 
 O Jev decide a ação e a tabela (o canônico) e aponta ONDE, na frase, elas
 estão escritas (o trecho). O código gasta os trechos apontados antes de ler os
-argumentos — que é o que impede `joga` de virar o `text` da tarefa. E quando o
-matcher determinístico lê a PRÓPRIA frase e concorda com o Jev, a leitura é a
-dele: não é palpite, não pede confirmação, e a frase canônica que o "Confirmar"
-reenvia fecha em vez de re-perguntar ao Jev para sempre.
+argumentos — que é o que impede `joga` de virar o `text` da tarefa. Uma LEITURA
+aplica direto; uma ESCRITA sempre pergunta, e a frase canônica que o
+"Confirmar" reenvia fecha em vez de re-perguntar ao Jev para sempre.
 """
 
 from __future__ import annotations
@@ -72,15 +71,8 @@ class SpanCase(unittest.TestCase):
 
 class TheAgreement(SpanCase):
     def test_a_readable_sentence_still_goes_through_jev(self):
-        # SEM atalho: mesmo uma frase que o matcher lê passa pelo Jev, e no modo
-        # Cauteloso ela PERGUNTA — o Jev decidiu, e isso é visível.
-        found = self.read("lista as tarefas", "list", "task", "lista", "tarefas")
-        self.assertIsInstance(found, Question)
-        self.assertEqual(found.key, assist.ASK_KEY)
-
-    def test_in_automatic_mode_the_jev_decision_applies(self):
-        from at.core import settings
-        settings.save({**settings.load(), assist.MODE: assist.AUTOMATIC})
+        # SEM atalho: mesmo uma frase que o matcher lê passa pelo Jev. Uma
+        # LEITURA aplica direto — o Jev decidiu, e isso é visível.
         found = self.read("lista as tarefas", "list", "task", "lista", "tarefas")
         self.assertIsInstance(found, Proposal)
         self.assertEqual((found.action, found.table), ("list", "task"))
@@ -93,11 +85,13 @@ class TheAgreement(SpanCase):
 
 class TheSlang(SpanCase):
     def test_it_confirms_with_a_canonical_sentence_and_not_the_slang(self):
-        found = self.read("joga as pendencia", "list", "task", "joga", "pendencia")
+        # A ESCRITA sempre pergunta — e a pergunta traz a frase canônica, sem
+        # a gíria que o Jev apontou.
+        found = self.read("bota uma penca", "create", "task", "bota", "penca")
         self.assertIsInstance(found, Question)
         self.assertEqual(found.key, assist.ASK_KEY)
-        self.assertNotIn("joga", found.text)
-        self.assertNotIn("pendencia", found.text)
+        self.assertNotIn("bota", found.text)
+        self.assertNotIn("penca", found.text)
 
     def test_the_confirmed_canonical_sentence_reads_without_jev(self):
         # O que o "Confirmar" reenvia é a frase canônica MARCADA (`confirmed`):
@@ -109,11 +103,14 @@ class TheSlang(SpanCase):
 
     def test_the_slang_action_does_not_leak_into_the_text(self):
         # `bota` é a ação em gíria; ela não pode virar o `text` da tarefa nova.
-        found = self.read("bota uma penca", "create", "task", "bota", "penca")
-        if isinstance(found, Proposal):
-            self.assertNotIn("bota", found.values.get("text", ""))
-        else:
-            self.assertNotIn("bota", found.text)
+        # A confirmação é resolvida pela frase canônica, que é o que aplica.
+        found = self.read("bota penca comprar leite", "create", "task", "bota", "penca")
+        self.assertIsInstance(found, Question)
+        from at.nlu import propose
+        proposal = propose(found.text, confirmed=True, now=NOW)
+        self.assertEqual(proposal.values.get("text", "").casefold(), "comprar leite")
+        self.assertNotIn("bota", proposal.values.get("text", ""))
+        self.assertNotIn("penca", proposal.values.get("text", ""))
 
 
 if __name__ == "__main__":

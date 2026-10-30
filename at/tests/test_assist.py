@@ -4,10 +4,10 @@ matcher determinístico como apoio (TASK-180; invertido a pedido da pessoa,
 
 Três coisas são regradas: o SWITCH, nascido ligado e separado do `nlu.SWITCH`;
 o JEV PRIMEIRO, consultado para TODA frase (`nlu.propose` pergunta a ele antes
-de tentar o matcher determinístico — não há mais gatilho); e os TRÊS TIERS que
-o protótipo (`jev-test/slang_dispatch.py`) provou antes deste módulo existir —
-uma leitura auto-aplica mais barato que uma escrita, as duas confirmam a partir
-do mesmo piso, e um palpite que não nomeia nada é o mesmo que palpite nenhum.
+de tentar o matcher determinístico — não há mais gatilho); e a REGRA que o
+protótipo (`jev-test/slang_dispatch.py`) provou antes deste módulo existir —
+uma leitura aplica, uma escrita SEMPRE pergunta, e abaixo do piso (ou um
+palpite que não nomeia nada) é o mesmo que palpite nenhum.
 
 Nada aqui toca a rede: toda chamada ao Jev passa por um `transport` injetado,
 o mesmo seam que `test_jev.py` exercita sozinho.
@@ -161,7 +161,7 @@ class TheCredential(AssistCase):
         )
         # Not `None`: the credential opened and Jev answered. Whether that
         # becomes an applied `Proposal` or a `Question` asking to confirm is
-        # the folder's `MODE` (`TheMode`, below) and not this test's concern.
+        # the ACTION's own tier (below) and not this test's concern.
         self.assertIsNotNone(result)
 
     def test_a_service_that_does_not_answer_stands_by_the_refusal(self):
@@ -178,12 +178,11 @@ class TheCredential(AssistCase):
 
 
 class TheTiers(AssistCase):
-    """The prototype's own scale: reads are cheaper to auto-apply than writes.
+    """A regra: leitura aplica, escrita sempre pergunta, e o piso corta o
+    palpite que não vale nada.
 
-    Read off `preview`, which answers the RAW tier — `decide`'s own tier is
-    folded through the folder's `MODE` before it is acted on (`TheMode`,
-    below), and this class is about the engine's scale, not the folder's
-    taste.
+    Read off `preview`, which answers `_tier` exactly as `decide` does — the
+    decision lives in one place.
     """
 
     def setUp(self):
@@ -197,21 +196,23 @@ class TheTiers(AssistCase):
         )
         return found.tier
 
-    def test_a_read_auto_applies_from_point_seven(self):
-        self.assertEqual(self.tier("joga as pendencia", "list", "task", 0.7), assist.AUTO)
+    def test_a_read_applies_from_the_floor(self):
+        self.assertEqual(self.tier("joga as pendencia", "list", "task", 0.5), assist.AUTO)
+        self.assertEqual(self.tier("joga as pendencia", "list", "task", 0.99), assist.AUTO)
 
-    def test_a_read_below_point_seven_confirms_down_to_point_five(self):
-        self.assertEqual(self.tier("joga as pendencia", "list", "task", 0.69), assist.CONFIRM)
-        self.assertEqual(self.tier("joga as pendencia", "list", "task", 0.5), assist.CONFIRM)
-
-    def test_a_read_below_point_five_refuses(self):
+    def test_a_read_below_the_floor_refuses(self):
         self.assertEqual(self.tier("joga as pendencia", "list", "task", 0.49), assist.REFUSE)
 
-    def test_a_write_needs_point_nine_to_auto_apply(self):
-        self.assertEqual(self.tier("bota uma penca aqui", "create", "task", 0.89), assist.CONFIRM)
-        self.assertEqual(self.tier("bota uma penca aqui", "create", "task", 0.9), assist.AUTO)
+    def test_a_write_always_confirms_above_the_floor(self):
+        for action in ("create", "edit", "cancel", "delete"):
+            for confidence in (0.5, 0.99):
+                with self.subTest(action=action, confidence=confidence):
+                    self.assertEqual(
+                        self.tier("bota uma penca aqui", action, "task", confidence),
+                        assist.CONFIRM,
+                    )
 
-    def test_a_write_below_point_five_refuses(self):
+    def test_a_write_below_the_floor_refuses(self):
         self.assertEqual(self.tier("bota uma penca aqui", "create", "task", 0.49), assist.REFUSE)
 
     def test_either_half_named_none_refuses_regardless_of_confidence(self):
@@ -219,97 +220,73 @@ class TheTiers(AssistCase):
         self.assertEqual(self.tier("oi", "create", jev.NONE, 0.99), assist.REFUSE)
 
 
-class TheMode(AssistCase):
-    """TASK-180, fatia 3/3: the folder's OTHER choice — what `decide` does
-    once Jev has answered, separate from whether it is asked at all."""
-
-    def setUp(self):
-        super().setUp()
-        self.sealed()
-
-    def decide(self, text: str, action: str, table: str, confidence: float):
-        return assist.decide(
-            text, language="pt_BR", now=NOW,
-            main_key=MAIN_KEY, transport=self.fake(action, table, confidence, confidence),
-        )
-
-    def test_the_key_is_not_the_switch(self):
-        self.assertNotEqual(assist.MODE, assist.SWITCH)
-
-    def test_cautious_is_the_default(self):
-        self.assertEqual(assist.mode(), assist.CAUTIOUS)
-
-    def test_a_strange_value_reads_as_cautious(self):
-        settings.save({**settings.load(), assist.MODE: "qualquer-coisa"})
-        self.assertEqual(assist.mode(), assist.CAUTIOUS)
-
-    def test_cautious_asks_even_for_a_tier_that_would_have_auto_applied(self):
-        settings.save({**settings.load(), assist.MODE: assist.CAUTIOUS})
-        # 0.99 on a read clears `READ_THRESHOLD` by a wide margin, and the raw
-        # tier is `AUTO` (`TheTiers` proves it) — cautious asks all the same.
-        result = self.decide("joga as pendencia", "list", "task", 0.99)
-        self.assertIsInstance(result, nlu.Question)
-
-    def test_automatic_applies_even_a_tier_that_would_only_have_confirmed(self):
-        settings.save({**settings.load(), assist.MODE: assist.AUTOMATIC})
-        # 0.6 on a write never reaches `WRITE_THRESHOLD`, and the raw tier is
-        # `CONFIRM` (`TheTiers` proves the write's own boundary) — automatic
-        # applies it outright all the same.
-        result = self.decide("bota uma penca aqui", "create", "task", 0.6)
-        self.assertIsInstance(result, nlu.Proposal)
-
-    def test_refuse_does_not_move_in_either_mode(self):
-        for value in (assist.CAUTIOUS, assist.AUTOMATIC):
-            with self.subTest(mode=value):
-                settings.save({**settings.load(), assist.MODE: value})
-                self.assertIsNone(self.decide("oi", jev.NONE, "task", 0.99))
-                self.assertIsNone(self.decide("oi", "create", "task", 0.2))
-
-    def test_it_is_reached_through_the_generic_setting_edit(self):
-        self.assertEqual(assist.mode(), assist.CAUTIOUS)
-        self.assertEqual(main(["setting", "edit", "assist_mode", "automatic"]), OK)
-        self.assertEqual(assist.mode(), assist.AUTOMATIC)
-        self.assertEqual(main(["setting", "edit", "assist_mode", "cautious"]), OK)
-        self.assertEqual(assist.mode(), assist.CAUTIOUS)
-
-    def test_it_is_listed_by_setting_list(self):
-        output = io.StringIO()
-        with redirect_stdout(output):
-            code = main(["setting", "list"])
-        self.assertEqual(code, OK)
-        self.assertIn("assist_mode", output.getvalue())
-
-
 class TheRewrite(AssistCase):
-    """Auto plants the canonical words and resubmits to the REAL matcher."""
+    """Plants the canonical words and resubmits to the REAL matcher — and a
+    WRITE always asks first."""
 
     def setUp(self):
         super().setUp()
         self.sealed()
 
     def test_the_date_is_still_read_normally_after_the_rewrite(self):
-        # Forced to `AUTOMATIC`: this is about what the `AUTO` tier DOES once
-        # reached, and the folder's own default (`CAUTIOUS`) folds it into
-        # `CONFIRM` before the rewrite ever runs (`TheMode`).
-        settings.save({**settings.load(), assist.MODE: assist.AUTOMATIC})
         result = assist.decide(
             "bota uma penca pra sexta",
             language="pt_BR", now=NOW, main_key=MAIN_KEY,
             transport=self.fake("create", "task", 0.95, 0.95),
         )
-        self.assertIsInstance(result, nlu.Proposal)
-        self.assertEqual(result.values.get("deadline"), "2026-09-25")
+        self.assertIsInstance(result, nlu.Question)
+        # Confirming the rewritten sentence is where the date is read — the
+        # ordinary deterministic road.
+        proposal = nlu.propose(result.text, confirmed=True, now=NOW)
+        self.assertIsInstance(proposal, nlu.Proposal)
+        self.assertEqual(proposal.values.get("deadline"), "2026-09-25")
 
     def test_a_row_number_is_still_needed_before_it_can_apply(self):
-        # O rewrite do Jev (`editar tarefa ...`) ainda precisa do número da
-        # linha: o matcher não resolve, então `decide` devolve `None` — não
-        # aplica, e quem tenta a frase ORIGINAL como apoio é o `propose`.
-        settings.save({**settings.load(), assist.MODE: assist.AUTOMATIC})
+        # A confirmação é pedida ANTES de o matcher resolver: sem o número da
+        # linha, o `edit` pergunta (como toda escrita) e a frase confirmada
+        # não aplica — o matcher a recusa.
         result = assist.decide(
             "resolve essa penca", language="pt_BR", now=NOW, main_key=MAIN_KEY,
             transport=self.fake("edit", "task", 0.95, 0.95),
         )
-        self.assertIsNone(result)
+        self.assertIsInstance(result, nlu.Question)
+        with self.assertRaises(nlu.Refused):
+            nlu.propose(result.text, confirmed=True, now=NOW)
+
+    def test_a_create_at_high_confidence_still_asks(self):
+        result = assist.decide(
+            "bota uma penca aqui",
+            language="pt_BR", now=NOW, main_key=MAIN_KEY,
+            transport=self.fake("create", "task", 0.99, 0.99),
+        )
+        self.assertIsInstance(result, nlu.Question)
+
+    def test_a_delete_at_high_confidence_still_asks(self):
+        result = assist.decide(
+            "apaga essa penca",
+            language="pt_BR", now=NOW, main_key=MAIN_KEY,
+            transport=self.fake("delete", "task", 0.99, 0.99),
+        )
+        self.assertIsInstance(result, nlu.Question)
+
+    def test_a_read_at_the_floor_applies(self):
+        result = assist.decide(
+            "joga as pendencia",
+            language="pt_BR", now=NOW, main_key=MAIN_KEY,
+            transport=self.fake("list", "task", 0.5, 0.5),
+        )
+        self.assertIsInstance(result, nlu.Proposal)
+
+    def test_an_edit_question_shows_the_value_it_changes(self):
+        tables.create("task", {"text": "comprar pão"})
+        result = assist.decide(
+            "1 pra comprar leite",
+            language="pt_BR", now=NOW, main_key=MAIN_KEY,
+            transport=self.fake("edit", "task", 0.99, 0.99),
+        )
+        self.assertIsInstance(result, nlu.Question)
+        self.assertIn("comprar pão", result.changes)
+        self.assertIn("comprar leite", result.changes)
 
     def test_a_confirm_tier_question_carries_the_rewritten_sentence(self):
         result = assist.decide(
@@ -330,7 +307,7 @@ class TheRewrite(AssistCase):
         )
         # Repeating the question's own text is the ordinary deterministic road
         # — no Jev, no credential, no switch needed the second time.
-        proposal = nlu.propose(question.text, now=NOW)
+        proposal = nlu.propose(question.text, confirmed=True, now=NOW)
         self.assertIsInstance(proposal, nlu.Proposal)
         self.assertEqual(proposal.action, "create")
         self.assertEqual(proposal.table, "task")
@@ -345,7 +322,6 @@ class TheReminder(AssistCase):
     def setUp(self):
         super().setUp()
         self.sealed()
-        settings.save({**settings.load(), assist.MODE: assist.AUTOMATIC})
 
     def answer(self, **spans: str):
         def post(url, body, headers, timeout):
@@ -370,33 +346,34 @@ class TheReminder(AssistCase):
             "me lembrar de imprimir passagens hoje 18h",
             action_span="lembrar", day_span="hoje", time_span="18h",
         )
-        self.assertIsInstance(result, nlu.Proposal)
-        self.assertEqual(result.values.get("text"), "imprimir passagens")
-        self.assertEqual(result.values.get("on_date"), "2026-09-22")
-        self.assertEqual(result.values.get("at"), ["18:00"])
+        self.assertIsInstance(result, nlu.Question)
+        proposal = nlu.propose(result.text, confirmed=True, now=NOW)
+        self.assertEqual(proposal.values.get("text"), "imprimir passagens")
+        self.assertEqual(proposal.values.get("on_date"), "2026-09-22")
+        self.assertEqual(proposal.values.get("at"), ["18:00"])
         # A data ancora a recorrência: um compromisso de uma vez só.
-        self.assertEqual(result.values.get("freq"), "once")
+        self.assertEqual(proposal.values.get("freq"), "once")
 
     def test_an_hour_with_no_date_leaves_the_daily_default(self):
         result = self.decide(
             "me lembrar de regar a planta às 9h",
             action_span="lembrar", time_span="9h",
         )
-        self.assertIsInstance(result, nlu.Proposal)
-        self.assertEqual(result.values.get("at"), ["09:00"])
-        self.assertIsNone(result.values.get("on_date"))
+        self.assertIsInstance(result, nlu.Question)
+        proposal = nlu.propose(result.text, confirmed=True, now=NOW)
+        self.assertEqual(proposal.values.get("at"), ["09:00"])
+        self.assertIsNone(proposal.values.get("on_date"))
         # Sem data, a frequência dita é a da tabela (`daily`) — nada a ancorar.
-        self.assertIsNone(result.values.get("freq"))
+        self.assertIsNone(proposal.values.get("freq"))
 
     def test_the_confirm_sentence_replays_to_the_same_row(self):
-        settings.save({**settings.load(), assist.MODE: assist.CAUTIOUS})
         question = self.decide(
             "me lembrar de imprimir passagens hoje 18h",
             action_span="lembrar", day_span="hoje", time_span="18h",
         )
         self.assertIsInstance(question, nlu.Question)
         # Repetir a frase que a pergunta traz é a estrada determinística comum.
-        proposal = nlu.propose(question.text, now=NOW)
+        proposal = nlu.propose(question.text, confirmed=True, now=NOW)
         self.assertEqual(proposal.values.get("at"), ["18:00"])
         self.assertEqual(proposal.values.get("on_date"), "2026-09-22")
         self.assertEqual(proposal.values.get("freq"), "once")
@@ -438,7 +415,6 @@ class ThePropose(AssistCase):
         # a leitura dele é a resposta — aqui uma frase que o matcher sozinho
         # recusaria. O seam é `jev._post`, o mesmo que a palavra da CLI patcheia.
         self.sealed()
-        settings.save({**settings.load(), assist.MODE: assist.AUTOMATIC})
         with mock.patch.object(jev, "_post", self.fake("list", "task", 0.99, 0.99)):
             found = nlu.propose("joga as pendencia", now=NOW, main_key=MAIN_KEY)
         self.assertIsInstance(found, nlu.Proposal)
@@ -472,7 +448,8 @@ class ThePreview(AssistCase):
         self.assertEqual(found.table, "task")
         self.assertEqual(found.action_confidence, 0.95)
         self.assertEqual(found.table_confidence, 0.95)
-        self.assertEqual(found.tier, assist.AUTO)
+        # A WRITE — 0.95 is well above the floor, and still asks.
+        self.assertEqual(found.tier, assist.CONFIRM)
 
     def test_the_tier_is_the_same_scale_decide_uses(self):
         found = assist.preview(
@@ -612,6 +589,15 @@ class TheSwitchThroughSetting(AssistCase):
             code = main(["setting", "list"])
         self.assertEqual(code, OK)
         self.assertIn("assist", output.getvalue())
+
+    def test_the_old_assist_mode_is_not_a_setting_anymore(self):
+        # A pasta nova não conhece mais `assist_mode`: houve um só comportamento
+        # desde a decisão da pessoa, e a chave saiu de `settings.KNOWN`.
+        output = io.StringIO()
+        with redirect_stdout(output):
+            code = main(["setting", "list"])
+        self.assertEqual(code, OK)
+        self.assertNotIn("assist_mode", output.getvalue())
 
 
 if __name__ == "__main__":

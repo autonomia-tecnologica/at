@@ -116,7 +116,7 @@ function refusal(sentence: string, message: string): Turn {
   };
 }
 
-// A CAUTIOUS QUESTION'S YES AND NO — a chat is typed answers, never clicked
+// A CONFIRMATION QUESTION'S YES AND NO — a chat is typed answers, never clicked
 // ones (the person's own words): the pending turn is resolved by the NEXT
 // thing typed, read against this small, tolerant vocabulary, before that text
 // ever has a chance of being asked to the engine as a sentence of its own.

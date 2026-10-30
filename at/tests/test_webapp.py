@@ -1972,20 +1972,20 @@ class TheAssistThroughAsk(ServerCase):
             }).encode("utf-8")
         return post
 
-    def test_automatic_mode_applies_the_rewrite_for_real(self):
+    def test_a_read_applies_the_rewrite_for_real(self):
         self.sealed()
-        settings.save({**settings.load(), assist.MODE: assist.AUTOMATIC})
-        with mock.patch.object(jev, "_post", self.fake("create", "task", 0.95)):
+        with mock.patch.object(jev, "_post", self.fake("list", "task", 0.95)):
             status, answer = self.post(
-                "/api/ask", {"text": "bota uma penca aqui", "main_key": self.MAIN_KEY},
+                "/api/ask", {"text": "joga as pendencia", "main_key": self.MAIN_KEY},
             )
         self.assertEqual(status, 200)
+        # A LEITURA aplica: a resposta é o ato, não uma pergunta.
         self.assertEqual(answer["kind"], "answer")
-        self.assertEqual(len(tables.rows("task")), 2)
+        self.assertTrue(answer["proposal"])
+        self.assertEqual(len(tables.rows("task")), 1)  # a list writes nothing
 
-    def test_cautious_mode_asks_instead_of_applying(self):
+    def test_a_write_asks_even_at_high_confidence_and_writes_nothing(self):
         self.sealed()
-        # `MODE` is left at its default — `CAUTIOUS` — on purpose.
         with mock.patch.object(jev, "_post", self.fake("create", "task", 0.95)):
             status, answer = self.post(
                 "/api/ask", {"text": "bota uma penca aqui", "main_key": self.MAIN_KEY},
@@ -2053,15 +2053,15 @@ class TheAssistThroughAsk(ServerCase):
 
 
 class TheAssistKnobs(ServerCase):
-    """`POST /api/assist` — the Control Panel's write into the two settings
-    (TASK-180, fatia 3/3), and `/api/state`'s read of the same pair."""
+    """`POST /api/assist` — the Control Panel's write into the switch
+    (TASK-180, fatia 3/3), and `/api/state`'s read of it."""
 
-    def test_the_state_carries_the_switch_and_the_mode(self):
+    def test_the_state_carries_the_switch_and_no_mode(self):
         status, _, body = self.get("/api/state")
         payload = json.loads(body)
         self.assertEqual(status, 200)
         self.assertTrue(payload["assist"])
-        self.assertEqual(payload["assist_mode"], assist.CAUTIOUS)
+        self.assertNotIn("assist_mode", payload)
 
     def test_it_turns_the_switch_off_and_back_on(self):
         status, answer = self.post("/api/assist", {"enabled": False})
@@ -2072,17 +2072,6 @@ class TheAssistKnobs(ServerCase):
         self.assertEqual(status, 200)
         self.assertTrue(answer["enabled"])
         self.assertTrue(assist.enabled())
-
-    def test_it_writes_the_mode(self):
-        status, answer = self.post("/api/assist", {"mode": assist.AUTOMATIC})
-        self.assertEqual(status, 200)
-        self.assertEqual(answer["mode"], assist.AUTOMATIC)
-        self.assertEqual(assist.mode(), assist.AUTOMATIC)
-
-    def test_an_unknown_mode_is_rejected(self):
-        status, _ = self.post("/api/assist", {"mode": "qualquer-coisa"})
-        self.assertEqual(status, 400)
-        self.assertEqual(assist.mode(), assist.CAUTIOUS)
 
     def test_it_leaves_a_line_and_a_version_like_any_other_setting(self):
         self.post("/api/assist", {"enabled": False})

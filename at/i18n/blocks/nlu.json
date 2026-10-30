@@ -18,6 +18,8 @@
     "ask.which_ref": "Não ficou claro qual você quis dizer. Nada foi criado.\n{text}\nRepita o pedido com o nome exato ou o identificador.",
     "ask.what": "O que vai em {text}? Diga junto com o pedido.",
     "ask.slang": "Entendi \"{text}\". Confirma?",
+    "ask.slang_changes": "Entendi \"{text}\".\n\nO que muda:\n\n{changes}\n\nConfirma?",
+    "ask.change": "{field}: {old} → {new}",
     "proposal": "{action} {table}: {fields}"
   },
   "en_US": {
@@ -39,6 +41,8 @@
     "ask.which_ref": "It is not clear which one you meant. Nothing was created.\n{text}\nRepeat the request with the exact name or the identifier.",
     "ask.what": "What goes in {text}? Say it together with the request.",
     "ask.slang": "Got it: \"{text}\". Confirm?",
+    "ask.slang_changes": "Got it: \"{text}\".\n\nWhat changes:\n\n{changes}\n\nConfirm?",
+    "ask.change": "{field}: {old} → {new}",
     "proposal": "{action} {table}: {fields}"
   }
 }

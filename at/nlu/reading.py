@@ -63,10 +63,15 @@ class Question:
     `key` is the i18n key of what is being asked and `text` the phrase that
     raised it, so the surface can ask in the active language without knowing
     which language the phrase was written in.
+
+    `changes` is the readable diff the assist carries beside a confirmation —
+    the field-by-field `old → new` of an `edit` — and it is empty in every
+    question the grammar itself raises.
     """
 
     key: str
     text: str
+    changes: str = ""
 
 
 @dataclass(frozen=True)

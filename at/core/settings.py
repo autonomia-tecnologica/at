@@ -97,11 +97,6 @@ KNOWN = (
     # chama o Jev, e os dois não podem ser o mesmo nome (a regra do glossário:
     # dois nomes que se tocariam não coexistem).
     "assist",
-    # TASK-180, fatia 3/3: o OUTRO ajuste do assist (`at.core.assist.MODE`) —
-    # ao lado do switch, e não dentro dele, porque um diz SE o Jev é chamado e
-    # o outro diz o que fazer da resposta. "cautious" é o padrão de uma pasta
-    # que nunca escolheu.
-    "assist_mode",
     "basic_auth",
     "webapp_host",
     THRESHOLD,

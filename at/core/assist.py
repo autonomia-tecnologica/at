@@ -18,26 +18,30 @@ age é o motor, sobre a frase reescrita nas palavras do vocabulário.
 `reading.py` e o vocabulário não carregam palavra deste módulo — a leitura
 determinística não muda; o que mudou é quem é consultado primeiro.
 
-**Three tiers, read off the risk the ACTION already carries on §4's own
-scale.** A read (`list`, `view`) is cheap to get wrong — a person sees a
-listing that was not what they meant and asks again — so it auto-applies from
-`0.7`. A write is not: it auto-applies only from `0.9`, and confirms (never
-silently) from `0.5`. Below `0.5`, or either half of the guess landing on
-`jev.NONE`, is the same answer as no guess at all — the sentence is handed
-back to the `Refused` that was already on its way out. The two thresholds and
-the floor are `jev-test/slang_dispatch.py`'s own numbers, proven against real
-slang before this module existed; this fatia is the engine that CARRIES them
-into the product, not a re-derivation of them.
+**A regra é UMA, e não depende de ajuste da pasta.** A LEITURA (`list`, `view`)
+aplica direto: uma listagem que não era o que a pessoa quis é barata de
+corrigir, e ela só pede de novo. A ESCRITA (`create`, `edit`, `cancel`,
+`delete`) SEMPRE pergunta, não importa quão seguro o Jev esteja — o que ele
+propõe é um REWRITE, e a pessoa lê a frase canônica antes de o matcher
+executar. Uma `edit` mostra, na própria pergunta, o que MUDA campo a campo
+(`valor atual → valor novo`): quem confirma uma edição precisa ver o diff, não
+só a frase reescrita. Abaixo do piso de confiança (`0.5`), ou um palpite que
+nomeia `jev.NONE` em qualquer das duas metades, é o mesmo que palpite nenhum:
+a frase volta ao `Refused` que já estava a caminho, e o matcher determinístico
+é o apoio. O piso é o de `jev-test/slang_dispatch.py`, provado contra gíria
+real antes deste módulo existir; a confiança decide se o palpite vale alguma
+coisa, nunca se ele pergunta.
 
 **Auto rewrites, and resubmits to the REAL matcher — never to a second
 reading of its own.** The rewrite plants the vocabulary's own words for the
 guessed action and table at the front of the sentence (`jev.spoken`), so what
 runs next is `at.nlu.matcher.match` on an ORDINARY sentence: the date, the
 number, the row, the residue — every one of them is read exactly as it always
-was, because nothing about THAT reading is this module's to repeat. Confirm
+was, because nothing about THAT reading is this module's to repeat. A WRITE
 asks instead of applying, through the very `Question` shape `cli` and WebApp
 already print — the rewritten sentence is what the person is asked to repeat,
-so saying yes is saying that sentence again and walking the ordinary road.
+so saying yes is saying that sentence again and walking the ordinary road; an
+`edit` carries the field-by-field diff beside it (`_changes`).
 
 **E a DATA e a HORA ganham, cada uma, a palavra-campo da própria tabela**
 (`_ground`): "me lembrar de imprimir passagens hoje 18h" não escreve "data" nem
@@ -80,28 +84,9 @@ and the tier a real sentence would land in, and nothing about the folder
 changes for having asked. It is the surface `main_key` was always missing:
 read without echo, the same way `backup` and `admin` already read theirs.
 `preview` reads `_tier` RAW, on purpose: it is the engine's own judgment,
-off the scale `jev-test/slang_dispatch.py` proved, and it does not move with
-a folder's `MODE` — the dry run answers the same question in every folder,
-and what the folder chose is `at-cli setting view` to read.
-
-**Fatia 3/3 gives the REAL path a second knob, beside the switch.** The
-switch answers whether Jev is asked at all; `MODE` answers what a tier
-that is not `REFUSE` does once Jev has answered — and it is the only place
-the two tiers `AUTO` and `CONFIRM` still disagree, because a demand either
-asks or does not. `CAUTIOUS` (the default a folder that never chose gets,
-the same "born safe" `nlu.SWITCH` is not — a service call is not free to
-assume) turns every non-`REFUSE` tier into `CONFIRM`: nothing this module
-ever proposes applies without a person reading it back first, no matter how
-sure Jev was. `AUTOMATIC` is the other way: every non-`REFUSE` tier becomes
-`AUTO`, and a person who chose it has said a guess this product is not
-flatly wrong about is a guess worth acting on. `REFUSE` is neither tier's
-to touch — a guess naming `jev.NONE`, or below the floor, is not a
-confidence problem the folder's taste can fix (the module's own §4 reading,
-carried unchanged from fatia 1/3). `_tier` computes the RAW tier off the
-read/write thresholds exactly as it always did; `decide` is the one caller
-that asks `_mode` to fold `AUTO` and `CONFIRM` together before acting on it,
-which is why `preview` — a question about the engine, not about what this
-folder would DO — never calls it.
+off the scale `jev-test/slang_dispatch.py` proved — the dry run answers the
+same question in every folder, and whether this folder asks Jev at all is
+`at-cli setting view` to read.
 """
 
 from __future__ import annotations
@@ -116,6 +101,7 @@ from typing import cast
 from at.core import files, jev, paths, permissions, secrets, settings, tables
 from at.data import schema, store
 from at.encryption import vault
+from at.i18n import tr
 from at.nlu import matcher
 from at.nlu.proposal import Proposal
 from at.nlu.reading import Intent, Question, Refused
@@ -132,17 +118,14 @@ AUTO = "auto"
 CONFIRM = "confirm"
 REFUSE = "refuse"
 
-# §4's own scale, carried from the prototype that proved it (module docstring):
-# a READ auto-applies cheaper than a WRITE does, and both confirm from the same
-# floor before the guess is worth nothing at all.
-READ_THRESHOLD = 0.7
-WRITE_THRESHOLD = 0.9
+# O piso de confiança, da escala que o protótipo provou (module docstring): abaixo
+# dele o palpite não vale nada, e o matcher determinístico responde.
 CONFIRM_FLOOR = 0.5
 
 # A INTENÇÃO (conversa: saudação, agradecimento, ajuda…) é só fala — não escreve
 # nada —, então vale o piso de uma leitura barata. E a subintenção que o Jev não
 # soube dizer cai em `PLAIN`, a que toda intenção tem.
-INTENT_THRESHOLD = READ_THRESHOLD
+INTENT_THRESHOLD = 0.7
 PLAIN = "plain"
 
 # The `i18n` key of the question a CONFIRM tier asks — carried in `nlu.json`
@@ -151,30 +134,10 @@ PLAIN = "plain"
 # prints one already knows how to print the other.
 ASK_KEY = "nlu.ask.slang"
 
-# The key of the folder's OTHER choice about this module (TASK-180, fatia
-# 3/3) — separate from `SWITCH`, which answers whether Jev is asked at all.
-# `MODE` answers what `decide` does once Jev HAS answered: `CAUTIOUS` is the
-# default (the module docstring's "born safe"), and `AUTOMATIC` is the one a
-# folder opts into.
-MODE = "assist_mode"
-CAUTIOUS = "cautious"
-AUTOMATIC = "automatic"
-
 
 def enabled() -> bool:
     """Whether this module's own fallback is on. Born on (see the docstring)."""
     return bool(settings.get(SWITCH, True))
-
-
-def mode() -> str:
-    """The folder's choice between `CAUTIOUS` and `AUTOMATIC` — `CAUTIOUS` for
-    every value that is not exactly `AUTOMATIC`, the same "a strange
-    declaration fails closed" reading `at.ui.ask.present` already gives a
-    hand-edited `type` — a folder that never chose, and a folder a hand
-    mistyped, both get the side that never applies without being read back
-    first.
-    """
-    return AUTOMATIC if settings.get(MODE) == AUTOMATIC else CAUTIOUS
 
 
 # ------------------------------------------------------------------- cache ---
@@ -329,12 +292,12 @@ def decide(
         _remember(key, guess)
     # **A INTENÇÃO só vale quando ação e tabela deram `none`**: se a frase pede
     # uma ação, a ação ganha e a escrita segue determinística. É conversa — não
-    # escreve nada —, então o piso é o de uma leitura barata, e independe do
-    # `MODE` da pasta (não há o que confirmar).
+    # escreve nada —, então o piso é o de uma leitura barata, e não há o que
+    # confirmar.
     spoken = _intent(guess, language)
     if spoken is not None:
         return spoken
-    tier = _folded(_tier(guess))
+    tier = _tier(guess)
     if tier == REFUSE:
         return None
 
@@ -345,10 +308,11 @@ def decide(
     #
     # O "Confirmar" reenvia a frase canônica com uma MARCA (`confirmed`), e o
     # `propose` a lê SÓ com o matcher — é o que impede o loop de re-perguntar ao
-    # Jev para sempre.
+    # Jev para sempre. Uma ESCRITA sempre para aqui: a pergunta carrega a frase
+    # canônica, e uma `edit` carrega também o diff de `_changes`.
     sentence = _ground(text, guess, language)
     if tier == CONFIRM:
-        return Question(ASK_KEY, sentence)
+        return Question(ASK_KEY, sentence, _changes(sentence, guess, language, now))
     try:
         return matcher.match(sentence, language=language, now=now,
                              action=guess.action, table=guess.table)
@@ -423,40 +387,65 @@ def preview(
 
 
 def _tier(guess: jev.Decision) -> str:
-    """Which of the three tiers this guess lands in (the module docstring's
-    own scale) — `jev.NONE` on either half is the floor itself and nothing
-    below it, because a guess that names nothing is not a confidence problem.
-
-    This is the RAW tier, off the read/write thresholds alone — `preview`
-    reads it exactly as it stands, and `decide` is the one caller that folds
-    it through `_folded` before acting on it (the module docstring's fatia
-    3/3 note).
+    """Which of the three tiers this guess lands in — the module docstring's
+    own rule. `jev.NONE` on either half is the floor itself and nothing below
+    it, because a guess that names nothing is not a confidence problem; under
+    `CONFIRM_FLOOR` the guess is worth nothing at all. From the floor on, a
+    READ applies (`AUTO`) and a WRITE confirms (`CONFIRM`).
     """
     if guess.action == jev.NONE or guess.table == jev.NONE:
         return REFUSE
-    threshold = WRITE_THRESHOLD if guess.action in tables.WRITES else READ_THRESHOLD
-    if guess.confidence >= threshold:
-        return AUTO
-    if guess.confidence >= CONFIRM_FLOOR:
-        return CONFIRM
-    return REFUSE
-
-
-def _folded(tier: str) -> str:
-    """Where the folder's `MODE` folds `AUTO` and `CONFIRM` together —
-    `REFUSE` is handed back untouched, because neither mode is free to act on
-    a guess that named nothing or fell under the floor (module docstring).
-
-    `CAUTIOUS` folds a `tier` that is not `REFUSE` into `CONFIRM`: even a
-    guess the raw scale would have applied outright is read back first.
-    `AUTOMATIC` folds it the other way, into `AUTO`: even a guess the raw
-    scale would only have confirmed is applied outright. Which of the two
-    `tier` started as stops mattering the moment it is not `REFUSE` — that is
-    the whole of what "the folder's taste" means here.
-    """
-    if tier == REFUSE:
+    if guess.confidence < CONFIRM_FLOOR:
         return REFUSE
-    return AUTO if mode() == AUTOMATIC else CONFIRM
+    if guess.action in tables.READS:
+        return AUTO
+    return CONFIRM
+
+
+def _changes(
+    sentence: str,
+    guess: jev.Decision,
+    language: str,
+    now: datetime | None,
+) -> str:
+    """O que uma `edit` MUDA, campo a campo — `""` para toda outra ação.
+
+    A frase é a canônica que o "Confirmar" reenvia, e é o matcher quem resolve
+    a linha e os valores novos. `Refused`, uma `Question` da gramática ou uma
+    linha que não existe (ou que o matcher não achou) não têm diff a mostrar:
+    a pergunta segue com a frase, como sempre. Para cada campo que MUDA, uma
+    linha de lista markdown no vocabulário da tabela — `- Campo: valor atual →
+    valor novo`.
+    """
+    if guess.action != "edit":
+        return ""
+    try:
+        found = matcher.match(
+            sentence, language=language, now=now,
+            action=guess.action, table=guess.table,
+        )
+    except Refused:
+        return ""
+    if isinstance(found, Question) or found.row is None:
+        return ""
+    row = store.find(found.table, found.row)
+    if row is None:
+        return ""
+    lines: list[str] = []
+    for name, value in found.values.items():
+        current = row.get(name)
+        if value == current:
+            continue
+        lines.append(
+            "- "
+            + tr(
+                "nlu.ask.change",
+                field=tables.label(found.table, name),
+                old=tables.text_of(found.table, name, current),
+                new=tables.text_of(found.table, name, value),
+            )
+        )
+    return "\n".join(lines)
 
 
 # A palavra que o Jev NÃO apontou: o trecho não está escrito na frase.

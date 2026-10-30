@@ -140,12 +140,12 @@ PAGE_WORDS = (
     "chat_ex1", "chat_ex2", "chat_ex3", "chat_ex4",
     "risk", "risk_runs", "risk_waits", "risk_threshold", "risk_none",
     # The assist's own Control Panel section, and its one retry (TASK-180,
-    # fatia 3/3): the switch, the mode's two names, and the inline form a
-    # refusal offers when a Main Key could still turn it into an answer.
-    "assist", "assist_hint", "assist_mode", "assist_cautious", "assist_automatic",
+    # fatia 3/3): the switch, and the inline form a refusal offers when a Main
+    # Key could still turn it into an answer.
+    "assist", "assist_hint",
     "assist_key", "assist_retry",
-    # The CONFIRM tier's own two buttons (TASK-183): what a cautious assist's
-    # question offers instead of the sentence it used to ask to be retyped.
+    # The CONFIRM tier's own words (TASK-183): what a question offers instead
+    # of the sentence it used to ask to be retyped.
     "assist_confirm", "assist_deny", "assist_denied",
     # NOTIFICAÇÕES (Web Push): o bloco das Configurações que pede a permissão
     # do navegador e inscreve o PWA — sem ntfy.
@@ -313,12 +313,10 @@ def state_payload() -> dict:
         # the page reads it to know what to draw: off, there is no box, no balloon
         # and no chat — the whole function is gone, and nothing else is.
         "interpreter": nlu.enabled(),
-        # THE ASSIST'S OWN TWO KNOBS (TASK-180, fatia 3/3): the switch (whether
-        # Jev is asked at all, once the matcher gives up) and the mode (what a
-        # non-`refuse` tier does once Jev has answered). The Control Panel draws
-        # both from here and writes them back through `/api/assist`.
+        # THE ASSIST'S OWN SWITCH (TASK-180, fatia 3/3): whether Jev is asked
+        # at all, once the matcher gives up. The Control Panel draws it from
+        # here and writes it back through `/api/assist`.
         "assist": assist.enabled(),
-        "assist_mode": assist.mode(),
         # SE A CREDENCIAL DO JEV ESTÁ CONFIGURADA: sem ela o Jev não é
         # consultado, e a página diz "Jev não configurado" no chat em vez de
         # fingir que leu.

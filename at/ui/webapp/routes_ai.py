@@ -202,44 +202,29 @@ class AiRoutes(RouteBase):
         self._json({"ok": True, "jev_ready": True})
 
     def _post_assist(self) -> None:
-        """The assist's own two knobs, from the Control Panel (TASK-180, fatia
-        3/3): the switch and the mode, each an adjustment of the folder (§4)
-        and not a datum of the page, so each is written through `door.setting`
-        — the same line and the same version a `setting edit` at a terminal
-        already leaves, and not a second road into `settings.json`.
+        """The assist's own switch, from the Control Panel (TASK-180, fatia
+        3/3): an adjustment of the folder (§4) and not a datum of the page, so
+        it is written through `door.setting` — the same line and the same
+        version a `setting edit` at a terminal already leaves, and not a second
+        road into `settings.json`.
 
-        Either field alone is a legal request — the switch flips without
-        touching the mode, and the mode changes without touching the switch —
-        so the two are read and written independently, and the answer is the
-        pair as the folder now holds it, read back rather than echoed, the
-        same reason `door.setting` itself answers from the file and not from
-        what was typed.
+        The answer is the switch as the folder now holds it, read back rather
+        than echoed, the same reason `door.setting` itself answers from the
+        file and not from what was typed.
         """
         payload = self._body()
         if payload is None:
             return
         on = payload.get("enabled")
-        wanted_mode = payload.get("mode")
-        actor = self._actor()
         if isinstance(on, bool):
             code, answer = door.setting(
                 "edit", [assist.SWITCH, "true" if on else "false"],
-                actor=actor, via=audit.WEBAPP,
+                actor=self._actor(), via=audit.WEBAPP,
             )
             if code != door.OK:
                 self._json({"error": answer}, 400)
                 return
-        if isinstance(wanted_mode, str):
-            if wanted_mode not in (assist.CAUTIOUS, assist.AUTOMATIC):
-                self._json({"error": f"unknown mode: {wanted_mode}"}, 400)
-                return
-            code, answer = door.setting(
-                "edit", [assist.MODE, wanted_mode], actor=actor, via=audit.WEBAPP,
-            )
-            if code != door.OK:
-                self._json({"error": answer}, 400)
-                return
-        self._json({"enabled": assist.enabled(), "mode": assist.mode()})
+        self._json({"enabled": assist.enabled()})
 
     def _post_agent(self) -> None:
         """The machine credential's door: mint it, give it again, take it away.

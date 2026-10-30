@@ -284,8 +284,15 @@ def ask(
         # for it: a button that resubmitted it would only ask the same question
         # back.
         confirmable = proposed.text if proposed.key == assist.ASK_KEY else None
+        # An `edit`'s confirmation also shows WHAT CHANGES, field by field; a
+        # question with no diff speaks the ordinary `key` sentence.
+        saying = (
+            tr("nlu.ask.slang_changes", text=proposed.text, changes=proposed.changes)
+            if proposed.changes
+            else tr(proposed.key, text=proposed.text)
+        )
         return Result(
-            "question", None, tr(proposed.key, text=proposed.text), REFUSED,
+            "question", None, saying, REFUSED,
             confirm=confirmable,
         )
 
