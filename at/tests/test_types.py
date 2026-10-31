@@ -147,6 +147,11 @@ class TheDay(TypeCase):
         self.assertEqual(store.find("moment", row["id"])["since"], "2026-10-03")
         self.assertRegex(row["since"], DAY)
 
+    def test_an_empty_day_clears_a_field_that_is_not_required(self):
+        row = tables.create("moment", {"text": "café", "since": "2026-10-03"})
+        tables.edit("moment", row["id"], {"since": ""})
+        self.assertEqual(store.find("moment", row["id"])["since"], "")
+
     def test_today_is_the_local_day_of_whoever_writes(self):
         row = tables.create("moment", {"text": "café", "since": "today"})
         self.assertEqual(row["since"], date.today().isoformat())

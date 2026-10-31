@@ -13,10 +13,11 @@
 // (`fields[].primary`, `fields[].type`), e a página lê a que o servidor mandou
 // — como toda página deste produto lê o que a porta entrega.
 //
-// O QUE ELA FAZ: lista as notas (o texto sem a notação, que é o que uma
-// célula mostra de um campo markdown), abre uma (o registro, que é a
-// leitura), e pelo menu de contexto edita e apaga — o que o MOTOR disser que
-// este ator pode (`payload.actions`), e nunca um ato inventado aqui.
+// O QUE ELA FAZ (B-54, fatia 2): lista as notas, EDITA O TEXTO E AS TAGS NO
+// LUGAR pelo `FieldEditor` (o valor é o controle, e a escrita é a de
+// `lib/fieldWrite`), abre o registro pelo corpo do card e pelo menu, e apaga
+// pelo menu — o que o MOTOR disser que este ator pode (`payload.actions`), e
+// nunca um ato inventado aqui.
 
 import { ref, computed, watch, onMounted } from "vue";
 import { api, post } from "../lib/api";
@@ -24,14 +25,13 @@ import { label, word, setFields } from "../lib/store";
 import { nav, setTrail, showError, pageReadsOnItsOwn, pageLoaded, poke, NOTES_KEY } from "../lib/views";
 import { openPop } from "../lib/pop";
 import { openContextMenu, type MenuItem } from "../lib/menu";
-import { plainText } from "../lib/markdown";
 import { ask } from "../lib/confirm";
 import { toast } from "../lib/toast";
 import EmptyState from "../components/EmptyState.vue";
 import CreatePop from "../components/pops/CreatePop.vue";
-import EditPop from "../components/pops/EditPop.vue";
 import RecordPop from "../components/pops/RecordPop.vue";
-import type { TablePayload, RecordRow, RecordField } from "../lib/record";
+import FieldEditor from "../components/FieldEditor.vue";
+import type { TablePayload, RecordRow, RecordField, FieldSpec } from "../lib/record";
 
 // A TABELA QUE A SEÇÃO MOSTRA. O nome é o da tabela — a seção não tem nome de
 // tabela próprio, ela É a `note`.
@@ -60,23 +60,33 @@ function fieldOf(rec: RecordRow, name: string): RecordField | null {
   return rec.fields.find(field => field.name === name) || null;
 }
 
-// O TEXTO DA NOTA: o campo principal, como a pessoa o lê. Um campo markdown é
-// mostrado SEM a notação — é o que uma célula faz —, e a notação fica no
-// registro aberto, que a desenha como prosa.
-function textOf(rec: RecordRow): string {
-  const name = primary.value?.name;
-  const field = name ? fieldOf(rec, name) : null;
-  const value = field ? field.value : rec.title;
-  return primary.value?.type === "markdown" ? plainText(value) : value || "";
+// O PAR QUE O `FieldEditor` desenha: a DECLARAÇÃO (tipo, rótulo, enum) e o
+// VALOR daquela linha. O campo pode não vir na linha; aí não há o que editar.
+interface NotePart {
+  field: RecordField;
+  spec: FieldSpec;
 }
 
-// AS TAGS: a lista como ela está GUARDADA (`raw`) — a célula mostra a lista
-// junta por vírgula, e a junta não é a lista.
-function tagsOf(rec: RecordRow, name: string): string {
-  const raw = fieldOf(rec, name)?.raw;
-  if (!Array.isArray(raw)) return "";
-  return raw.map(item => String(item)).join(", ");
+function partOf(rec: RecordRow, spec: FieldSpec): NotePart | null {
+  const field = fieldOf(rec, spec.name);
+  return field ? { field, spec } : null;
 }
+
+// CADA LINHA, LIDA UMA VEZ: o campo principal e as listas que a declaração
+// nomeia. O card não sabe nome de campo nenhum.
+interface NoteRow {
+  rec: RecordRow;
+  main: NotePart | null;
+  tags: NotePart[];
+}
+
+const noteRows = computed<NoteRow[]>(() => records.value.map(rec => ({
+  rec,
+  main: primary.value ? partOf(rec, primary.value) : null,
+  tags: lists.value
+    .map(spec => partOf(rec, spec))
+    .filter((part): part is NotePart => part !== null),
+})));
 
 // A NOTA NASCE: o formulário genérico de criar, que já sabe fazer o que a
 // seção precisa — um campo de prosa e um de lista.
@@ -87,19 +97,13 @@ function openCreate(ev: Event): void {
 }
 
 // A NOTA ABRE: o registro, que é a leitura dela — a mesma janela flutuante
-// que a de qualquer outra linha de qualquer outra tabela.
+// que a de qualquer outra linha de qualquer outra tabela. O painel EDITA: o
+// `actions` que o motor deu à página vai junto.
 function openNote(rec: RecordRow): void {
   openPop("record:" + TABLE + ":" + rec.id, RecordPop,
-          { entity: TABLE, page: NOTES_KEY, id: rec.id, records: () => records.value },
+          { entity: TABLE, page: NOTES_KEY, id: rec.id, records: () => records.value,
+            actions: actions.value },
           { attrs: { class: "record-pop" } });
-}
-
-// A NOTA EDITA: o formulário genérico de editar, que é a porta que faltava
-// para um campo que não é escolha (uma prosa, uma lista de tags).
-function openEdit(rec: RecordRow, point: { x: number; y: number }): void {
-  openPop("edit:" + TABLE + ":" + rec.id, EditPop,
-          { entity: TABLE, id: rec.id, schema: fields.value, record: rec },
-          { point });
 }
 
 // A NOTA APAGA: a confirmação que a apagação deve, e a mesma porta.
@@ -114,15 +118,14 @@ async function remove(rec: RecordRow): Promise<void> {
   }
 }
 
-// O MENU DA LINHA: o que o MOTOR disse que este ator pode (`actions`), e nada
-// que ele não disse — como o menu de qualquer outra tabela.
+// O MENU DA LINHA: abrir é leitura e está sempre lá; apagar só quando o MOTOR
+// disse que este ator pode (`actions`). Editar não mora mais aqui — o valor do
+// card é o controle.
 function rowMenuHandler(rec: RecordRow): (ev: MouseEvent) => void {
   return ev => {
-    const point = { x: ev.clientX, y: ev.clientY };
-    const items: MenuItem[] = [];
-    if (actions.value.includes("edit")) {
-      items.push({ label: word("edit"), action: () => openEdit(rec, point) });
-    }
+    const items: MenuItem[] = [
+      { label: word("open_record"), action: () => openNote(rec) },
+    ];
     if (actions.value.includes("delete")) {
       items.push({ label: word("delete"), action: () => remove(rec) });
     }
@@ -158,20 +161,29 @@ watch(() => nav.tick, load);
            este ator pode criar uma. -->
       <button v-if="actions.includes('create') && records.length" type="button" class="btn"
               @click.stop="openCreate">{{ word("new_note") }}</button>
-      <!-- CADA NOTA É UMA LINHA QUE ABRE A SI MESMA: o registro é a leitura
-           dela, e o menu de contexto é o que edita e apaga. O `.stop` é o que
-           segura o clique na linha — sem ele, o clique fora (o de fechar o
-           painel, em `App.vue`) calaria a nota no mesmo tique em que ela
-           abria. -->
-      <button v-for="rec in records" :key="rec.id" type="button" class="card"
-              v-context-menu="rowMenuHandler(rec)" @click.stop="openNote(rec)">
-        <span class="card-top">
-          <b>{{ textOf(rec) }}</b>
-        </span>
-        <span v-for="field in lists" :key="field.name" class="meta">
-          {{ label(field.labels) || field.name }}: {{ tagsOf(rec, field.name) }}
-        </span>
-      </button>
+      <!-- CADA NOTA É UM CARD QUE ABRE A SI MESMO: o corpo abre o registro (a
+           leitura), e os valores — o texto e as tags — editam no lugar pelo
+           `FieldEditor`, que para o clique antes de ele chegar aqui. O card é
+           um container focável e não um `<button>`: os editores também são
+           botões, e botão não se aninha em botão. O `.stop` é o que segura o
+           clique no card — sem ele, o clique fora (o de fechar o painel, em
+           `App.vue`) calaria a nota no mesmo tique em que ela abria. -->
+      <div v-for="note in noteRows" :key="note.rec.id" class="card note-card"
+           tabindex="0"
+           v-context-menu="rowMenuHandler(note.rec)"
+           @click.stop="openNote(note.rec)"
+           @keydown.enter.self.stop.prevent="openNote(note.rec)"
+           @keydown.space.self.stop.prevent="openNote(note.rec)">
+        <div v-if="note.main" class="card-top">
+          <FieldEditor :field="note.main.field" :spec="note.main.spec" :entity="TABLE"
+                       :record="note.rec" :can-edit="actions.includes('edit')" />
+        </div>
+        <div v-for="part in note.tags" :key="part.spec.name" class="meta">
+          {{ label(part.spec.labels) || part.spec.name }}:
+          <FieldEditor :field="part.field" :spec="part.spec" :entity="TABLE"
+                       :record="note.rec" :can-edit="actions.includes('edit')" />
+        </div>
+      </div>
       <EmptyState v-if="!records.length" icon="note"
                   :title="word('empty_notes_title')" :text="word('empty_notes_text')">
         <button v-if="actions.includes('create')" type="button" class="btn"

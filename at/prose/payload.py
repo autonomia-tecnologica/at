@@ -26,6 +26,20 @@ def label_key(table: str, name: str) -> str | None:
     return key if isinstance(key, str) else None
 
 
+def locked_values(table: str, name: str) -> list[str]:
+    """The values of a closed list that no picker may offer — today, the status
+    a `lifecycle.cancel` writes.
+
+    The engine owns the rule (a terminal value is reached by the act of closing,
+    never by choosing it), and the page only omits what it is told to omit. A
+    field that is not the terminal status of the table's lifecycle answers `[]`.
+    """
+    closed = tables.lifecycle(table).get("status")
+    if closed is None:
+        return []
+    return [closed] if tables._terminal_field(table, closed) == name else []
+
+
 def field_payload(table: str, name: str, field: dict) -> dict:
     """One field of the schema, as the page reads it.
 
@@ -51,6 +65,13 @@ def field_payload(table: str, name: str, field: dict) -> dict:
         "searchable": bool(field.get("searchable")),
         "narrow": bool(field.get("narrow")),
         "editable": bool(field.get("editable")),
+        # THE ENGINE'S OWN PEN: `append`/`tracks`/`touch` are written by the
+        # engine and are not a value a surface edits. The page reads the flag
+        # instead of knowing the key names.
+        "managed": bool(field.get("append") or field.get("tracks") or field.get("touch")),
+        # THE CLOSED LIST'S TERMINAL VALUES, which a picker omits (see
+        # `locked_values`).
+        "locked": locked_values(table, name),
         "required": bool(field.get("required")),
         "max_length": field.get("max_length"),
         "hide": field.get("hide") or [],

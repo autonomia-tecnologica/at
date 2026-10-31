@@ -277,6 +277,27 @@ class TheTablePayload(ServerCase):
         self.assertTrue(status["editable"])
         self.assertTrue(status["filterable"])
 
+    def test_the_terminal_status_is_locked_and_other_enums_are_not(self):
+        # The picker omits what the engine marks terminal: `cancelled` is reached
+        # by the act of closing, never by choosing it. The field the lifecycle
+        # names says so in the payload, and an enum without a lifecycle says
+        # nothing.
+        for table in ("task", "project"):
+            _, _, body = self.get(f"/api/table/{table}")
+            fields = json.loads(body)["fields"]
+            status = next(f for f in fields if f["name"] == "status")
+            self.assertEqual(status["locked"], ["cancelled"], table)
+            priority = next(f for f in fields if f["name"] == "priority")
+            self.assertEqual(priority["locked"], [], table)
+
+    def test_the_engine_written_fields_are_managed(self):
+        # `modifications` is written by the engine (`tracks`/`append`); the page
+        # reads `managed` instead of knowing the keys.
+        _, _, body = self.get("/api/table/task")
+        fields = {f["name"]: f for f in json.loads(body)["fields"]}
+        self.assertTrue(fields["modifications"]["managed"])
+        self.assertFalse(fields["text"]["managed"])
+
     def test_it_renders_a_record_in_the_active_language(self):
         _, _, body = self.get("/api/table/task")
         record = json.loads(body)["records"][0]

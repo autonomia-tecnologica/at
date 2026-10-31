@@ -101,12 +101,24 @@ export const vContextMenu: Directive<HTMLElement, Handler> = {
       if (state.touchFired) return; // this gesture already opened it
       state.handler(ev);
     };
+    // O CLIQUE SINTETIZADO QUE VEM DEPOIS DO LONG-PRESS NÃO É UM TOQUE NO VALOR:
+    // sem isto, o hold que abre o menu da linha também abriria o editor do
+    // campo embaixo do dedo. Em CAPTURA, no elemento do gesto, o evento morre
+    // antes de chegar ao alvo — e o menu, que não vive dentro da linha, não é
+    // atingido.
+    const onClick = (ev: MouseEvent): void => {
+      if (!state.touchFired) return;
+      ev.stopPropagation();
+      ev.preventDefault();
+      if (ev.target === el) ev.stopImmediatePropagation();
+    };
 
     el.addEventListener("touchstart", onTouchStart, { passive: true });
     el.addEventListener("touchmove", onTouchMove, { passive: true });
     el.addEventListener("touchend", onTouchEnd);
     el.addEventListener("touchcancel", onTouchEnd);
     el.addEventListener("contextmenu", onContextMenu);
+    el.addEventListener("click", onClick, true);
 
     state.cleanup = () => {
       cancelPress(state);
@@ -115,6 +127,7 @@ export const vContextMenu: Directive<HTMLElement, Handler> = {
       el.removeEventListener("touchend", onTouchEnd);
       el.removeEventListener("touchcancel", onTouchEnd);
       el.removeEventListener("contextmenu", onContextMenu);
+      el.removeEventListener("click", onClick, true);
     };
     states.set(el, state);
   },

@@ -84,7 +84,7 @@ watch(() => props.view, () => {
 
 <template>
   <RecordView v-if="record" :record="record" :total="total" :page="view" :entity="view"
-              @ref="openRef" />
+              :actions="payload?.actions || []" @ref="openRef" />
   <TableView v-else-if="payload" :entity="view" :records="payload.records"
              :schema="payload.fields" :defaults="payload.columns" :page="view"
              :actions="payload.actions" :declarable="payload.declarable" :section="section"

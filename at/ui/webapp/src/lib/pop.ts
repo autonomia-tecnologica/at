@@ -61,6 +61,13 @@ export function closePop(): void {
   if (done) done();
 }
 
+// A PILHA INTEIRA, quando o próximo passo é uma PÁGINA e não outro painel: o
+// seletor e o painel do registro que o hospedou saem juntos, e nada fica
+// flutuando sobre o registro que vai abrir.
+export function closeAllPops(): void {
+  while (popStack.length) closePop();
+}
+
 export function isPopOpen(key: string): boolean {
   return popStack.some(entry => entry.key === key);
 }

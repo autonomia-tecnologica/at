@@ -27,7 +27,7 @@ import { useColumns } from "../lib/tableColumns";
 import { useWidths } from "../lib/tableWidths";
 import { useMenus } from "../lib/tableMenus";
 import { useCellEdit } from "../lib/tableEdit";
-import FieldValue from "./FieldValue.vue";
+import FieldEditor from "./FieldEditor.vue";
 import EmptyState from "./EmptyState.vue";
 import type { DeclarableTable, FieldSpec, RecordRef, RecordRow } from "../lib/record";
 
@@ -103,8 +103,7 @@ const { openColumns, openHeaderMenu, openEmptyMenu, rowMenuHandler, onRowClick }
 const { probeEl, widths } = useWidths(props, fields, byName, shown, sort, shownText,
                                       [order, hidden, hiddenNow]);
 
-const { editValue, editInputEl, isEditing, cellEditable, onCellClick, commitEdit, cancelEdit } =
-  useCellEdit(props, byName);
+const { cellEditable } = useCellEdit(props, byName);
 </script>
 
 <template>
@@ -173,23 +172,15 @@ const { editValue, editInputEl, isEditing, cellEditable, onCellClick, commitEdit
                 :data-label="label(byName[name]?.labels) || name">{{ cell(rec, name) }}</td>
             <td v-else :data-label="label(byName[name]?.labels) || name"
                 :data-value="enumOf(rec, name)"
-                :class="{ editable: cellEditable(name), editing: isEditing(rec, name) }"
+                :class="{ editable: cellEditable(name) }"
                 :title="String(value(rec, name).value || '').length > limitOf(name)
-                  ? String(value(rec, name).value) : undefined"
-                @click="onCellClick($event, rec, name)">
-              <!-- A CÉLULA EDITA A SI MESMA (TASK-175, seção Tabelas): o input
-                   substitui a leitura só NESTA célula, enquanto `editing` a
-                   aponta — Enter/blur grava, Esc cancela. -->
-              <input v-if="isEditing(rec, name)" ref="editInputEl" v-model="editValue"
-                     @click.stop
-                     @keydown.enter="commitEdit(rec, name)"
-                     @keydown.esc.stop="cancelEdit"
-                     @blur="commitEdit(rec, name)">
-              <!-- The `.v` is the cell's VALUE as ONE thing, and it is what a
-                   theme dresses when the column declares a closed list — the
-                   mark `data-value` sits on the cell and the drawing on this. -->
-              <span v-else class="v"><FieldValue :field="value(rec, name)" :limit="limitOf(name)" by-title
-                          @ref="emit('ref', $event)" /></span>
+                  ? String(value(rec, name).value) : undefined">
+              <!-- O VALOR É O CONTROLE (B-54): o `FieldEditor` desenha a leitura
+                   e, quando o tipo declarado permite, abre ali mesmo o editor do
+                   campo — na grade, a célula é a superfície inteira. -->
+              <FieldEditor :field="value(rec, name)" :spec="byName[name]" :entity="entity"
+                           :record="rec" :can-edit="cellEditable(name)" :limit="limitOf(name)"
+                           @ref="emit('ref', $event)" />
             </td>
           </template>
         </tr>

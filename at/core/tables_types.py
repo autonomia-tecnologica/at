@@ -25,6 +25,12 @@ def _day(table: str, name: str, raw: Any) -> str:
     written, and it is stored as the text a person reads back.
     """
     text = raw.strip() if isinstance(raw, str) else ""
+    # LIMPAR É UM PEDIDO, e não um erro: um campo de dia que não é obrigatório
+    # (`required`/`required_when` os quais `_require` recusa) precisa poder
+    # voltar a vazio. Só a STRING vazia limpa; `None` continua sendo um valor
+    # que não é dia.
+    if isinstance(raw, str) and not text:
+        return ""
     if text == "today":
         return _WHEN["today"]()
     if not _DAY_SHAPE.match(text):

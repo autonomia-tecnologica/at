@@ -506,6 +506,72 @@ b, strong { font-weight: var(--weight-semibold); }
   padding: var(--cell-pad-y) var(--density-cell-pad);
 }
 
+/* ===== A EDIÇÃO DE UM CAMPO (B-54): o valor é o controle ===== */
+/* O alvo é o VALOR e não o resto da célula; o mínimo é o token de controle, e
+   no toque ele já sobe para 44px (`@media (pointer: coarse)`, abaixo). */
+.field-read {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  max-width: 100%; min-height: var(--control-h-sm);
+  margin: 0; padding: 0; border: 0; background: none;
+  color: inherit; font: inherit; text-align: inherit; cursor: pointer;
+}
+.field-read:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: var(--r-sm); }
+.field-read:hover { color: var(--accent); }
+.record-body .field-read { display: flex; align-items: flex-start; }
+.record-body .field-read .v { min-width: 0; overflow-wrap: break-word; }
+.field-edit { display: block; width: 100%; }
+.field-edit input, .field-edit textarea {
+  display: block; box-sizing: border-box; width: 100%;
+  min-height: var(--control-h-sm); padding: var(--space-1) var(--space-2);
+  font: inherit; color: var(--text-primary); background: var(--surface-card);
+  border: 1px solid var(--border-subtle); border-radius: var(--r-sm);
+}
+.field-edit input:focus, .field-edit textarea:focus {
+  border-color: var(--accent); outline: none; box-shadow: var(--focus-ring);
+}
+/* A prosa começa com UMA linha na célula e cresce com o que tem dentro. */
+.field-edit textarea { resize: none; overflow: hidden; line-height: var(--leading-normal); }
+.grid td .field-edit input, .grid td .field-edit textarea { min-height: 1.8em; }
+.grid td .field-read, .grid td .field-list, .grid td .field-edit { flex: 1 1 auto; min-width: 0; }
+
+/* A LISTA É CHIPS — a vírgula do armazenamento não chega à tela. */
+.field-list { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); min-width: 0; }
+.field-chip {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  padding: var(--chip-pad); border-radius: var(--r-full);
+  background: var(--surface-raised); color: var(--text-secondary);
+  font-size: var(--type-caption); font-weight: var(--weight-semibold);
+}
+.field-chip-remove {
+  border: 0; background: none; padding: 0 2px; cursor: pointer;
+  color: inherit; font: inherit; line-height: 1;
+}
+.field-chip-remove:hover { color: var(--danger-text); }
+.field-chip-add {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: var(--control-h-sm); min-height: var(--control-h-sm);
+  border: 1px dashed var(--border-subtle); border-radius: var(--r-full);
+  background: none; color: var(--accent); font: inherit; cursor: pointer;
+}
+.field-add { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-2); }
+.field-add input {
+  flex: 1 1 auto; min-width: 0; box-sizing: border-box;
+  min-height: var(--control-h-sm); padding: var(--space-1) var(--space-2);
+  font: inherit; color: var(--text-primary); background: var(--surface-card);
+  border: 1px solid var(--border-subtle); border-radius: var(--r-sm);
+}
+/* A REFERÊNCIA: escolher a linha e, na atual, abrir o registro — dois botões
+   irmãos, cada um com o seu alvo. */
+.ref-row { display: flex; align-items: stretch; gap: var(--space-1); }
+.ref-row .opt { flex: 1 1 auto; min-width: 0; }
+.ref-open {
+  flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+  min-width: var(--control-h-sm); min-height: var(--control-h-sm);
+  padding: 0 var(--space-2); border: 0; border-radius: var(--r-sm);
+  background: none; color: var(--accent); font: inherit; cursor: pointer;
+}
+.ref-open:hover { background: var(--surface-raised); }
+
 /* ===== the value of a CLOSED LIST ===== */
 .grid td[data-value] .v, .chip[data-value] {
   display: inline-block; padding: 2px var(--space-3);
@@ -670,7 +736,15 @@ button.opt { background: none; border: 0; font: inherit; width: 100%; text-align
   animation: balloon-in var(--dur-4) var(--ease-enter);
 }
 .toast.toast-leave-active { animation: balloon-out var(--dur-3) var(--ease-exit) forwards; pointer-events: none; }
-.toast-text { color: var(--text-primary); font-size: var(--type-body-sm); }
+.toast-row { display: flex; align-items: center; gap: var(--space-3); }
+.toast-text { color: var(--text-primary); font-size: var(--type-body-sm); flex: 1 1 auto; }
+.toast-action {
+  flex: 0 0 auto; border: 0; background: none; padding: 0;
+  min-height: var(--control-h-sm); cursor: pointer;
+  color: var(--accent); font: inherit; font-size: var(--type-body-sm);
+  font-weight: var(--weight-medium);
+}
+.toast-action:hover { text-decoration: underline; }
 .toast-bar {
   display: block; height: 3px; border-radius: var(--r-full);
   background: var(--accent); transform-origin: left;
@@ -1211,6 +1285,11 @@ html.no-motion .dots i { animation: none; opacity: .6; }
 .card:hover { border-color: var(--accent-300); background: var(--surface-raised); }
 .card-top { display: flex; align-items: baseline; gap: var(--space-3); }
 .card-top b { font-weight: var(--weight-semibold); }
+.note-card .card-top .v { font-weight: var(--weight-semibold); }
+.note-card .meta {
+  display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2);
+  color: var(--text-tertiary); font-size: var(--type-body-sm);
+}
 .card-top .n { margin-left: auto; color: var(--text-tertiary); font-size: var(--type-body-sm); font-variant-numeric: tabular-nums; }
 .card .progress {
   display: block; height: 6px; border-radius: var(--r-full);
@@ -1548,6 +1627,8 @@ html.no-motion *, html.no-motion *::before, html.no-motion *::after {
   :root { --sidebar-item-h: 40px; }
   th { height: 44px; }
   .radio-row, .check-row { min-height: 44px; }
+  /* A EDIÇÃO DIRETA (B-54): o valor, o adicionar da lista e o desfazer também. */
+  .field-chip-remove { min-width: var(--control-h-sm); min-height: var(--control-h-sm); }
   .reminder-done { position: relative; }
   .reminder-done::after { content: ""; position: absolute; inset: -0.9em; }
 }

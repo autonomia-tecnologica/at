@@ -112,7 +112,13 @@ export function useMenus(
   function openRowMenu(ev: MouseEvent, rec: RecordRow): void {
     const point = { x: ev.clientX, y: ev.clientY };
     const items: MenuItem[] = [];
-    if (props.actions.includes("edit")) {
+    // NA SEÇÃO TABELAS "ABRIR REGISTRO" É LEITURA, e não edição: aparece
+    // SEMPRE, mesmo sem `edit` nos `actions` — o painel que ele abre já recebe
+    // a lista e nasce só de leitura quando a escrita não é permitida. Nas
+    // demais superfícies o "Editar" continua com o portão e o rótulo de hoje.
+    if (props.section === "tables") {
+      items.push({ label: word("open_record"), action: () => openRecord(rec) });
+    } else if (props.actions.includes("edit")) {
       items.push({ label: word("edit"), action: () => openRecord(rec) });
     }
     if (props.actions.includes("cancel")) {
@@ -181,7 +187,8 @@ export function useMenus(
   function openRecord(rec: RecordRow): void {
     if (props.section === "tables" || props.entity === store.types.task) {
       openPop("record:" + props.entity + ":" + rec.id, RecordPop,
-              { entity: props.entity, page: page.value, id: rec.id, records: () => props.records },
+              { entity: props.entity, page: page.value, id: rec.id,
+                records: () => props.records, actions: props.actions },
               { attrs: { class: "record-pop" } });
       return;
     }

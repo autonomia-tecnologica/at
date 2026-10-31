@@ -124,6 +124,9 @@ PAGE_WORDS = (
     "declare_when", "declare_id",
     "back", "confirm_cancel", "confirm_ok", "write", "saving",
     "saved", "save_failed", "chars", "words", "spell_none", "language_name", "language_flag",
+    # A EDIÇÃO DIRETA (B-54): o item do menu que abre o painel no lugar de
+    # "Editar", o desfazer de um passo, e as duas palavras das listas.
+    "open_record", "undo", "add", "remove", "clear",
     "ft_text", "ft_markdown", "ft_python", "ft_json", "ft_yaml", "ft_shell",
     "ft_dockerfile", "ft_binary", "ft_other",
     "bucket_code", "bucket_text", "bucket_data", "bucket_image", "bucket_other",

@@ -21,6 +21,9 @@ const props = defineProps<{
   page: string;
   id: number;
   records: () => RecordRow[];
+  // O QUE O ENGINE DEIXA ESTE ATOR ESCREVER: o painel repassa ao `RecordView`,
+  // que sem `edit` é só leitura.
+  actions?: string[];
 }>();
 
 const record = computed<RecordRow | null>(() => props.records().find(rec => rec.id === props.id) ?? null);
@@ -31,5 +34,5 @@ watch(record, found => { if (!found) closePop(); });
 
 <template>
   <RecordView v-if="record" :record="record" :total="total" :page="page" :entity="entity"
-              popup @ref="openRef" @close="closePop" />
+              :actions="actions || []" popup @ref="openRef" @close="closePop" />
 </template>

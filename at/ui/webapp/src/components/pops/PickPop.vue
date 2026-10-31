@@ -8,14 +8,16 @@
 // page owns no rule of the write.
 //
 // What is written is the MACHINE WORD the server handed over (`raw`), never the
-// label on the screen.
+// label on the screen. AND WHAT THE SERVER MARKS `locked` IS NOT OFFERED (B-54):
+// a `cancelled` is reached by the act of closing, never by choosing it here.
+//
+// The write — and its one-step undo — is `lib/fieldWrite`'s, the same door every
+// other in-place editor walks.
 
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { label } from "../../lib/store";
-import { post } from "../../lib/api";
 import { closePop } from "../../lib/pop";
-import { showError, poke } from "../../lib/views";
-import { OFFLINE_TABLE, writeTask } from "../../lib/offline";
+import { saveField } from "../../lib/fieldWrite";
 import type { FieldSpec, RecordField, RecordRow } from "../../lib/record";
 
 const props = defineProps<{
@@ -30,37 +32,15 @@ const setMarked = (el: unknown): void => {
   if (el) marked.value = el as HTMLButtonElement;
 };
 
-// The write. On success the page re-reads its page — the record comes back
-// carrying the value it now holds — and on failure the page says it where it
-// says every error.
-//
-// TASKS TAKE THE FILA'S DOOR (TASK-162): a request that never got an ANSWER
-// falls to the offline queue instead of failing, and the row is patched IN
-// PLACE — `field` is the very object `props.record.fields` holds, so the
-// mutation is what a redraw would have shown anyway, without one. Every other
-// table keeps walking straight through `post`, exactly as before.
+// THE VALUES THE ENGINE LOCKED ARE NOT CHOICES. The server says which they are
+// (`locked`); this list omits them and invents nothing.
+const choices = computed(() =>
+  Object.keys(props.spec.enum || {}).filter(value => !(props.spec.locked || []).includes(value)),
+);
+
 async function choose(value: string): Promise<void> {
   closePop(); // before the await: the panel is gone either way
-  try {
-    if (props.entity === OFFLINE_TABLE) {
-      const { queued } = await writeTask("edit", { [props.field.name]: value }, props.record.id);
-      if (queued) {
-        props.field.raw = value;
-        props.field.value = label(props.spec.enum[value]) || value;
-        return;
-      }
-      poke();
-      return;
-    }
-    await post("/api/table/" + encodeURIComponent(props.entity), {
-      action: "edit",
-      id: props.record.id,
-      set: { [props.field.name]: value },
-    });
-    poke();
-  } catch (err) {
-    showError(err as Error);
-  }
+  await saveField(props.entity, props.record, props.spec, value);
 }
 
 onMounted(() => {
@@ -69,7 +49,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <button v-for="value in Object.keys(spec.enum || {})" :key="value" type="button"
+  <button v-for="value in choices" :key="value" type="button"
           class="opt" role="option" :aria-selected="value === field.raw"
           :class="{ on: value === field.raw }"
           :ref="value === field.raw ? setMarked : undefined"

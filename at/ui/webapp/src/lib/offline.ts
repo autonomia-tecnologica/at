@@ -28,10 +28,14 @@ const QUEUE_STORE = "queue";
 // instead of writing the bare word "task" a second place it could drift from.
 export const OFFLINE_TABLE = "task";
 
+// O QUE A FILA GUARDA É JSON: um campo de dia é texto, um de referência é o
+// número e uma lista é um array — o motor lê cada um pelo tipo declarado.
+export type WriteValues = Record<string, unknown>;
+
 export interface QueueEntry {
   local_id: string;
   action: "create" | "edit";
-  values: Record<string, string>;
+  values: WriteValues;
   edited_at: string;
   id?: number;
 }
@@ -97,7 +101,7 @@ async function countPending(): Promise<void> {
 // refusal (a 400, a 403) is the server's own word and offline has nothing to
 // add to it, so it is re-thrown for the caller to show as it always does.
 export async function writeTask(
-  action: "create" | "edit", values: Record<string, string>, id?: number,
+  action: "create" | "edit", values: WriteValues, id?: number,
 ): Promise<{ queued: boolean }> {
   try {
     await post("/api/table/task", { action, id, set: values });

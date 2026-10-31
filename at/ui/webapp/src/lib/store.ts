@@ -53,6 +53,12 @@ export interface FieldSpec {
   searchable: boolean;
   narrow: boolean;
   editable: boolean;
+  // O QUE O MOTOR ESCREVE (`append`/`tracks`/`touch`): a tela trata como leitura,
+  // sem conhecer o nome da chave que o declara.
+  managed: boolean;
+  // OS VALORES TERMINAIS DE UMA LISTA FECHADA (o `status` de um
+  // `lifecycle.cancel`): o picker os omite; o ato de fechar é a porta deles.
+  locked: string[];
   required: boolean;
   max_length: number | null;
   hide: string[];
