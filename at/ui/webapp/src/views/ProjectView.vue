@@ -158,10 +158,10 @@ watch(() => props.id, () => {
               :page="page" :entity="store.types.task" @ref="openRef" />
   <!-- THE PAGE'S OWN RIGHT CLICK (TASK-137, fatia 7/7): anchored on the whole
        body, because the page has no header of its own to carry it on — the
-       title lives in the shell's trail band, not here. `TaskBoard` offers no
-       row menu of its own yet, so a right click anywhere on this page — the
-       prose, a task card, the board's empty room — reaches this one, about
-       the PROJECT itself. -->
+       title lives in the shell's trail band, not here. The task card has its
+       OWN menu now (B-54, fatia 3), and it stops the gesture before it gets
+       here; a right click on the prose or the board's empty room still
+       reaches this one, about the PROJECT itself. -->
   <div v-else-if="payload" v-context-menu="openProjectMenu">
     <!-- The parent's line is the way up, and it is the tree the page lives in —
          not a "back" the page keeps of its own. -->
@@ -188,6 +188,6 @@ watch(() => props.id, () => {
     </EmptyState>
     <TaskBoard v-else-if="store.types.task" :entity="store.types.task" :records="payload.records"
                :schema="payload.fields" :page="page" :show-project="false" :allow-create="false"
-               @ref="openRef" />
+               :actions="payload.actions" @ref="openRef" />
   </div>
 </template>

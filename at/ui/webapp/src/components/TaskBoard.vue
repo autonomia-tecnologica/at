@@ -10,17 +10,26 @@
 // A CARD OPENS THE RECORD AS A FLOATING PANEL (TASK-173), over the board
 // itself — the same door a task row in `TableView.vue` now opens through —
 // so the board never leaves the screen for it.
+//
+// O VALOR É O CONTROLE (B-54, fatia 3): o título, a prioridade, o prazo, o
+// projeto e as tags editam NO CARD, pelo `FieldEditor` — o mesmo editor da
+// grade e do painel, e o tipo DECLARADO escolhe o controle. O status continua
+// só pelo arrasto entre as colunas, e o `desc` (prosa) continua no painel.
 
 import { computed, ref } from "vue";
 import { label, word } from "../lib/store";
 import { post } from "../lib/api";
 import { showError, poke } from "../lib/views";
 import { openPop } from "../lib/pop";
+import { openContextMenu, vContextMenu, type MenuItem } from "../lib/menu";
+import { ask } from "../lib/confirm";
+import { toast } from "../lib/toast";
 import { OFFLINE_TABLE, offlineState, writeTask } from "../lib/offline";
 import { useFilters } from "../lib/tableFilters";
-import FieldValue from "./FieldValue.vue";
+import FieldEditor from "./FieldEditor.vue";
 import EmptyState from "./EmptyState.vue";
 import RecordPop from "./pops/RecordPop.vue";
+import ClosePop from "./pops/ClosePop.vue";
 import type { FieldSpec, RecordField, RecordRef, RecordRow } from "../lib/record";
 
 const props = withDefaults(
@@ -38,8 +47,12 @@ const props = withDefaults(
     // there would land as an orphan while the page it was born on says
     // otherwise — the input stays only where that mismatch cannot happen.
     allowCreate?: boolean;
+    // O QUE O ENGINE DIZ QUE ESTE ATOR ALCANÇA NESTA TABELA (`_table_actions`):
+    // o painel do registro que o card abre recebe a lista, e sem `edit` nele
+    // nasce só de leitura (`RecordView`).
+    actions?: string[];
   }>(),
-  { showProject: true, allowCreate: true },
+  { showProject: true, allowCreate: true, actions: () => [] },
 );
 
 const emit = defineEmits<{ ref: [ref: RecordRef] }>();
@@ -81,35 +94,92 @@ const grouped = computed(() => {
   return out;
 });
 
+// O PAR QUE O `FieldEditor` DESENHA: a declaração e o valor daquela linha.
+// Cada campo que o card edita é o que a DECLARAÇÃO nomeia — o card não inventa
+// tipo nem nome, e o `FieldEditor` decide o controle pelo `spec.type`.
+interface CardPart {
+  field: RecordField;
+  spec: FieldSpec;
+}
+
+function partOf(rec: RecordRow, name: string): CardPart | null {
+  const spec = specOf(name);
+  const field = fieldOf(rec, name);
+  return spec && field ? { field, spec } : null;
+}
+
+// O TÍTULO É O CAMPO `text` (o `primary` da tabela); o card antigo lia
+// `rec.title`, que é o mesmo valor já escrito. Sem o campo, o que resta é o
+// título que a linha trouxe, e só para ler.
+const titlePart = (rec: RecordRow): CardPart | null => partOf(rec, "text");
+const priorityPart = (rec: RecordRow): CardPart | null => partOf(rec, "priority");
+const tagsPart = (rec: RecordRow): CardPart | null => partOf(rec, "tags");
+
 const priorityValue = (rec: RecordRow): string | null => {
   const raw = rawOf(rec, "priority");
   return raw === null || raw === undefined || raw === "" ? null : String(raw);
 };
 
-const priorityLabel = (rec: RecordRow): string => {
-  const value = priorityValue(rec);
-  const spec = specOf("priority");
-  return (value && spec && label(spec.enum[value])) || value || "";
-};
+const projectPart = (rec: RecordRow): CardPart | null =>
+  props.showProject ? partOf(rec, "project") : null;
+const deadlinePart = (rec: RecordRow): CardPart | null => partOf(rec, "deadline");
 
-const projectField = (rec: RecordRow): RecordField | null => {
-  if (!props.showProject) return null;
-  const field = fieldOf(rec, "project");
-  return field && field.raw !== null && field.raw !== undefined ? field : null;
+// UM CAMPO VAZIO AINDA É O CONTROLE QUANDO HÁ PERMISSÃO DE ESCRITA: o "—" abre
+// o `date` ou o seletor. Sem permissão, o campo vazio não vira ruído no card.
+const canEdit = computed(() => props.actions.includes("edit"));
+const hasValue = (part: CardPart | null): boolean => {
+  if (!part) return false;
+  const raw = part.field.raw;
+  return raw !== null && raw !== undefined && raw !== "";
 };
-
-const deadlineText = (rec: RecordRow): string => {
-  const field = fieldOf(rec, "deadline");
-  return field && field.raw !== null && field.raw !== undefined ? field.value : "";
-};
+const shows = (part: CardPart | null): boolean => !!part && (hasValue(part) || canEdit.value);
 
 // A CARD OPENS AS A FLOATING PANEL (TASK-173), over the board itself, instead
 // of swapping the whole page for it — the board is tasks and only tasks, so
 // every card here takes this door.
 function openCard(rec: RecordRow): void {
   openPop("record:" + props.entity + ":" + rec.id, RecordPop,
-          { entity: props.entity, page: props.page, id: rec.id, records: () => props.records },
+          { entity: props.entity, page: props.page, id: rec.id, records: () => props.records,
+            actions: props.actions },
           { attrs: { class: "record-pop" } });
+}
+
+// O MENU DO CARD: "abrir registro" é leitura e está sempre; fechar e apagar
+// só quando o MOTOR disse que este ator pode (`actions`) — espelha o menu da
+// linha em `lib/tableMenus.ts`. "Editar" não mora mais aqui: o valor do card é
+// o controle. O `v-context-menu` já para a propagação, então o menu do projeto
+// (que `ProjectView` prende no corpo da página) não abre por baixo.
+function cardMenuHandler(rec: RecordRow): (ev: MouseEvent) => void {
+  return ev => {
+    const point = { x: ev.clientX, y: ev.clientY };
+    const items: MenuItem[] = [
+      { label: word("open_record"), action: () => openCard(rec) },
+    ];
+    if (props.actions.includes("cancel")) {
+      items.push({ label: word("close"), action: () => openClose(rec, point) });
+    }
+    if (props.actions.includes("delete")) {
+      items.push({ label: word("delete"), action: () => deleteTask(rec) });
+    }
+    openContextMenu(ev, items);
+  };
+}
+
+function openClose(rec: RecordRow, point: { x: number; y: number }): void {
+  openPop("close:" + props.entity + ":" + rec.id, ClosePop,
+          { entity: props.entity, id: rec.id, title: rec.title || String(rec.id) },
+          { point });
+}
+
+async function deleteTask(rec: RecordRow): Promise<void> {
+  const name = rec.title || String(rec.id);
+  if (!(await ask(word("delete_confirm").replace("{name}", name)))) return;
+  try {
+    await post("/api/table/" + encodeURIComponent(props.entity), { action: "delete", id: rec.id });
+    poke();
+  } catch (err) {
+    toast((err as Error).message);
+  }
 }
 
 // --- dragging one card between columns ------------------------------------
@@ -222,19 +292,49 @@ async function addCard(): Promise<void> {
         <span class="n">{{ (grouped[status.key] || []).length }}</span>
       </div>
       <div class="board-col-body">
-        <button v-for="rec in grouped[status.key] || []" :key="rec.id" type="button"
-                class="task-card" :draggable="rec.id > 0" :class="{ dragging: draggingId === rec.id }"
-                @dragstart="rec.id > 0 && onDragStart(rec, $event)" @dragend="onDragEnd"
-                @click="openCard(rec)">
-          <span class="task-card-text">{{ rec.title }}</span>
-          <span v-if="priorityValue(rec) || projectField(rec)" class="task-card-meta">
-            <span v-if="priorityValue(rec)" class="chip" :data-value="priorityValue(rec)"
-                  >{{ priorityLabel(rec) }}</span>
-            <FieldValue v-if="projectField(rec)" :field="projectField(rec)!" by-title
-                        @ref="emit('ref', $event)" />
-          </span>
-          <span v-if="deadlineText(rec)" class="task-card-deadline">{{ deadlineText(rec) }}</span>
-        </button>
+        <!-- O CARD É UM CONTAINER, e não um `<button>`: os editores também são
+             controles, e botão não se aninha em botão. O corpo abre o registro;
+             o título, a prioridade, o prazo, o projeto e as tags editam no
+             lugar — cada editor para o clique antes de ele chegar aqui. -->
+        <div v-for="rec in grouped[status.key] || []" :key="rec.id"
+             class="task-card" role="button" tabindex="0"
+             :draggable="rec.id > 0" :class="{ dragging: draggingId === rec.id }"
+             v-context-menu="cardMenuHandler(rec)"
+             @touchstart.stop
+             @dragstart="rec.id > 0 && onDragStart(rec, $event)" @dragend="onDragEnd"
+             @click.stop="openCard(rec)"
+             @keydown.enter.self.stop.prevent="openCard(rec)"
+             @keydown.space.self.stop.prevent="openCard(rec)">
+          <div class="task-card-text">
+            <FieldEditor v-if="titlePart(rec)" :field="titlePart(rec)!.field"
+                         :spec="titlePart(rec)!.spec" :entity="entity" :record="rec"
+                         :can-edit="actions.includes('edit')" />
+            <span v-else>{{ rec.title }}</span>
+          </div>
+          <div v-if="shows(priorityPart(rec)) || shows(projectPart(rec))" class="task-card-meta">
+            <div v-if="shows(priorityPart(rec))"
+                 :class="{ chip: hasValue(priorityPart(rec)) }"
+                 :data-value="priorityValue(rec) || undefined">
+              <FieldEditor :field="priorityPart(rec)!.field" :spec="priorityPart(rec)!.spec"
+                           :entity="entity" :record="rec"
+                           :can-edit="actions.includes('edit')" />
+            </div>
+            <FieldEditor v-if="shows(projectPart(rec))" :field="projectPart(rec)!.field"
+                         :spec="projectPart(rec)!.spec" :entity="entity" :record="rec"
+                         :can-edit="actions.includes('edit')" @ref="emit('ref', $event)" />
+          </div>
+          <div v-if="shows(deadlinePart(rec))" class="task-card-deadline">
+            <FieldEditor :field="deadlinePart(rec)!.field" :spec="deadlinePart(rec)!.spec"
+                         :entity="entity" :record="rec"
+                         :can-edit="actions.includes('edit')" />
+          </div>
+          <!-- AS TAGS APARECEM MESMO VAZIAS: é o "+" delas que adiciona. -->
+          <div v-if="tagsPart(rec)" class="task-card-tags">
+            <FieldEditor :field="tagsPart(rec)!.field" :spec="tagsPart(rec)!.spec"
+                         :entity="entity" :record="rec"
+                         :can-edit="actions.includes('edit')" />
+          </div>
+        </div>
         <EmptyState v-if="!(grouped[status.key] || []).length" icon="note" :title="word('no_records')" />
       </div>
     </div>

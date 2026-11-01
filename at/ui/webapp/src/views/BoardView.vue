@@ -42,5 +42,6 @@ watch(() => nav.tick, load);
   <RecordView v-if="record" :record="record" :total="payload?.records.length ?? 0"
               :page="BOARD_KEY" :entity="store.types.task" @ref="openRef" />
   <TaskBoard v-else-if="payload" :entity="store.types.task" :records="payload.records"
-             :schema="payload.fields" :page="BOARD_KEY" @ref="openRef" />
+             :schema="payload.fields" :page="BOARD_KEY" :actions="payload.actions"
+             @ref="openRef" />
 </template>

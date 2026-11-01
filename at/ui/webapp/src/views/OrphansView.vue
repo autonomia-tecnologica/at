@@ -51,5 +51,6 @@ watch(() => nav.tick, load);
        row carries the same project, or the same absence — and the table
        declares `hide: ["project", "orphans"]` for both. -->
   <TaskBoard v-else-if="payload" :entity="store.types.task" :records="payload.records"
-             :schema="payload.fields" :page="ORPHANS_KEY" :show-project="false" @ref="openRef" />
+             :schema="payload.fields" :page="ORPHANS_KEY" :show-project="false"
+             :actions="payload.actions" @ref="openRef" />
 </template>

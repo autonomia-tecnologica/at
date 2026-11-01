@@ -1428,6 +1428,9 @@ html.no-motion .dots i { animation: none; opacity: .6; }
   display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2);
 }
 .task-card-deadline { color: var(--text-tertiary); font-size: var(--type-caption); }
+.task-card-tags {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1);
+}
 
 /* ===== scrollbars ========================================================= */
 

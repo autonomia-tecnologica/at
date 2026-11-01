@@ -74,15 +74,26 @@ function patch(record: RecordRow, spec: FieldSpec, raw: unknown): void {
   else field.value = String(raw);
 }
 
-async function send(entity: string, id: number, name: string, raw: unknown): Promise<boolean> {
+// O MOTOR LÊ UMA LISTA COMO O TEXTO SEPARADO POR VÍRGULA (`tables_types`):
+// o array que a tela mostra não é o que viaja. A vírgula continua sendo do
+// armazenamento — a tela mostra chips e nunca a expõe.
+function wireValue(spec: FieldSpec, raw: unknown): unknown {
+  if (spec.type === "list" && Array.isArray(raw)) {
+    return raw.map(item => String(item)).join(",");
+  }
+  return raw;
+}
+
+async function send(entity: string, id: number, spec: FieldSpec, raw: unknown): Promise<boolean> {
+  const value = wireValue(spec, raw);
   if (entity === OFFLINE_TABLE) {
-    const { queued } = await writeTask("edit", { [name]: raw }, id);
+    const { queued } = await writeTask("edit", { [spec.name]: value }, id);
     return queued;
   }
   await post("/api/table/" + encodeURIComponent(entity), {
     action: "edit",
     id,
-    set: { [name]: raw },
+    set: { [spec.name]: value },
   });
   return false;
 }
@@ -98,7 +109,7 @@ export async function saveField(
   const previous = currentRaw(record, spec.name);
   let queued = false;
   try {
-    queued = await send(entity, record.id, spec.name, raw);
+    queued = await send(entity, record.id, spec, raw);
   } catch (err) {
     // O VALOR LIDO PERMANECE: quem chamou não mexeu no estado local, e o toast
     // diz a recusa com as palavras do servidor.
@@ -120,7 +131,7 @@ async function undo(): Promise<void> {
   if (!step) return;
   lastStep = null;
   try {
-    const queued = await send(step.entity, step.record.id, step.spec.name, step.raw);
+    const queued = await send(step.entity, step.record.id, step.spec, step.raw);
     if (queued) patch(step.record, step.spec, step.raw);
     else poke();
     toast(word("saved"));
