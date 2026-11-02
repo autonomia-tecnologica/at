@@ -132,30 +132,32 @@ class FirstRun(unittest.TestCase):
         self.assertEqual(welcome.read_text(encoding="utf-8"), i18n.tr("prose.welcome.body"))
 
     def test_the_folder_is_born_with_a_note_that_presents_it(self):
-        """`AGENT.md`, at the root — where whoever works in the folder looks.
+        """`README.md`, at the root — where whoever works in the folder looks.
 
         Not inside `Biblioteca/`: that folder is the person's material, and the
-        note is the folder's own (§0, item 25).
+        note is the folder's own (§0, item 25). And no `AGENT.md`: the folder
+        carries one markdown, not two.
         """
         self.confirm()
-        note = self.root / "AGENT.md"
+        note = self.root / "README.md"
         self.assertTrue(note.is_file())
         self.assertEqual(note.read_text(encoding="utf-8"), i18n.tr("folder.agent.body"))
-        self.assertFalse((self.root / "Biblioteca" / "AGENT.md").exists())
+        self.assertFalse((self.root / "Biblioteca" / "README.md").exists())
+        self.assertFalse((self.root / "AGENT.md").exists())
 
     def test_the_note_keeps_its_name_in_every_language(self):
         """The TEXT follows the language; the NAME does not.
 
         A note whose name moved with the translation is a note whatever works in
-        the folder stops finding — the same reason `README.md` keeps its spelling
-        everywhere, and the opposite of `Bem-vindo.md`.
+        the folder stops finding — which is why the note is the `README.md`
+        itself, and not a translated name like `Bem-vindo.md`.
         """
         with mock.patch.dict(os.environ, {"AT_LANG": "en_US"}):
             i18n.reset()
             self.confirm()
-        self.assertTrue((self.root / "AGENT.md").is_file())
+        self.assertTrue((self.root / "README.md").is_file())
         self.assertEqual(
-            (self.root / "AGENT.md").read_text(encoding="utf-8"),
+            (self.root / "README.md").read_text(encoding="utf-8"),
             i18n.tr("folder.agent.body"),
         )
 
@@ -167,7 +169,7 @@ class FirstRun(unittest.TestCase):
         being deleted does the same.
         """
         self.confirm()
-        note = self.root / "AGENT.md"
+        note = self.root / "README.md"
         note.write_text("o que eu escrevi aqui\n", encoding="utf-8", newline="\n")
 
         with redirect_stdout(io.StringIO()):

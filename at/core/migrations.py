@@ -77,6 +77,7 @@ from at.core.migrations_folders import (  # noqa: F401
     _legacy_instance,
     _moves,
     _prose_in_its_new_name,
+    _remove_agent_note,
     _spelled,
 )
 from at.core.migrations_later import (  # noqa: F401
@@ -170,6 +171,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(30, _notes),
     Migration(31, _prose_in_its_new_name),
     Migration(32, _reminder_closed),
+    Migration(33, _remove_agent_note),
 )
 
 

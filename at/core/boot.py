@@ -130,7 +130,7 @@ def create_working_folder(ask: Ask | None = None) -> None:
     write_active(active_code())
 
     _write_welcome()
-    _write_agent_note()
+    _write_root_note()
 
     # Born in this release's shape, so it has nothing to catch up on: the stamp
     # exists so the FIRST start of an old folder differs from the first start of
@@ -151,8 +151,8 @@ def _write_welcome() -> None:
     welcome.write_text(tr("prose.welcome.body"), encoding="utf-8", newline="\n")
 
 
-def _write_agent_note() -> None:
-    """`AGENT.md` — the folder introducing itself (§0, item 25).
+def _write_root_note() -> None:
+    """`README.md` — the folder introducing itself (§0, item 25).
 
     Whoever opens the folder — a person, or a model working in it — reads what
     its root carries, so the root carries a note that says what this folder is,
@@ -165,7 +165,7 @@ def _write_agent_note() -> None:
     it. It is deliberately NOT inside `Biblioteca/` — that folder is the person's
     material, and this one is the folder's own.
     """
-    note = paths.agent_note()
+    note = paths.root_note()
     if note.exists():
         return
     files.atomic_write_text(note, tr("folder.agent.body"))

@@ -1387,15 +1387,27 @@ class TheLanguageOffer(FolderCase):
 
 
 class TheFolderPresentsItself(FolderCase):
-    """`AGENT.md` — the note whoever starts inside the folder reads (§0).
+    """Migration FOUR: `AGENT.md` — the note whoever starts inside the folder
+    reads (§0), since retired in favour of `README.md` (migration THIRTY-THREE).
 
-    A folder born now carries it from `boot`; a folder that was already on disk
-    when the note was decided gains it here. It is the plainest case of "adds
-    what is missing and overwrites nothing", which is why it does not ask.
+    A folder that was already on disk when the note was decided gains it here.
+    It is the plainest case of "adds what is missing and overwrites nothing",
+    which is why it does not ask.
+
+    These tests run migration FOUR ALONE: a later migration removes the note it
+    writes, and what is pinned here is FOUR's own behaviour. A published
+    migration is never edited, so it keeps writing the retired name.
     """
+
+    def _only_migration_four(self) -> None:
+        done = [item.ident for item in migrations.MIGRATIONS if item.ident != 4]
+        (self.root / "app" / "migrations").write_text(
+            json.dumps(done) + "\n", encoding="utf-8", newline="\n"
+        )
 
     def test_a_folder_that_already_existed_gains_the_note(self):
         self.legacy("app")
+        self._only_migration_four()
         self.assertFalse((self.root / "AGENT.md").exists())
         output = self.caught_up()
         note = self.root / "AGENT.md"
@@ -1405,6 +1417,7 @@ class TheFolderPresentsItself(FolderCase):
 
     def test_a_note_the_folder_already_carried_is_left_alone(self):
         self.legacy("app")
+        self._only_migration_four()
         (self.root / "AGENT.md").write_text("o que eu escrevi\n", encoding="utf-8", newline="\n")
         output = self.caught_up()
         self.assertEqual(
@@ -1416,11 +1429,55 @@ class TheFolderPresentsItself(FolderCase):
         # The stamp is what makes the second start silent: a note that came back
         # would be a note arguing with whoever deleted it.
         self.legacy("app")
+        self._only_migration_four()
         self.caught_up()
         (self.root / "AGENT.md").unlink()
         output = self.caught_up()
         self.assertFalse((self.root / "AGENT.md").exists())
         self.assertNotIn(i18n.tr("boot.migration.note.written"), output)
+
+
+class TheOldNoteIsRetired(FolderCase):
+    """Migration THIRTY-THREE: `AGENT.md` gives way to `README.md`.
+
+    The note was born under the retired name by migration FOUR, and a published
+    migration is never edited — so the retirement is a new step. It removes the
+    old note whenever it exists, edited or not, and never touches `README.md`.
+    """
+
+    def _only_the_retirement(self) -> None:
+        done = [item.ident for item in migrations.MIGRATIONS if item.ident != 33]
+        (self.root / "App" / "migrations").write_text(
+            json.dumps(done) + "\n", encoding="utf-8", newline="\n"
+        )
+
+    def test_an_existing_note_is_removed_even_when_edited(self):
+        self.born()
+        (self.root / "AGENT.md").write_text("o que eu escrevi\n", encoding="utf-8", newline="\n")
+        self._only_the_retirement()
+        output = self.caught_up()
+        self.assertFalse((self.root / "AGENT.md").exists())
+        self.assertIn(i18n.tr("boot.migration.agent_note.removed"), output)
+
+    def test_a_folder_without_the_old_note_has_nothing_to_remove(self):
+        self.born()
+        (self.root / "README.md").unlink()
+        self._only_the_retirement()
+        output = self.caught_up()
+        self.assertFalse((self.root / "AGENT.md").exists())
+        self.assertFalse((self.root / "README.md").exists())
+        self.assertIn(i18n.tr("boot.migration.agent_note.absent"), output)
+
+    def test_the_readme_is_not_touched(self):
+        self.born()
+        readme = self.root / "README.md"
+        readme.write_text("o meu README\n", encoding="utf-8", newline="\n")
+        before = readme.read_bytes()
+        (self.root / "AGENT.md").write_text("o antigo\n", encoding="utf-8", newline="\n")
+        self._only_the_retirement()
+        self.caught_up()
+        self.assertFalse((self.root / "AGENT.md").exists())
+        self.assertEqual(readme.read_bytes(), before)
 
 
 class TheProjectDescriptionGainsATeto(FolderCase):

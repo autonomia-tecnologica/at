@@ -280,3 +280,24 @@ def _prose_in_its_new_name(ask: Ask | None) -> list[Report]:
         return [("boot.migration.prose.collision", {})]
     old.rename(target)
     return [("boot.migration.prose.moved", {"names": f"{former} → {target.name}"})]
+
+
+def _remove_agent_note(ask: Ask | None) -> list[Report]:
+    """`AGENT.md` → gone: the folder presents itself in `README.md` now.
+
+    The note was born under the retired name by migration FOUR, and a published
+    migration is never edited — folders have already run it. So the retirement
+    comes as a new step, and this one runs after it: a folder that has not
+    migrated yet writes the old note and immediately loses it, and a folder that
+    already carried one loses it too.
+
+    It does NOT ask, and it does not spare an edited file: the decision is the
+    product's, the note is AT's, and having two notes at the root is the defect
+    this closes. `README.md` is not touched — not even looked at. A folder with
+    no old note has nothing to do, and says so.
+    """
+    old = paths.working_folder() / paths.AGENT_NOTE
+    if not old.is_file():
+        return [("boot.migration.agent_note.absent", {})]
+    old.unlink()
+    return [("boot.migration.agent_note.removed", {})]

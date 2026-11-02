@@ -98,7 +98,7 @@ The folder the binary was opened in is the binary's folder, and that folder is t
 A folder is born with:
 
 ```
-AGENT.md                  the folder presenting itself, to whoever works in it
+README.md                 the folder presenting itself, to whoever works in it
 App/settings.json         the instance's key-value configuration
 App/i18n/active           the chosen language — the catalogs travel in the product
 App/counters.json         the last id handed out per table
@@ -135,12 +135,13 @@ and proceeds, because it is not downgraded.
 
 The note at the root is the one file a folder carries for whoever works inside it:
 it says what the folder is, what it holds and how to reach the rest, and it cites
-the founding document instead of repeating a rule (§0). Its **name** does not
-follow the language — a note whose name moved with the translation is a note a
-model stops finding — while the text does. It is written once, as the welcome note
-is, and a folder that already existed gains it by migration.
+the founding document instead of repeating a rule (§0). It is the `README.md` —
+its **name** does not follow the language, because a note whose name moved with
+the translation is a note a model stops finding — while the text does. It is
+written once, as the welcome note is, and a folder that already existed gains it
+by migration; the `AGENT.md` an earlier release wrote is removed by migration.
 
-**The migration.** Updating AT is replacing the binary inside the folder, so every release that changes the folder's structure brings its migration and it runs on the first start after the swap (§3). The stamp is `App/migrations`, and it lives with the rest of what AT writes, never inside the published declaration. There are eight migrations today: `.bill/` → `app/`, `app/` → `App/`, the person's folders into the active language, the `AGENT.md` the folder presents itself with, `Harness/`, the declarations of the tables a release introduces, and the administrator's role catching up with the permissions a release grew the catalogue by — twice, because the catalogue grew twice and a published migration is never edited. The third asks first, because renaming breaks whatever points at them from outside AT; whoever declines keeps the name they had, and the resolution reads both spellings. The other seven touch only what AT writes, and none of them overwrites anything — the sixth names the tables THAT release brings, and not the whole directory, so it never brings back a declaration a person deleted, and the last two hand over only what the folder never had the CHANCE to carry.
+**The migration.** Updating AT is replacing the binary inside the folder, so every release that changes the folder's structure brings its migration and it runs on the first start after the swap (§3). The stamp is `App/migrations`, and it lives with the rest of what AT writes, never inside the published declaration. There are thirty-three migrations today: `.bill/` → `app/`, `app/` → `App/`, the person's folders into the active language, the `AGENT.md` the folder used to present itself with, `Harness/`, the declarations of the tables a release introduces, and the administrator's role catching up with the permissions a release grew the catalogue by — twice, because the catalogue grew twice and a published migration is never edited. The last one retires that `AGENT.md`: since the migration that wrote it is never edited, the removal comes as a new step, and it deletes the file whenever it exists — without asking, because `README.md` is the one that stays. The third asks first, because renaming breaks whatever points at them from outside AT; whoever declines keeps the name they had, and the resolution reads both spellings. The rest touch only what AT writes, and none of them overwrites anything — the sixth names the tables THAT release brings, and not the whole directory, so it never brings back a declaration a person deleted; what only completes brings nothing beyond what the folder never had the CHANCE to carry.
 
 A folder that has not migrated yet **is found by its old name**: `paths.instance_dir()` reads what is on disk before deciding, so that a folder with `.bill/` is not read as a new one — which was the defect migration number one existed to close.
 

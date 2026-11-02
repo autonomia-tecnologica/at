@@ -37,6 +37,8 @@
     "migration.prose.collision": "Existem `Arquivos/` e `Biblioteca/` na mesma pasta: escolher uma seria esconder a outra. Nada foi movido — junte as duas à mão, se era isso.",
     "migration.note.written": "O AT escreveu `AGENT.md` na raiz da pasta: é a nota que apresenta a pasta a quem começa a trabalhar nela.",
     "migration.note.kept": "A pasta já tinha um `AGENT.md` — o que estava lá ficou, e nada foi sobrescrito.",
+    "migration.agent_note.removed": "O AT removeu o `AGENT.md` da raiz: a pasta agora se apresenta no `README.md`.",
+    "migration.agent_note.absent": "Não havia `AGENT.md` na raiz — nada a remover.",
     "migration.services.moved": "Os serviços foram para a casa deles, sob App/services/: {names}.",
     "migration.services.collision": "O destino já tinha algo com este nome, e o que estava lá ficou: {names}. Nada foi sobrescrito — o AT avisa em vez de escolher por você.",
     "migration.services.kept": "Não havia serviço solto na raiz de App/ — nada a mover."
@@ -79,6 +81,8 @@
     "migration.prose.collision": "Both `Files/` and `Library/` exist in this folder: picking one would hide the other. Nothing was moved — join them by hand if that is what you meant.",
     "migration.note.written": "AT wrote `AGENT.md` at the folder root: it is the note that presents the folder to whoever starts working in it.",
     "migration.note.kept": "The folder already carried an `AGENT.md` — the one that was there stayed, and nothing was overwritten.",
+    "migration.agent_note.removed": "AT removed `AGENT.md` from the root: the folder now presents itself in `README.md`.",
+    "migration.agent_note.absent": "There was no `AGENT.md` at the root — nothing to remove.",
     "migration.services.moved": "The services moved into their own house, under App/services/: {names}.",
     "migration.services.collision": "The destination already carried something by this name, and what was there stayed: {names}. Nothing was overwritten — AT warns instead of choosing for you.",
     "migration.services.kept": "No service was loose in the root of App/ — nothing to move."

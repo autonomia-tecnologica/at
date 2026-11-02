@@ -97,7 +97,7 @@ A pasta em que o binário foi aberto é a pasta do binário, e essa pasta é a P
 Uma pasta nasce com:
 
 ```
-AGENT.md                  a pasta se apresentando, para quem trabalha nela
+README.md                 a pasta se apresentando, para quem trabalha nela
 App/settings.json         os ajustes da instância, em chave-valor
 App/i18n/active           o idioma escolhido — os catálogos viajam no produto
 App/counters.json         o último id entregue, por tabela
@@ -134,12 +134,13 @@ avisa e prossegue, porque não é rebaixada.
 
 A nota na raiz é o arquivo que a pasta carrega para quem trabalha dentro dela: ela
 diz o que a pasta é, o que ela guarda e como chegar ao resto, e cita o documento
-fundador em vez de repetir regra (§0). O **nome** dela não segue o idioma — uma
-nota cujo nome anda com a tradução é uma nota que um modelo deixa de achar —,
-enquanto o texto segue. Ela é escrita uma vez, como a nota de boas-vindas, e uma
-pasta que já existia a ganha por migração.
+fundador em vez de repetir regra (§0). É o `README.md` — o **nome** dela não
+segue o idioma, porque uma nota cujo nome anda com a tradução é uma nota que um
+modelo deixa de achar —, enquanto o texto segue. Ela é escrita uma vez, como a
+nota de boas-vindas, e uma pasta que já existia a ganha por migração; o `AGENT.md`
+que uma versão anterior escrevia é removido por migração.
 
-**A migração.** Atualizar o AT é trocar o binário dentro da pasta, então toda versão que muda a estrutura da pasta traz a migração dela e ela roda na primeira subida depois da troca (§3). O carimbo é `App/migrations`, e ele mora com o resto do que o AT escreve, nunca na declaração publicada. As migrações são, hoje, oito: `.bill/` → `app/`, `app/` → `App/`, as pastas da pessoa para o idioma ativo, o `AGENT.md` com que a pasta se apresenta, a `Harness/`, as declarações das tabelas que a versão introduz, e o papel do administrador alcançando as permissões que uma versão acrescentou ao catálogo — duas vezes, porque o catálogo cresceu duas vezes e migração publicada nunca se edita. A terceira pergunta antes, porque renomear quebra o que aponta para elas de fora do AT; quem recusa mantém o nome que tinha, e a resolução lê as duas grafias. As outras sete mexem só no que o AT escreve, e nenhuma delas sobrescreve nada — a sexta nomeia as tabelas que aquela versão traz, e não o diretório inteiro, para não trazer de volta a declaração que uma pessoa apagou, e as duas últimas entregam só o que a pasta nunca teve a CHANCE de carregar.
+**A migração.** Atualizar o AT é trocar o binário dentro da pasta, então toda versão que muda a estrutura da pasta traz a migração dela e ela roda na primeira subida depois da troca (§3). O carimbo é `App/migrations`, e ele mora com o resto do que o AT escreve, nunca na declaração publicada. As migrações são, hoje, trinta e três: `.bill/` → `app/`, `app/` → `App/`, as pastas da pessoa para o idioma ativo, o `AGENT.md` com que a pasta se apresentava, a `Harness/`, as declarações das tabelas que a versão introduz, e o papel do administrador alcançando as permissões que uma versão acrescentou ao catálogo — duas vezes, porque o catálogo cresceu duas vezes e migração publicada nunca se edita. A última aposenta aquele `AGENT.md`: como a migração que o escreveu não se edita, a remoção entra como passo novo, e ela apaga o arquivo sempre que existe — sem perguntar, porque o `README.md` é o único que fica. A terceira pergunta antes, porque renomear quebra o que aponta para elas de fora do AT; quem recusa mantém o nome que tinha, e a resolução lê as duas grafias. As demais mexem só no que o AT escreve, e nenhuma delas sobrescreve nada — a sexta nomeia as tabelas que aquela versão traz, e não o diretório inteiro, para não trazer de volta a declaração que uma pessoa apagou; o que só completa não traz mais do que o que a pasta nunca teve a CHANCE de carregar.
 
 Uma pasta que ainda não migrou **é encontrada pelo nome velho**: `paths.instance_dir()` lê o que está no disco antes de decidir, para que uma pasta com `.bill/` não seja lida como pasta nova — que era o defeito que a migração número um existia para fechar.
 

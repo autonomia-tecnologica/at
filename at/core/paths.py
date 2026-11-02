@@ -87,6 +87,11 @@ LEGACY_INSTANCE = (".bill", "app")
 # and that is the point: it presents the folder to whoever works in it, and both
 # a person and a model look for it by that name — exactly the way `README.md`
 # keeps its spelling in every language. The TEXT is translated; the name is not.
+ROOT_NOTE = "README.md"
+
+# The name the note carried before `README.md` (B-56). A published migration is
+# never edited, so migration 4 still writes the note under this retired name and
+# migration 33 removes it; the live code only knows `ROOT_NOTE`.
 AGENT_NOTE = "AGENT.md"
 
 # The two artifacts, and the file each one is on each platform (§3, items 28
@@ -253,11 +258,21 @@ def settings_file() -> Path:
     return app_dir() / "settings.json"
 
 
-def agent_note() -> Path:
-    """`AGENT.md`, at the folder's root — where such a reader looks first.
+def root_note() -> Path:
+    """`README.md`, at the folder's root — where such a reader looks first.
 
-    Not inside `Biblioteca/`: that folder is the person's material, and this note
-    is the folder presenting itself. It is AT's, and AT writes it once.
+    It is the folder presenting itself: written once, by AT, and never brought
+    back after the person deletes it. Not inside `Biblioteca/`: that folder is
+    the person's material. The name does not follow the language.
+    """
+    return working_folder() / ROOT_NOTE
+
+
+def agent_note() -> Path:
+    """`AGENT.md`, at the folder's root — the note's RETIRED name.
+
+    Only the published migration 4 still writes it; migration 33 removes it.
+    Migration 4 is never edited, so this accessor stays for it alone.
     """
     return working_folder() / AGENT_NOTE
 
