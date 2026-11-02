@@ -941,6 +941,35 @@ dd { margin: 4px 0 0; word-break: break-word; }
 }
 .back:hover { background: var(--surface-raised); transform: translateX(-2px); }
 
+/* ===== a página de um projeto (B-54, fatia 4): o cabeçalho edita ===== */
+/* Nome no `h1`, estado/prioridade/pai em chips, `desc` em prosa: cada valor é
+   o controle, alvo de toque pelo `--control-h-sm`. O chip do pai EDITA o pai. */
+.project-head {
+  display: flex; flex-direction: column; gap: var(--space-2);
+  margin: var(--space-3) 0 var(--space-6);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.project-title {
+  margin: 0; min-width: 0;
+  font-size: var(--type-display); font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight); letter-spacing: var(--letter-tight);
+  color: var(--text-primary);
+}
+.project-chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.project-chip {
+  display: inline-flex; align-items: center;
+  padding: var(--chip-pad); border-radius: var(--r-full);
+  background: var(--surface-raised); color: var(--text-secondary);
+  font-size: var(--type-caption); font-weight: var(--weight-semibold);
+}
+.project-chip-parent:not(.is-empty) .field-read .v::before {
+  content: "← "; color: var(--text-tertiary);
+}
+.project-prose { min-width: 0; }
+.project-prose .field-read { display: block; width: 100%; }
+.project-prose .field-edit textarea { min-height: var(--control-h-sm); }
+
 .subs { border-bottom: 1px solid var(--border-subtle); }
 .subs .sub {
   display: flex; gap: var(--space-3); align-items: baseline; width: 100%;

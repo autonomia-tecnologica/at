@@ -20,10 +20,10 @@ import { ask } from "../lib/confirm";
 import { toast } from "../lib/toast";
 import TaskBoard from "../components/TaskBoard.vue";
 import EmptyState from "../components/EmptyState.vue";
+import FieldEditor from "../components/FieldEditor.vue";
 import RecordView from "../components/RecordView.vue";
-import ProseField from "../components/ProseField.vue";
 import ClosePop from "../components/pops/ClosePop.vue";
-import type { FieldSpec, RecordRow } from "../lib/record";
+import type { FieldSpec, RecordField, RecordRow } from "../lib/record";
 
 interface Child {
   id: number;
@@ -58,13 +58,62 @@ const payload = ref<ProjectPayload | null>(null);
 
 const page = computed(() => "project:" + props.id);
 
-// THE BODY OF THE ITEM: every field of the project the table declares
-// `markdown`, which is where an item keeps its why, its decided and its open.
-// It is drawn AS PROSE — the renderer is the debt `lib/markdown` names, and
-// until it lands the text a person reads is the text as it is stored.
-const prose = computed(() =>
-  (payload.value?.project.record.fields || []).filter(field => field.type === "markdown" && field.value),
-);
+// A FATIA 4 DO B-54: a página edita os CINCO campos do próprio projeto no
+// lugar, pelo `FieldEditor` — o mesmo editor da grade, das notas e das tarefas.
+// O par que ele desenha é o da DECLARAÇÃO (`payload.project.fields`) com o
+// valor da LINHA (`payload.project.record`), e o `spec.type` escolhe o
+// controle. A entidade da escrita é a tabela que DECLARA o tipo `project`
+// (`store.types.project`), nunca a palavra "project" escrita aqui.
+interface ProjectPart {
+  field: RecordField;
+  spec: FieldSpec;
+}
+
+const entity = computed(() => store.types.project);
+
+function partOf(name: string): ProjectPart | null {
+  const project = payload.value?.project;
+  if (!project) return null;
+  const spec = project.fields.find(f => f.name === name);
+  const field = project.record.fields.find(f => f.name === name);
+  return spec && field ? { field, spec } : null;
+}
+
+const namePart = computed(() => partOf("name"));
+const statusPart = computed(() => partOf("status"));
+const priorityPart = computed(() => partOf("priority"));
+const parentPart = computed(() => partOf("parent"));
+
+// O QUE O ENGINE DIZ QUE ESTE ATOR ALCANÇA NO REGISTRO DO PROJETO: sem `edit`,
+// cada `FieldEditor` nasce só de leitura.
+const canEdit = computed(() => Boolean(payload.value?.project.actions.includes("edit")));
+
+function rawOf(part: ProjectPart | null): string | null {
+  const raw = part?.field.raw;
+  return raw === null || raw === undefined || raw === "" ? null : String(raw);
+}
+
+const hasValue = (part: ProjectPart | null): boolean => rawOf(part) !== null;
+
+// O CORPO DO ITEM: todo campo que a declaração do projeto marca `markdown`
+// (hoje só o `desc`), onde um item guarda o seu porquê, o seu decidido e o seu
+// aberto. Ele é desenhado como PROSA e clicado edita no lugar — o
+// `FieldEditor` com `panel` lê pelo `ProseField` e abre a textarea que cresce.
+const proseParts = computed<ProjectPart[]>(() => {
+  const project = payload.value?.project;
+  if (!project) return [];
+  return project.fields
+    .filter(spec => spec.type === "markdown")
+    .map(spec => {
+      const field = project.record.fields.find(f => f.name === spec.name);
+      return field ? { field, spec } : null;
+    })
+    .filter((part): part is ProjectPart => part !== null);
+});
+
+// A página vazia é a que não tem TAREFA nem PROSA — o nome, o estado e a
+// prioridade do projeto estão sempre no cabeçalho e não são "conteúdo".
+const hasProse = computed(() => proseParts.value.some(part => Boolean(part.field.value)));
 
 // THE BAND IS THE WAY IN: `Tarefas › WebApp`, and the section is the shell's
 // to add (`App.vue`). The state, the priority and the counts it used to spell
@@ -128,8 +177,8 @@ function openProjectMenu(ev: MouseEvent): void {
 function openCloseProject(point: { x: number; y: number }): void {
   if (!payload.value) return;
   const rec = payload.value.project.record;
-  openPop("close:project:" + rec.id, ClosePop,
-          { entity: "project", id: rec.id, title: rec.title || payload.value.title },
+  openPop("close:" + entity.value + ":" + rec.id, ClosePop,
+          { entity: entity.value, id: rec.id, title: rec.title || payload.value.title },
           { point });
 }
 
@@ -138,7 +187,8 @@ async function deleteProject(): Promise<void> {
   const name = payload.value.title;
   if (!(await ask(word("delete_confirm").replace("{name}", name)))) return;
   try {
-    await post("/api/table/project", { action: "delete", id: payload.value.project.record.id });
+    await post("/api/table/" + encodeURIComponent(entity.value),
+               { action: "delete", id: payload.value.project.record.id });
     poke();
   } catch (err) {
     toast((err as Error).message);
@@ -168,9 +218,41 @@ watch(() => props.id, () => {
     <div v-if="payload.parent" class="back" @click="go(payload.parent.id)">
       ← {{ payload.parent.id }}  ({{ payload.parent.title }})
     </div>
-    <!-- The ITEM's body, drawn as the page's prose: the fields this table
-         declares `markdown` — the `desc` where an item keeps its why. -->
-    <ProseField v-for="field in prose" :key="field.name" :text="field.value" />
+    <!-- O CABEÇALHO DO PROJETO (B-54, fatia 4): o nome é o `h1`, o estado, a
+         prioridade e o pai são os chips, e o `desc` é a prosa — cada valor é o
+         seu controle. O pai no chip EDITA a referência; a linha "voltar" acima
+         NAVEGA para ele: são gestos diferentes. -->
+    <div class="project-head">
+      <h1 class="project-title">
+        <FieldEditor v-if="namePart" :field="namePart.field" :spec="namePart.spec"
+                     :entity="entity" :record="payload.project.record"
+                     :can-edit="canEdit" @ref="openRef" />
+        <template v-else>{{ payload.title }}</template>
+      </h1>
+      <div v-if="statusPart || priorityPart || parentPart" class="project-chips">
+        <div v-if="statusPart" class="project-chip chip"
+             :data-value="rawOf(statusPart) || undefined">
+          <FieldEditor :field="statusPart.field" :spec="statusPart.spec"
+                       :entity="entity" :record="payload.project.record" :can-edit="canEdit" />
+        </div>
+        <div v-if="priorityPart" class="project-chip chip"
+             :data-value="rawOf(priorityPart) || undefined">
+          <FieldEditor :field="priorityPart.field" :spec="priorityPart.spec"
+                       :entity="entity" :record="payload.project.record" :can-edit="canEdit" />
+        </div>
+        <div v-if="parentPart" class="project-chip project-chip-parent"
+             :class="{ 'is-empty': !hasValue(parentPart) }">
+          <FieldEditor :field="parentPart.field" :spec="parentPart.spec"
+                       :entity="entity" :record="payload.project.record"
+                       :can-edit="canEdit" @ref="openRef" />
+        </div>
+      </div>
+      <div v-for="part in proseParts" :key="part.spec.name" class="project-prose">
+        <FieldEditor :field="part.field" :spec="part.spec" :entity="entity"
+                     :record="payload.project.record" :can-edit="canEdit" panel
+                     @ref="openRef" />
+      </div>
+    </div>
     <!-- THE BOARD BELOW IS THE TASKS' — the table the server said declares the
          TYPE `task`, never the word "task" read as a table's name. It hides
          the project chip a card would otherwise carry (`show-project`
@@ -181,7 +263,7 @@ watch(() => props.id, () => {
          tasks and only tasks, so the quick-add is off too: it writes no
          `project`, and a card born on this page landing as an orphan would
          be the page lying about where it put it. -->
-    <EmptyState v-if="!payload.records.length && !prose.length" icon="folder"
+    <EmptyState v-if="!payload.records.length && !hasProse" icon="folder"
                 :title="word('empty_project_title')" :text="word('empty_project_text')">
       <button v-if="store.types.task" type="button" class="btn"
               @click="open(store.types.task, null)">{{ word("all_tasks") }}</button>
