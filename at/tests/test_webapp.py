@@ -1849,7 +1849,7 @@ class TheAskDoor(ServerCase):
     """
 
     def test_the_proposal_comes_before_the_answer(self):
-        status, answer = self.post("/api/ask", {"text": "cria uma tarefa pra hoje"})
+        status, answer = self.post("/api/ask", {"text": "cria uma tarefa comprar pão pra hoje"})
         self.assertEqual(status, 200)
         self.assertEqual(answer["kind"], "answer")
         # The proposal in the ENGINE's words — the action's, the table's — and the
@@ -1934,12 +1934,12 @@ class TheAskDoor(ServerCase):
         # after the proposal is the engine's refusal, not a second sentence.
         status, answer = self.post("/api/ask", {"text": "cria um lembrete pra hoje"})
         self.assertEqual(status, 200)
-        self.assertEqual(answer["kind"], "answer")
-        self.assertTrue(answer["proposal"])
+        # O principal que falta é perguntado pela porta, e nada é gravado.
+        self.assertEqual(answer["kind"], "question")
         self.assertEqual(
-            answer["text"],
-            i18n.tr("table.error.required", field=tables.label("reminder", "text")),
+            answer["text"], i18n.tr("nlu.ask.what", text=tables.label("reminder", "text"))
         )
+        self.assertEqual(tables.rows("reminder"), [])
 
     def test_it_refuses_an_empty_sentence(self):
         self.assertEqual(self.post("/api/ask", {})[0], 400)
@@ -1954,7 +1954,7 @@ class TheAskDoor(ServerCase):
 
     def test_the_interpreter_off_answers_in_its_own_words(self):
         settings.save({**settings.load(), "interpreter": False})
-        status, answer = self.post("/api/ask", {"text": "cria uma tarefa pra hoje"})
+        status, answer = self.post("/api/ask", {"text": "cria uma tarefa comprar pão pra hoje"})
         self.assertEqual(status, 200)
         self.assertEqual(answer["kind"], "refused")
         self.assertEqual(answer["text"], i18n.tr("nlu.error.interpreter_off"))
@@ -1977,7 +1977,7 @@ class TheAskDoor(ServerCase):
         self.assertTrue(answer["assist"])
 
     def test_an_answer_never_hints_the_assist(self):
-        status, answer = self.post("/api/ask", {"text": "cria uma tarefa pra hoje"})
+        status, answer = self.post("/api/ask", {"text": "cria uma tarefa comprar pão pra hoje"})
         self.assertEqual(status, 200)
         self.assertFalse(answer["assist"])
 
@@ -2659,7 +2659,7 @@ class TheCeiling(ServerCase):
         ("/api/file/create", {"path": "nova.md", "dir": False}),
         ("/api/file/rename", {"path": "nota.md", "to": "nova.md"}),
         ("/api/file/delete", {"path": "nota.md"}),
-        ("/api/ask", {"text": "cria uma tarefa pra hoje"}),
+        ("/api/ask", {"text": "cria uma tarefa comprar pão pra hoje"}),
         ("/api/table/task", {"action": "create", "set": {"text": "x"}}),
         ("/api/table/task", {"action": "edit", "id": 1, "set": {"text": "x"}}),
         ("/api/offline/sync", {"entries": [
@@ -3269,7 +3269,7 @@ class TheAskCeiling(ServerCase):
     def test_the_ask_without_the_write_is_refused_and_writes_nothing(self):
         self.person("nlu:ask,task:list")
         status, answer = self.post(
-            "/api/ask", {"text": "cria uma tarefa pra hoje"}, headers=self.cookie()
+            "/api/ask", {"text": "cria uma tarefa comprar pão pra hoje"}, headers=self.cookie()
         )
         self.assertEqual(status, 200)  # a refusal is an ANSWER, not a failed request
         self.assertEqual(answer["kind"], "refused")
@@ -3283,7 +3283,7 @@ class TheAskCeiling(ServerCase):
     def test_the_act_the_role_carries_runs(self):
         self.person("nlu:ask,task:create")
         status, answer = self.post(
-            "/api/ask", {"text": "cria uma tarefa pra hoje"}, headers=self.cookie()
+            "/api/ask", {"text": "cria uma tarefa comprar pão pra hoje"}, headers=self.cookie()
         )
         self.assertEqual(status, 200)
         self.assertEqual(answer["kind"], "answer")
@@ -3301,7 +3301,7 @@ class TheAskCeiling(ServerCase):
     def test_the_administrator_is_not_capped(self):
         cookie = self.cookie(self.ADMIN, self.ADMIN_CREDENTIAL)
         status, answer = self.post(
-            "/api/ask", {"text": "cria uma tarefa pra hoje"}, headers=cookie
+            "/api/ask", {"text": "cria uma tarefa comprar pão pra hoje"}, headers=cookie
         )
         self.assertEqual(status, 200)
         self.assertEqual(answer["kind"], "answer")
@@ -3309,7 +3309,7 @@ class TheAskCeiling(ServerCase):
     def test_the_missing_ask_is_the_route_that_refuses_it(self):
         self.person("task:create")
         status, answer = self.post(
-            "/api/ask", {"text": "cria uma tarefa pra hoje"}, headers=self.cookie()
+            "/api/ask", {"text": "cria uma tarefa comprar pão pra hoje"}, headers=self.cookie()
         )
         self.assertEqual(status, 403)
         self.assertEqual(
@@ -3328,7 +3328,7 @@ class TheAskWithoutAnActor(ServerCase):
     """
 
     def test_the_interpreter_proposes_and_runs(self):
-        status, answer = self.post("/api/ask", {"text": "cria uma tarefa pra hoje"})
+        status, answer = self.post("/api/ask", {"text": "cria uma tarefa comprar pão pra hoje"})
         self.assertEqual(status, 200)
         self.assertEqual(answer["kind"], "answer")
         self.assertEqual(len(tables.rows("task")), 2)
@@ -3391,7 +3391,7 @@ class TheDevServer(ServerCase):
         # No actor was proved, so no role was read: what a person carries is
         # what the gate is FOR, and a gate that asked nobody has nothing to
         # measure. The write is allowed because it was never gated.
-        status, _ = self.post("/api/table/task", {"action": "create", "values": {"text": "outra"}})
+        status, _ = self.post("/api/table/task", {"action": "create", "set": {"text": "outra"}})
         self.assertEqual(status, 200)
         self.assertEqual(len(tables.rows("task")), 2)
 

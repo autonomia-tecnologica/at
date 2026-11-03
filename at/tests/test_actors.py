@@ -548,7 +548,7 @@ class TheInterpreterCeiling(ActorCase):
 
     def test_the_act_the_role_does_not_carry_is_refused_before_the_proposal(self):
         row = self.wearing("nlu:ask,task:list")
-        result = door.ask("cria uma tarefa pra hoje", actor=row)
+        result = door.ask("cria uma tarefa comprar pão pra hoje", actor=row)
         self.assertEqual(result.kind, "refused")
         self.assertIsNone(result.proposal)  # nothing was proposed and nothing ran
         self.assertEqual(result.code, REFUSED)
@@ -560,7 +560,7 @@ class TheInterpreterCeiling(ActorCase):
 
     def test_the_act_the_role_carries_runs(self):
         row = self.wearing("nlu:ask,task:create")
-        result = door.ask("cria uma tarefa pra hoje", actor=row)
+        result = door.ask("cria uma tarefa comprar pão pra hoje", actor=row)
         self.assertEqual(result.kind, "answer")
         self.assertTrue(result.proposal)
         self.assertEqual(len(tables.rows("task")), 2)
@@ -578,13 +578,13 @@ class TheInterpreterCeiling(ActorCase):
 
     def test_the_administrator_reaches_both(self):
         row = actors.admins()[0]
-        self.assertEqual(door.ask("cria uma tarefa pra hoje", actor=row).kind, "answer")
+        self.assertEqual(door.ask("cria uma tarefa comprar pão pra hoje", actor=row).kind, "answer")
         self.assertEqual(door.ask("lista as tarefas", actor=row).kind, "answer")
 
     def test_no_actor_is_no_ceiling(self):
         # The `cli` asks with nobody proved, and the folder that asks nobody has
         # no actor either: both are where the route answers as it always did.
-        result = door.ask("cria uma tarefa pra hoje")
+        result = door.ask("cria uma tarefa comprar pão pra hoje")
         self.assertEqual(result.kind, "answer")
         self.assertEqual(len(tables.rows("task")), 2)
 

@@ -316,6 +316,16 @@ def ask(
         return Result("refused", None, saying, REFUSED)
 
     written = proposed_text(proposed)
+    # O PRINCIPAL É OBRIGATÓRIO (03/11/2026): um `create` que não o disse (`cria uma
+    # tarefa pra hoje`) pergunta o que falta, pela pergunta que o matcher já tem, e
+    # não grava nada.
+    primary = schema.primary(proposed.table)
+    if proposed.action == "create" and primary and not proposed.values.get(primary):
+        return Result(
+            "question", written,
+            tr("nlu.ask.what", text=tables.label(proposed.table, primary)),
+            REFUSED,
+        )
     # Todo `edit` de registro existente confirma antes de gravar, em toda
     # porta (03/11/2026). O "Confirmar" reenvia a frase com `confirmed` (o mesmo
     # caminho do assist); a linha que não existe segue o caminho de sempre, que a

@@ -101,11 +101,22 @@ def _require(table: str, row: dict) -> None:
     fields = declared.get("fields")
     if not isinstance(fields, dict):
         return
+    # O CAMPO PRINCIPAL é obrigatório em toda tabela que o declara (03/11/2026): uma
+    # linha sem o título que a nomeia não nasce, em nenhuma porta.
+    main = schema.primary(table)
     for name, field in fields.items():
-        if not isinstance(field, dict) or not _required(field, row):
+        if not isinstance(field, dict):
+            continue
+        is_main = name == main
+        if not (is_main or _required(field, row)):
             continue
         value = row.get(name)
-        if value is None or value == "" or value == []:
+        if value is None or (isinstance(value, str) and not value.strip()) or value == []:
+            if is_main:
+                raise TableError(
+                    "error.required_primary",
+                    field=label(table, name).lower(), table=table, name=name,
+                )
             raise TableError("error.required", field=label(table, name))
 
 

@@ -506,7 +506,7 @@ class TheDoor(MatcherCase):
         return code, output.getvalue()
 
     def test_the_door_runs_the_proposal_and_answers_with_the_engine_words(self):
-        code, text = self.run_words("pedir", "cria uma tarefa pra hoje")
+        code, text = self.run_words("pedir", "cria uma tarefa comprar pão pra hoje")
         self.assertEqual(code, 0)
         self.assertIn(tr("table.created", id="TASK-1"), text)
         row = store.find("task", 1)
@@ -516,18 +516,18 @@ class TheDoor(MatcherCase):
     def test_the_proposal_comes_before_the_answer(self):
         # The proposal is what a person checks; the answer is what the engine
         # did. Both, in that order, and neither instead of the other.
-        _, text = self.run_words("pedir", "cria uma tarefa pra hoje")
+        _, text = self.run_words("pedir", "cria uma tarefa comprar pão pra hoje")
         self.assertLess(text.index("Tarefa"), text.index(tr("table.created", id="TASK-1")))
 
     def test_ask_is_the_same_door_as_pedir(self):
         for number, spelling in enumerate(("ask", "pedir"), start=1):
             with self.subTest(word=spelling):
-                code, text = self.run_words(spelling, "cria uma tarefa pra hoje")
+                code, text = self.run_words(spelling, "cria uma tarefa comprar pão pra hoje")
                 self.assertEqual(code, 0)
                 self.assertIn(tr("table.created", id=f"TASK-{number}"), text)
 
     def test_pedir_after_ask_is_the_same_door_written_out(self):
-        code, text = self.run_words("ask", "pedir", "cria uma tarefa pra hoje")
+        code, text = self.run_words("ask", "pedir", "cria uma tarefa comprar pão pra hoje")
         self.assertEqual(code, 0)
         self.assertIn(tr("table.created", id="TASK-1"), text)
 
@@ -548,13 +548,12 @@ class TheDoor(MatcherCase):
         self.assertEqual(store.load("project"), [])
 
     def test_the_engine_is_the_one_that_validates(self):
-        # What the sentence proposes and the declaration refuses comes back in
-        # the ENGINE's words: this surface invents no second sentence for it.
+        # What the sentence leaves out of the principal field is asked back by
+        # the door (`nlu.ask.what`); what the engine refuses comes back in ITS words.
         code, text = self.run_words("ask", "cria um lembrete pra hoje")
         self.assertEqual(code, 1)
-        self.assertIn(
-            tr("table.error.required", field=tables.label("reminder", "text")), text
-        )
+        self.assertIn(tr("nlu.ask.what", text=tables.label("reminder", "text")), text)
+        self.assertEqual(store.load("reminder"), [])
 
     def test_a_sentence_that_lists_reaches_the_listing(self):
         # No "tabela" in the sentence: the person's own default (03/10/2026)
@@ -583,6 +582,25 @@ class TheDoor(MatcherCase):
         self.assertIn("→", text)
         self.assertIn("TASK-1", text)
         self.assertNotEqual(tables.find("task", 1)["status"], "done")
+
+    def test_a_project_with_no_name_is_refused_and_writes_no_row(self):
+        code, text = self.run_words("project", "create")
+        self.assertEqual(code, 1)
+        self.assertIn('project create --set name=', text)
+        self.assertEqual(store.load("project"), [])
+        code, _ = self.run_words("project", "create", "--set", "name=Meu projeto")
+        self.assertEqual(code, 0)
+        self.assertEqual(len(store.load("project")), 1)
+
+    def test_a_task_with_only_a_deadline_asks_for_the_text_and_writes_nothing(self):
+        code, text = self.run_words("pedir", "cria uma tarefa pra hoje")
+        self.assertIn(tr("nlu.ask.what", text=tables.label("task", "text")), text)
+        self.assertEqual(store.load("task"), [])
+
+    def test_the_refusal_of_an_argument_teaches_the_set_form(self):
+        code, text = self.run_words("project", "edit", "1", "--name", "X")
+        self.assertEqual(code, 2)
+        self.assertIn("--set campo=valor", text)
 
     def test_the_door_takes_one_sentence_and_no_more(self):
         code, _ = self.run_words("ask")
@@ -634,14 +652,14 @@ class TheSwitch(MatcherCase):
         self.turn(False)
         for spelling in ("ask", "pedir"):
             with self.subTest(word=spelling):
-                code, text = self.run_words(spelling, "cria uma tarefa pra hoje")
+                code, text = self.run_words(spelling, "cria uma tarefa comprar pão pra hoje")
                 self.assertEqual(code, 2)
                 self.assertIn(spelling, text)
 
     def test_turning_it_off_takes_the_function_out_of_the_core_api(self):
         self.turn(False)
         with self.assertRaises(nlu.Refused) as refused:
-            nlu.propose("cria uma tarefa pra hoje")
+            nlu.propose("cria uma tarefa comprar pão pra hoje")
         self.assertEqual(refused.exception.key, "nlu.error.interpreter_off")
 
     def test_turning_it_off_takes_nothing_else(self):

@@ -171,10 +171,9 @@ def match(
     # não é uma linha vazia — é uma pergunta. O campo que a pessoa não disse é o
     # PRINCIPAL da tabela, e é o que ela ainda tem de escrever; a resposta vai
     # como a pergunta do matcher (`nlu.ask.what`), e nada é escrito. Um pedido
-    # com o principal preenchido — ou que preencheu qualquer campo que só a
-    # pessoa sabe — não é este caso: uma tarefa com prazo e sem texto continua
-    # sendo a tabela que aceita e grava (o `text` dela não é `required`), e o
-    # lembrete sem nada é o motor que recusa, na palavra dele.
+    # que preencheu outro campo (`cria uma tarefa pra hoje`) sai daqui como
+    # proposta, e é a PORTA (`ui.ask`) que pergunta o principal que falta: ele é
+    # obrigatório em toda tabela (03/11/2026), e o motor não grava a linha sem ele.
     if action == "create" and primary and not values.get(primary) and not values:
         return Question("nlu.ask.what", tables.label(table, primary))
 

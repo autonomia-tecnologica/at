@@ -381,13 +381,13 @@ class TheFilter(JobCase):
         # as its actor is the machine's.
         machine = self.machine("task:create,task:list")
         self.bar(0.2)  # a create is a write, and the bar is the folder's own
-        result = door.ask("cria uma tarefa pra amanhã", actor=machine)
+        result = door.ask("cria uma tarefa comprar pão pra amanhã", actor=machine)
         self.assertEqual(result.kind, "answer")
         self.assertEqual(result.text, tr("job.waits", id="JOB-1"))
         self.assertEqual(len(self.held()), 1)
         self.assertEqual(self.job_row()[jobs.ACTOR], store.number_of(machine))
         # And the same sentence for the person IS the approval: it runs.
-        result = door.ask("cria uma tarefa pra amanhã", actor=self.person())
+        result = door.ask("cria uma tarefa comprar pão pra amanhã", actor=self.person())
         self.assertEqual(result.text, tr("table.created", id="TASK-1"))
         self.assertEqual(len(self.held()), 1)
 

@@ -310,7 +310,7 @@ class TheDoor(NoteCase):
     def test_a_note_with_no_text_is_refused(self):
         code, text = self.cli("note", "create")
         self.assertEqual(code, 1)
-        self.assertIn(tr("table.note.field.text"), text)
+        self.assertIn("note create --set text=", text)
         self.assertEqual(store.load("note"), [])
 
     def test_it_lists_what_it_carries(self):

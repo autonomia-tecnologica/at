@@ -41,8 +41,8 @@
     "version.line": "AT {version}",
     "error.unknown_word": "Palavra desconhecida: {word}.",
     "error.usage": "Use `at-cli help` para ver as palavras.",
-    "error.rejected_arguments": "A palavra {word} não recebe argumento nesta versão.",
-    "error.surplus_argument": "A palavra {word} não recebe o argumento {argument}.",
+    "error.rejected_arguments": "A palavra {word} não recebe argumento nesta versão. Para dar valores a campos, use --set campo=valor.",
+    "error.surplus_argument": "A palavra {word} não recebe o argumento {argument}. Para dar valores a campos, use --set campo=valor.",
     "error.read_only": "Modo somente leitura: nada foi escrito em {where}."
   },
   "en_US": {
@@ -87,8 +87,8 @@
     "version.line": "AT {version}",
     "error.unknown_word": "Unknown word: {word}.",
     "error.usage": "Use `at-cli help` to see the words.",
-    "error.rejected_arguments": "The word {word} takes no argument in this version.",
-    "error.surplus_argument": "The word {word} does not take the argument {argument}.",
+    "error.rejected_arguments": "The word {word} takes no argument in this version. To give values to fields, use --set field=value.",
+    "error.surplus_argument": "The word {word} does not take the argument {argument}. To give values to fields, use --set field=value.",
     "error.read_only": "Read-only mode: nothing was written to {where}."
   }
 }

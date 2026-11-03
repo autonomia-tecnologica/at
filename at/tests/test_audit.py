@@ -343,7 +343,7 @@ class TheActor(AuditCase):
     def test_the_via_of_a_sentence_is_the_interpreter_s(self):
         # §4, item 15: the surface that reaches the interpreter does not become
         # the via — the road the act came through is `nlu`.
-        door.ask("cria uma tarefa pra hoje")
+        door.ask("cria uma tarefa comprar pão pra hoje")
         self.assertEqual(self.lines()[0][audit.VIA], audit.NLU)
 
     def test_a_sentence_the_interpreter_refused_leaves_nothing(self):
@@ -399,7 +399,7 @@ class TheCeiling(AuditCase):
             {"name": "Rafael", "type": "person", "role": str(role["id"]),
              "credential": "uma-frase-bem-longa"},
         )
-        result = door.ask("cria uma tarefa pra hoje", actor=row)
+        result = door.ask("cria uma tarefa comprar pão pra hoje", actor=row)
         self.assertEqual(result.kind, "refused")
         self.assertEqual(self.lines()[0][audit.REASON], audit.DENIED)
         self.assertEqual(self.lines()[0][audit.STATUS], audit.REFUSED)
