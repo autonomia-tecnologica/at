@@ -250,8 +250,9 @@ class TheRewrite(AssistCase):
             transport=self.fake("edit", "task", 0.95, 0.95),
         )
         self.assertIsInstance(result, nlu.Question)
-        with self.assertRaises(nlu.Refused):
-            nlu.propose(result.text, confirmed=True, now=NOW)
+        asked = nlu.propose(result.text, confirmed=True, now=NOW)
+        self.assertIsInstance(asked, nlu.Question)
+        self.assertEqual(asked.key, "nlu.ask.no_row")
 
     def test_a_create_at_high_confidence_still_asks(self):
         result = assist.decide(

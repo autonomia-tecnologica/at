@@ -570,8 +570,19 @@ class TheDoor(MatcherCase):
         self.assertEqual(code, 0)
         self.assertIn(tables.format_id("task", 1), text)
         code, text = self.run_words("ask", "edita a tarefa TASK-1 pra hoje")
+        self.assertIn(tr("cli.ask.repeat_yes"), text)  # sem --yes: mostra e não grava
+        self.assertIsNone(tables.find("task", 1).get("deadline"))
+        code, text = self.run_words("ask", "--yes", "edita a tarefa TASK-1 pra hoje")
         self.assertEqual(code, 0)
         self.assertIn(tr("table.edited", id="TASK-1"), text)
+        self.assertIsNotNone(tables.find("task", 1).get("deadline"))
+
+    def test_an_edit_shows_what_changes_and_waits_for_the_yes(self):
+        tables.create("task", {"text": "write the README"})
+        code, text = self.run_words("ask", "edita a tarefa 1 status concluída")
+        self.assertIn("→", text)
+        self.assertIn("TASK-1", text)
+        self.assertNotEqual(tables.find("task", 1)["status"], "done")
 
     def test_the_door_takes_one_sentence_and_no_more(self):
         code, _ = self.run_words("ask")

@@ -7,7 +7,7 @@ a guess.
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import cast
 
 from at.core import tables
 from at.data import schema, store

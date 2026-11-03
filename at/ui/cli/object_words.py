@@ -50,18 +50,24 @@ def _ask(rest: list[str]) -> int:
     second sentence for either.
     """
     args = rest[1:] if rest[:1] == ["pedir"] else rest
+    # `--yes` confirma a edição (todo `edit` pergunta antes de gravar); sem ele a
+    # cli mostra o que muda e não grava. Nada de prompt: só a flag.
+    confirmed = "--yes" in args
+    args = [arg for arg in args if arg != "--yes"]
     if len(args) != 1:
         return _reject("ask")
     # The ACTOR of an act typed at the terminal is the first admin (§3, item 15):
     # the `cli` is local by construction and whoever is in front of it is the
     # folder's owner. A folder that never made one asks with nobody, which is
     # what it always did.
-    result = door.ask(args[0], actor=actors.first_admin())
+    result = door.ask(args[0], actor=actors.first_admin(), confirmed=confirmed)
     # A question and a refusal have no proposal to check — nothing was proposed
     # and nothing was written — and they are the one sentence the result carries.
     if result.proposal:
         print(result.proposal)
     print(result.text)
+    if result.kind == "question" and result.confirm:
+        print(tr("cli.ask.repeat_yes"))
     return result.code
 
 

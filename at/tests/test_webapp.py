@@ -1900,6 +1900,14 @@ class TheAskDoor(ServerCase):
         # the effect the balloon exists for.
         status, answer = self.post("/api/ask", {"text": "editar a tarefa 1 status concluída"})
         self.assertEqual(status, 200)
+        # Todo `edit` pergunta antes de gravar: nada mudou, e a pergunta carrega a
+        # frase que o "Confirmar" reenvia.
+        self.assertEqual(answer["kind"], "question")
+        self.assertEqual(answer["confirm"], "editar a tarefa 1 status concluída")
+        self.assertNotEqual(tables.find("task", 1)["status"], "done")
+        status, answer = self.post(
+            "/api/ask", {"text": "editar a tarefa 1 status concluída", "confirmed": True}
+        )
         self.assertEqual(answer["kind"], "answer")
         self.assertEqual(answer["text"], i18n.tr("table.edited", id="TASK-1"))
         self.assertEqual(tables.find("task", 1)["status"], "done")

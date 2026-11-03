@@ -109,7 +109,7 @@ from at.core import (
     scanner,  # noqa: F401 — `at.ui.ask.scanner.scan` is a patch target of the suites
     tables,
 )
-from at.data import schema
+from at.data import schema, store
 from at.i18n import tr
 
 # The door's pieces live in their own modules; every name a caller reached by
@@ -316,6 +316,22 @@ def ask(
         return Result("refused", None, saying, REFUSED)
 
     written = proposed_text(proposed)
+    # Todo `edit` de registro existente confirma antes de gravar, em toda
+    # porta (03/11/2026). O "Confirmar" reenvia a frase com `confirmed` (o mesmo
+    # caminho do assist); a linha que não existe segue o caminho de sempre, que a
+    # recusa pelo motor.
+    if proposed.action == "edit" and not confirmed and proposed.row is not None:
+        existing = store.find(proposed.table, proposed.row)
+        if existing is not None:
+            return Result(
+                "question", written,
+                tr(
+                    "nlu.ask.edit_confirm",
+                    id=tables.format_id(proposed.table, proposed.row),
+                    changes=_edit_changes(proposed, existing),
+                ),
+                REFUSED, confirm=text,
+            )
     try:
         code, answer, row, table_rows, bullets = execute(proposed, actor=actor)
     except tables.TableError as error:
@@ -338,6 +354,20 @@ def ask(
         lead=lead,
         intent=jev.ACT, subintent=f"{proposed.table}.{proposed.action}",
     )
+
+
+def _edit_changes(proposal: nlu.Proposal, row: dict) -> str:
+    """O que a edição MUDA, campo a campo (`campo: antigo → novo`), uma linha por campo."""
+    lines = [
+        tr(
+            "nlu.ask.change",
+            field=tables.label(proposal.table, name),
+            old=tables.text_of(proposal.table, name, row.get(name)),
+            new=tables.text_of(proposal.table, name, value),
+        )
+        for name, value in proposal.values.items()
+    ]
+    return "\n".join(f"- {line}" for line in lines)
 
 
 def say(table: str, action: str, **kw: object) -> str:
