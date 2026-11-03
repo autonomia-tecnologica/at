@@ -785,6 +785,35 @@ class TheSchedule(JobCase):
         self.assertEqual(self.job_row()[jobs.STATUS], jobs.SCHEDULED)
 
 
+class TheClockTransitions(JobCase):
+    """The writes the clock makes to a row it drives — and the ones it does not.
+
+    `stops` is the ceiling's answer: a round whose owner cannot run it is over,
+    and `refused` is the same end `disable` leaves. It writes only where the
+    STORE still says the clock drives the row (`_driven`), because a person may
+    have answered it between the read and the write.
+    """
+
+    def scheduled(self) -> dict:
+        with redirect_stdout(StringIO()):
+            return jobs.declare("task", "create", [], {}, "now")
+
+    def test_a_scheduled_row_becomes_refused(self):
+        row = self.scheduled()
+        jobs.stops(row)
+        self.assertEqual(self.job_row()[jobs.STATUS], jobs.REFUSED)
+
+    def test_a_row_the_store_no_longer_drives_is_left_untouched(self):
+        # The snapshot says `scheduled`; the store says a person answered it in
+        # between. The clock does not overwrite the word that arrived after it
+        # looked, the same rule `reschedule` and `waits` follow.
+        row = self.scheduled()
+        with redirect_stdout(StringIO()):
+            tables.edit(jobs.JOB, store.number_of(row), {jobs.STATUS: jobs.APPROVED})
+        self.assertEqual(jobs.stops(row), row)
+        self.assertEqual(self.job_row()[jobs.STATUS], jobs.APPROVED)
+
+
 class TheRun(JobCase):
     """`at-cli job run` — the engine performs the act the row holds (§4)."""
 

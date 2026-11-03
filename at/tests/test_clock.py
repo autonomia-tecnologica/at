@@ -421,7 +421,9 @@ class TheRound(ClockCase):
         line = self.lines()[-1]
         self.assertEqual(line[audit.STATUS], audit.REFUSED)
         self.assertEqual(line[audit.REASON], "job.error.ceiling")
-        self.assertEqual(self.job_row()[jobs.STATUS], jobs.SCHEDULED)
+        # The round ENDS: a ceiling its owner cannot clear is not one the clock
+        # waits out, and `refused` is the state `disable` already leaves.
+        self.assertEqual(self.job_row()[jobs.STATUS], jobs.REFUSED)
 
     def test_a_round_whose_owner_lost_the_permission_is_refused_by_name(self):
         machine = self.machine("task:create")
@@ -436,8 +438,26 @@ class TheRound(ClockCase):
         self.assertEqual(line[audit.REASON], "job.error.ceiling")
         self.assertEqual(line[audit.VIA], audit.ENGINE)
         self.assertEqual(line[audit.ACTOR], store.number_of(machine))
-        # The schedule lives on: the round comes back once the role does.
-        self.assertEqual(self.job_row()[jobs.STATUS], jobs.SCHEDULED)
+        # The round ENDS: the job leaves `scheduled`, so reviving it is a
+        # person's declaration and never the clock's.
+        self.assertEqual(self.job_row()[jobs.STATUS], jobs.REFUSED)
+
+    def test_a_round_refused_by_the_ceiling_does_not_come_back(self):
+        # The defect the transition closes: a refused round that rescheduled
+        # itself wrote the same line every cadence, for ever. Now the job is no
+        # longer `scheduled`, so the next pass does not find it — no new line,
+        # and the instant it was about stays where it was.
+        machine = self.machine("task:create")
+        self.declare_create(DUE, owner=machine)
+        role = actors.role_of(machine) or {}
+        with redirect_stdout(StringIO()):
+            tables.edit("role", store.number_of(role), {"permissions": "task:list"})
+        self.tick()
+        lines = len(self.lines())
+        self.assertEqual(self.job_row()[jobs.STATUS], jobs.REFUSED)
+        self.tick(AT + clock.CADENCE)
+        self.assertEqual(len(self.lines()), lines)
+        self.assertEqual(self.job_row()[jobs.WHEN], tables.utc(DUE))
 
     def test_a_folder_under_the_read_only_switch_applies_nothing(self):
         # §3: a verification pass must not move a folder. A round is a write like

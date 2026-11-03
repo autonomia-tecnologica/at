@@ -1587,7 +1587,16 @@ class TheReminderClosing(ServerCase):
         return self.post("/api/reminders/close", {"id": pid, "instance": instance})
 
     def test_closing_the_overdue_instance_shows_the_next_without_overdue(self):
-        row = self.reminder({"text": "água", "freq": "daily", "at": "09:00"})
+        # `since` is fixed to YESTERDAY so the current occurrence is yesterday's
+        # 09:00 and the test is `overdue` at any hour — without it, a run before
+        # 09:00 finds today's occurrence still ahead and the item is `today`.
+        yesterday = date.today() - timedelta(days=1)
+        row = self.reminder({
+            "text": "água",
+            "freq": "daily",
+            "at": "09:00",
+            "since": yesterday.isoformat(),
+        })
         [item] = self.shown()
         self.assertEqual(item["kind"], "overdue")
         status, answer = self.close(row["id"], item["next"])

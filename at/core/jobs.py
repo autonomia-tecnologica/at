@@ -431,6 +431,30 @@ def waits(row: dict) -> dict:
     return tables.edit(JOB, number, {STATUS: WAITING})
 
 
+def stops(row: dict) -> dict:
+    """The round the CEILING refused ENDS — `scheduled` becomes `refused`.
+
+    It is the clock's own answer to a wall the owner found: a round that cannot
+    run is not one to try again on the next pass, because the role that refused
+    it is not something the clock can wait out — trying again every cadence
+    would only write the same refusal forever. The round is over.
+
+    No sixth state is added for it, for the reason `disable` gives: `refused`
+    already means "a person said no to this round ever running", and a schedule
+    the ceiling stops is that same end. **Reviving it is a person's declaration,
+    never the clock's** — the row stays where every refused job stays, and a
+    role that changes back does not make the clock pick it up again.
+
+    A row the clock no longer owns — one a person answered while the round was
+    being prepared — is handed back untouched (`_driven`), the same way
+    `reschedule` and `waits` hand it back.
+    """
+    number = _driven(row)
+    if number is None:
+        return row
+    return tables.edit(JOB, number, {STATUS: REFUSED})
+
+
 def stored(row: dict) -> list[str]:
     """The arguments the row carries, read as the list of strings they are.
 

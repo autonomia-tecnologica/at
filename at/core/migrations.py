@@ -83,6 +83,7 @@ from at.core.migrations_folders import (  # noqa: F401
 from at.core.migrations_later import (  # noqa: F401
     HOOKS_PERMISSIONS,
     JEV_CACHE,
+    LATE_PERMISSIONS,
     NOTE_PERMISSIONS,
     NOTES,
     PROJECT_DESC_LIMIT,
@@ -92,6 +93,7 @@ from at.core.migrations_later import (  # noqa: F401
     _convert_folder,
     _edited_at,
     _hooks,
+    _late_permissions,
     _merge_into,
     _notes,
     _once_needs_a_day,
@@ -172,6 +174,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(31, _prose_in_its_new_name),
     Migration(32, _reminder_closed),
     Migration(33, _remove_agent_note),
+    Migration(34, _late_permissions),
 )
 
 

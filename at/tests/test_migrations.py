@@ -1265,6 +1265,51 @@ class TheNotesArrive(FolderCase):
         self.assertEqual(where.read_text(encoding="utf-8"), before)
 
 
+class TheLatePermissionsArrive(FolderCase):
+    """Migração trinta e quatro: o `admin` alcança o catálogo que cresceu sem ele.
+
+    O papel nasceu do catálogo daquele dia, e as permissões que o produto ganhou
+    depois — as palavras do TASK-186, o `job:declare`/`job:disable` da fatia do
+    relógio, o `reminder:due` e o `secret:install-hooks` — não tinham migração
+    que as entregasse. Sem elas o job de backup que o WebApp pré-declara, e que
+    é do primeiro administrador, para no teto a cada minuto.
+    """
+
+    def role_of_the_day_before(self) -> None:
+        """O `admin` como nasceu antes: o catálogo de hoje menos as catorze."""
+        tables.create(
+            "role",
+            {
+                "name": "admin",
+                "permissions": [
+                    permission
+                    for permission in permissions.all_permissions()
+                    if permission not in migrations.LATE_PERMISSIONS
+                ],
+            },
+        )
+
+    def test_the_administrator_gains_the_permissions_the_catalogue_grew(self):
+        self.born()
+        self.role_of_the_day_before()
+        self.forgotten()
+        self.caught_up()
+        held = permissions.carried(actors.admin_role())
+        for name in migrations.LATE_PERMISSIONS:
+            with self.subTest(permission=name):
+                self.assertIn(name, held)
+
+    def test_a_folder_without_an_administrator_has_nothing_to_fix(self):
+        # `_hand_over` devolve vazio quando não há papel: uma pasta que nunca
+        # teve administrador não ganha um aqui.
+        self.born()
+        self.assertIsNone(actors.admin_role())
+        self.assertEqual(migrations._late_permissions(None), [])
+        self.forgotten()
+        self.caught_up()
+        self.assertIsNone(actors.admin_role())
+
+
 # ------------------------------------------------------------- the stamp ---
 
 

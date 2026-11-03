@@ -501,3 +501,49 @@ def _reminder_closed(ask: Ask | None) -> list[Report]:
     relato e fica onde está.
     """
     return _extend(REMINDER_CLOSED)
+
+
+# As permissões que o CATÁLOGO ganhou DEPOIS que o papel `admin` da pasta nasceu,
+# e que nenhuma migração entregou: as palavras do TASK-186 (`webapp:run`,
+# `backup:make`/`backup:restore`, os verbos de `cli` e `help:show`), o
+# `job:declare`/`job:disable` da fatia do relógio, o `reminder:due` e o
+# `secret:install-hooks`. Todas existem no catálogo de hoje — a lista é lida
+# contra ele, e não inventada —, e cada uma é exatamente o tipo de nome que um
+# papel nascido antes não teve a CHANCE de carregar, a mesma razão de
+# `_strongbox_permission` e `_hooks`.
+LATE_PERMISSIONS = (
+    "assist:ask",
+    "backup:make",
+    "backup:restore",
+    "cli:admin",
+    "cli:convert",
+    "cli:lang",
+    "cli:search",
+    "help:show",
+    "job:declare",
+    "job:disable",
+    "notifier:read",
+    "reminder:due",
+    "secret:install-hooks",
+    "webapp:run",
+)
+
+
+def _late_permissions(ask: Ask | None) -> list[Report]:
+    """Migração trinta e quatro: o administrador alcança o catálogo que cresceu
+    sem ele.
+
+    O papel `admin` da pasta nasceu do catálogo daquele dia, e as permissões
+    acima chegaram depois — as palavras do TASK-186, o `job:declare` e o
+    `job:disable` da fatia do relógio, o `reminder:due` e o
+    `secret:install-hooks`. Nenhuma migração as entregou, e a consequência não é
+    só uma tela que falta: o job de backup que o WebApp pré-declara é do
+    primeiro administrador, e sem `backup:make` a rodada que o relógio tenta
+    para no teto — para sempre, a cada minuto.
+
+    A mesma forma de `_hooks` e `_strongbox_permission`: `_hand_over` só ADICIONA
+    o que falta e nunca pergunta, porque a linha é do AT e o ganho é só o que o
+    catálogo já nomeia. Uma pasta sem `admin` não tem o que alcançar, e a
+    migração devolve vazio.
+    """
+    return _hand_over(LATE_PERMISSIONS)

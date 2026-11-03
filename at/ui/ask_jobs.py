@@ -303,8 +303,9 @@ def _round(row: dict, at: datetime) -> None:
     **The ceiling is the OWNER's, read again on every round**: a role edited
     under a `scheduled` job is read on the next read like any other row, and a
     job whose owner lost the permission is refused by NAME — with the line a
-    wall owes (§3) — and its instant still moves on, so the round comes back
-    once the role does instead of hammering in a loop.
+    wall owes (§3) — and the round ENDS: the job becomes `refused`, the same
+    state `disable` leaves, so the clock stops hammering a wall its owner cannot
+    clear. Reviving it is a person's declaration, not the clock's.
 
     **A missed instant is recovered before the round runs, and the line says so.**
     It is the engine's own act — the round AT was not up for — and §3 writes a
@@ -322,7 +323,7 @@ def _round(row: dict, at: datetime) -> None:
             jobs.JOB, jobs.RUN, jobs.owner(row), audit.ENGINE, audit.REFUSED,
             refused.key, str(refused), threshold=_arrival(),
         )
-        jobs.reschedule(row, clock.next_instant(at))
+        jobs.stops(row)
         return
     table, action = jobs.release(row)
     owner = jobs.owner(row)
