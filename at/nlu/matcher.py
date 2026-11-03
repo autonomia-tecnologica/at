@@ -153,7 +153,7 @@ def match(
         action = "edit"
     row: Any = None
     if action in ROW_ACTIONS:
-        named_row = _name_the_row(action, table, words, runs)
+        named_row = _name_the_row(action, table, words, marks, runs)
         if isinstance(named_row, Question):
             return named_row
         row, runs = named_row
@@ -162,7 +162,8 @@ def match(
     if isinstance(leftover, Question):
         return leftover
 
-    residue = joined(leftover, words, marks).strip()
+    # A pontuação de separação colada ao fim (`nome X,`) não é do texto; o `.` fica.
+    residue = joined(leftover, words, marks).strip().rstrip(",:").rstrip()
     primary = schema.primary(table)
     if residue and primary:
         values[primary] = polish_text(table, primary, residue, language) if action == "create" else residue
@@ -219,7 +220,8 @@ def _implied_values(
 
 
 def _name_the_row(
-    action: str, table: str, words: list[str], runs: list[tuple[int, int]]
+    action: str, table: str, words: list[str], marks: list[str | None],
+    runs: list[tuple[int, int]],
 ) -> tuple[Any, list[tuple[int, int]]] | Question:
     """A linha que a ação nomeia, e os trechos que sobram — ou a pergunta.
 
@@ -227,7 +229,9 @@ def _name_the_row(
     `dia 3` is a day and stays one, and a bare `3` is a row when — and only
     when — the action asked for one.
     """
-    row, runs = take_row(table, words, runs)
+    row, runs = take_row(table, words, runs, marks)
+    if isinstance(row, Question):
+        return row
     if row is None and action in TITLED_ACTIONS:
         # NOMEAR POR TÍTULO (23/10/2026): sem número, o que sobra da frase
         # é buscado no título da tabela.
@@ -235,7 +239,7 @@ def _name_the_row(
         if isinstance(row, Question):
             return row
     if row is None:
-        raise Refused("nlu.error.no_row", table=tables.table_name(table))
+        return Question("nlu.ask.no_row", tables.table_name(table))
     return row, runs
 
 

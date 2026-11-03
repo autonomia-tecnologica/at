@@ -267,6 +267,44 @@ class TheImplied(MatcherCase):
         self.assertEqual(proposal.values.get("text"), "imprimir passagens")
 
 
+class TheNumberedRow(MatcherCase):
+    """B-57: o número de um campo é valor, a pontuação não é do número."""
+
+    def test_a_number_tied_to_a_field_is_its_value_never_the_row(self):
+        for _ in range(3):
+            tables.create("project", {"name": "Macro"})
+        proposal = self.propose("editar o projeto 56: nome Comunidade LLM, pai 3")
+        self.assertEqual(proposal.action, "edit")
+        self.assertEqual(proposal.row, 56)
+        self.assertEqual(proposal.values["name"], "Comunidade LLM")
+        self.assertEqual(proposal.values["parent"], 3)
+
+    def test_a_trailing_comma_or_colon_leaves_the_text_and_a_period_stays(self):
+        tables.create("project", {"name": "Macro"})
+        self.assertEqual(self.propose("editar projeto 1 nome Fase 1.").values["name"], "Fase 1.")
+        self.assertEqual(self.propose("editar projeto 1 nome Fase 1:").values["name"], "Fase 1")
+
+    def test_a_trailing_mark_is_not_part_of_the_number(self):
+        for sentence in ("editar projeto 56, nome X", "editar projeto 56. nome X"):
+            self.assertEqual(self.propose(sentence).row, 56)
+
+    def test_a_field_number_alone_does_not_name_the_row(self):
+        asked = self.propose("editar projeto nome X pai 3")
+        self.assertEqual(asked.key, "nlu.ask.no_row")
+
+    def test_a_row_that_does_not_exist_is_still_a_refusal(self):
+        from at.ui import ask as door
+        result = door.ask("editar o projeto 56: nome X")
+        self.assertNotEqual(result.kind, "question")
+        self.assertIn("56", result.text)
+        self.assertEqual(store.load("project"), [])
+
+    def test_two_loose_numbers_come_back_as_a_question(self):
+        asked = self.propose("editar 56 projeto 7 nome X")
+        self.assertIsInstance(asked, nlu.Question)
+        self.assertEqual(asked.key, "nlu.ask.which_number")
+
+
 class TheRefusal(MatcherCase):
     """A sentence the catalogue does not reach is refused by name."""
 
@@ -302,9 +340,9 @@ class TheRefusal(MatcherCase):
         self.assertEqual(refused.exception.key, "nlu.error.two_tables")
 
     def test_an_action_that_acts_on_a_row_needs_the_row(self):
-        with self.assertRaises(nlu.Refused) as refused:
-            self.propose("edita a tarefa pra amanhã")
-        self.assertEqual(refused.exception.key, "nlu.error.no_row")
+        asked = self.propose("edita a tarefa pra amanhã")
+        self.assertIsInstance(asked, nlu.Question)
+        self.assertEqual(asked.key, "nlu.ask.no_row")
 
     def test_the_refusal_speaks_the_active_language(self):
         with self.assertRaises(nlu.Refused) as refused:
@@ -326,7 +364,7 @@ class TheRefusal(MatcherCase):
             "nlu.error.no_table",
             "nlu.error.two_actions",
             "nlu.error.two_tables",
-            "nlu.error.no_row",
+            "nlu.ask.no_row",
             "nlu.error.interpreter_off",
             "nlu.ask.which_field",
             "nlu.ask.what",

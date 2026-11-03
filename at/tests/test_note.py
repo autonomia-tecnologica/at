@@ -246,12 +246,12 @@ class TheConversation(NoteCase):
         result = door.ask("deletar nota xyzzy")
         self.assertEqual(result.kind, "refused")
         self.assertEqual(result.text, tr("nlu.error.no_title", table=tr("table.note.name.one"), text="xyzzy"))
-        self.assertNotEqual(result.text, tr("nlu.error.no_row", table=tr("table.note.name.one")))
+        self.assertNotIn(tr("nlu.ask.no_row", text=tr("table.note.name.one")), result.text)
 
     def test_no_name_at_all_is_still_no_row(self):
         result = door.ask("deletar nota")
-        self.assertEqual(result.kind, "refused")
-        self.assertIn(tr("nlu.error.no_row", table=tr("table.note.name.one")), result.text)
+        self.assertEqual(result.kind, "question")
+        self.assertIn(tr("nlu.ask.no_row", text=tr("table.note.name.one")), result.text)
 
     def test_the_new_keys_speak_both_languages(self):
         for key in ("nlu.error.no_title", "nlu.ask.which_row"):

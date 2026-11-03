@@ -11,7 +11,7 @@ from typing import Any, cast
 
 from at.core import tables
 from at.data import schema, store
-from at.nlu.matcher_fields import declared_fields
+from at.nlu.matcher_fields import declared_fields, field_before
 from at.nlu.matcher_segment import PARTICLE
 from at.nlu.normalizer import fold
 from at.nlu.reading import Question, Refused
@@ -116,22 +116,39 @@ def take_title(table: str, words: list[str], runs: list[tuple[int, int]]):
     return Question("nlu.ask.which_row", "\n".join(lines)), runs
 
 
-def take_row(table: str, words: list[str], runs: list[tuple[int, int]]):
+# A pontuação que a pessoa cola ao fim de um número (`56:`, `56,`): não é dele.
+TRAILING_MARKS = ":,."
+
+
+def take_row(
+    table: str, words: list[str], runs: list[tuple[int, int]],
+    marks: list[str | None] | None = None,
+):
     """The piece that names a row, and the pieces that are left.
 
     A row is named the way a person names one — `3`, `TASK-3` — and only a piece
-    of one word is looked at, so `dia 3` stays a day.
+    of one word is looked at, so `dia 3` stays a day. UM NÚMERO LIGADO A UM CAMPO
+    (`pai 3`, `prioridade 2`) é o valor dele, nunca a linha (03/11/2026); e a
+    pontuação colada ao fim (`56:`, `56,`) não é do número. Dois números soltos
+    não dizem qual é a linha: voltam como pergunta, nunca como palpite.
     """
-    kept: list[tuple[int, int]] = []
-    found: Any = None
+    candidates: list[tuple[int, tuple[int, int]]] = []
     for start, end in runs:
-        if found is None and end - start == 1:
-            number = tables.number_of(table, words[start])
-            if number is not None:
-                found = number
-                continue
-        kept.append((start, end))
-    return found, kept
+        if end - start != 1:
+            continue
+        if marks is not None and field_before(table, marks, start) is not None:
+            continue
+        number = tables.number_of(table, words[start].rstrip(TRAILING_MARKS))
+        if number is not None:
+            candidates.append((number, (start, end)))
+    if len(candidates) > 1:
+        return Question(
+            "nlu.ask.which_number", ", ".join(words[span[0]] for _, span in candidates)
+        ), runs
+    if not candidates:
+        return None, list(runs)
+    number, spent = candidates[0]
+    return number, [run for run in runs if run != spent]
 
 
 def joined(
