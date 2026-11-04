@@ -94,3 +94,4 @@ desktop.ini
 !/at/vendor/authelia/manifest.json
 /at/vendor/spelling-checker/*
 !/at/vendor/spelling-checker/manifest.json
+/BACKLOG.md
