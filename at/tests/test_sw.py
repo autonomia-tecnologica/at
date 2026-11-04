@@ -59,6 +59,197 @@ async function fetchEvent(path, mode, answer) {
 """
 
 
+FILES_HARNESS = r"""
+const fs = require("fs");
+const handlers = {};
+const stores = {};
+class Resp {
+  constructor(body, init) { this.body = body; this.ok = true; this.headers = { get: () => "x" }; }
+  clone() { return this; }
+  async blob() { return { size: typeof this.body === "string" ? this.body.length : this.size }; }
+  async json() { return JSON.parse(this.body); }
+}
+global.Response = Resp;
+global.caches = {
+  keys: async () => Object.keys(stores),
+  delete: async n => { delete stores[n]; },
+  match: async () => undefined,
+  open: async n => {
+    const m = stores[n] = stores[n] || new Map();
+    return { put: async (k, r) => { m.set(String(k), r); }, match: async k => m.get(String(k)),
+      delete: async k => m.delete(String(k)) };
+  },
+};
+global.self = { location: { origin: "https://h" }, addEventListener: (t, f) => { handlers[t] = f; },
+  skipWaiting() {}, clients: { claim: async () => {} } };
+eval(fs.readFileSync(process.argv[1], "utf8") + "\n;globalThis.__sw = { DEFAULT_LIMIT_MB, FILES, INDEX };");
+let online = true;
+let size = 10;
+global.fetch = async req => {
+  if (!online) throw new Error("offline");
+  const r = new Resp("x".repeat(size)); r.size = size; return r;
+};
+async function get(path, method) {
+  let p = null;
+  const ev = { request: { method: method || "GET", mode: "cors", url: "https://h" + path },
+    respondWith: x => { p = x; } };
+  handlers.fetch(ev);
+  let status = "passed";
+  if (p) { try { await p; status = "answered"; } catch (e) { status = "failed"; } }
+  await new Promise(r => setTimeout(r, 20));
+  return status;
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+(async () => {
+  const out = { limit: globalThis.__sw.DEFAULT_LIMIT_MB };
+  out.text = await get("/api/file?path=a.md");
+  out.bytes = await get("/api/file/bytes?path=b.png");
+  out.tree = await get("/api/files?path=");
+  out.tree2 = await get("/api/file/list?path=");
+  out.post = await get("/api/file", "POST");
+  out.portal = await get("/authelia/api/file?path=a");
+  const idx = () => JSON.parse(stores[globalThis.__sw.FILES].get(globalThis.__sw.INDEX).body);
+  out.kept = Object.keys(idx()).length;
+  online = false;
+  out.offlineOpened = await get("/api/file?path=a.md");
+  out.offlineNever = await get("/api/file?path=zzz.md");
+  online = true;
+  // LRU: three files of 200 MB, the limit is 500 MB: the oldest goes
+  size = 200 * 1024 * 1024;
+  await get("/api/file?path=big1"); await sleep(5);
+  await get("/api/file?path=big2"); await sleep(5);
+  online = false;
+  await get("/api/file?path=big1"); await sleep(5); // big1 touched: big2 is now the oldest
+  online = true;
+  await get("/api/file?path=big3");
+  out.after = Object.keys(idx()).map(k => k.split("path=")[1]).sort();
+  console.log(JSON.stringify(out));
+})();
+"""
+
+
+CONFIG_HARNESS = r"""
+const fs = require("fs");
+const vm = require("vm");
+const src = fs.readFileSync(process.argv[1], "utf8");
+const scenario = process.argv[2];
+const stores = {};
+let online = true;
+let size = 10;
+class Resp {
+  constructor(body) { this.body = body; this.ok = true; this.headers = { get: () => "x" }; }
+  clone() { return this; }
+  async blob() { return { size: this.size !== undefined ? this.size : this.body.length }; }
+  async json() { return JSON.parse(this.body); }
+}
+const cachesApi = {
+  keys: async () => Object.keys(stores),
+  delete: async n => { delete stores[n]; },
+  match: async () => undefined,
+  open: async n => {
+    const m = stores[n] = stores[n] || new Map();
+    return { put: async (k, r) => { m.set(String(k), r); }, match: async k => m.get(String(k)),
+      delete: async k => m.delete(String(k)) };
+  },
+};
+// A "boot" is a fresh global (a SW that wakes up again) over the SAME caches.
+function boot() {
+  const handlers = {};
+  const sandbox = {
+    Response: Resp, URL, JSON, Object, Array, Number, Promise, Date, Math, Map, Set, String, Boolean, Error, console,
+    setTimeout,
+    caches: cachesApi,
+    self: { location: { origin: "https://h" }, addEventListener: (t, f) => { handlers[t] = f; },
+      skipWaiting() {}, clients: { claim: async () => {} } },
+    fetch: async () => {
+      if (!online) throw new Error("offline");
+      const r = new Resp(""); r.size = size; return r;
+    },
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(src + "\n;globalThis.__sw = { DEFAULT_LIMIT_MB, FILES, INDEX, CONFIG };", sandbox);
+  return { handlers, sw: sandbox.__sw };
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function get(h, path) {
+  let p = null;
+  h.handlers.fetch({ request: { method: "GET", mode: "cors", url: "https://h" + path }, respondWith: x => { p = x; } });
+  let status = "passed";
+  if (p) { try { await p; status = "answered"; } catch (e) { status = "failed"; } }
+  await sleep(20);
+  return status;
+}
+async function setConfig(h, mode, limitMb) {
+  let work = null;
+  h.handlers.message({ data: { type: "at:files-config", mode, limitMb }, waitUntil: p => { work = p; } });
+  if (work) await work;
+  await sleep(10);
+}
+function kept() {
+  const m = stores["at-files-v1"];
+  const idx = m && m.get("/__at_files_index__");
+  return idx ? Object.keys(JSON.parse(idx.body)).map(k => k.split("path=")[1]).sort() : [];
+}
+function storedConfig() {
+  const m = stores["at-files-v1"];
+  const cfg = m && m.get("/__at_files_config__");
+  return cfg ? JSON.parse(cfg.body) : null;
+}
+const MB = 1024 * 1024;
+(async () => {
+  const out = {};
+  if (scenario === "modo") {
+    const h = boot();
+    await setConfig(h, "kept", 500);
+    await get(h, "/api/file?path=a");
+    out.keptMode = kept();
+    await setConfig(h, "never", 500);
+    await get(h, "/api/file?path=b");
+    out.neverMode = kept();
+    online = false;
+    out.offlineA = await get(h, "/api/file?path=a");
+    out.offlineB = await get(h, "/api/file?path=b");
+    online = true;
+  } else if (scenario === "reinicio") {
+    const h1 = boot();
+    await get(h1, "/api/file?path=a");
+    await setConfig(h1, "never", 500);
+    const h2 = boot();
+    await get(h2, "/api/file?path=c");
+    out.afterRestart = kept();
+  } else if (scenario === "limite") {
+    const h1 = boot();
+    size = 200 * MB;
+    await get(h1, "/api/file?path=big1"); await sleep(5);
+    await get(h1, "/api/file?path=big2"); await sleep(5);
+    out.before = kept();
+    await setConfig(h1, "kept", 300);
+    out.lowered = kept();
+    const h2 = boot();
+    await get(h2, "/api/file?path=big3");
+    out.afterRestart = kept();
+  } else if (scenario === "invalido") {
+    const h = boot();
+    await setConfig(h, "kept", 1.5);
+    out.afterFraction = storedConfig();
+    await setConfig(h, "bogus", 0);
+    out.afterBogus = storedConfig();
+  }
+  console.log(JSON.stringify(out));
+})();
+"""
+
+
+def _run_config(scenario):
+    run = subprocess.run(
+        ["node", "-e", CONFIG_HARNESS, str(SW), scenario],
+        capture_output=True, text=True, timeout=60,
+    )
+    if run.returncode != 0:
+        raise AssertionError(run.stderr)
+    return json.loads(run.stdout)
+
+
 PUSH_HARNESS = r"""
 const fs = require("fs");
 const handlers = {};
@@ -205,6 +396,47 @@ class ServiceWorkerTests(unittest.TestCase):
         self.assertEqual(out["puts1"], 1)  # o shell do AT é guardado
         self.assertEqual(out["puts2"], 1)  # redirecionada ao portal: não
         self.assertEqual(out["puts3"], 1)  # não-HTML: não
+
+    def test_arquivos_acessados_vao_ao_cache_com_lru_de_500mb(self):
+        run = subprocess.run(["node", "-e", FILES_HARNESS, str(SW)], capture_output=True, text=True, timeout=30)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        out = json.loads(run.stdout)
+        self.assertEqual(out["limit"], 500)  # MB: o padrão, sem configuração
+        self.assertEqual(out["text"], "answered")
+        self.assertEqual(out["bytes"], "answered")
+        self.assertEqual(out["tree"], "passed")  # a listagem nao entra
+        self.assertEqual(out["tree2"], "passed")
+        self.assertEqual(out["post"], "passed")  # escrita nunca e do SW
+        self.assertEqual(out["portal"], "passed")
+        self.assertEqual(out["kept"], 2)
+        self.assertEqual(out["offlineOpened"], "answered")  # ja aberto: abre sem rede
+        self.assertEqual(out["offlineNever"], "failed")  # nao aberto: falha como hoje
+        # big1 foi tocado; big2 era o menos recente e saiu
+        self.assertNotIn("big2", out["after"])
+        self.assertIn("big1", out["after"])
+        self.assertIn("big3", out["after"])
+
+    def test_acessados_guarda_e_nunca_nao_guarda_mas_o_guardado_abre_offline(self):
+        out = _run_config("modo")
+        self.assertEqual(out["keptMode"], ["a"])  # acessados: o arquivo aberto entra
+        self.assertEqual(out["neverMode"], ["a"])  # nunca: o novo não entra
+        self.assertEqual(out["offlineA"], "answered")  # o que já estava abre sem rede
+        self.assertEqual(out["offlineB"], "failed")  # o que nunca entrou falha como antes
+
+    def test_modo_nunca_sobrevive_a_sw_reiniciado(self):
+        out = _run_config("reinicio")
+        self.assertEqual(out["afterRestart"], ["a"])  # o `c` não entrou: a config foi lida de novo
+
+    def test_limite_alterado_despeja_pelo_lru_no_novo_valor(self):
+        out = _run_config("limite")
+        self.assertEqual(out["before"], ["big1", "big2"])  # 400 MB cabem em 500
+        self.assertEqual(out["lowered"], ["big2"])  # 300 MB: sai o menos recente
+        self.assertEqual(out["afterRestart"], ["big3"])  # o limite de 300 MB sobreviveu ao reinício
+
+    def test_limite_invalido_volta_a_500_mb(self):
+        out = _run_config("invalido")
+        self.assertEqual(out["afterFraction"], {"mode": "kept", "limitMb": 500})
+        self.assertEqual(out["afterBogus"], {"mode": "kept", "limitMb": 500})
 
     def test_prefixo_e_o_do_portal(self):
         self.assertIn(f'const PORTAL = "{caddy.PORTAL}";', SW.read_text())

@@ -36,6 +36,7 @@ import RiskRuler from "../components/RiskRuler.vue";
 import AssistSection from "../components/settings/AssistSection.vue";
 import DarkSideSection from "../components/settings/DarkSideSection.vue";
 import DensitySection from "../components/settings/DensitySection.vue";
+import FilesOfflineSection from "../components/settings/FilesOfflineSection.vue";
 import JevSection from "../components/settings/JevSection.vue";
 import MotionSection from "../components/settings/MotionSection.vue";
 import PushSection from "../components/settings/PushSection.vue";
@@ -75,6 +76,7 @@ watchEffect(() => setTrail(word("settings")));
       <template v-if="tab === 'general'">
         <AssistSection />
         <PushSection />
+        <FilesOfflineSection />
         <JevSection />
       </template>
 

@@ -9,6 +9,41 @@ export const FILTERS_KEY = "at.filters"; // which values a column leaves out
 export const COLUMNS_KEY = "at.columns"; // a table's order and its hidden
 export const SELECT_KEY = "at.select";   // what is open, so a reload returns there
 export const REMINDER_DAYS_KEY = "at.reminderDays"; // the reminders screen's horizon (7/30/90 days)
+export const FILES_OFFLINE_KEY = "at.filesOffline"; // the offline files of THIS browser: mode and limit (MB)
+
+// What the browser keeps of the files it opened (item 21). "never" keeps nothing
+// new; "kept" (the default) keeps what was opened, LRU, up to the limit.
+export const FILES_OFFLINE_MODES = ["never", "kept"] as const;
+export type FilesOfflineMode = (typeof FILES_OFFLINE_MODES)[number];
+export const FILES_OFFLINE_DEFAULT_MB = 500;
+
+export interface FilesOffline {
+  mode: FilesOfflineMode;
+  limitMb: number;
+}
+
+// An empty or invalid limit (anything but a whole number of MB, at least 1)
+// goes back to the default: a bad number is a preference forgotten, never an error.
+export function filesOfflineLimit(raw: unknown): number {
+  const value = typeof raw === "string" ? raw.trim() : raw;
+  const n = typeof value === "number" || (typeof value === "string" && value !== "") ? Number(value) : NaN;
+  return Number.isInteger(n) && n >= 1 ? n : FILES_OFFLINE_DEFAULT_MB;
+}
+
+export function filesOfflinePrefs(): FilesOffline {
+  const raw = loadPrefs(FILES_OFFLINE_KEY);
+  const mode = (FILES_OFFLINE_MODES as readonly string[]).indexOf(raw.mode) !== -1 ? raw.mode : "kept";
+  return { mode, limitMb: filesOfflineLimit(raw.limitMb) };
+}
+
+export function saveFilesOffline(config: FilesOffline): FilesOffline {
+  const wanted: FilesOffline = {
+    mode: (FILES_OFFLINE_MODES as readonly string[]).indexOf(config.mode) !== -1 ? config.mode : "kept",
+    limitMb: filesOfflineLimit(config.limitMb),
+  };
+  savePrefs(FILES_OFFLINE_KEY, wanted);
+  return wanted;
+}
 
 export type Prefs = Record<string, any>;
 

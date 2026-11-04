@@ -24,6 +24,168 @@
 
 const CACHE = "at-shell-v3";
 
+// B-28 fatia 1 — THE FILES THE PERSON OPENED. Two reads only: `GET /api/file`
+// (text) and `GET /api/file/bytes` (image, PDF, attachment), both keyed by the
+// full URL (the `?path=` is the identity). The folder listing/tree is NOT
+// kept, and a write (POST) is never answered from here.
+//
+// They live in their OWN cache (`FILES`), apart from the shell's, so that
+// bumping `CACHE` does not throw the person's files away; `activate` spares
+// both names. Network first, as everything here: online always wins and
+// refreshes the copy (so a file deleted/renamed through the write routes is
+// never served stale online — a 404 is not cached and the old copy only
+// answers when the network is gone).
+//
+// LRU over a limit the PERSON sets (item 21, default 500 MB). Cache API entries
+// carry no size or access time, so the simplest metadata that works inside a SW
+// is ONE JSON entry in the same cache (`INDEX`: {url: {size, at}}), rewritten on
+// each touch. No IndexedDB: a single small document, and it can be tested
+// without a browser. Writes to it are chained (`queue`) so two concurrent
+// fetches do not lose each other's update. "Marked by hand is never evicted" is
+// slice 2 (item 22), not here.
+//
+// THE CONFIG is per browser: the page keeps `{mode, limitMb}` in its `prefs`
+// and sends it here by `postMessage`; it is stored as ONE JSON entry in the same
+// cache (`CONFIG`), so a SW that wakes up again reads it back. Nothing stored
+// means the defaults. `mode` "never" keeps nothing NEW; what is already kept
+// still answers offline.
+const FILES = "at-files-v1";
+const INDEX = "/__at_files_index__";
+const CONFIG = "/__at_files_config__";
+const DEFAULT_LIMIT_MB = 500;
+const DEFAULT_MODE = "kept";
+const MODES = ["never", "kept"];
+const FILE_PATHS = ["/api/file", "/api/file/bytes"];
+
+function validMb(value) {
+  return Number.isInteger(value) && value >= 1;
+}
+
+function fileRead(pathname) {
+  return FILE_PATHS.indexOf(pathname) !== -1;
+}
+
+let queue = Promise.resolve();
+function serial(job) {
+  const run = queue.then(job, job);
+  queue = run.catch(() => undefined);
+  return run;
+}
+
+async function readIndex(cache) {
+  const hit = await cache.match(INDEX);
+  if (!hit) return {};
+  try {
+    const data = await hit.json();
+    return data && typeof data === "object" && !Array.isArray(data) ? data : {};
+  } catch (error) {
+    return {};
+  }
+}
+
+function writeIndex(cache, index) {
+  return cache.put(INDEX, new Response(JSON.stringify(index), { headers: { "Content-Type": "application/json" } }));
+}
+
+async function readConfig(cache) {
+  const hit = await cache.match(CONFIG);
+  let data = null;
+  if (hit) {
+    try {
+      data = await hit.json();
+    } catch (error) {
+      data = null;
+    }
+  }
+  const mode = data && MODES.indexOf(data.mode) !== -1 ? data.mode : DEFAULT_MODE;
+  const limitMb = data && validMb(data.limitMb) ? data.limitMb : DEFAULT_LIMIT_MB;
+  return { mode, limit: limitMb * 1024 * 1024 };
+}
+
+// Evict the least recently accessed until the sum fits the limit. `keep` (the
+// entry just written) is never its own victim.
+async function evict(cache, index, limit, keep) {
+  let total = 0;
+  for (const name of Object.keys(index)) total += index[name].size;
+  const order = Object.keys(index)
+    .filter(name => name !== keep)
+    .sort((a, b) => index[a].at - index[b].at);
+  for (const name of order) {
+    if (total <= limit) break;
+    total -= index[name].size;
+    delete index[name];
+    await cache.delete(name);
+  }
+}
+
+// Keep a fresh answer; then evict to the configured limit. A file larger than
+// the whole limit is simply not kept, and mode "never" keeps nothing new.
+function keepFile(key, response, size) {
+  return serial(async () => {
+    const cache = await caches.open(FILES);
+    const config = await readConfig(cache);
+    if (config.mode === "never") return;
+    if (size > config.limit) return;
+    const index = await readIndex(cache);
+    await cache.put(key, response);
+    index[key] = { size, at: Date.now() };
+    await evict(cache, index, config.limit, key);
+    await writeIndex(cache, index);
+  });
+}
+
+// The page's new config: stored first, then applied at once, so lowering the
+// limit evicts now (LRU) rather than at the next file.
+function setConfig(config) {
+  return serial(async () => {
+    const cache = await caches.open(FILES);
+    await cache.put(CONFIG, new Response(JSON.stringify(config), { headers: { "Content-Type": "application/json" } }));
+    const index = await readIndex(cache);
+    await evict(cache, index, config.limitMb * 1024 * 1024, null);
+    await writeIndex(cache, index);
+  });
+}
+
+self.addEventListener("message", event => {
+  const data = event.data;
+  if (!data || data.type !== "at:files-config") return;
+  const mode = MODES.indexOf(data.mode) !== -1 ? data.mode : DEFAULT_MODE;
+  const limitMb = validMb(data.limitMb) ? data.limitMb : DEFAULT_LIMIT_MB;
+  event.waitUntil(setConfig({ mode, limitMb }));
+});
+
+// A hit with no network also counts as an access.
+function touchFile(key) {
+  return serial(async () => {
+    const cache = await caches.open(FILES);
+    const index = await readIndex(cache);
+    if (!index[key]) return;
+    index[key].at = Date.now();
+    await writeIndex(cache, index);
+  });
+}
+
+async function fileAnswer(request) {
+  const key = request.url;
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      const copy = response.clone();
+      const blob = await response.clone().blob();
+      keepFile(key, copy, blob.size).catch(() => undefined);
+    }
+    return response;
+  } catch (error) {
+    const cache = await caches.open(FILES);
+    const cached = await cache.match(key);
+    if (cached) {
+      touchFile(key).catch(() => undefined);
+      return cached;
+    }
+    throw error;
+  }
+}
+
 // THE PORTAL IS NOT OURS. The identity provider lives on the SAME origin under
 // `/authelia` (`at/services/caddy.py`'s `PORTAL`), and a Service Worker at the
 // root sees its navigations too. Answering them here once poisoned the shell
@@ -75,7 +237,7 @@ self.addEventListener("activate", event => {
   event.waitUntil(
     caches
       .keys()
-      .then(names => Promise.all(names.filter(name => name !== CACHE).map(name => caches.delete(name))))
+      .then(names => Promise.all(names.filter(name => name !== CACHE && name !== FILES).map(name => caches.delete(name))))
       .then(() => self.clients.claim()),
   );
 });
@@ -97,6 +259,10 @@ self.addEventListener("fetch", event => {
   // `app.py`'s `_route`), and the app's own router (`App.vue`) reads
   // `location.pathname` once it is running — never the response body — so the
   // one shell cached under `/` answers every address honestly.
+  if (fileRead(url.pathname)) {
+    event.respondWith(fileAnswer(request));
+    return;
+  }
   const navigating = request.mode === "navigate";
   if (!navigating && !cacheable(url.pathname)) return;
   const key = navigating ? "/" : request;

@@ -153,6 +153,9 @@ PAGE_WORDS = (
     # NOTIFICAÇÕES (Web Push): o bloco das Configurações que pede a permissão
     # do navegador e inscreve o PWA — sem ntfy.
     "notifications", "notifications_hint", "notifications_on", "notifications_off",
+    # ARQUIVOS OFFLINE (por navegador): modo e limite do cache de arquivos.
+    "files_offline", "files_offline_hint", "files_offline_never",
+    "files_offline_kept", "files_offline_limit", "files_offline_limit_unit",
     # A CREDENCIAL DO JEV, em Configurações, e o aviso do chat quando falta.
     "jev", "jev_hint", "jev_key", "jev_save", "jev_saved", "jev_not_configured",
     # The screens that move a role and a machine's credential — the two system
