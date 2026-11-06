@@ -499,6 +499,24 @@ class TheUp(FolderCase):
                 self.assertIn(env.container(service.name), argv)
                 self.assertIn(f"{env.LABEL}={service.name}", argv)
 
+    def test_every_container_drops_every_capability_and_only_the_caddy_gets_one(self):
+        # Hardening (item 5): `--cap-drop=ALL` fixo; a única exceção é o NET_BIND_SERVICE
+        # da borda, que bind a 443 dentro do próprio namespace. Seccomp fica no default
+        # do Podman: nenhum `seccomp=` no argv, e nunca `unconfined`.
+        fake = self.runtime()
+        self.quiet(env.up, secret=self.phrase)
+        for service in env.SERVICES:
+            with self.subTest(service=service.name):
+                argv = _call(fake, env.container(service.name))
+                self.assertIn("--cap-drop=ALL", argv)
+                self.assertFalse(any(arg.startswith("seccomp") for arg in argv))
+                self.assertNotIn("seccomp=unconfined", argv)
+                caps = [arg for arg in argv if arg.startswith("--cap-add")]
+                if service.name == env.CADDY:
+                    self.assertEqual(caps, ["--cap-add=NET_BIND_SERVICE"])
+                else:
+                    self.assertEqual(caps, [])
+
     def test_the_configuration_lands_in_the_state_folder(self):
         self.runtime()
         self.quiet(env.up, secret=self.phrase)
