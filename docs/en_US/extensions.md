@@ -15,6 +15,6 @@
 
 - The way back up the grade is an **explicit review**, in one of three modes: *I read what it does*, *I asked an AI to read what it does*, *I trust whoever made it*. Nobody verifies the declaration — it is the only possible format — and that is why the grade presents itself as a declaration (§3, The security posture).
 
-- The plugin state lives in `app/`, in a file, and not in the tables. Since the folder is the person's, one can edit that state and lie to one's own grade: that is not a flaw in the design, because the hash protects you **from the author**, not the author from you.
+- The plugin state lives in `App/extensions.json`, in a file, and not in the tables. Since the folder is the person's, one can edit that state and lie to one's own grade: that is not a flaw in the design, because the hash protects you **from the author**, not the author from you.
 
 - **Code in the engine stays out.** Code that executes on the server is hard to contain. The frontend plugin is accepted because it runs where the browser's containment reaches it — `sandbox`, CSP and a single bridge — and because the table-access request, declared in the manifest, is AT's **first data-access permission**: the person sees, table by table and action by action, what is being installed.

@@ -15,6 +15,6 @@
 
 - O caminho de volta da nota é um **review explícito**, em um de três modos: *eu li o que ele faz*, *eu pedi a uma IA para ler o que ele faz*, *eu confio em quem fez*. Ninguém verifica a declaração — é o único formato possível —, e é por isso que a nota se apresenta como declaração (§3, A postura de segurança).
 
-- O estado dos plugins mora em `app/`, em arquivo, e não nas tabelas. Como a pasta é da pessoa, dá para editar esse estado e mentir para a própria nota: isso não é falha do desenho, porque a hash protege você **do autor**, não o autor de você.
+- O estado dos plugins mora em `App/extensions.json`, em arquivo, e não nas tabelas. Como a pasta é da pessoa, dá para editar esse estado e mentir para a própria nota: isso não é falha do desenho, porque a hash protege você **do autor**, não o autor de você.
 
 - **Código no motor continua fora.** Código que executa no servidor é código difícil de conter. O plugin de frontend é aceito porque roda onde a contenção do navegador o alcança — `sandbox`, CSP e uma única ponte —, e porque o pedido de acesso a tabelas, declarado no manifesto, é a **primeira permissão de acesso a dados** do AT: a pessoa vê, tabela por tabela e ação por ação, o que está instalando.

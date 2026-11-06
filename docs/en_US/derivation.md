@@ -103,7 +103,7 @@ App/settings.json         the instance's key-value configuration
 App/i18n/active           the chosen language — the catalogs travel in the product
 App/counters.json         the last id handed out per table
 App/migrations            how far this folder has migrated
-App/plugins/              the extensions, and the review state of each one
+App/extensions/            the extensions, and the review state of each one
 App/services/<service>/   the persistent state of each service (§4)
 Tables/schema/*.json      the system tables, written in from the product
 Tables/*.jsonl            the rows (they arrive with the first write)
