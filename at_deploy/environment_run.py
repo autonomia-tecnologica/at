@@ -52,6 +52,13 @@ def run_argv(service: Service, image: Image, key: bytes | None = None) -> list[s
 
     `key` is the key this subida derived, or `None` — passed straight through to
     `env_of`, which is the one reader that knows what to do with it.
+
+    **Every container drops every capability** (`--cap-drop=ALL`), and the one
+    exception is the edge: Caddy listens on 443 inside its own network namespace,
+    and binding a port below the unprivileged floor takes `NET_BIND_SERVICE`. That
+    exception is written here, by name, and tested. The seccomp profile is the
+    Podman default, so the argv says nothing about it — and it never says
+    `seccomp=unconfined`.
     """
     argv = [
         "run",
@@ -59,7 +66,10 @@ def run_argv(service: Service, image: Image, key: bytes | None = None) -> list[s
         "--name", container(service.name),
         "--label", f"{LABEL}={service.name}",
         "--network", service.network,
+        "--cap-drop=ALL",
     ]
+    if service.name == CADDY:
+        argv.append("--cap-add=NET_BIND_SERVICE")
     for port in ports_of(service):
         argv += ["--publish", port.published()]
     for mount in service.mounts:
