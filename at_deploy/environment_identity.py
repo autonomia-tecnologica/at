@@ -3,10 +3,10 @@
 
 from __future__ import annotations
 
-from at.core import actors, tables
 from at.i18n import tr
 from at.services import authelia as authelia_service
 from at.services import caddy as caddy_service
+from at.services.authelia import _quoted
 from at_deploy.environment_base import (
     ALL,
     IDENTITY,
@@ -21,13 +21,6 @@ from at_deploy.environment_base import (
 )
 from at_deploy.environment_edge import portal_url, site_host
 from at_deploy.environment_secrets import _kept
-
-
-def _quoted(value: str) -> str:
-    """A value as YAML reads it back — always quoted, so that a name carrying a
-    colon, a hash or a leading space is the name and not the syntax around it."""
-    escaped = value.replace("\\", "\\\\").replace('"', '\\"')
-    return f'"{escaped}"'
 
 
 def _identity_conf() -> str:
@@ -154,17 +147,7 @@ def _identity_users() -> str:
     would be an account nobody holds and anybody could try. A folder with nobody
     in it gets the empty map — the gate reads it and lets nobody through, which
     is the honest state of a gate no key has been handed to yet.
+
+    The text itself is `at.services.authelia.users_yaml`, the one definition.
     """
-    entries = [row for row in actors.people() if row.get("credential")]
-    lines = [f"# {tr('services.identity-provider.users.header')}"]
-    if not entries:
-        lines.append("users: {}")
-        return "\n".join(lines) + "\n"
-    lines.append("users:")
-    for row in entries:
-        lines += [
-            f"  {_quoted(str(row.get('name', '')).strip())}:",
-            f"    displayname: {_quoted(tables.title('actor', row))}",
-            f"    password: {_quoted(str(row.get('credential')))}",
-        ]
-    return "\n".join(lines) + "\n"
+    return authelia_service.users_yaml()
