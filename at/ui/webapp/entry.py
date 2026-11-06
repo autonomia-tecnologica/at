@@ -156,6 +156,8 @@ PAGE_WORDS = (
     # ARQUIVOS OFFLINE (por navegador): modo e limite do cache de arquivos.
     "files_offline", "files_offline_hint", "files_offline_never",
     "files_offline_kept", "files_offline_limit", "files_offline_limit_unit",
+    # ARQUIVOS MARCADOS (item 22): o item do menu do arquivo e os avisos da marca.
+    "files_pin", "files_unpin", "files_pin_over", "files_pin_failed",
     # A CREDENCIAL DO JEV, em Configurações, e o aviso do chat quando falta.
     "jev", "jev_hint", "jev_key", "jev_save", "jev_saved", "jev_not_configured",
     # The screens that move a role and a machine's credential — the two system

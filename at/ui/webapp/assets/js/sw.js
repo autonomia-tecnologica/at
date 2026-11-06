@@ -38,11 +38,13 @@ const CACHE = "at-shell-v3";
 //
 // LRU over a limit the PERSON sets (item 21, default 500 MB). Cache API entries
 // carry no size or access time, so the simplest metadata that works inside a SW
-// is ONE JSON entry in the same cache (`INDEX`: {url: {size, at}}), rewritten on
-// each touch. No IndexedDB: a single small document, and it can be tested
-// without a browser. Writes to it are chained (`queue`) so two concurrent
-// fetches do not lose each other's update. "Marked by hand is never evicted" is
-// slice 2 (item 22), not here.
+// is ONE JSON entry in the same cache (`INDEX`: {url: {size, at, pinned}}),
+// rewritten on each touch. No IndexedDB: a single small document, and it can be
+// tested without a browser. Writes to it are chained (`queue`) so two concurrent
+// fetches do not lose each other's update.
+//
+// MARKED BY HAND (item 22): a pinned entry is never evicted by the LRU. See the
+// PINNED section below.
 //
 // THE CONFIG is per browser: the page keeps `{mode, limitMb}` in its `prefs`
 // and sends it here by `postMessage`; it is stored as ONE JSON entry in the same
@@ -55,7 +57,11 @@ const CONFIG = "/__at_files_config__";
 const DEFAULT_LIMIT_MB = 500;
 const DEFAULT_MODE = "kept";
 const MODES = ["never", "kept"];
-const FILE_PATHS = ["/api/file", "/api/file/bytes"];
+const TEXT_DOOR = "/api/file";
+const BYTES_DOOR = "/api/file/bytes";
+const FILE_PATHS = [TEXT_DOOR, BYTES_DOOR];
+// The `open` words of the text door that mean the view also reads the bytes door.
+const BYTES_OPEN = ["image", "tab", "download"];
 
 function validMb(value) {
   return Number.isInteger(value) && value >= 1;
@@ -102,13 +108,19 @@ async function readConfig(cache) {
   return { mode, limit: limitMb * 1024 * 1024 };
 }
 
+function pinnedTotal(index) {
+  let total = 0;
+  for (const name of Object.keys(index)) if (index[name].pinned) total += index[name].size;
+  return total;
+}
+
 // Evict the least recently accessed until the sum fits the limit. `keep` (the
-// entry just written) is never its own victim.
+// entry just written) is never its own victim, and a pinned entry never is.
 async function evict(cache, index, limit, keep) {
   let total = 0;
   for (const name of Object.keys(index)) total += index[name].size;
   const order = Object.keys(index)
-    .filter(name => name !== keep)
+    .filter(name => name !== keep && !index[name].pinned)
     .sort((a, b) => index[a].at - index[b].at);
   for (const name of order) {
     if (total <= limit) break;
@@ -119,7 +131,9 @@ async function evict(cache, index, limit, keep) {
 }
 
 // Keep a fresh answer; then evict to the configured limit. A file larger than
-// the whole limit is simply not kept, and mode "never" keeps nothing new.
+// the whole limit is simply not kept, and mode "never" keeps nothing new. When
+// the pinned files alone are over the limit, nothing NEW is kept either: a
+// refresh of a file already pinned is not new, and goes on.
 function keepFile(key, response, size) {
   return serial(async () => {
     const cache = await caches.open(FILES);
@@ -127,8 +141,10 @@ function keepFile(key, response, size) {
     if (config.mode === "never") return;
     if (size > config.limit) return;
     const index = await readIndex(cache);
+    const wasPinned = !!(index[key] && index[key].pinned);
+    if (!wasPinned && pinnedTotal(index) > config.limit) return;
     await cache.put(key, response);
-    index[key] = { size, at: Date.now() };
+    index[key] = { size, at: Date.now(), pinned: wasPinned };
     await evict(cache, index, config.limit, key);
     await writeIndex(cache, index);
   });
@@ -146,12 +162,103 @@ function setConfig(config) {
   });
 }
 
+// PINNED (item 22): a file the person marks by hand. Marking keeps it now, under
+// the doors the view reads (the text door, and the bytes door when the text
+// door's `open` says the view needs it); the index flags both entries `pinned`,
+// and the LRU never evicts them. Pinned bytes count in the sum like any other.
+// A pin is an explicit choice, so it is kept under mode "never" too, and even
+// when the file alone is bigger than the limit. When the pinned files alone are
+// over the limit, `overflow` tells the page, and new opened files stop being kept.
+function fileKey(door, path) {
+  return new URL(door + "?path=" + encodeURIComponent(path), self.location.origin).href;
+}
+
+function isPinned(index, path) {
+  const entry = index[fileKey(TEXT_DOOR, path)];
+  return !!(entry && entry.pinned);
+}
+
+// The network first, as everything here; the kept copy only when the network is
+// gone. A failed answer is not kept, and it fails the pin.
+async function fetchKept(cache, key) {
+  let response;
+  try {
+    response = await fetch(key);
+  } catch (error) {
+    const cached = await cache.match(key);
+    if (cached) return cached;
+    throw error;
+  }
+  if (!response.ok) throw new Error("file not answered");
+  return response;
+}
+
+function pinFile(path, pinned) {
+  return serial(async () => {
+    const cache = await caches.open(FILES);
+    const config = await readConfig(cache);
+    const index = await readIndex(cache);
+    const keys = [fileKey(TEXT_DOOR, path), fileKey(BYTES_DOOR, path)];
+    if (!pinned) {
+      for (const key of keys) if (index[key]) index[key].pinned = false;
+      await evict(cache, index, config.limit, null);
+      await writeIndex(cache, index);
+      return { ok: true, pinned: false, overflow: false };
+    }
+    const text = await fetchKept(cache, keys[0]);
+    const payload = await text.clone().json();
+    const parts = [{ key: keys[0], response: text }];
+    if (payload && BYTES_OPEN.indexOf(payload.open) !== -1) {
+      parts.push({ key: keys[1], response: await fetchKept(cache, keys[1]) });
+    }
+    const at = Date.now();
+    for (const part of parts) {
+      const size = (await part.response.clone().blob()).size;
+      await cache.put(part.key, part.response);
+      index[part.key] = { size, at, pinned: true };
+    }
+    const overflow = pinnedTotal(index) > config.limit;
+    await evict(cache, index, config.limit, null);
+    await writeIndex(cache, index);
+    return { ok: true, pinned: true, overflow };
+  });
+}
+
+function pinState(path) {
+  return caches
+    .open(FILES)
+    .then(cache => readIndex(cache))
+    .then(index => ({ ok: true, pinned: isPinned(index, path) }));
+}
+
+// Answers the page on the port it sent with the message (`MessageChannel`). A
+// job that fails answers `{ok: false}`: the page then says it could not.
+function reply(event, job) {
+  const port = event.ports && event.ports[0];
+  const done = job
+    .catch(() => ({ ok: false }))
+    .then(body => {
+      if (port) port.postMessage(body);
+    });
+  if (typeof event.waitUntil === "function") event.waitUntil(done);
+}
+
 self.addEventListener("message", event => {
   const data = event.data;
-  if (!data || data.type !== "at:files-config") return;
-  const mode = MODES.indexOf(data.mode) !== -1 ? data.mode : DEFAULT_MODE;
-  const limitMb = validMb(data.limitMb) ? data.limitMb : DEFAULT_LIMIT_MB;
-  event.waitUntil(setConfig({ mode, limitMb }));
+  if (!data) return;
+  if (data.type === "at:files-config") {
+    const mode = MODES.indexOf(data.mode) !== -1 ? data.mode : DEFAULT_MODE;
+    const limitMb = validMb(data.limitMb) ? data.limitMb : DEFAULT_LIMIT_MB;
+    event.waitUntil(setConfig({ mode, limitMb }));
+    return;
+  }
+  if (data.type === "at:files-pin" && typeof data.path === "string" && data.path) {
+    reply(event, pinFile(data.path, !!data.pinned));
+    return;
+  }
+  if (data.type === "at:files-state" && typeof data.path === "string" && data.path) {
+    reply(event, pinState(data.path));
+  }
 });
 
 // A hit with no network also counts as an access.
