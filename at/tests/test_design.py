@@ -571,6 +571,44 @@ class TheTitlesAreInNormalCase(unittest.TestCase):
             self.assertNotIn("letter-spacing", body)
 
 
+class TheChromeFollowsTheCanvas(unittest.TestCase):
+    """The system bars and the install card wear the canvas of the default theme.
+
+    `theme-color` has two entries: the day canvas for the light side, and the
+    night canvas behind a media query. The manifest carries the day canvas only.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.light = _resolved((THEMES / "at.css").read_text(encoding="utf-8"))
+        cls.dark = _resolved((THEMES / "at-dark.css").read_text(encoding="utf-8"))
+        cls.html = (webapp.HERE / "index.html").read_text(encoding="utf-8")
+        cls.manifest = json.loads((ASSETS / "manifest.webmanifest").read_text(encoding="utf-8"))
+
+    def test_the_light_theme_colour_is_the_day_canvas(self):
+        self.assertIn(f'<meta name="theme-color" content="{self.light["--surface-canvas"]}">', self.html)
+
+    def test_the_dark_theme_colour_is_the_night_canvas_behind_its_query(self):
+        self.assertIn(
+            f'<meta name="theme-color" media="(prefers-color-scheme: dark)" content="{self.dark["--surface-canvas"]}">',
+            self.html,
+        )
+
+    def test_both_paint_paths_repaint_every_theme_colour_meta(self):
+        # The first meta only is the bug this stops: the day meta would take the
+        # canvas and the night one would keep the default forever.
+        boot = (webapp.HERE / "assets" / "js" / "boot.js").read_text(encoding="utf-8")
+        page = (webapp.HERE / "src" / "lib" / "theme.ts").read_text(encoding="utf-8")
+        for source in (boot, page):
+            self.assertIn('querySelectorAll(\'meta[name="theme-color"]\')', source)
+            self.assertNotIn('querySelector(\'meta[name="theme-color"]\')', source)
+
+    def test_the_manifest_carries_the_day_canvas(self):
+        canvas = self.light["--surface-canvas"]
+        self.assertEqual(self.manifest["background_color"], canvas)
+        self.assertEqual(self.manifest["theme_color"], canvas)
+
+
 class TheDensity(unittest.TestCase):
     def test_compact_is_an_attribute_that_only_overrides_tokens(self):
         base = Path(webapp.__file__).parent / "assets" / "base.css"

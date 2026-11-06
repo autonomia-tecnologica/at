@@ -52,11 +52,12 @@ try {
     // already the first. It belongs in this file for the same reason the link
     // does — it is the step before the first paint, and it rides the theme.
     const paintBars = () => {
-      const meta = document.querySelector('meta[name="theme-color"]');
-      if (!meta) return;
+      // EVERY `theme-color` meta, not the first: the page carries one for the
+      // day and one behind `prefers-color-scheme: dark`, and the query picks.
+      const metas = document.querySelectorAll('meta[name="theme-color"]');
       const canvas = getComputedStyle(document.documentElement)
         .getPropertyValue("--surface-canvas").trim();
-      if (canvas) meta.setAttribute("content", canvas);
+      if (canvas) metas.forEach(meta => meta.setAttribute("content", canvas));
     };
     // TIMING: a link whose `href` just moved still has the OLD stylesheet
     // applied, so the colour is read only when the new one says it loaded (and

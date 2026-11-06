@@ -2,9 +2,9 @@
 
    The type, spacing and motion scales live in `base.css` —
    they are not colour. What changes is only what LIGHT
-   decides: the surfaces invert, and the accent is lifted from #7c3aed (built
-   for white, 3.9:1 on a dark card — under AA) to #a684f7, the same 262° hue at
-   a lightness tuned for this ground (8.2:1 on the card, 8.9:1 on the window).
+   decides: the surfaces invert, and the text accent is lifted from #7b39ec (built
+   for white, 2.7:1 on a dark card — under AA for text) to #a476ff, the site's own
+   link colour (4.9:1 on the card, 5.6:1 on the window). #7b39ec stays for graphics.
 
    THE RAMP, same reasoning as the day side: one 50→900 scale at H 262°, with
    `--accent` pinned to step 600 — the lifted colour is already the one this
@@ -26,31 +26,31 @@
   --r-lg: 20px;
 
   /* ===== surfaces ============================================================= */
-  --surface-canvas: #120b1f;
-  --surface-card: #180f28;
-  --surface-raised: #1c1230;
-  --surface-sunken: #0d0716;
+  --surface-canvas: #1f1233;
+  --surface-card: #2b1a4a;
+  --surface-raised: #2f1656;
+  --surface-sunken: #170c2a;
   /* THE TEXT ROLES: violet-tinted neutrals with the chroma
      turned down (H 262), so the text stays in the brand's family without
      reading purple. Worst-case ratios on the three surfaces: 16.3 / 8.2 / 6.4. */
-  --neutral-50: #f6f4fa;
-  --neutral-100: #e6e2ee;
-  --neutral-200: #cdc8da;
-  --neutral-300: #b3acc4;
-  --neutral-400: #9d97b0;
+  --neutral-50: #ffffff;
+  --neutral-100: #ece8f5;
+  --neutral-200: #d4cde4;
+  --neutral-300: #9ca3af;
+  --neutral-400: #a59bc6;
   --neutral-500: #7a6ea0;
   --neutral-600: #4a3d70;
   --neutral-700: #3a2c5c;
-  --neutral-800: #2c2047;
-  --neutral-900: #1c1230;
-  --neutral-950: #120b1f;
+  --neutral-800: #2b1a4a;
+  --neutral-900: #1f1233;
+  --neutral-950: #170c2a;
   --text-primary: var(--neutral-50);
   --text-secondary: var(--neutral-300);
   --text-tertiary: var(--neutral-400);
-  --border-subtle: #2c2047;
-  --border-default: #3a2c5c;
-  --border-control: #7a6ea0;
-  --row-hover: #211738;
+  --border-subtle: #241a3c;
+  --border-default: #3b2960;
+  --border-control: #9ca3af;
+  --row-hover: #261c40;
   --control-track: #2f2150;
 
   /* ===== the brand, lifted for the dark, as a ramp (--accent at 600) ========= */
@@ -61,9 +61,8 @@
      never asks for are steps nobody measured, and a token a theme carries for
      nothing hides which decorations are actually in use. */
   --accent-300: #5b3a97;
-  --accent-400: #7c4fd1;
   --accent-500: #9163f0;
-  --accent-600: #a684f7; /* the lifted brand colour, exactly */
+  --accent-600: #a476ff; /* the lifted brand colour, exactly (the site's link colour) */
   --accent-700: #bda6fa;
   --accent-800: #d6c6fc;
   --accent: var(--accent-600);
@@ -71,7 +70,10 @@
   --accent-active: var(--accent-800);
   --accent-ink: #180f2b;
   --accent-soft: var(--accent-50);
-  --accent-ring: rgb(166 132 247 / 35%);
+  --accent-ring: rgb(164 118 255 / 35%);
+  /* THE GRAPHIC ACCENT: the day brand colour, kept for a bar or a ring. On the
+     night side it is never text (3.05:1 on the canvas, under the 4.5 a word needs). */
+  --accent-graphic: #7b39ec;
 
   /* ===== semantics, lifted the same way the accent was ===================== */
   --success: #34d399;
@@ -102,8 +104,8 @@
   --shadow-e2: 0 12px 32px rgb(var(--shadow-rgb) / 60%);
 
   /* ===== scrollbars ============================================================= */
-  --scrollbar-thumb: #362a54;
-  --scrollbar-thumb-hover: #453569;
+  --scrollbar-thumb: #3b2960;
+  --scrollbar-thumb-hover: #4a3a72;
 
   /* ===== the chrome: darker than the canvas around it, still violet ============ */
   /* THE EDGE WAS A SHADOW, AND A SHADOW ON BLACK IS NOTHING: the
@@ -121,12 +123,12 @@
   --nav-ink-2: #c3b8e0;
   --nav-ink-3: #9d97b0;
   --nav-item-hover: rgb(255 255 255 / 5%);
-  --nav-item-on-bg: rgb(166 132 247 / 18%);
+  --nav-item-on-bg: rgb(164 118 255 / 18%);
   --nav-item-on-ink: #ffffff;
-  --nav-item-on-edge: var(--accent-500);
-  --accent-ink-on-nav: var(--accent-400);
-  --nav-brand-bg: var(--accent); /* chapada: a telha não tem gradiente */
-  --nav-brand-ink: #180f2b;
+  --nav-item-on-edge: var(--accent-graphic);
+  --accent-ink-on-nav: var(--accent-500);
+  --nav-brand-bg: #4c1d95; /* chapada: a telha não tem gradiente */
+  --nav-brand-ink: #ffffff;
   --locale-raw: inline;
   --locale-name: none;
   --locale-flag: none;
