@@ -1,0 +1,34 @@
+{
+  "pt_BR": {
+    "name.one": "Função",
+    "name.many": "Funções",
+    "field.function": "Função",
+    "field.function.library": "Biblioteca",
+    "field.function.strongbox": "Cofre",
+    "field.function.code": "Códigos",
+    "field.function.harness": "Harness",
+    "field.folders": "Pastas",
+    "field.enabled": "Habilitada",
+    "field.enabled.enabled": "Habilitada",
+    "field.enabled.disabled": "Desabilitada",
+    "error.one_folder": "A função {function} aceita uma única pasta.",
+    "error.unknown_function": "{function} não é uma função do AT.",
+    "error.no_function_row": "A função {function} não está na tabela."
+  },
+  "en_US": {
+    "name.one": "Function",
+    "name.many": "Functions",
+    "field.function": "Function",
+    "field.function.library": "Library",
+    "field.function.strongbox": "Vault",
+    "field.function.code": "Code",
+    "field.function.harness": "Harness",
+    "field.folders": "Folders",
+    "field.enabled": "Enabled",
+    "field.enabled.enabled": "Enabled",
+    "field.enabled.disabled": "Disabled",
+    "error.one_folder": "The {function} function takes a single folder.",
+    "error.unknown_function": "{function} is not an AT function.",
+    "error.no_function_row": "The {function} function is not in the table."
+  }
+}

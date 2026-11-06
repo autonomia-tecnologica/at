@@ -54,7 +54,10 @@
       "razão": "reason",
       "limiar": "threshold",
       "argumentos": "arguments",
-      "parâmetros": "arguments"
+      "parâmetros": "arguments",
+      "função": "function",
+      "pastas": "folders",
+      "habilitada": "enabled"
     }
   },
   "en_US": {
@@ -113,7 +116,10 @@
       "why": "reason",
       "threshold": "threshold",
       "arguments": "arguments",
-      "parameters": "arguments"
+      "parameters": "arguments",
+      "folders": "folders",
+      "enabled": "enabled",
+      "function": "function"
     }
   }
 }

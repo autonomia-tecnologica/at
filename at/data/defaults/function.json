@@ -1,0 +1,52 @@
+{
+  "id": "function",
+  "order": 12,
+  "name": {
+    "one": "table.function.name.one",
+    "many": "table.function.name.many"
+  },
+  "store": "data/functions.jsonl",
+  "type": "function",
+  "primary": "function",
+  "columns": [
+    "function",
+    "folders",
+    "enabled"
+  ],
+  "desc": "the map from what AT does to where it does it: the internal function, the folders it is bound to (the library accepts several, the others one; relative to the Working Folder or absolute) and whether it is on. Switching a function off keeps its data",
+  "fields": {
+    "id": {
+      "label": "table.field.id",
+      "filterable": true,
+      "searchable": true
+    },
+    "function": {
+      "label": "table.function.field.function",
+      "filterable": true,
+      "searchable": true,
+      "required": true,
+      "enum": {
+        "library": "table.function.field.function.library",
+        "strongbox": "table.function.field.function.strongbox",
+        "code": "table.function.field.function.code",
+        "harness": "table.function.field.function.harness"
+      }
+    },
+    "folders": {
+      "label": "table.function.field.folders",
+      "type": "list",
+      "filterable": true,
+      "searchable": true,
+      "default": []
+    },
+    "enabled": {
+      "label": "table.function.field.enabled",
+      "filterable": true,
+      "enum": {
+        "enabled": "table.function.field.enabled.enabled",
+        "disabled": "table.function.field.enabled.disabled"
+      },
+      "default": "enabled"
+    }
+  }
+}

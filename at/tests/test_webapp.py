@@ -236,10 +236,13 @@ class TheState(ServerCase):
         # product: `actor` and `role` are declared beside the three that carry
         # the daily work (§4), and `secret` — what AT uses and nobody reads —,
         # `audit` — the log of acts — and `job` — the demand that waits — close
-        # the list with them.
+        # the list with them, and `function` — the map of the functions — after.
         self.assertEqual(
             keys,
-            ["task", "project", "note", "reminder", "actor", "role", "secret", "audit", "job"],
+            [
+                "task", "project", "note", "reminder", "actor", "role", "secret",
+                "audit", "job", "function",
+            ],
         )
         self.assertEqual(next(t for t in state["tables"] if t["key"] == "task")["count"], 1)
 

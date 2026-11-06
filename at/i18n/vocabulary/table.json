@@ -10,7 +10,8 @@
       "papel": "role",
       "segredo": "secret",
       "auditoria": "audit",
-      "trabalho": "job"
+      "trabalho": "job",
+      "função": "function"
     }
   },
   "en_US": {
@@ -24,7 +25,8 @@
       "role": "role",
       "secret": "secret",
       "audit": "audit",
-      "job": "job"
+      "job": "job",
+      "function": "function"
     }
   }
 }

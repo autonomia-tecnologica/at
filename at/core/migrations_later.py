@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from at.core import (
+    functions,
     paths,
     permissions,
     tables,
@@ -547,3 +548,31 @@ def _late_permissions(ask: Ask | None) -> list[Report]:
     migração devolve vazio.
     """
     return _hand_over(LATE_PERMISSIONS)
+
+
+# The table of the FUNCTIONS (item 44) — which folders each function of AT works
+# in — and the six permissions the engine gives a table that does not narrow
+# itself, read off `tables.ACTIONS` like `NOTE_PERMISSIONS`.
+FUNCTIONS = ("function",)
+
+
+FUNCTION_PERMISSIONS = tuple(f"function:{action}" for action in tables.ACTIONS)
+
+
+def _functions(ask: Ask | None) -> list[Report]:
+    """Migration thirty-five: the `function` table, seeded with today's folders.
+
+    The declaration is written where it is ABSENT, and the rows are written only
+    for the functions the table has none of, each bound to the folder this
+    Working Folder carries TODAY — so an instance that already exists goes on
+    working in the same folders. It does not ask: the table is the product's own
+    and nothing outside the folder points at it.
+    """
+    written = schema.seed(paths.data_dir() / schema.SCHEMA_DIR, only=FUNCTIONS)
+    functions.seed()
+    report: list[Report] = []
+    if written:
+        report.append(
+            ("boot.migration.declarations.written", {"names": ", ".join(sorted(written))})
+        )
+    return report + _hand_over(FUNCTION_PERMISSIONS)

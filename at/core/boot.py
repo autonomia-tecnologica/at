@@ -26,7 +26,7 @@ from __future__ import annotations
 import sys
 from typing import Callable
 
-from at.core import actors, files, migrations, paths, settings, versioning
+from at.core import actors, files, functions, migrations, paths, settings, versioning
 from at.data import schema
 from at.i18n import active_code, tr, write_active
 
@@ -123,6 +123,9 @@ def create_working_folder(ask: Ask | None = None) -> None:
     # needs a row to be named in the `audit` (item 15). The first ADMIN is not:
     # it is asked for, and `at-cli admin` is the door (§3, item 9).
     actors.seed_engine()
+
+    # The map of the functions, with today's folders (item 44).
+    functions.seed()
 
     settings.save({"schema": settings.SCHEMA})
 

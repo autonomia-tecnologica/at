@@ -53,7 +53,14 @@
       "aprovado": "approved",
       "aprovada": "approved",
       "agendado": "scheduled",
-      "agendada": "scheduled"
+      "agendada": "scheduled",
+      "códigos": "code",
+      "código": "code",
+      "harness": "harness",
+      "biblioteca": "library",
+      "cofre": "strongbox",
+      "habilitada": "enabled",
+      "desabilitada": "disabled"
     }
   },
   "en_US": {
@@ -95,7 +102,14 @@
       "refused": "refused",
       "waiting": "waiting",
       "approved": "approved",
-      "scheduled": "scheduled"
+      "scheduled": "scheduled",
+      "code": "code",
+      "harness": "harness",
+      "library": "library",
+      "vault": "strongbox",
+      "strongbox": "strongbox",
+      "enabled": "enabled",
+      "disabled": "disabled"
     }
   }
 }
