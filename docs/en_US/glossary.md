@@ -30,5 +30,5 @@ Each name has one meaning, and names that would touch each other do not coexist.
 | **plugin** / **extension** | what teaches AT something or adds a screen to it; pure data or a frontend in a sandboxed iframe, always with a manifest and a hash |
 | **review** | the acceptance of a plugin, tied to the hash, in one of three modes |
 | **Main Key** | what the person knows and types — at least 16 characters, and it is a phrase; it is the same string that proves the first admin and unlocks the Vault, and from it the **derived keys** derive, per service |
-| **manifesto** | the seed of this repository, visible in the git history; and `manifest.json` is just the file that has that name |
+| **manifesto** | the Autonomia Tecnológica one, which lives primarily on the site (`site/i18n/pt_BR.json`); the seed of this repository is the first version of the founding document, visible in the git history; and `manifest.json` is just the file that has that name |
 | **pin**, **migration**, **migration framework** | stay in English, like the rest of the code: version and hashing fixation; the structure change that runs on the first start; and the set of them — what carries the stamp, the order and the rule that a published one is not edited |

@@ -2,6 +2,8 @@
 
 AT é um motor de tarefas determinístico. Ele roda **dentro de uma pasta**, e essa pasta vira a **Pasta de Trabalho** dele. Este repositório é o **produto a publicar** — o motor, as declarações padrão, a infraestrutura que vai embarcada e os dois binários — `at-cli`, que é a pasta e o app, e `at-deploy`, que monta o ambiente do §7. Ele não carrega dado pessoal nenhum: nenhum caminho de máquina de ninguém, nenhum host, nenhum id.
 
+A filosofia do ambiente de trabalho, que vale sobre este documento, está em `~/Codes/ambiente-de-trabalho` (`docs/pt_BR/filosofia.md`). O manifesto da Autonomia Tecnológica mora primariamente no site (`site/i18n/pt_BR.json`).
+
 ## 0. Protocolo de agente
 
 ### Proteção de arquivo
@@ -34,7 +36,7 @@ AT é um motor de tarefas determinístico. Ele roda **dentro de uma pasta**, e e
 
 ### Introdução
 
-O AT é um software completamente escrito por LLM. A primeira versão deste documento foi escrita por mim — ela está no histórico do git, que é onde vive o Manifesto, a semente deste repositório — e de lá para cá quem o modificou foi a LLM, à medida que ela encontrava contradições ou que decidíamos coisas novas; cada alteração passou pelo meu aval (§0). O _ghostwriter_ da PoC é Claude Code + DeepSeek Flash versão 4, e a partir do início do desenvolvimento final do projeto, versão 4.1. A escolha é proposital: primeiro é o preço. Segundo se eu for ter meus dados usados para treinamento, que seja para algo que volta como pesos abertos para a comunidade. Acho que a matemática é simples. Também é uma tentativa de provar que temos LLM suficiente já. Talvez assim parem de uma vez essa corrida sem fim por uma AGI.
+O AT é um software completamente escrito por LLM. A primeira versão deste documento foi escrita por mim — ela está no histórico do git, a semente deste repositório (o Manifesto da Autonomia Tecnológica vive hoje, primariamente, no site: `site/i18n/pt_BR.json`) — e de lá para cá quem o modificou foi a LLM, à medida que ela encontrava contradições ou que decidíamos coisas novas; cada alteração passou pelo meu aval (§0). O _ghostwriter_ da PoC é Claude Code + DeepSeek Flash versão 4, e a partir do início do desenvolvimento final do projeto, versão 4.1. A escolha é proposital: primeiro é o preço. Segundo se eu for ter meus dados usados para treinamento, que seja para algo que volta como pesos abertos para a comunidade. Acho que a matemática é simples. Também é uma tentativa de provar que temos LLM suficiente já. Talvez assim parem de uma vez essa corrida sem fim por uma AGI.
 
 O AT é um software pensado para mim. Fruto de algumas semanas de foco-quase-burnout em LLM e a tentativa de controlar o incontrolável. Entre estudos de harness voltados a segurança, eu testava visões arquiteturais de software ou temas baseados em redes sociais antigas direto em um programa que apelidei de `AT`.
 

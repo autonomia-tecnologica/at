@@ -30,5 +30,5 @@ Cada nome tem um só significado, e nomes que se encostariam não convivem. Semp
 | **plugin** / **extensão** | o que ensina algo ao AT ou acrescenta uma tela a ele; dado puro ou frontend em iframe sandbox, sempre com manifesto e hash |
 | **review** | a aceitação de um plugin, amarrada à hash, em um de três modos |
 | **Chave Principal** | o que a pessoa sabe e digita — no mínimo 16 caracteres, e é uma frase; é a mesma string que prova o primeiro admin e destrava o Cofre, e dela derivam as **chaves derivadas**, por serviço |
-| **manifesto** | a semente deste repositório, visível no histórico do git; e `manifest.json` é só o arquivo que tem esse nome |
+| **manifesto** | o da Autonomia Tecnológica, que mora primariamente no site (`site/i18n/pt_BR.json`); a semente deste repositório é a primeira versão do documento fundador, visível no histórico do git; e `manifest.json` é só o arquivo que tem esse nome |
 | **pin**, **migration**, **migration framework** | ficam em inglês, como o resto do código: fixação de versão e hashing; a mudança de estrutura que roda na primeira subida; e o conjunto delas — a máquina de migração —, o carimbo, a ordem e a regra de que uma publicada não se edita |
