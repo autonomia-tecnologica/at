@@ -250,6 +250,152 @@ def _run_config(scenario):
     return json.loads(run.stdout)
 
 
+PIN_HARNESS = r"""
+const fs = require("fs");
+const handlers = {};
+const stores = {};
+let online = true;
+let sizes = {};
+let opens = {};
+class Resp {
+  constructor(body) { this.body = body; this.ok = true; this.headers = { get: () => "x" }; this.size = undefined; }
+  clone() { return this; }
+  async blob() { return { size: this.size !== undefined ? this.size : this.body.length }; }
+  async json() { return JSON.parse(this.body); }
+}
+global.Response = Resp;
+global.caches = {
+  keys: async () => Object.keys(stores),
+  delete: async n => { delete stores[n]; },
+  match: async () => undefined,
+  open: async n => {
+    const m = stores[n] = stores[n] || new Map();
+    return { put: async (k, r) => { m.set(String(k), r); }, match: async k => m.get(String(k)),
+      delete: async k => m.delete(String(k)) };
+  },
+};
+global.self = { location: { origin: "https://h" }, addEventListener: (t, f) => { handlers[t] = f; },
+  skipWaiting() {}, clients: { claim: async () => {} } };
+eval(fs.readFileSync(process.argv[1], "utf8") + "\n;globalThis.__sw = { FILES, INDEX };");
+global.fetch = async req => {
+  const url = new URL(typeof req === "string" ? req : req.url);
+  if (!online) throw new Error("offline");
+  const path = url.searchParams.get("path");
+  const r = new Resp(JSON.stringify({ open: opens[path] || "text", path }));
+  r.size = sizes[path] !== undefined ? sizes[path] : 10;
+  return r;
+};
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function get(path) {
+  let p = null;
+  handlers.fetch({ request: { method: "GET", mode: "cors", url: "https://h" + path }, respondWith: x => { p = x; } });
+  if (p) { try { await p; } catch (e) { /* a failed answer is the case under test */ } }
+  await sleep(20);
+}
+function ask(data) {
+  return new Promise(resolve => {
+    handlers.message({ data, ports: [{ postMessage: resolve }], waitUntil: () => {} });
+  });
+}
+async function config(mode, limitMb) {
+  let work = null;
+  handlers.message({ data: { type: "at:files-config", mode, limitMb }, waitUntil: p => { work = p; } });
+  if (work) await work;
+  await sleep(10);
+}
+function index() {
+  const m = stores["at-files-v1"];
+  const idx = m && m.get("/__at_files_index__");
+  return idx ? JSON.parse(idx.body) : {};
+}
+function kept() {
+  return Object.keys(index()).map(k => k.split("path=")[1]).sort();
+}
+function pinned() {
+  const idx = index();
+  return Object.keys(idx).filter(k => idx[k].pinned).map(k => k.split("path=")[1]).sort();
+}
+function reset() {
+  for (const k of Object.keys(stores)) delete stores[k];
+  online = true;
+  sizes = {};
+  opens = {};
+}
+const pin = path => ask({ type: "at:files-pin", path, pinned: true });
+const unpin = path => ask({ type: "at:files-pin", path, pinned: false });
+const state = path => ask({ type: "at:files-state", path });
+const MB = 1024 * 1024;
+(async () => {
+  const out = {};
+
+  // A marked file is not evicted; its bytes count in the sum like any other.
+  reset();
+  sizes = { fixo: 300 * MB, a: 200 * MB, b: 200 * MB };
+  await pin("fixo");
+  await get("/api/file?path=a");
+  out.sumKept = kept(); // 500 MB: fits
+  await get("/api/file?path=b"); // 700 MB: the oldest NOT marked goes
+  out.lruKept = kept();
+  out.lruPinned = pinned();
+
+  // Unmarking returns the file to the LRU, and the limit is applied at once.
+  reset();
+  sizes = { fixo: 200 * MB, b: 200 * MB, c: 200 * MB };
+  await pin("fixo");
+  await get("/api/file?path=b");
+  out.unpinAtOnce = (await unpin("fixo")).ok;
+  out.unpinKept = kept(); // 400 MB: nothing goes yet
+  out.unpinState = (await state("fixo")).pinned;
+  await get("/api/file?path=c"); // 600 MB: fixo is the oldest now
+  out.unpinAfter = kept();
+
+  // Marked alone over the limit: the mark is still kept, the page is told, and
+  // no NEW opened file is kept; a refresh of a marked file goes on.
+  reset();
+  sizes = { p1: 300 * MB, p2: 300 * MB, a: 10 };
+  out.overflow1 = (await pin("p1")).overflow;
+  out.overflow2 = (await pin("p2")).overflow;
+  await get("/api/file?path=a");
+  out.blockedKept = kept();
+  await get("/api/file?path=p1");
+  out.refreshKept = kept();
+  out.refreshPinned = pinned();
+
+  // A file alone bigger than the limit can be marked: it is kept and it overflows.
+  reset();
+  sizes = { gigante: 600 * MB };
+  const big = await pin("gigante");
+  out.giantOk = big.ok;
+  out.giantOverflow = big.overflow;
+  out.giantKept = kept();
+
+  // Mode "never" keeps nothing new, but a mark is kept.
+  reset();
+  await config("never", 500);
+  await pin("z");
+  await get("/api/file?path=y");
+  out.neverKept = kept();
+  out.neverPinned = pinned();
+
+  // An image: the view also reads the bytes door, so both entries are marked.
+  reset();
+  opens = { img: "image" };
+  sizes = { img: 50 * MB };
+  await pin("img");
+  out.imageKeys = Object.keys(index()).map(k => k.replace("https://h", "")).sort();
+  out.imagePinned = pinned();
+
+  // Offline with no copy: the mark fails, and nothing is kept.
+  reset();
+  online = false;
+  out.failed = (await pin("nunca")).ok;
+  out.failedKept = kept();
+
+  console.log(JSON.stringify(out));
+})();
+"""
+
+
 PUSH_HARNESS = r"""
 const fs = require("fs");
 const handlers = {};
@@ -491,6 +637,60 @@ class ServiceWorkerTests(unittest.TestCase):
         # (f) HTTP ok com o corpo dizendo `ok: false` é falha e abre.
         self.assertEqual(out["bodyFalseFetches"], out["onceFetches"] + 1)
         self.assertEqual(out["bodyFalseOpened"], ["/reminders"])
+
+    @classmethod
+    def _pin(cls):
+        if not hasattr(cls, "_pin_out"):
+            run = subprocess.run(["node", "-e", PIN_HARNESS, str(SW)], capture_output=True, text=True, timeout=60)
+            if run.returncode != 0:
+                raise AssertionError(run.stderr)
+            cls._pin_out = json.loads(run.stdout)
+        return cls._pin_out
+
+    def test_marcado_nao_sai_pelo_lru_e_conta_na_soma(self):
+        out = self._pin()
+        self.assertEqual(out["sumKept"], ["a", "fixo"])  # 500 MB cabem no limite
+        self.assertEqual(out["lruKept"], ["b", "fixo"])  # 700 MB: sai o `a`, o não marcado mais antigo
+        self.assertEqual(out["lruPinned"], ["fixo"])
+
+    def test_desmarcar_devolve_ao_lru(self):
+        out = self._pin()
+        self.assertTrue(out["unpinAtOnce"])
+        self.assertEqual(out["unpinKept"], ["b", "fixo"])  # 400 MB: o limite ainda não estourou
+        self.assertFalse(out["unpinState"])
+        self.assertEqual(out["unpinAfter"], ["b", "c"])  # o `fixo` virou o mais antigo e sai
+
+    def test_so_o_marcado_sozinho_acima_do_limite_bloqueia_novos_e_avisa(self):
+        out = self._pin()
+        self.assertFalse(out["overflow1"])  # 300 MB: cabe
+        self.assertTrue(out["overflow2"])  # 600 MB de marcados: avisa a tela
+        self.assertEqual(out["blockedKept"], ["p1", "p2"])  # o `a`, novo, não entra
+        self.assertEqual(out["refreshKept"], ["p1", "p2"])  # regravar um marcado não é novo
+        self.assertEqual(out["refreshPinned"], ["p1", "p2"])
+
+    def test_arquivo_maior_que_o_limite_marcado_fica_e_avisa(self):
+        out = self._pin()
+        self.assertTrue(out["giantOk"])
+        self.assertTrue(out["giantOverflow"])
+        self.assertEqual(out["giantKept"], ["gigante"])
+
+    def test_modo_nunca_nao_impede_o_marcado(self):
+        out = self._pin()
+        self.assertEqual(out["neverKept"], ["z"])  # o `y`, novo, não entra; o `z` marcado entra
+        self.assertEqual(out["neverPinned"], ["z"])
+
+    def test_imagem_marca_as_duas_portas_que_a_tela_le(self):
+        out = self._pin()
+        self.assertEqual(
+            out["imageKeys"],
+            ["/api/file/bytes?path=img", "/api/file?path=img"],
+        )
+        self.assertEqual(out["imagePinned"], ["img", "img"])
+
+    def test_marcar_sem_rede_e_sem_copia_falha_e_nada_entra(self):
+        out = self._pin()
+        self.assertFalse(out["failed"])
+        self.assertEqual(out["failedKept"], [])
 
 
 if __name__ == "__main__":

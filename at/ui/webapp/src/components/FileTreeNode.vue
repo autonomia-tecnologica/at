@@ -13,6 +13,8 @@ import { ask } from "../lib/confirm";
 import { post } from "../lib/api";
 import { toast } from "../lib/toast";
 import { word } from "../lib/store";
+import { filePinned, setFilePin } from "../lib/fileOffline";
+import { filesOfflinePrefs } from "../lib/prefs";
 import NamePop from "./pops/NamePop.vue";
 import type { FileNode } from "./FileTree.vue";
 
@@ -55,6 +57,20 @@ async function runConvert(full: string, to: "pdf" | "docx"): Promise<void> {
     toast(word("convert_toast").replace("{path}", answer.path));
   } catch (err) {
     showError(err as Error);
+  }
+}
+
+// MARKED BY HAND (item 22): kept offline in THIS browser, whatever the LRU does.
+// The worker says whether it is marked; a mark that leaves the marked files over
+// the limit says so, and a mark that could not be kept says that instead.
+async function togglePin(full: string, pinned: boolean): Promise<void> {
+  const answer = await setFilePin(full, pinned);
+  if (!answer || !answer.ok) {
+    toast(word("files_pin_failed"));
+    return;
+  }
+  if (answer.overflow) {
+    toast(word("files_pin_over").replace("{limit}", String(filesOfflinePrefs().limitMb)));
   }
 }
 
@@ -106,11 +122,20 @@ async function deleteEntry(full: string): Promise<void> {
 // TASK-165) stays first when it applies; create/rename/delete join it — create
 // lands BESIDE the file, in the folder it already sits in, since a leaf is not
 // a place to create INSIDE.
-function onMenu(event: MouseEvent, full: string): void {
+async function onMenu(event: MouseEvent, full: string): Promise<void> {
   const items: MenuItem[] = [];
   if (full.toLowerCase().endsWith(".md")) {
     items.push({ label: word("convert_pdf"), action: () => void toPdf(full) });
     items.push({ label: word("convert_docx"), action: () => void toDocx(full) });
+  }
+  // The mark asks the worker first, so the menu waits for that one answer. With
+  // no worker there is nothing to keep offline, and the item is not offered.
+  const pinned = await filePinned(full);
+  if (pinned !== null) {
+    items.push({
+      label: word(pinned ? "files_unpin" : "files_pin"),
+      action: () => void togglePin(full, !pinned),
+    });
   }
   const parent = parentOf(full);
   items.push({
@@ -154,7 +179,7 @@ function onDirMenu(event: MouseEvent, full: string): void {
 // directive's handler type takes only an event, and the path is what tells
 // entries apart.
 function menuHandler(full: string): (ev: MouseEvent) => void {
-  return ev => onMenu(ev, full);
+  return ev => void onMenu(ev, full);
 }
 function dirMenuHandler(full: string): (ev: MouseEvent) => void {
   return ev => onDirMenu(ev, full);
