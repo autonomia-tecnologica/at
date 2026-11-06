@@ -43,11 +43,11 @@ function baseLink(): HTMLElement | null {
 // PURPOSE, as they already repeat the `at.theme`/`at.dark` keys — the boot is
 // classic and cannot import from here.
 function paintBars(): void {
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (!meta) return;
+  // Every `theme-color` meta, as `js/boot.js` does: the day one and the night one.
+  const metas = document.querySelectorAll('meta[name="theme-color"]');
   const canvas = getComputedStyle(document.documentElement)
     .getPropertyValue("--surface-canvas").trim();
-  if (canvas) meta.setAttribute("content", canvas);
+  if (canvas) metas.forEach(meta => meta.setAttribute("content", canvas));
 }
 
 export function themeRow(id: string | null): ThemeRow | null {

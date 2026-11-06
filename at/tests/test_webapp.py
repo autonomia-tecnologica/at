@@ -514,8 +514,8 @@ class TheLook(ServerCase):
         self.assertIn("application/manifest+json", headers["Content-Type"])
         manifest = json.loads(body)
         self.assertEqual(manifest["display"], "fullscreen")
-        self.assertEqual(manifest["theme_color"], "#f6f5f2")
-        self.assertEqual(manifest["background_color"], "#f6f5f2")
+        self.assertEqual(manifest["theme_color"], "#f6f1ff")
+        self.assertEqual(manifest["background_color"], "#f6f1ff")
 
     @unittest.skipUnless((webapp.UI_DIR / "index.html").is_file(),
                          "the page is not built: npm ci && npm run build")
@@ -524,7 +524,8 @@ class TheLook(ServerCase):
         self.assertIn(
             'content="width=device-width, initial-scale=1, viewport-fit=cover"', built)
         # The meta is the target the boot rewrites before the first paint.
-        self.assertIn('<meta name="theme-color" content="#f6f5f2">', built)
+        self.assertIn('<meta name="theme-color" content="#f6f1ff">', built)
+        self.assertIn('<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1f1233">', built)
 
     def test_the_bar_colour_is_read_from_the_theme_css_on_both_doors(self):
         # `js/boot.js` and `lib/theme.ts` both take the bars' colour from the

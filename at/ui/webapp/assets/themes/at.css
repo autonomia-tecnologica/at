@@ -35,53 +35,55 @@
      the flat `#fff` a screenshot turns into a glare — and a card is ONE step
      lighter than the floor it sits on, which is what lets it read as raised
      with almost no shadow at all. */
-  --surface-canvas: #f6f5f2;
-  --surface-card: #fdfcfa;
-  --surface-raised: #f1efea;
-  --surface-sunken: #eeebe5;
+  --surface-canvas: #f6f1ff;
+  --surface-card: #ffffff;
+  --surface-raised: #f1ebfc;
+  --surface-sunken: #ebe3f8;
   /* THE TEXT ROLES: every text colour is one of three, and
      each is built so its ratio holds on EVERY surface of this side (canvas,
      card, sunken): 15.6 / 9.2 / 6.1 at the worst. No text uses a step lighter
      than 600; a border colour never paints text. */
-  --neutral-50: #faf9f6;
-  --neutral-100: #f1efea;
-  --neutral-200: #e3e0d7;
-  --neutral-300: #d0ccc2;
-  --neutral-400: #aaa69d;
-  --neutral-500: #8a867d;
-  --neutral-600: #5c5953;
-  --neutral-700: #45423e;
-  --neutral-800: #2f2d2a;
-  --neutral-900: #1d1c1a;
-  --neutral-950: #11100f;
+  --neutral-50: #faf8ff;
+  --neutral-100: #f1ebfc;
+  --neutral-200: #e6def5;
+  --neutral-300: #d9cdf0;
+  --neutral-400: #b9aed0;
+  --neutral-500: #8a7fa3;
+  --neutral-600: #5f6672;
+  --neutral-700: #3d3650;
+  --neutral-800: #2a2636;
+  --neutral-900: #1a1a1a;
+  --neutral-950: #111010;
   --text-primary: var(--neutral-900);
   --text-secondary: var(--neutral-700);
   --text-tertiary: var(--neutral-600);
-  --border-subtle: #e8e5de;
-  --border-default: #d6d2c9;
-  --border-control: #8a867d;
-  --row-hover: #f2f0ea;
-  --control-track: #e3e0d7;
+  --border-subtle: #efeaf8;
+  --border-default: #d9cdf0;
+  --border-control: #6f7685;
+  --row-hover: #f3eefc;
+  --control-track: #e6def5;
 
   /* ===== the brand, as a ramp (H 262°, --accent at step 600) ==============
      THE HUE DOES NOT MOVE — it is still the violet the brand brief asked
      for — only where it is ALLOWED to show does: a tile, a title, the bar on
      the open row, a focus ring. Never a surface a person reads a page on. */
-  --accent-50:  #f5f3ff;
-  --accent-100: #ede9fe;
-  --accent-200: #ddd6fe;
-  --accent-300: #c4b5fd;
-  --accent-400: #a78bfa;
-  --accent-500: #8b5cf6;
-  --accent-600: #7c3aed; /* the brand colour, exactly */
-  --accent-700: #6d28d9;
-  --accent-800: #5b21b6;
+  --accent-50:  #f6f1ff;
+  --accent-100: #ece4fe;
+  --accent-200: #dccffd;
+  --accent-300: #c9b0fa;
+  --accent-500: #9a63f2;
+  --accent-600: #7b39ec; /* the brand colour, exactly */
+  --accent-700: #5f25c0;
+  --accent-800: #4c1d95;
   --accent: var(--accent-600);
   --accent-hover: var(--accent-700);
   --accent-active: var(--accent-800);
   --accent-ink: #ffffff;
   --accent-soft: var(--accent-50);
-  --accent-ring: rgb(124 58 237 / 35%);
+  --accent-ring: rgb(123 57 236 / 35%);
+  /* THE GRAPHIC ACCENT: the brand colour where a bar or a ring is drawn, never
+     text (on a `-soft` wash it is 4.6:1, under the 4.5 a word needs on a tint). */
+  --accent-graphic: var(--accent-600);
 
   /* ===== semantics: the loud colours the brief allows, used loud nowhere
      but a badge, a ring, a status dot ======================================= */
@@ -114,7 +116,7 @@
      all the SAME neutral ink, only the opacity moves — so retinting what this
      theme casts as a shadow or a wash is ONE number, here, not a find-and-
      replace across every rule that happens to agree with it today. */
-  --shadow-rgb: 20 18 15;
+  --shadow-rgb: 26 16 46;
   --shadow-e1: 0 2px 8px rgb(var(--shadow-rgb) / 8%);
   --shadow-e2: 0 12px 32px rgb(var(--shadow-rgb) / 16%);
 
@@ -123,7 +125,7 @@
      is a border this system draws with the mouse, not a colour of its own —
      so it reads the one token, and the two can never drift apart by accident. */
   --scrollbar-thumb: var(--border-default);
-  --scrollbar-thumb-hover: #c3beb3;
+  --scrollbar-thumb-hover: #bfb0e0;
 
   /* ===== the chrome: an overlay panel, THE SAME QUIET SURFACE AS THE PAGE
      ============================================================
@@ -132,7 +134,7 @@
      canvas unless opened), and what it wears is the house's own paper, not a
      second weather system — the violet still marks what is open (the row's
      own wash and edge), it just no longer owns the whole surface to do it. */
-  --nav-bg: #fbfaf7;
+  --nav-bg: #faf8ff;
   --nav-border: rgb(var(--shadow-rgb) / 8%);
   /* A SOFT LIFT, NOT A WALL'S OWN EDGE: the old value pushed the
      shadow sideways (`4px 0 24px`), which read as a wall's own cast — right
@@ -152,9 +154,9 @@
      that reads on it is the brand's own darker step, the same the page
      already uses for a link. */
   --nav-item-on-ink: var(--accent-700);
-  --nav-item-on-edge: var(--accent-400);
+  --nav-item-on-edge: var(--accent-graphic);
   --accent-ink-on-nav: var(--accent-500);
-  --nav-brand-bg: var(--accent); /* chapada: a telha não tem gradiente */
+  --nav-brand-bg: #4c1d95; /* chapada: a telha não tem gradiente */
   --nav-brand-ink: #ffffff;
   --locale-raw: inline;
   --locale-name: none;
