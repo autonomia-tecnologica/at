@@ -102,7 +102,7 @@ App/settings.json         os ajustes da instância, em chave-valor
 App/i18n/active           o idioma escolhido — os catálogos viajam no produto
 App/counters.json         o último id entregue, por tabela
 App/migrations            até onde esta pasta já migrou
-App/plugins/              as extensões, e o estado de review de cada uma
+App/extensions/            as extensões, e o estado de review de cada uma
 App/services/<serviço>/   o estado persistente de cada serviço (§4)
 Tabelas/schema/*.json     as tabelas de sistema, escritas pelo produto
 Tabelas/*.jsonl           as linhas (chegam com a primeira escrita)
