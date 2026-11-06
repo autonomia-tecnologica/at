@@ -215,13 +215,51 @@ def current_candidates(internal: str) -> tuple[str, ...]:
     return tuple(ordered)
 
 
+# The internal names the map of functions (`at.core.functions`) answers for, and
+# the function each one is. The others — `app`, `data`, `projects`, `shared` and
+# `convert` — are the fixed base structure and never ask the map.
+MAPPED: dict[str, str] = {
+    "prose": "library",
+    "strongbox": "strongbox",
+    "harness": "harness",
+}
+
+
+def mapped(internal: str, existing: bool = True) -> list[Path]:
+    """The folders the map binds the internal name to, or `[]` for "no answer".
+
+    A row only counts for the folders that EXIST: a row pointing at a folder
+    that is not there answers nothing, and the resolution falls back to
+    `NAMES`/`FORMER`. `existing=False` is for whoever creates the folders (`boot`).
+    No row, no folders, or an internal name outside the map answer nothing too.
+    A disabled row still answers: switching a function off preserves its data.
+    """
+    function = MAPPED.get(internal)
+    if function is None:
+        return []
+    from at.core import functions
+
+    found = functions.resolved(function)
+    return [path for path in found if path.is_dir()] if existing else found
+
+
+def folders(internal: str) -> list[Path]:
+    """Every folder of the internal name: the map's, else the single `folder`."""
+    return mapped(internal) or [folder(internal)]
+
+
 def folder(internal: str) -> Path:
     """The folder the internal name points at, as this folder spells it.
 
-    The first name that EXISTS wins, so a folder that declined a rename answers
-    under the name it kept. When none exists the active language's name is
-    returned — that is where a folder about to be born is written.
+    The map of functions wins when it has a row with folders for the name (the
+    first one, for a function with several). Otherwise the first name that
+    EXISTS wins, so a folder that declined a rename answers under the name it
+    kept. When none exists the active language's name is returned — that is
+    where a folder about to be born is written.
     """
+    bound = mapped(internal)
+    if bound:
+        return bound[0]
     root = working_folder()
     for name in candidates(internal):
         if (root / name).is_dir():
@@ -331,6 +369,11 @@ def data_dir() -> Path:
 def prose_dir() -> Path:
     """`Biblioteca/` — every file that is not structured data (§4)."""
     return folder("prose")
+
+
+def prose_dirs() -> list[Path]:
+    """Every root of the library, in the map's order (one when there is no map)."""
+    return folders("prose")
 
 
 def projects_dir() -> Path:

@@ -1,5 +1,5 @@
 """The map of the functions (item 44): the `function` table, its seed and its
-reader. The core does not resolve folders through it yet.
+reader, and the core's resolution through it (item 45).
 
 Every test aims AT a throwaway folder with `AT_ROOT`; none needs a network or a
 model.
@@ -171,3 +171,80 @@ class TestMigration(FunctionCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestResolution(FunctionCase):
+    def _drop_row(self, function):
+        rows = [r for r in store.load(functions.TABLE) if r["function"] != function]
+        store.save(functions.TABLE, rows)
+
+    def test_no_row_resolves_by_names(self):
+        for function in ("library", "strongbox", "harness"):
+            self._drop_row(function)
+        self.assertEqual(paths.prose_dir(), self.root / "Biblioteca")
+        self.assertEqual(paths.strongbox_dir(), self.root / "Cofre")
+        self.assertEqual(paths.harness_dir(), self.root / "Harness")
+        self.assertEqual(paths.prose_dirs(), [self.root / "Biblioteca"])
+
+    def test_no_row_still_finds_former_name(self):
+        self._drop_row("library")
+        (self.root / "Biblioteca").rename(self.root / "Arquivos")
+        self.assertEqual(paths.prose_dir(), self.root / "Arquivos")
+
+    def test_seeded_row_resolves_same_as_names(self):
+        self.assertEqual(paths.prose_dir(), self.root / "Biblioteca")
+        self.assertEqual(paths.strongbox_dir(), self.root / "Cofre")
+
+    def test_row_wins_over_names(self):
+        (self.root / "Elsewhere").mkdir()
+        (self.root / "Rules").mkdir()
+        functions.set_folders("strongbox", ["Elsewhere"])
+        functions.set_folders("harness", ["Rules"])
+        self.assertEqual(paths.strongbox_dir(), self.root / "Elsewhere")
+        self.assertEqual(paths.harness_dir(), self.root / "Rules")
+
+    def test_row_pointing_at_a_missing_folder_falls_back(self):
+        functions.set_folders("strongbox", ["Nowhere"])
+        self.assertEqual(paths.strongbox_dir(), self.root / "Cofre")
+        functions.set_folders("library", ["Nowhere", "AlsoNowhere"])
+        self.assertEqual(paths.prose_dirs(), [self.root / "Biblioteca"])
+
+    def test_library_keeps_only_the_roots_that_exist(self):
+        (self.root / "Notes").mkdir()
+        functions.set_folders("library", ["Missing", "Notes"])
+        self.assertEqual(paths.prose_dirs(), [self.root / "Notes"])
+
+    def test_library_with_several_roots(self):
+        outside = tempfile.TemporaryDirectory()
+        self.addCleanup(outside.cleanup)
+        (self.root / "Notes").mkdir()
+        functions.set_folders("library", ["Notes", outside.name])
+        self.assertEqual(paths.prose_dirs(), [self.root / "Notes", Path(outside.name)])
+        self.assertEqual(paths.prose_dir(), self.root / "Notes")
+
+    def test_row_without_folders_falls_back(self):
+        functions.set_folders("harness", [])
+        self.assertEqual(paths.harness_dir(), self.root / "Harness")
+
+    def test_disabled_row_still_resolves(self):
+        (self.root / "Elsewhere").mkdir()
+        functions.set_folders("strongbox", ["Elsewhere"])
+        functions.set_enabled("strongbox", False)
+        self.assertEqual(paths.strongbox_dir(), self.root / "Elsewhere")
+
+    def test_unmapped_names_ignore_the_map(self):
+        self.assertEqual(paths.projects_dir(), self.root / "Projetos")
+        self.assertEqual(paths.data_dir(), self.root / "Tabelas")
+
+    def test_at_root_still_decides_the_base(self):
+        other = tempfile.TemporaryDirectory()
+        self.addCleanup(other.cleanup)
+        with mock.patch.dict(os.environ, {"AT_ROOT": other.name}):
+            self.assertEqual(paths.prose_dir(), Path(other.name).resolve() / "Biblioteca")
+
+    def test_boot_creates_every_library_root(self):
+        functions.set_folders("library", ["Notes", "More"])
+        with redirect_stdout(StringIO()):
+            boot.create_working_folder()
+        self.assertTrue((self.root / "Notes").is_dir())
+        self.assertTrue((self.root / "More").is_dir())

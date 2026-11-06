@@ -2,8 +2,8 @@
 
 `function` is a table of the system (§3): one row per internal function, with
 the folders it is bound to and whether it is on. This module is the table's
-reader and its seed; it does NOT change how the core resolves a folder — that is
-the next step, and `paths` still answers from its own table of names.
+reader and its seed. `paths.folder` asks it first for `prose`, `strongbox` and
+`harness`; a function with no row (or no folders) falls back to `paths.NAMES`.
 
 Four functions, and the others are not in the map on purpose: `projects`,
 `shared`, `app`, `data` and `convert` are the fixed base structure. `Arquivos`

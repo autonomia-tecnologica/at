@@ -106,7 +106,7 @@ def create_working_folder(ask: Ask | None = None) -> None:
     paths.app_dir().mkdir(parents=True, exist_ok=True)
     for directory in (
         paths.data_dir(),
-        paths.prose_dir(),
+        *(paths.mapped("prose", existing=False) or [paths.prose_dir()]),
         paths.projects_dir(),
         paths.shared_dir(),
         paths.harness_dir(),
