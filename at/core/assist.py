@@ -9,6 +9,11 @@ contrário: o matcher era o portão e o Jev só via as frases que o matcher já
 tinha RECUSADO (`no_action`/`no_table`), o que fazia das frases "entendidas"
 uma leitura 100% NLU — que é a queixa que motivou a inversão.
 
+**O Jev é remoto e SEMPRE opcional** (normativo: `interfaces.md`, "A camada de
+interpretação"): o AT funciona inteiro sem ele. Sem rede, sem chave, com o
+switch desligado ou com o Jev fora do ar nada quebra — a frase segue para o
+matcher determinístico. Nenhum modelo roda dentro do AT.
+
 **A escrita continua determinística** (§4, "o que não resolve é resíduo, nunca
 um palpite"): o que o Jev propõe é um REWRITE que o PRÓPRIO matcher resolve, e
 o motor determinístico executa o ato e o audita. O Jev sugere a leitura; quem

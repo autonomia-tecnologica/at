@@ -24,7 +24,7 @@
 
 - Natural language comes in as a **resource** of the WebApp and the `cli`, and not as a fourth surface: nothing becomes possible merely by speaking. What the person types becomes a proposal, and what they can propose is what they can already do.
 
-- **The interpreter is deterministic.** There is no LLM at run time: the LLM helps to **write** the vocabulary, and what runs is code with data. That is what cuts the cord with the third-party token, and that is why AT needs no video card to understand a sentence.
+- **The interpreter is deterministic, and the remote Jev is an optional reader.** What writes and what runs is code with data: the LLM helps to **write** the vocabulary, and no model runs inside AT. Jev, a remote service, only **reads** the sentence and suggests a rewrite in the vocabulary's own words; whoever resolves and executes is always the deterministic engine, and every write asks the person to confirm. AT works whole without it: with no network, no key, or Jev down nothing breaks, and the sentence falls back to the deterministic interpreter. That is what keeps AT free of any mandatory third-party token, and without a video card to understand a sentence.
 
 - What the interpreter consults is the **vocabulary**, per language, packed into the product alongside the `i18n` blocks, because translating vocabulary and translating text are the same task. The vocabulary is dumb data: pairs of expression → canonical expression, with language and region, and nothing conditional. What depends on context is grammar, and grammar is the product's code.
 

@@ -24,7 +24,7 @@
 
 - A linguagem natural entra como **recurso** do WebApp e da `cli`, e não como uma quarta superfície: nada se torna possível só por falar. O que a pessoa digita vira uma proposta, e o que ela pode propor é o que ela já pode fazer.
 
-- **O interpretador é determinístico.** Não há LLM no tempo de execução: a LLM ajuda a **escrever** o vocabulário, e o que roda é código com dado. Isso é o que corta o cordão com o token de terceiros, e é por isso que o AT não precisa de placa de vídeo para entender uma frase.
+- **O interpretador é determinístico, e o Jev remoto é leitura opcional.** O que escreve e o que roda é código com dado: a LLM ajuda a **escrever** o vocabulário, e nenhum modelo roda dentro do AT. O Jev, um serviço remoto, só **lê** a frase e sugere uma reescrita nas palavras do vocabulário; quem resolve e executa é sempre o motor determinístico, e toda escrita pede confirmação da pessoa. O AT funciona inteiro sem ele: sem rede, sem chave ou com o Jev fora do ar nada quebra, a frase volta ao interpretador determinístico. É isso que mantém o AT sem dependência obrigatória de token de terceiros, e sem placa de vídeo para entender uma frase.
 
 - O que o interpretador consulta é o **vocabulário**, por idioma, empacotado no produto junto dos blocos de `i18n`, porque traduzir vocabulário e traduzir texto é a mesma tarefa. O vocabulário é dado burro: pares expressão → expressão canônica, com idioma e região, e nada condicional. O que depende de contexto é gramática, e gramática é código do produto.
 
