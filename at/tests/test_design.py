@@ -304,7 +304,7 @@ class TheDoors(unittest.TestCase):
         # browser refuses, and neither makes a build fail.
         page = (webapp.HERE / "index.html").read_text(encoding="utf-8")
         manifest = json.loads((ASSETS / "manifest.webmanifest").read_text(encoding="utf-8"))
-        named = re.findall(r"""href=["']/icons/([^"'/]+)["']""", page)
+        named = re.findall(r"""href=["']/icons/([^"'/?]+)(?:\?[^"']*)?["']""", page)
         named += [icon["src"].rsplit("/", 1)[-1] for icon in manifest["icons"]]
         self.assertTrue(named)
         for name in named:

@@ -26,8 +26,10 @@
      manifesto e pega a imagem por aqui. Ambos são do mesmo logo (`icons/`). -->
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <!-- THE TAB FAVICON: the identity's own 32px art (item 26), not a downscaled
-     install icon. -->
-<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+     install icon. The `?v=` is the CACHE BUSTER: browsers keep a favicon in a
+     cache of their own that ignores `no-store` and survives a reload, so a new
+     address is the only reliable way to make them ask for the art again. -->
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png?v=2">
 <!-- AT'S LOOK, and it comes from the SERVER, on the same origin: the
      THEME, then the choice (before the first paint), then the BASE.
 

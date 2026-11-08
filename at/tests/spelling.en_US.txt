@@ -196,3 +196,5 @@ jre
 temurin
 autonomia
 tecnológica
+maskable
+recoloured

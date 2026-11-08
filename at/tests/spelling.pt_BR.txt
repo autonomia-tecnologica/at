@@ -337,3 +337,7 @@ sandbox
 freebsd
 jre
 temurin
+logotipo
+maskable
+mit
+recolorido
