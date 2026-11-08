@@ -8,4 +8,4 @@
 
 - O interpretador tem a sua própria régua, e ela roda como teste: frases que precisam funcionar, frases que precisam ser recusadas, e frases ambíguas que precisam ser devolvidas em pergunta. Sem LLM, sem rede e sem placa de vídeo.
 
-- O teste **não é o critério de pronto de cada função** — uma função fica pronta pelo que o `docs/pt_BR/backlog.md` diz que ela é. Ele é o portão da primeira publicação no GitHub, e dali em diante.
+- O teste **não é o critério de pronto de cada função** — uma função fica pronta pelo que o `BACKLOG.md` (na raiz, fora do git) diz que ela é. Ele é o portão da primeira publicação no GitHub, e dali em diante.

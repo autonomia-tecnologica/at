@@ -24,7 +24,7 @@ A filosofia do ambiente de trabalho, que vale sobre este documento, está em `~/
 
 ### Forma de trabalho
 
-- Sempre trabalhe em duas sessões por item, nunca uma. Na primeira, modo plano: explorar, discutir e fechar a decisão, sem escrever código. Antes do `/clear`, o plano tem que ser salvo fora da conversa — em `docs/pt_BR/backlog.md`, onde o backlog vive — já com o que conta como pronto, para a segunda sessão não precisar perguntar. A segunda nasce limpa, lê o item em `docs/pt_BR/backlog.md` e implementa um item, do tamanho de uma sessão.
+- Sempre trabalhe em duas sessões por item, nunca uma. Na primeira, modo plano: explorar, discutir e fechar a decisão, sem escrever código. Antes do `/clear`, o plano tem que ser salvo fora da conversa — em `BACKLOG.md` (na raiz, fora do git), onde o backlog vive — já com o que conta como pronto, para a segunda sessão não precisar perguntar. A segunda nasce limpa, lê o item em `BACKLOG.md` (na raiz, fora do git) e implementa um item, do tamanho de uma sessão.
 
 - **A discussão vem antes do BACKLOG, e a implementação sempre sai do BACKLOG.** Uma decisão só entra na lista depois de apaziguada, e nada se implementa que não esteja nela. Numa discussão longa, as implicações vêm **uma a uma**, e o que fecha é gravado e commitado na hora — o que está decidido não pode viver só na conversa, que morre. **A resposta simples a uma pergunta é a aprovação**: se eu propus uma coisa e você respondeu, não te pergunto de novo se está aprovado.
 
@@ -89,10 +89,10 @@ O `§N` é o id estável do artigo, e ele não muda de dígito quando o artigo m
 
 ## O que ainda não está aqui
 
-O backlog vive em `docs/pt_BR/backlog.md` e guarda o que vem a seguir, com o que conta como pronto para cada item.
+O backlog vive em `BACKLOG.md` (na raiz, fora do git) e guarda o que vem a seguir, com o que conta como pronto para cada item.
 
 Três dívidas nasceram das decisões desta sessão, e as três estão nomeadas para não virarem surpresa:
 
-- **O código.** Nada do que ficou decidido aqui está construído: o ator, a auditoria, o filtro de demandas, a postura, o interpretador, os plugins. Tudo tem item no backlog, que vive em `docs/pt_BR/backlog.md`.
+- **O código.** Nada do que ficou decidido aqui está construído: o ator, a auditoria, o filtro de demandas, a postura, o interpretador, os plugins. Tudo tem item no backlog, que vive em `BACKLOG.md` (na raiz, fora do git).
 - **A lista do corretor.** Ela nasceu grande — 220 palavras em português e 141 em inglês —, e o motivo está escrito no cabeçalho dela: o dicionário do corretor vem de frequência de legendas e erra o registro formal, onde "seção", "deleção" e "registrar" não aparecem. Se essa lista crescer sozinha, o gate virou enfeite, e o diff é o lugar de perceber.
 - **O `FAQ.md`.** Ele ainda não existe, e agora tem trabalho esperando: dizer o que está por baixo — qual tela é do AT e qual é de terceiros —, e que escrever bem é o melhor remédio contra um mal-entendido do interpretador.

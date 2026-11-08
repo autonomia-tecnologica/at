@@ -8,4 +8,4 @@
 
 - The interpreter has a ruler of its own, and it runs as a test: sentences that must work, sentences that must be refused, and ambiguous sentences that must be returned as a question. No LLM, no network and no video card.
 
-- The test **is not the criterion of done for each function** — a function is done by what `docs/pt_BR/backlog.md` says it is. It is the gate of the first publication on GitHub, and from there on.
+- The test **is not the criterion of done for each function** — a function is done by what `BACKLOG.md` (root, outside git) says it is. It is the gate of the first publication on GitHub, and from there on.

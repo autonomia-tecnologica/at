@@ -112,7 +112,7 @@
 
 - **Os dois idiomas mudam sempre juntos**, e o aval de um commit cobre o par. O `pt_BR` é a língua fonte; onde os dois divergirem, vale o `pt_BR`.
 
-- Um **documento de trabalho** mora na pasta do seu idioma e **sem par**: o `docs/pt_BR/backlog.md` é para o agente, muda todo dia, e traduzir o que muda todo dia é trabalho que ninguém lê.
+- Um **documento de trabalho** mora na pasta do seu idioma e **sem par**: ele é para o agente, muda todo dia, e traduzir o que muda todo dia é trabalho que ninguém lê.
 
 - Um **gate na suíte** afirma o que essa regra promete: a pasta de cada documento, a existência do par, a mesma estrutura de títulos nos dois, e a ortografia — os dois idiomas passam pelo corretor do repositório, e o que ele ignorar fica numa lista versionada, uma por idioma. Gramática fica com a leitura humana.
 

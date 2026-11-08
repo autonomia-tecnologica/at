@@ -24,7 +24,7 @@ The work environment philosophy, which takes precedence over this document, is i
 
 ### Working method
 
-- Always work in two sessions per item, never one. In the first, plan mode: explore, discuss and close the decision, without writing code. Before `/clear`, the plan has to be saved outside the conversation — in `docs/pt_BR/backlog.md`, where the backlog lives — already carrying what counts as done, so the second session does not have to ask. The second is born clean, reads the item in `docs/pt_BR/backlog.md` and implements one item, the size of a session.
+- Always work in two sessions per item, never one. In the first, plan mode: explore, discuss and close the decision, without writing code. Before `/clear`, the plan has to be saved outside the conversation — in `BACKLOG.md` (root, outside git), where the backlog lives — already carrying what counts as done, so the second session does not have to ask. The second is born clean, reads the item in `BACKLOG.md` (root, outside git) and implements one item, the size of a session.
 
 - **The discussion comes before the BACKLOG, and the implementation always comes out of the BACKLOG.** A decision only enters the list once it is settled, and nothing is implemented that is not in it. In a long discussion, the implications come **one at a time**, and whatever closes is written down and committed on the spot — what is decided cannot live only in the conversation, which dies. **The simple answer to a question is the approval**: if I proposed something and you answered, I do not ask you again whether it is approved.
 
@@ -89,10 +89,10 @@ AT has two paths of use, and both are supported: the **hosted** one, where it is
 
 ## What is not here yet
 
-The backlog lives in `docs/pt_BR/backlog.md` and holds what comes next, with what counts as done for each item.
+The backlog lives in `BACKLOG.md` (root, outside git) and holds what comes next, with what counts as done for each item.
 
 Three debts were born from the decisions of this session, and all three are named so they do not become a surprise:
 
-- **The code.** Nothing that was decided here is built: the actor, the audit, the demand filter, the posture, the interpreter, the plugins. Every one of them has an item in the backlog, which lives in `docs/pt_BR/backlog.md`.
+- **The code.** Nothing that was decided here is built: the actor, the audit, the demand filter, the posture, the interpreter, the plugins. Every one of them has an item in the backlog, which lives in `BACKLOG.md` (root, outside git).
 - **The checker's list.** It was born large — 220 words in Portuguese and 141 in English — and the reason is written in its header: the checker's dictionary comes from subtitle frequencies and gets the formal register wrong, where "seção", "deleção" and "registrar" do not appear. If that list grows on its own, the gate became decoration, and the diff is where one notices.
 - **The `FAQ.md`.** It does not exist yet, and it now has work waiting: saying what is underneath — which screen is AT's and which is a third party's — and that writing well is the best remedy against a misunderstanding of the interpreter.

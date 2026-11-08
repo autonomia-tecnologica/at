@@ -112,7 +112,7 @@
 
 - **The two languages always change together**, and the approval of a commit covers the pair. `pt_BR` is the source language; where the two diverge, `pt_BR` rules.
 
-- A **working document** lives in the folder of its language and **with no pair**: `docs/pt_BR/backlog.md` is for the agent, changes every day, and translating what changes every day is work nobody reads.
+- A **working document** lives in the folder of its language and **with no pair**: it is for the agent, changes every day, and translating what changes every day is work nobody reads.
 
 - A **gate in the suite** affirms what that rule promises: the folder of each document, the existence of the pair, the same heading structure in both, and the spelling — both languages go through the repository's checker, and whatever it ignores stays in a versioned list, one per language. Grammar stays with the human reading.
 
