@@ -18,10 +18,11 @@
 :root {
   /* the system bars' own text and icons are drawn for this side */
   color-scheme: light;
+  /* The official brand logo (Identity 2026, Principal): dark ink on this light surface. */
+  --brand-logo: url("/icons/AT_LogoPrincipal_2.svg");
   /* ===== type ============================================================ */
   --font-sans: "Nunito Sans", system-ui, -apple-system, "Segoe UI", Roboto,
                "Helvetica Neue", Arial, sans-serif;
-  --font-brand: "Quicksand", "Nunito Sans", system-ui, sans-serif;
 
   /* ===== radius scale: the same as at-dark =================================
      Both house themes declare 8/14/20, so a corner does not change with the
@@ -156,8 +157,6 @@
   --nav-item-on-ink: var(--accent-700);
   --nav-item-on-edge: var(--accent-graphic);
   --accent-ink-on-nav: var(--accent-500);
-  --nav-brand-bg: #4c1d95; /* chapada: a telha não tem gradiente */
-  --nav-brand-ink: #ffffff;
   --locale-raw: inline;
   --locale-name: none;
   --locale-flag: none;

@@ -49,7 +49,7 @@ async function submit(): Promise<void> {
 <template>
   <div class="veil"></div>
   <form class="dialog" @submit.prevent="submit">
-    <h2>{{ word("brand") }}</h2>
+    <h2 class="brand"><span class="sr-only">{{ word("brand_name") }}</span></h2>
     <p>{{ word("session_hint") }}</p>
     <label>
       <span>{{ word("session_name") }}</span>

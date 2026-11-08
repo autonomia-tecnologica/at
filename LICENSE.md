@@ -16,6 +16,14 @@ A regra que decide o que pode viajar dentro de um artefato está no §3 —
 `docs/pt_BR/rules.md`, "Dependência externa" (e `docs/en_US/rules.md`,
 "External dependency"). Este arquivo é a licença; a regra não se repete aqui.
 
+## As artes também são MIT
+
+O logotipo, o símbolo e os ícones da identidade visual 2026 — a pasta
+`at/ui/webapp/assets/icons/` e o manifesto do PWA — viajam sob a mesma licença
+MIT do código: qualquer um copia, modifica e redistribui, com o aviso acima
+junto. O que continua reservado é o **nome** e a identidade visual tomada como
+um todo; o que isso alcança está em `TRADEMARK.md`.
+
 ## MIT License
 
 Copyright (c) 2026 Rafael Correia

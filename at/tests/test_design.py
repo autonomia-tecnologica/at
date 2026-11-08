@@ -298,6 +298,18 @@ class TheDoors(unittest.TestCase):
             for name in re.findall(r"""url\(\s*["']?icons/([^"')]+)["']?\s*\)""", body):
                 self.assertIsNotNone(webapp.served(ICONS, name), f"{theme.name} -> {name}")
 
+    def test_every_drawing_a_page_names_is_served(self):
+        # The tab's icon and the manifest's install icons are named by the PAGE,
+        # before any theme runs: a missing one is a blank tab or an install the
+        # browser refuses, and neither makes a build fail.
+        page = (webapp.HERE / "index.html").read_text(encoding="utf-8")
+        manifest = json.loads((ASSETS / "manifest.webmanifest").read_text(encoding="utf-8"))
+        named = re.findall(r"""href=["']/icons/([^"'/]+)["']""", page)
+        named += [icon["src"].rsplit("/", 1)[-1] for icon in manifest["icons"]]
+        self.assertTrue(named)
+        for name in named:
+            self.assertIsNotNone(webapp.served(ICONS, name), name)
+
     def test_a_name_that_is_a_path_is_refused(self):
         for name in ("../app.py", "a/../code.svg", "..", ".hidden.svg", "", "code.svg/"):
             self.assertIsNone(webapp.served(ICONS, name), name)
@@ -697,7 +709,7 @@ class TheDesignPlanRules(unittest.TestCase):
         "grid-template-columns: repeat(auto-fit, minmax(148px, 1fr))",
         "grid-template-columns: repeat(auto-fit, minmax(240px, 1fr))",
         "height: 10px", "height: 12px", "height: 16px", "height: 1px", "height: 20px", "height: 24px",
-        "height: 34px", "height: 3px", "height: 44px", "height: 56px", "height: 6px", "height: 8px",
+        "height: 3px", "height: 44px", "height: 56px", "height: 6px", "height: 8px",
         "inset: -6px -2px", "inset: 1px", "left: -10000px", "left: 2px", "left: 4px",
         "margin-bottom: -1px", "margin-left: -1px", "margin-left: 4px", "margin-left: 6px",
         "margin-top: -8px", "margin: -1px", "margin: 0 -2px", "margin: 4px 0 0",
@@ -708,7 +720,7 @@ class TheDesignPlanRules(unittest.TestCase):
         "top: 1px", "transform: translateX(-2px)", "transform: translateX(14px)",
         "transform: translateY(-4px)", "transform: translateY(4px)", "transform: translateY(8px)",
         "vertical-align: -1px", "vertical-align: -2px",
-        "width: 10px", "width: 16px", "width: 1px", "width: 24px", "width: 2px", "width: 34px",
+        "width: 10px", "width: 16px", "width: 1px", "width: 24px", "width: 2px",
         "width: 36px", "width: 4px", "width: 56px", "width: 8px",
         "width: min(640px, calc(100vw - 2 * var(--space-8)))",
     }

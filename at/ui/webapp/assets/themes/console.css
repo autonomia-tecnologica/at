@@ -4,6 +4,8 @@
 :root {
   /* the system bars' own text and icons are drawn for this side */
   color-scheme: light;
+  /* The official brand logo (Identity 2026, Principal): dark ink on this light surface. */
+  --brand-logo: url("/icons/AT_LogoPrincipal_2.svg");
   --font-sans: ui-monospace, "Cascadia Code", "Fira Code", Consolas,
                "Liberation Mono", Menlo, monospace;
   --font-display: ui-monospace, "Cascadia Code", "Fira Code", Consolas,
@@ -80,8 +82,6 @@
   --nav-item-on-ink: var(--text-primary);
   --nav-item-on-edge: var(--accent-400);
   --accent-ink-on-nav: var(--accent-500);
-  --nav-brand-bg: var(--accent);
-  --nav-brand-ink: var(--accent-ink);
   --locale-raw: inline;
   --locale-name: none;
   --locale-flag: none;

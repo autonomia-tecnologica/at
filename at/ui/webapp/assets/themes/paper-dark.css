@@ -4,6 +4,8 @@
 :root {
   /* the system bars' own text and icons are drawn for this side */
   color-scheme: dark;
+  /* The official brand logo (Identity 2026, Principal): white ink on this dark surface. */
+  --brand-logo: url("/icons/AT_LogoPrincipal_1.svg");
   --font-sans: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
   --font-display: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
   --r-sm: 0px;
@@ -80,8 +82,6 @@
   --nav-item-on-ink: var(--text-primary);
   --nav-item-on-edge: var(--accent-400);
   --accent-ink-on-nav: var(--accent-500);
-  --nav-brand-bg: var(--accent);
-  --nav-brand-ink: var(--accent-ink);
   --locale-raw: none;
   --locale-name: inline;
   --locale-flag: none;

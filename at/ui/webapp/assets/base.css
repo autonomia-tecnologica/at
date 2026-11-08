@@ -24,6 +24,10 @@
   --icon-sm: 12px;
   --icon-md: 14px;
   --icon-lg: 30px;
+  /* THE MARK ALONE, and the logo's box: the Principal art, rail and small places. */
+  --brand-mark: url("/icons/symbol.svg");
+  --brand-w: 120px;
+  --brand-h: 34px;
   --type-caption: 12px;
   --type-body-sm: 13px;
   --type-body: 14px;
@@ -296,20 +300,12 @@ nav h1 {
   font-weight: 600; letter-spacing: .01em;
   color: var(--nav-ink-1);
 }
-/* A TELHA É QUADRADA E CHAPADA */
-nav h1 .brand {
-  display: inline-flex; align-items: center; justify-content: center;
-  flex: none; width: 34px; height: 34px; border-radius: var(--r-sm);
-  background: var(--nav-brand-bg); color: var(--nav-brand-ink);
-  font-family: var(--font-brand, var(--font-display));
-  /* PINNED, NOT `var(--type-body)` */
-  font-weight: 600; font-size: var(--type-title);
-}
-nav h1 .brand-name {
-  min-width: 0; overflow: hidden; white-space: nowrap;
-  color: var(--nav-ink-1);
-  font-family: var(--font-brand, var(--font-display)); font-size: var(--type-body);
-  font-weight: 600; letter-spacing: var(--letter-tight);
+/* THE BRAND IS THE OFFICIAL ART (item 26): the Principal logo of the 2026
+   identity, and `--brand-logo` is the theme's, so the ink follows the surface. */
+nav h1 .brand-logo {
+  display: block; flex: none;
+  width: var(--brand-w); height: var(--brand-h);
+  background: var(--brand-logo) no-repeat left center / contain;
 }
 nav .n { color: var(--nav-ink-3); margin-left: auto; font-variant-numeric: tabular-nums; }
 nav hr.sep {
@@ -684,6 +680,11 @@ button.opt { background: none; border: 0; font: inherit; width: 100%; text-align
 }
 .dialog.dialog-leave-active { animation: dialog-out var(--dur-3) var(--ease-exit) forwards; pointer-events: none; }
 .dialog h2 { margin: 0; font-size: var(--type-title); font-weight: var(--weight-semibold); }
+/* THE ENTRANCES WEAR THE BRAND too, in the same ink as the surface under it. */
+.dialog h2.brand {
+  block-size: var(--brand-h);
+  background: var(--brand-logo) no-repeat left center / contain;
+}
 .dialog p { margin: 0; color: var(--text-secondary); }
 .dialog .refused { color: var(--danger-text); }
 /* ===== global search (B-21) ============================================= */
@@ -1545,7 +1546,6 @@ html.no-motion *, html.no-motion *::before, html.no-motion *::after {
   /* MARKS, NOT WORDS */
   html:not(.nav-open) nav .caret,
   html:not(.nav-open) nav .n,
-  html:not(.nav-open) nav .brand-name,
   html:not(.nav-open) nav .foldable { display: none; }
   /* THE LABELS STAY FOR A SCREEN READER, they only stop being SEEN */
   html:not(.nav-open) nav .t,
@@ -1575,8 +1575,11 @@ html.no-motion *, html.no-motion *::before, html.no-motion *::after {
   html:not(.nav-open) nav .file[data-view="reminders"],
   html:not(.nav-open) nav .file[data-view="notes"] { min-height: calc(1lh + 2 * var(--space-1)); box-sizing: border-box; }
   html:not(.nav-open) nav .side-foot > .file { min-height: calc(1lh + 2 * var(--density-nav-pad-y)); box-sizing: border-box; }
-  /* The brand is the rail's own top mark */
   html:not(.nav-open) nav h1 { justify-content: center; padding-inline: 0; }
+  html:not(.nav-open) nav h1 .brand-logo {
+    width: var(--brand-h);
+    background-image: var(--brand-mark);
+  }
   /* The foot's door says "open" while the panel is a rail */
   nav .side-foot > .file.nav-toggle::before { --i: url("/icons/at2-nav-menu.svg"); }
   html.nav-open nav .side-foot > .file.nav-toggle::before { --i: url("/icons/at2-nav-close.svg"); }

@@ -41,4 +41,4 @@ running or packing AT (`release.build` does it by itself).
 
 ## License
 
-Code under the [MIT License](LICENSE.md). The name, logo and visual identity of Autonomia Tecnológica are not covered by it: see [TRADEMARK.md](TRADEMARK.md). Third-party components and their licenses: `at/vendor/licenses/`.
+Code and the brand art under the [MIT License](LICENSE.md). The name, and the visual identity taken as a whole, are not covered by it: see [TRADEMARK.md](TRADEMARK.md). Third-party components and their licenses: `at/vendor/licenses/`.

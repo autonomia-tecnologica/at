@@ -75,12 +75,11 @@ defineExpose({ refresh });
          What was a hard cut from nothing to the full shell is now ONE 0.3s
          fade into the FINISHED state, sidebar numbers included. -->
     <nav>
-      <!-- A MARCA E O NOME DELA, lado a lado: a telha é a sigla, e o que vem
-           depois dela é o nome inteiro — quem chega não tem como saber o que
-           "AT" quer dizer, e a sidebar é onde o produto se apresenta. -->
+      <!-- THE BRAND IS THE OFFICIAL LOGO (item 26): the Principal art of the
+           2026 identity already carries the name, so the panel shows the logo
+           and the screen reader reads the name from its label. -->
       <h1 id="brand">
-        <span class="brand">{{ word("brand") }}</span>
-        <span class="brand-name">{{ word("brand_name") }}</span>
+        <span class="brand-logo" role="img" :aria-label="word('brand_name')"></span>
       </h1>
       <Sidebar />
     </nav>

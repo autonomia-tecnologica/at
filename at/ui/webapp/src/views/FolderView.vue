@@ -53,7 +53,7 @@ async function cancel(): Promise<void> {
 <template>
   <div class="veil"></div>
   <div class="dialog" v-if="!cancelled">
-    <h2>{{ word("brand") }}</h2>
+    <h2 class="brand"><span class="sr-only">{{ word("brand_name") }}</span></h2>
     <p class="folder-notice">{{ word("boot.first_run.notice") }}</p>
     <p class="refused" v-if="refusal">{{ refusal }}</p>
     <div class="dialog-actions">
@@ -66,7 +66,7 @@ async function cancel(): Promise<void> {
     </div>
   </div>
   <div class="dialog" v-else>
-    <h2>{{ word("brand") }}</h2>
+    <h2 class="brand"><span class="sr-only">{{ word("brand_name") }}</span></h2>
     <p>{{ word("boot.first_run.cancelled") }}</p>
   </div>
 </template>
