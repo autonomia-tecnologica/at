@@ -3,6 +3,20 @@
 - [Português (Brasil)](docs/pt_BR/README.md)
 - [English (United States)](docs/en_US/README.md)
 
+## Status
+
+**AT is useful today, and it is not finished.** It is a deterministic task engine that runs inside one folder (the Working Folder), as a single binary plus that folder, with a CLI, a WebApp and a chat interpreter. It is built and used daily by its author, and it works within its own philosophy.
+
+Many architectural decisions still have to be settled, and the documents in `docs/` say so where it matters. Expect things to move, and expect breaking changes. Issues and discussion are welcome: I would rather learn that an architectural choice is wrong than keep it.
+
+What this repository is, and what it is not:
+
+- **It is generic.** The repository is the product: a personal productivity tool for any person, with no personal data, no machine paths and no instance of anyone's in it.
+- **It does not try to replace the many wonderful tools that already exist.** The goal is a condensed, tightly controlled piece of software with a few small functionalities, favoring the reuse of mature architectural components over piling up features. Each new functionality is weighed on whether it fits here.
+- **The author's own instance is the development reference.** Functionalities are born there, and the aim is always to build things that are useful to many people, not only to the author. That is not something one fully controls, so the question "is this useful beyond me?" is asked out loud while a functionality is implemented.
+
+**Estado (pt_BR).** O AT já é útil hoje, mas não está pronto. Muitas decisões arquiteturais ainda precisam ser acertadas, e os documentos em `docs/` dizem isso onde importa. O repositório é genérico e não carrega dado pessoal; a instância do autor é a referência de desenvolvimento, sempre pensando em coisas úteis para muita gente. Não queremos substituir as ferramentas que já existem, e sim reunir pequenas funcionalidades num software condensado e bem controlado, que reaproveita componentes arquiteturais maduros em vez de encher de coisas.
+
 ## For LLM agents
 
 Read in the language that suits your model best; when in doubt, always read in
