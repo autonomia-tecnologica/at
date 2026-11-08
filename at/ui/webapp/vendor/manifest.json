@@ -16,20 +16,6 @@
       "bytes": 14008,
       "sha256": "e03e312b8b7abd8b69ecef4060ded626f80e45723becd13676ad8273cf568a6e"
     },
-    "font-quicksand-500": {
-      "package": "@fontsource/quicksand",
-      "version": "5.3.0",
-      "upstream": "files/quicksand-latin-500-normal.woff2",
-      "bytes": 15788,
-      "sha256": "eb8add2effc4883b14a0470be949cab435ca77b72c762d24a7b12472d34a8aa4"
-    },
-    "font-quicksand-600": {
-      "package": "@fontsource/quicksand",
-      "version": "5.3.0",
-      "upstream": "files/quicksand-latin-600-normal.woff2",
-      "bytes": 15864,
-      "sha256": "d7b2a752a20177cbd2a98775062aca67795b79bda8a98dfe863cd4d7b3e701a2"
-    },
     "font-silkscreen-400": {
       "package": "@fontsource/silkscreen",
       "version": "5.3.0",

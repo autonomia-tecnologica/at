@@ -581,7 +581,7 @@ class TheDoors(ServerCase):
             self.assertIsNone(webapp.served(webapp.ICONS, name), name)
 
     def test_an_icon_that_exists_is_served(self):
-        status, headers, _ = self.get("/icons/at.svg")
+        status, headers, _ = self.get("/icons/symbol.svg")
         self.assertEqual(status, 200)
         self.assertEqual(headers["Content-Type"], "image/svg+xml")
 

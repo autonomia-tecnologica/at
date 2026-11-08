@@ -5,10 +5,6 @@
              font-display: block; src: url("/vendor/font-nunito-sans-400") format("woff2"); }
 @font-face { font-family: "Nunito Sans"; font-style: normal; font-weight: 600;
              font-display: block; src: url("/vendor/font-nunito-sans-600") format("woff2"); }
-@font-face { font-family: "Quicksand"; font-style: normal; font-weight: 500;
-             font-display: block; src: url("/vendor/font-quicksand-500") format("woff2"); }
-@font-face { font-family: "Quicksand"; font-style: normal; font-weight: 600;
-             font-display: block; src: url("/vendor/font-quicksand-600") format("woff2"); }
 @font-face { font-family: "UnifrakturMaguntia"; font-style: normal; font-weight: 400;
              font-display: block; src: url("/vendor/font-unifrakturmaguntia") format("woff2"); }
 @font-face { font-family: "Silkscreen"; font-style: normal; font-weight: 400;
@@ -19,8 +15,7 @@
 /* ===== STRUCTURE: what does NOT vary between themes ===== */
 :root {
   /* ----- type ----- */
-  /* The type scale, by role. */
-  /* F2: the scale is by ROLE, 14px body; weights are 400/500/600. */
+  /* The type scale, by role. F2: 14px body; weights are 400/500/600. */
   --icon-sm: 12px;
   --icon-md: 14px;
   --icon-lg: 30px;

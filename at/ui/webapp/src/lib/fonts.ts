@@ -1,10 +1,10 @@
-// fonts — the ten self-hosted faces, and the one promise that says they are
+// fonts — the seven self-hosted faces, and the one promise that says they are
 // all actually IN, pixels and all.
 //
 // `base.css` already marks every one of them `font-display: block` — the
 // browser holds the glyph invisible instead of painting it in a fallback and
-// swapping later — but `block` is a promise PER FACE, and the ten faces are
-// TEN SEPARATE FILES (`vendor/manifest.json`): a plain cell and a status pill
+// swapping later — but `block` is a promise PER FACE, and the seven faces are
+// SEVEN SEPARATE FILES (`vendor/manifest.json`): a plain cell and a status pill
 // often wear DIFFERENT WEIGHTS of the same family, and nothing says they
 // finish downloading together. A reload that reveals once the data is ready
 // can still show a table whose badges read fine and whose plain text is
@@ -23,9 +23,6 @@ const FACES: ReadonlyArray<readonly [string, number]> = [
   ["Nunito Sans", 600],
   ["Nunito Sans", 700],
   ["Nunito Sans", 800],
-  ["Quicksand", 500],
-  ["Quicksand", 600],
-  ["Quicksand", 700],
   ["UnifrakturMaguntia", 400],
   ["Silkscreen", 400],
   ["Silkscreen", 700],
