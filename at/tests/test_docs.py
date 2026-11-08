@@ -66,7 +66,11 @@ DOOR = ROOT / "README.md"
 # spelled by the MIT's own words, it has no language and no pair — a licence is
 # not translated, and translating it would be forging it —, and it sits at the
 # root because that is where a licence is looked for (§3, item 27).
-RUNTIME = {ROOT / "INSTANCE.md", ROOT / "LICENSE.md"}
+#
+# `BACKLOG.md` is the work's list, not a document of the product: it sits at the root
+# of the checkout, the git ignore rules keep it out (`/BACKLOG.md`), and it has no
+# language folder and no pair.
+RUNTIME = {ROOT / "INSTANCE.md", ROOT / "LICENSE.md", ROOT / "TRADEMARK.md", ROOT / "BACKLOG.md"}
 
 # Documents of the WORK, not for the reader: they have a language and no pair.
 WORKING = {"backlog"}
