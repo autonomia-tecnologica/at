@@ -1693,11 +1693,16 @@ class TheReminderClosing(ServerCase):
         # A pasta que não pergunta ninguém age como o motor: a linha cita a
         # linha dele, porque foi o núcleo quem validou e escreveu.
         self.assertEqual(line[audit.ACTOR], store.number_of(actors.engine_row()))
-        message = versioning.run(["log", "-1", "--format=%s"]).stdout.strip()
-        self.assertEqual(
-            message,
-            i18n.tr("table.edited", id=tables.format_id(reminder.REMINDER, row["id"])),
-        )
+        # With automatic versioning off there is no commit to read back; the
+        # audit line above stays the whole proof of the close.
+        if not versioning.DISABLED:
+            message = versioning.run(["log", "-1", "--format=%s"]).stdout.strip()
+            self.assertEqual(
+                message,
+                i18n.tr(
+                    "table.edited", id=tables.format_id(reminder.REMINDER, row["id"])
+                ),
+            )
 
 
 class TheStrongboxDoor(ServerCase):

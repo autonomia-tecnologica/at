@@ -313,6 +313,10 @@ class TheRestore(BackupCase):
         self.assertEqual(len(restored), 1)
         self.assertEqual(restored[0]["text"], "comprar pão")
 
+    @unittest.skipIf(
+        versioning.DISABLED,
+        "automatic versioning is switched off (versioning.DISABLED)",
+    )
     @unittest.skipUnless(shutil.which("git"), "git is not on this machine")
     def test_the_restore_is_its_own_version(self):
         # The cadence's own default is periodic (§4, item 30): a commit seconds

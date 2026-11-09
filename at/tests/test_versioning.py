@@ -54,6 +54,11 @@ GIT = shutil.which("git")
 
 SKIP = "git is not on this machine"
 
+# The switch itself: with `versioning.DISABLED` on, the repository is not born,
+# nothing is committed and nothing is said. Everything that proves the active
+# behaviour skips with this while the switch is off.
+REASON = "automatic versioning is switched off (versioning.DISABLED)"
+
 # The road the acts of this module come through: a person at the terminal, which
 # is what the history being tested IS — the folder's story as its owner writes it.
 # It is passed and not defaulted on purpose: `door.run`'s own default is the via
@@ -147,6 +152,7 @@ class ScratchCase(unittest.TestCase):
         return self.git("log", "--pretty=%s").splitlines()
 
 
+@unittest.skipIf(versioning.DISABLED, REASON)
 @unittest.skipUnless(GIT, SKIP)
 class TheRepository(ScratchCase):
     """The folder's own repository: born by AT, driven by AT."""
@@ -282,6 +288,7 @@ class TheRepository(ScratchCase):
         self.assertEqual(len(store.load("task")), 1)
 
 
+@unittest.skipIf(versioning.DISABLED, REASON)
 @unittest.skipUnless(GIT, SKIP)
 class TheCadence(ScratchCase):
     """The folder versioned from time to time, and never on every write.
@@ -366,6 +373,7 @@ class TheFolderWithARepositoryOfItsOwn(ScratchCase):
         super().setUp()
         subprocess.run(["git", "init", "--quiet"], cwd=self.root, check=True)
 
+    @unittest.skipIf(versioning.DISABLED, REASON)
     def test_the_repository_of_somebody_else_is_left_alone(self):
         out = io.StringIO()
         with redirect_stdout(out):
@@ -381,12 +389,14 @@ class TheFolderWithARepositoryOfItsOwn(ScratchCase):
         self.assertEqual(len(store.load("task")), 1)
         self.assertEqual(self.versions(), [])
 
+    @unittest.skipIf(versioning.DISABLED, REASON)
     def test_the_page_is_handed_the_sentence_and_the_owner_is_handed_nothing(self):
         self.born()
         handed = webapp.state_payload()["versioning"]
         self.assertEqual(sorted(handed), sorted(i18n.SUPPORTED))
         self.assertEqual(handed["pt_BR"], i18n.tr("versioning.foreign"))
 
+    @unittest.skipIf(versioning.DISABLED, REASON)
     def test_the_folder_of_somebody_else_is_never_told_it_fell_behind(self):
         # AT does not version in here at all, so the wait this item is about does
         # not exist: what the person hears is whose the repository is.
@@ -396,6 +406,7 @@ class TheFolderWithARepositoryOfItsOwn(ScratchCase):
         self.assertFalse(versioning.stale())
         self.assertEqual(versioning.phrase(), versioning.PHRASES[versioning.FOREIGN])
 
+    @unittest.skipIf(versioning.DISABLED, REASON)
     def test_the_cli_says_it_on_every_run(self):
         self.born()
         out = io.StringIO()
@@ -404,6 +415,7 @@ class TheFolderWithARepositoryOfItsOwn(ScratchCase):
         self.assertIn(i18n.tr("versioning.foreign"), out.getvalue())
 
 
+@unittest.skipIf(versioning.DISABLED, REASON)
 class TheFolderThatPredatesVersioning(ScratchCase):
     """A folder that exists when versioning arrives catches up, as every
     structure change does: on the first start after the swap (§3)."""
@@ -445,6 +457,7 @@ class WithoutTheTool(ScratchCase):
         self.absent.start()
         self.addCleanup(self.absent.stop)
 
+    @unittest.skipIf(versioning.DISABLED, REASON)
     def test_the_folder_is_born_without_a_repository_and_works(self):
         out = io.StringIO()
         with redirect_stdout(out):
@@ -458,6 +471,7 @@ class WithoutTheTool(ScratchCase):
         self.wrote()
         self.assertEqual(len(store.load("task")), 1)
 
+    @unittest.skipIf(versioning.DISABLED, REASON)
     def test_the_cli_says_the_folder_is_not_under_versioning(self):
         self.born()
         out = io.StringIO()
@@ -465,6 +479,7 @@ class WithoutTheTool(ScratchCase):
             main(["version"])
         self.assertIn(i18n.tr("versioning.missing"), out.getvalue())
 
+    @unittest.skipIf(versioning.DISABLED, REASON)
     def test_the_folder_without_the_tool_is_never_told_it_fell_behind(self):
         # There is no repository to fall behind in, and the sentence this module
         # owes is the one about the tool that is not here.
@@ -474,6 +489,7 @@ class WithoutTheTool(ScratchCase):
         self.assertFalse(versioning.stale())
         self.assertEqual(versioning.phrase(), versioning.PHRASES[versioning.MISSING])
 
+    @unittest.skipIf(versioning.DISABLED, REASON)
     def test_the_page_is_handed_the_sentence(self):
         self.born()
         handed = webapp.state_payload()["versioning"]
@@ -508,6 +524,7 @@ class WithoutTheTool(ScratchCase):
         self.assertEqual(answer, versioning.NO_ANSWER)
         self.assertIn(i18n.tr("versioning.no_git.no_tty"), out.getvalue())
 
+    @unittest.skipIf(versioning.DISABLED, REASON)
     @unittest.skipUnless(GIT, SKIP)
     def test_a_tool_that_arrives_later_gives_the_folder_its_history(self):
         self.born()
@@ -537,6 +554,44 @@ class TheCadenceSetting(ScratchCase):
             with self.subTest(value=strange):
                 self.chose(strange)
                 self.assertEqual(versioning.interval(), versioning.DEFAULT)
+
+
+@unittest.skipUnless(versioning.DISABLED, "the switch is back on (DISABLED is False)")
+class TheSwitch(ScratchCase):
+    """With `DISABLED`, every public door is silent and no git runs.
+
+    The mirror of the classes above: while automatic versioning is off, the
+    folder is not born under versioning, nothing is committed, and nothing is
+    said. The class skips itself the day the switch goes back to `False`, so it
+    never has to be deleted.
+    """
+
+    def test_no_door_reaches_git_or_writes_anything(self):
+        with mock.patch.object(
+            versioning, "run", side_effect=AssertionError("git was called")
+        ):
+            self.assertFalse(versioning.commit("qualquer coisa"))
+            self.assertEqual(versioning.ensure(), versioning.state())
+            self.assertEqual(versioning.start(), versioning.state())
+            self.assertIsNone(versioning.phrase())
+            self.assertFalse(versioning.stale())
+            self.assertFalse(versioning.dirty())
+        self.assertFalse((self.root / ".git").exists())
+        self.assertFalse((self.root / ".gitignore").exists())
+
+    def test_the_folder_is_not_born_under_versioning_and_says_nothing(self):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            boot.create_working_folder()
+        self.assertFalse((self.root / ".git").exists())
+        self.assertFalse((self.root / ".gitignore").exists())
+        self.assertEqual(out.getvalue(), "")
+
+    def test_the_run_says_nothing_about_versioning(self):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            versioning.notice()
+        self.assertEqual(out.getvalue(), "")
 
 
 class TheWords(ScratchCase):

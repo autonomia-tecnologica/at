@@ -15,7 +15,11 @@ What this repository is, and what it is not:
 - **It does not try to replace the many wonderful tools that already exist.** The goal is a condensed, tightly controlled piece of software with a few small functionalities, favoring the reuse of mature architectural components over piling up features. Each new functionality is weighed on whether it fits here.
 - **The author's own instance is the development reference.** Functionalities are born there, and the aim is always to build things that are useful to many people, not only to the author. That is not something one fully controls, so the question "is this useful beyond me?" is asked out loud while a functionality is implemented.
 
+**Automatic versioning is off for now.** AT does not create the Working Folder's Git repository, does not commit after actions, and says nothing about versioning. Histories already written stay where they are. This is temporary: the switch is `DISABLED` in `at/core/versioning.py`.
+
 **Estado (pt_BR).** O AT já é útil hoje, mas não está pronto. Muitas decisões arquiteturais ainda precisam ser acertadas, e os documentos em `docs/` dizem isso onde importa. O repositório é genérico e não carrega dado pessoal; a instância do autor é a referência de desenvolvimento, sempre pensando em coisas úteis para muita gente. Não queremos substituir as ferramentas que já existem, e sim reunir pequenas funcionalidades num software condensado e bem controlado, que reaproveita componentes arquiteturais maduros em vez de encher de coisas.
+
+**O versionamento automático está desligado por enquanto.** O AT não cria o repositório Git da Pasta de Trabalho, não faz commit a cada ação e não avisa nada sobre versionamento. O histórico já escrito continua onde está. É temporário: o interruptor é `DISABLED` em `at/core/versioning.py`.
 
 ## For LLM agents
 

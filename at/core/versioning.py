@@ -56,6 +56,12 @@ one predicate — AT's repository, writes the last version does not carry, and t
 chosen interval gone by. A version that fires on its own while the WebApp is up
 is item 24's job, and until it exists this sentence is the whole of what tells
 the person the folder is waiting.
+
+**Automatic versioning is off for now, behind `DISABLED`.** While the switch is
+`True`, AT does not create the folder's repository, does not commit, and says
+nothing about versioning; the histories already written stay where they are.
+Turning it back on is changing the constant to `False`, and every door below
+answers as if the folder had nothing to version.
 """
 
 from __future__ import annotations
@@ -97,6 +103,11 @@ OWNED = "owned"
 FOREIGN = "foreign"
 BARE = "bare"
 MISSING = "missing"
+
+# The switch that turns automatic versioning off, for now. While it is `True`,
+# AT does not create the folder's repository, does not commit, and says nothing
+# about versioning; putting it back is changing this to `False`.
+DISABLED = True
 
 # What a person must hear about each state, and `bare` is deliberately absent: a
 # folder with no repository on a machine that has git is a folder about to have
@@ -267,6 +278,8 @@ def dirty() -> bool:
     they are not dirt either. A folder git cannot answer for reads as clean,
     because what this feeds is a sentence and never a refusal.
     """
+    if DISABLED:
+        return False
     if state() != OWNED:
         return False
     try:
@@ -284,6 +297,8 @@ def stale() -> bool:
     and neither is the folder that asked for a version on every write: its writes
     are versioned as they happen, so the wait this asks about never exists.
     """
+    if DISABLED:
+        return False
     minutes = interval()
     return (
         minutes > EVERY_WRITE
@@ -302,6 +317,8 @@ def phrase(where: str | None = None) -> str | None:
     reads: the folder that is not under versioning at all, and the folder that IS
     and has fallen behind (`stale`).
     """
+    if DISABLED:
+        return None
     here = state() if where is None else where
     if here == OWNED:
         return STALE if stale() else None
@@ -317,7 +334,7 @@ def ensure() -> str:
     does not leave a repository behind any more than it writes a row.
     """
     here = state()
-    if here in (OWNED, FOREIGN) or files.readonly() or not present():
+    if DISABLED or here in (OWNED, FOREIGN) or files.readonly() or not present():
         return here
     if not _create(paths.working_folder()):
         # A git that is there and cannot do it — a permission, a read-only
@@ -340,6 +357,8 @@ def start(ask: Ask | None = None) -> str:
     happening; after it, the folder says it is not under versioning instead of
     asking a second time.
     """
+    if DISABLED:
+        return state()
     here = ensure()
     if here == MISSING:
         ways_out(ask)
@@ -383,6 +402,8 @@ def notice() -> str:
     that IS versioned and has fallen behind is the third thing said here, and it
     is the one a `list` owes: a wait nobody names is a history quietly missing.
     """
+    if DISABLED:
+        return state()
     here = ensure()
     key = phrase(here)
     if key:
@@ -416,6 +437,8 @@ def commit(message: str) -> bool:
     """
     global _committed
 
+    if DISABLED:
+        return False
     minutes = interval()
     if (
         state() != OWNED

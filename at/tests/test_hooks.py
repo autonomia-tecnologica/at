@@ -84,8 +84,10 @@ class TheInstall(HooksCase):
             self.assertIn(str(repo), hook.read_text(encoding="utf-8"))
 
     def test_the_default_target_is_the_working_folder(self):
-        # No `repo` named: the Working Folder this session already carries —
-        # `boot` versions it, so it already has a `.git` to write into.
+        # No `repo` named: the Working Folder this session already carries. The
+        # `.git` is made here because automatic versioning is off for now —
+        # `boot` does not create the folder's repository while `DISABLED` is on.
+        (self.root / ".git").mkdir(parents=True)
         report = hooks.install()
         self.assertEqual(report.state, hooks.INSTALLED)
         self.assertEqual(report.target, self.root)
@@ -119,6 +121,9 @@ class TheCLI(HooksCase):
         self.assertIn(tr("secrets.hooks.not_a_repo", where=str(foreign)), text)
 
     def test_the_default_target_installs_and_says_so(self):
+        # Same reason as `TheInstall`: with automatic versioning off, `boot`
+        # leaves the Working Folder without a `.git`, so the test makes one.
+        (self.root / ".git").mkdir(parents=True)
         code, text = self.cli()
         self.assertEqual(code, 0)
         self.assertIn(tr("secrets.hooks.installed", where=str(self.root)), text)
