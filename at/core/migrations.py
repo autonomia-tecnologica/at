@@ -78,6 +78,7 @@ from at.core.migrations_folders import (  # noqa: F401
     _moves,
     _prose_in_its_new_name,
     _remove_agent_note,
+    _shared_in_its_new_name,
     _spelled,
 )
 from at.core.migrations_later import (  # noqa: F401
@@ -179,6 +180,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(33, _remove_agent_note),
     Migration(34, _late_permissions),
     Migration(35, _functions),
+    Migration(36, _shared_in_its_new_name),
 )
 
 

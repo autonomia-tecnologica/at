@@ -275,9 +275,9 @@ class TheFoldersFollowTheLanguage(FolderCase):
         self.legacy("app")
         output = self.caught_up("s")
         self.assertTrue((self.root / "Projetos").is_dir())
-        self.assertTrue((self.root / "Compartilhada").is_dir())
-        self.assertEqual(list((self.root / "Compartilhada").iterdir()), [])
-        self.assertIn(i18n.tr("boot.migration.folders.born", names="Projetos, Compartilhada"), output)
+        self.assertTrue((self.root / "Compartilhado").is_dir())
+        self.assertEqual(list((self.root / "Compartilhado").iterdir()), [])
+        self.assertIn(i18n.tr("boot.migration.folders.born", names="Projetos, Compartilhado"), output)
 
     def test_the_harness_folder_arrives_by_its_own_migration(self):
         # A folder from the release before this one: the two named folders are
@@ -490,6 +490,109 @@ class TheProseFolderTakesItsNewName(FolderCase):
         self.assertFalse((self.root / "Library").exists())
         self.assertEqual(paths.prose_dir(), old)
         self.assertIn(i18n.tr("boot.migration.prose.kept"), output)
+
+
+class TheSharedFolderTakesItsNewName(FolderCase):
+    """Migração trinta e seis: `Compartilhada/` → `Compartilhado/`.
+
+    O nome novo é decisão do produto, como o da prosa: a pasta que já existe
+    chega nele sem pergunta, e a grafia aposentada continua resolvida enquanto
+    a migração não passa.
+    """
+
+    def only(self, ident: int = 36) -> None:
+        """A pasta já migrou tudo, MENOS a migração que este teste prova."""
+        ids = [item.ident for item in migrations.MIGRATIONS if item.ident != ident]
+        migrations.stamp_file().write_text(json.dumps(ids) + "\n", encoding="utf-8")
+
+    def retired(self, name: str = "Compartilhada") -> Path:
+        """A pasta com a grafia aposentada, e um arquivo dentro dela."""
+        shutil.rmtree(self.root / "Compartilhado")
+        old = self.root / name
+        old.mkdir()
+        (old / "nota.md").write_text("olá\n", encoding="utf-8")
+        return old
+
+    def test_the_retired_name_becomes_the_new_one_with_its_content(self):
+        self.born()
+        old = self.retired()
+        self.only()
+        output = self.caught_up()
+        self.assertFalse(old.exists())
+        self.assertTrue((self.root / "Compartilhado").is_dir())
+        self.assertEqual(
+            (self.root / "Compartilhado" / "nota.md").read_text(encoding="utf-8"),
+            "olá\n",
+        )
+        self.assertIn(
+            i18n.tr(
+                "boot.migration.shared.moved",
+                names="Compartilhada → Compartilhado",
+            ),
+            output,
+        )
+        # Sem pergunta: o nome novo é do produto, não uma escolha da pessoa.
+        self.assertEqual(self.asked, [])
+
+    def test_it_moves_without_a_terminal(self):
+        self.born()
+        old = self.retired()
+        self.only()
+        with mock.patch("sys.stdin.isatty", return_value=False):
+            with redirect_stdout(StringIO()):
+                boot.ensure_working_folder()
+        self.assertFalse(old.exists())
+        self.assertTrue((self.root / "Compartilhado" / "nota.md").is_file())
+
+    def test_two_folders_are_reported_and_not_chosen_between(self):
+        self.born()
+        self.retired()
+        (self.root / "Compartilhado").mkdir()
+        (self.root / "Compartilhado" / "outra.md").write_text("eu\n", encoding="utf-8")
+        self.only()
+        output = self.caught_up()
+        self.assertEqual(
+            (self.root / "Compartilhada" / "nota.md").read_text(encoding="utf-8"),
+            "olá\n",
+        )
+        self.assertEqual(
+            (self.root / "Compartilhado" / "outra.md").read_text(encoding="utf-8"),
+            "eu\n",
+        )
+        self.assertIn(
+            i18n.tr(
+                "boot.migration.shared.collision",
+                names="Compartilhada, Compartilhado",
+            ),
+            output,
+        )
+        # A resolução lê a face atual, que é a que ficou ao lado da aposentada.
+        self.assertEqual(paths.shared_dir(), self.root / "Compartilhado")
+
+    def test_an_english_folder_is_not_touched(self):
+        # `FORMER["shared"]` só carrega a face pt_BR: numa pasta en_US esta
+        # migração não move nada, nem a grafia aposentada que outra língua usou.
+        self.born()
+        (self.root / "Compartilhado").rename(self.root / "Shared")
+        (self.root / "Compartilhada").mkdir()
+        (self.root / "Compartilhada" / "nota.md").write_text("olá\n", encoding="utf-8")
+        with mock.patch.dict(os.environ, {"AT_LANG": "en_US"}):
+            i18n.reset()
+            self.only()
+            output = self.caught_up()
+            said = i18n.tr("boot.migration.shared.kept")
+        self.assertTrue((self.root / "Shared").is_dir())
+        self.assertTrue((self.root / "Compartilhada" / "nota.md").is_file())
+        self.assertFalse((self.root / "Compartilhado").exists())
+        self.assertIn(said, output)
+
+    def test_a_folder_already_named_right_has_nothing_to_do(self):
+        self.born()
+        self.only()
+        output = self.caught_up()
+        self.assertTrue((self.root / "Compartilhado").is_dir())
+        self.assertFalse((self.root / "Compartilhada").exists())
+        self.assertIn(i18n.tr("boot.migration.shared.kept"), output)
 
 
 # ------------------------------------------------------- the declaration ---
@@ -1380,7 +1483,7 @@ class TheLanguageOffer(FolderCase):
             i18n.tr(
                 "boot.migration.folders.declined",
                 names="Tabelas → Tables, Biblioteca → Library, "
-                      "Projetos → Projects, Compartilhada → Shared",
+                      "Projetos → Projects, Compartilhado → Shared",
             ),
             first,
         )
@@ -1391,7 +1494,7 @@ class TheLanguageOffer(FolderCase):
         self.assertEqual(settings.get("folders"), "en_US")
 
     def test_the_named_folders_follow_the_language_too(self):
-        # `Projetos/` and `Compartilhada/` are spelled by the language like the
+        # `Projetos/` and `Compartilhado/` are spelled by the language like the
         # other two, and a folder that changed language carries all four — it
         # does not keep one spelling and gain a twin in the other.
         self.born("pt_BR")
@@ -1400,7 +1503,7 @@ class TheLanguageOffer(FolderCase):
         for name in ("Tables", "Library", "Projects", "Shared"):
             with self.subTest(folder=name):
                 self.assertTrue((self.root / name).is_dir(), name)
-        for name in ("Tabelas", "Biblioteca", "Projetos", "Compartilhada"):
+        for name in ("Tabelas", "Biblioteca", "Projetos", "Compartilhado"):
             with self.subTest(folder=name):
                 self.assertFalse((self.root / name).exists(), name)
 
@@ -1415,7 +1518,7 @@ class TheLanguageOffer(FolderCase):
         self.assertTrue((self.root / "Projetos").is_dir())
         self.assertFalse((self.root / "Projects").exists())
         self.assertEqual(paths.projects_dir(), self.root / "Projetos")
-        self.assertEqual(paths.shared_dir(), self.root / "Compartilhada")
+        self.assertEqual(paths.shared_dir(), self.root / "Compartilhado")
 
     def test_the_environment_never_moves_the_folders(self):
         # `$AT_LANG` is not the folder's decision, and renaming the person's

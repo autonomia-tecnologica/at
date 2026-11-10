@@ -47,8 +47,8 @@ HERE = Path(__file__).resolve().parent
 SKIP = {
     "node_modules", ".venv", ".git", "build", "dist", "hooks", ".claude",
     "App", "app", "Tables", "Tabelas", "Biblioteca", "Library",
-    "Files", "Arquivos", "Projects", "Projetos", "Shared", "Compartilhada",
-    "Harness",
+    "Files", "Arquivos", "Projects", "Projetos", "Shared", "Compartilhado",
+    "Compartilhada", "Harness",
     "data", "prose",
 }
 

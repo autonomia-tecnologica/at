@@ -58,6 +58,25 @@ class Resolution(unittest.TestCase):
             ("Biblioteca", "Library", "prose"),
         )
 
+    def test_a_shared_folder_under_the_retired_name_is_still_found(self):
+        # A face aposentada de `shared/` continua resolvida: quem não migrou
+        # ainda lê os arquivos que guardou em `Compartilhada/`.
+        old = self.root / "Compartilhada"
+        old.mkdir()
+        (old / "nota.md").write_text("olá\n", encoding="utf-8")
+        self.assertEqual(paths.folder("shared"), old)
+        self.assertEqual(paths.shared_dir(), old)
+
+    def test_the_shared_candidates_put_the_retired_face_before_the_internal_name(self):
+        self.assertEqual(
+            paths.candidates("shared"),
+            ("Compartilhado", "Shared", "Compartilhada", "shared"),
+        )
+        self.assertEqual(
+            paths.current_candidates("shared"),
+            ("Compartilhado", "Shared", "shared"),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

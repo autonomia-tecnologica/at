@@ -90,7 +90,7 @@ def _folders_in_the_language(ask: Ask | None, said_so: bool = False) -> list[Rep
     every language change — so every folder that follows the language is in
     `_moves`, and not only the two that existed when migration three was
     published. For a folder that has NOT run it the change is nil: a folder that
-    old carries neither `Projects/` nor `Compartilhada/` under any spelling, and
+    old carries neither `Projects/` nor `Compartilhado/` under any spelling, and
     `_birth` is what names them.
     """
     moves, collisions = _moves()
@@ -114,7 +114,7 @@ def _moves() -> tuple[list[tuple[str, Path, Path]], list[str]]:
     """What has to move, and what cannot be moved because two spellings exist.
 
     EVERY folder whose name follows the language, and not only the two that hold
-    the person's material today. `Projetos/` and `Compartilhada/` are named by
+    the person's material today. `Projetos/` and `Compartilhado/` are named by
     the language as well, and a folder that changed language without them kept
     one spelling while an empty twin was born in the other — and `paths.folder`
     reads the active language's name first, so the twin is the folder AT would
@@ -147,9 +147,9 @@ def _moves() -> tuple[list[tuple[str, Path, Path]], list[str]]:
 
 
 def _birth() -> list[Path]:
-    """`Projetos/` and `Compartilhada/`, born empty and named here.
+    """`Projetos/` and `Compartilhado/`, born empty and named here.
 
-    `Compartilhada/` is where the files shared with other people will live (§3);
+    `Compartilhado/` is where the files shared with other people will live (§3);
     the transport, and what it does to the backup promise, are the session that
     comes after. `Projetos/` is where what belongs to a project goes — also a
     later session's, and both are born so the folder is whole on its own from
@@ -221,7 +221,7 @@ def _agent_note(ask: Ask | None) -> list[Report]:
 def _harness_folder(ask: Ask | None) -> list[Report]:
     """`Harness/` — where what the agent loads lives (§2, item 25).
 
-    Born named and empty, like `Projetos/` and `Compartilhada/`: the folder is
+    Born named and empty, like `Projetos/` and `Compartilhado/`: the folder is
     whole on its own from the first run on, and what lands in it is whoever
     works in the folder's to put there. AT guarantees the place, nothing more.
 
@@ -280,6 +280,44 @@ def _prose_in_its_new_name(ask: Ask | None) -> list[Report]:
         return [("boot.migration.prose.collision", {})]
     old.rename(target)
     return [("boot.migration.prose.moved", {"names": f"{former} → {target.name}"})]
+
+
+def _shared_in_its_new_name(ask: Ask | None) -> list[Report]:
+    """`Compartilhada/` → `Compartilhado/` — the folder's new pt_BR name.
+
+    Same shape as migration THIRTY-ONE and for the same reason: the name is the
+    product's decision, not a choice forced on the person, so this one does NOT
+    ask. The retired face is the product's too, and there is nothing of the
+    person's to weigh.
+
+    **Only the ACTIVE language's face moves.** `FORMER["shared"]` carries a
+    pt_BR face and no en_US one, so an English folder is left exactly as it is:
+    `Shared/` is the current name there, and a `Compartilhada/` beside it is a
+    spelling this migration does not own.
+
+    A collision is reported and NOT resolved: two folders for one internal name
+    are the person's to settle, and choosing one would hide the other. The
+    resolution then reads `Compartilhado/`, which is the current face, and a
+    folder that already has the new name has nothing to do.
+    """
+    language = paths.active_language()
+    former = paths.FORMER["shared"].get(language)
+    if not former:
+        return [("boot.migration.shared.kept", {})]
+    root = paths.working_folder()
+    old = root / former
+    target = root / paths.NAMES["shared"][language]
+    if not old.is_dir():
+        return [("boot.migration.shared.kept", {})]
+    if target.exists():
+        return [
+            (
+                "boot.migration.shared.collision",
+                {"names": f"{former}, {target.name}"},
+            )
+        ]
+    old.rename(target)
+    return [("boot.migration.shared.moved", {"names": f"{former} → {target.name}"})]
 
 
 def _remove_agent_note(ask: Ask | None) -> list[Report]:

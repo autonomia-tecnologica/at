@@ -65,7 +65,7 @@ ALWAYS = frozenset({
 # still carry the retired one (`Arquivos/`, `Files/`) beside the current one.
 AT_THE_ROOT = frozenset({
     "dist", "Tabelas", "App", "Biblioteca", "Arquivos", "Projetos",
-    "Compartilhada", "Harness", "INSTANCE.md", "Library", "Files",
+    "Compartilhado", "Compartilhada", "Harness", "INSTANCE.md", "Library", "Files",
 })
 
 

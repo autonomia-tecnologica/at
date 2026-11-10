@@ -39,7 +39,7 @@ NAMES: dict[str, dict[str, str]] = {
     "data": {"pt_BR": "Tabelas", "en_US": "Tables"},
     "prose": {"pt_BR": "Biblioteca", "en_US": "Library"},
     "projects": {"pt_BR": "Projetos", "en_US": "Projects"},
-    "shared": {"pt_BR": "Compartilhada", "en_US": "Shared"},
+    "shared": {"pt_BR": "Compartilhado", "en_US": "Shared"},
     # A pasta que sela sozinha (TASK-154) — irmã de `prose`, e não dentro dela:
     # o que entra aqui não é material solto, é o que a pessoa quer cifrado.
     # O nome interno é `strongbox` e não `cofre`: a palavra em português só
@@ -59,9 +59,10 @@ NAMES: dict[str, dict[str, str]] = {
 }
 
 # The faces a folder has carried BEFORE the one it carries today, by language,
-# and in the order they were declared. One home, like `NAMES`: the rename that
-# takes a folder from here to there is migration 31, and the resolution reads
-# this table so a folder that still carries a retired spelling is still found.
+# and in the order they were declared. One home, like `NAMES`: each rename that
+# takes a folder from here to there has its own migration (31 for `prose`, 36
+# for `shared`), and the resolution reads this table so a folder that still
+# carries a retired spelling is still found.
 #
 # The resolution accepting it is the promise the module's docstring makes: a
 # person who declined a rename — or a folder that has not migrated yet — cannot
@@ -70,6 +71,7 @@ NAMES: dict[str, dict[str, str]] = {
 # screen, never the files.
 FORMER: dict[str, dict[str, str]] = {
     "prose": {"pt_BR": "Arquivos", "en_US": "Files"},
+    "shared": {"pt_BR": "Compartilhada"},
 }
 
 # The instance folder, and it is NOT localized — deliberately. The language
@@ -198,10 +200,11 @@ def current_candidates(internal: str) -> tuple[str, ...]:
     """The names the folder is CURRENTLY spelled with — no retired face.
 
     The active language's name first, then the other language's, then the
-    internal name. It is what `_moves` reads: a retired face is migration 31's
-    subject, and offering its rename here as well would ask the same question
-    twice — migration 31 does it without asking, so the second question would
-    sometimes be answered "no" against a move that happens anyway.
+    internal name. It is what `_moves` reads: a retired face is its own
+    migration's subject, and offering its rename here as well would ask the
+    same question twice — that migration does it without asking, so the second
+    question would sometimes be answered "no" against a move that happens
+    anyway.
 
     The internal name stays because a folder born under it is still a folder the
     language rename has to bring forward, and it is not a retired face.
@@ -382,7 +385,7 @@ def projects_dir() -> Path:
 
 
 def shared_dir() -> Path:
-    """`Compartilhada/` — the files shared with other people. Named here, and
+    """`Compartilhado/` — the files shared with other people. Named here, and
     treated later: the transport, and what this does to the backup promise, are
     the session that comes after (§3)."""
     return folder("shared")
@@ -417,7 +420,7 @@ def harness_dir() -> Path:
     belongs to a project — beside the note that presents the folder, which sits
     at the root because that is where such a reader looks first. AT guarantees
     the place and writes nothing in it: it is born named and empty, like
-    `Projetos/` and `Compartilhada/`.
+    `Projetos/` and `Compartilhado/`.
     """
     return folder("harness")
 

@@ -99,7 +99,7 @@ def create_working_folder(ask: Ask | None = None) -> None:
     already be there, and finding them is not a conflict.
 
     Every folder is born under the name the ACTIVE LANGUAGE gives it, and the
-    three that no session fills yet — `Projetos/`, `Compartilhada/` and
+    three that no session fills yet — `Projetos/`, `Compartilhado/` and
     `Harness/` — are born empty here: the folder is whole on its own from the
     first run on.
     """

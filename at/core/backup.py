@@ -29,7 +29,7 @@ bytes are what travels.
 `_fresh` reads the tables a person's own work fills — never `actor` or `role`,
 because an administrator created to get a new machine going is the very setup
 restoring expects to walk into — and the two folders no session fills on its
-own (`Projetos/`, `Compartilhada/`). A folder that answers anything else keeps
+own (`Projetos/`, `Compartilhado/`). A folder that answers anything else keeps
 what it has: extracting on top of REAL work, `.git` included, is exactly the
 loss backing up exists to prevent, so the one place this module will not take
 that risk is the one act shaped like a wipe. A folder that answers `_fresh`
