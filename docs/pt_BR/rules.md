@@ -48,7 +48,7 @@
 
 - Expor exige autenticação **e** TLS. Como o TLS é do Caddy, e o Caddy é embarcado (§3, Código e delivery), a exposição no caminho hospedado é o que `at-cli webapp` faz por padrão: o Caddy termina o TLS e publica o AT, e o WebApp responde no laço atrás dele. `--no-caddy` é a saída, de volta ao laço em HTTP. No caminho container quem fica na borda é o Caddy em container, pelo isolamento.
 
-- **`--public-port` existe para quando algo de FORA já termina o TLS antes do Caddy embarcado** — o `tailscale serve` da pessoa, tipicamente —, e esse algo faz proxy para um `--port` local que só existe para não disputar com ele a mesma porta. Sem a bandeira, as duas portas são a mesma — todo teste deste repositório e toda verificação local, `at-cli webapp --port 12399` incluído — e nada muda. Dita, é ela (e nunca `--port`) que o portal do Authelia passa a carregar: a pessoa prova a si mesma uma vez, e um redirecionamento que levasse o navegador de volta à porta ONDE O CADDY ESCUTA o levaria para fora do que fechou o TLS de verdade — direto no certificado próprio do Caddy, que o navegador não confia (TASK-187, achado em produção: a porta local vazando num `Location:` de login).
+- **`--public-port` existe para quando algo de FORA já termina o TLS antes do Caddy embarcado** — o `tailscale serve` da pessoa, tipicamente —, e esse algo faz proxy para um `--port` local que só existe para não disputar com ele a mesma porta. Sem a bandeira, as duas portas são a mesma — todo teste deste repositório e toda verificação local, `at-cli webapp --port 12399` incluído — e nada muda. Dita, é ela (e nunca `--port`) que o portal do Authelia passa a carregar: a pessoa prova a si mesma uma vez, e um redirecionamento que levasse o navegador de volta à porta ONDE O CADDY ESCUTA o levaria para fora do que fechou o TLS de verdade — direto no certificado próprio do Caddy, que o navegador não confia.
 
 - O AT não entrega HSTS, por motivo óbvio: ele serve com certificado próprio, e HSTS transformaria o aviso do navegador em erro sem saída. É o preço de não depender de um domínio público, e de não poder garantir TLS confiável.
 
@@ -195,4 +195,10 @@
 - **A máquina onde o release é construído também é dependência, e é pinada como uma.** Um binário congelado carrega a máquina que o construiu: as extensões do interpretador viajam com o artefato, e cada uma guarda a versão da biblioteca contra a qual foi ligada — então o piso de glibc do release é propriedade de ONDE ele foi construído, e não do código. O release declara esse piso, é construído na base que a declaração pina, e é recusado quando o artefato precisa de mais do que prometeu.
 
 - **Nada experimental entra**, nem como ferramenta de desenvolvimento: só componente estável. Versão alpha, beta, release candidate e preview ficam de fora, e o que o fornecedor marca como experimental fica de fora junto — a promessa de que o AT não muda sob os seus pés não pode depender de uma superfície que o dono dela avisa que vai mudar.
+
+### Testes
+
+- O interpretador é testado sem LLM, sem rede e sem placa de vídeo, e a régua dele roda como teste: frases que precisam funcionar, frases que precisam ser recusadas e frases ambíguas que precisam ser devolvidas em pergunta.
+
+- O teste de ponta a ponta não é o critério de pronto de cada função — uma função fica pronta pelo que o `BACKLOG.md` (na raiz, fora do git) diz que ela é. Ele é o portão da primeira publicação no GitHub, e dali em diante.
 

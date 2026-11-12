@@ -48,7 +48,7 @@
 
 - Exposing demands authentication **and** TLS. Since the TLS is Caddy's, and Caddy is embedded (§3, Code and delivery), exposure on the hosted path is what `at-cli webapp` does by default: the Caddy terminates the TLS and publishes AT, and the WebApp answers on the loop behind it. `--no-caddy` is the way out, back to the loop over HTTP. On the container path, whoever sits at the edge is the Caddy in a container, for the isolation.
 
-- **`--public-port` exists for when something OUTSIDE already terminates the TLS before the embedded Caddy does** — the person's own `tailscale serve`, typically — and that something proxies to a local `--port` that exists only to stay out of its way on the same port. Left unsaid, the two ports are the same one — every test in this repository and every local check, `at-cli webapp --port 12399` included — and nothing moves. Said, it (and never `--port`) is what Authelia's portal carries: the person proves themselves once, and a redirect that sent the browser back to the bind port would send it past whatever actually terminated the TLS — straight at the Caddy's own certificate, which the browser does not trust (TASK-187, found in production: the bind port leaking into a login's `Location:`).
+- **`--public-port` exists for when something OUTSIDE already terminates the TLS before the embedded Caddy does** — the person's own `tailscale serve`, typically — and that something proxies to a local `--port` that exists only to stay out of its way on the same port. Left unsaid, the two ports are the same one — every test in this repository and every local check, `at-cli webapp --port 12399` included — and nothing moves. Said, it (and never `--port`) is what Authelia's portal carries: the person proves themselves once, and a redirect that sent the browser back to the bind port would send it past whatever actually terminated the TLS — straight at the Caddy's own certificate, which the browser does not trust.
 
 - AT does not deliver HSTS, for an obvious reason: it serves with its own certificate, and HSTS would turn the browser's warning into an error with no way out. That is the price of not depending on a public domain, and of not being able to guarantee trusted TLS.
 
@@ -195,4 +195,10 @@
 - **The machine the release is built on is a dependency too, and it is pinned like one.** A frozen binary carries the machine that built it: the interpreter's extension modules travel with the artifact, and each one records the version of the library it was linked against — so the release's glibc floor is a property of WHERE it was built and not of the code. The release declares that floor, is built in the base the declaration pins, and is refused when the artifact needs more than it promised.
 
 - **Nothing experimental comes in**, not even as a development tool: stable components only. Alpha, beta, release candidate and preview stay out, and whatever the vendor marks as experimental stays out with them — the promise that AT does not change under your feet cannot rest on a surface whose owner says it will change.
+
+### Tests
+
+- The interpreter is tested without an LLM, without network and without a video card, and its ruler runs as a test: sentences that must work, sentences that must be refused, and ambiguous sentences that must be returned as a question.
+
+- The end-to-end test is not the criterion of done for each function — a function is done by what `BACKLOG.md` (root, outside git) says it is. It is the gate of the first publication on GitHub, and from there on.
 
