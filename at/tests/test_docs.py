@@ -70,7 +70,7 @@ DOOR = ROOT / "README.md"
 # `BACKLOG.md` is the work's list, not a document of the product: it sits at the root
 # of the checkout, the git ignore rules keep it out (`/BACKLOG.md`), and it has no
 # language folder and no pair.
-RUNTIME = {ROOT / "INSTANCE.md", ROOT / "LICENSE.md", ROOT / "TRADEMARK.md", ROOT / "BACKLOG.md"}
+RUNTIME = {ROOT / "INSTANCE.md", ROOT / "LICENSE.md", ROOT / "TRADEMARK.md", ROOT / "BACKLOG.md", ROOT / "ARCH.md"}
 
 # Documents of the WORK, not for the reader: they have a language and no pair.
 WORKING = {"backlog"}

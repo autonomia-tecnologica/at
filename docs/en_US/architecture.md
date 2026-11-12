@@ -71,13 +71,7 @@
 
 - No secret lives in `settings.json`. It holds permission and adjustment — such as the permission for an actor to come in through Basic, or the risk threshold — never the credential itself.
 
-- The Tkinter Wizard displays the installation possibilities of the environment. With advanced mode enabled, the Wizard presents the rendering of the settings file, allowing any of them to be modified. It follows the design choice of some tools, such as VS Code, which have the base of the settings in JSON but allow the change in the UI.
-
 - Each service may have persisted data. In that case, it lives in `App/services/<service>`, such as `App/services/vpn` or `App/services/spelling-checker`. The service name is canonical and does not change with the tool that fulfils it: `spelling-checker` is the service, LanguageTool is who fulfils it today (§7d) — as a process AT itself brings up and takes down, not as a container — and whatever replaces it one day renames neither folders nor keys. What is a display label is an `i18n` key.
 
 - That folder is not a convenience, it is a condition of entry: a service only enters §7 if its persistent state fits in there. A service that keeps its life in some volume nobody copies makes the folder backup lie.
-
-- **The folder is born under versioning, and the history is AT's.** On the first run AT runs `git init` at the root of the Working Folder, writes the `.gitignore` it generates itself and takes the first version; from then on, every action that changes the folder is versioned by it, with a version named by the engine's own sentence — which is why `git log` reads like the table's own story. **AT versions where the repository is its own**: a folder that already carries a repository of its own is neither overwritten nor driven. **Versioning is not backup** — the copy that survives the machine is another thing, still owed.
-
-- **The versioning cadence is a setting.** `versioning_interval` says how many minutes the folder may go without gaining a version while AT is used; `0` is the person asking for a version on every write, and a folder that never chose is periodic. The number is read once by the `core`, and it is the same reading that governs both ends: a write only versions when the interval has passed — and what waited is not lost, because the next version carries the whole folder —, and the folder that has fallen behind says so in the `cli` and in the page, in the active language.
 

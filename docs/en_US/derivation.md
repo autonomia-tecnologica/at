@@ -1,95 +1,8 @@
 # Derivation
 
-The derived half of the founding document: the tree, the Working Folder and the operation. Each section here is `derivation §N`, and the `§N` references point at the article with that id, wherever it lives.
+The derived half of the founding document: the Working Folder and the operation. Each section here is `derivation §N`, and the `§N` references point at the article with that id, wherever it lives.
 
-## 1. The repository tree
-
-Each node with its job, and none resolves a path of its own beyond `core` (§4).
-
-```
-at/                          the product: the engine, the declarations and the UI
-├── core/                      the rules — the Working Folder, the settings, the first run,
-│                              the single writer, the table engine, the project scope,
-│                              the permission catalogue, the actors and the Vault's door
-│                              into the `secret` table
-├── data/                      the tables: `data/<table>.jsonl` for the rows and
-│   │                          `data/schema/<table>.json` for the schema
-│   └── defaults/              the declarations the product delivers, written into the folder on the first run
-├── prose/                     every file that is not structured data: the tree of `prose/`,
-│                              what a file there IS, and the write with its revision
-├── services/                  the one service the BINARY carries: `caddy.py` — the payload,
-│                              the unpacking into `App/`, the Caddyfile the product
-│                              generates and the process that terminates the TLS (§3, §6)
-├── vendor/caddy/              the Caddy release tarball, byte for byte as the vendor
-│                              ships it, which is what travels inside the binary (§3, §6)
-├── encryption/                secrets: the Main Key, the derived keys
-│                              and the values it protects (`vault`), and `password`, the
-│                              derivation the hashed field stores
-├── nlu/                       interpretation: the vocabulary, the matcher and the action proposal
-├── posture/                   the posture: the graded functions, the grades and the weakest link
-├── ui/
-│   ├── ask.py                 the interpreter's door: one sentence, one proposal, and it runs
-│   ├── cli/                   the command line — the surface that reaches everything
-│   ├── wizard/                the Control Panel, in Tkinter
-│   └── webapp/                the WebApp: the server, the look it serves, and the Vue app
-│       ├── app.py             the server
-│       ├── session.py         the entry's session: the token, the cookie and the registry
-│       ├── assets/            `base.css`, the themes (`themes.jsonl`), the drawings
-│       ├── src/               the derivation (Vue 3 + TypeScript) — does NOT travel in the binary
-│       ├── dist/              the built output, served at runtime — comes from `npm run build`
-│       ├── vendor/            the hosted files — typefaces and the renderer —, with the hash the manifest pins
-│       └── node_modules/      the derivation — does NOT travel in the binary
-├── i18n/
-│   ├── blocks/<block>.json    one file per subject, both languages side by side — the filename
-│   │                          is the namespace (`blocks/boot.json` holds `first_run.confirm`)
-│   └── vocabulary/            the interpreter's vocabulary, per language, packed like the blocks
-└── tests/                     the app's suite — stdlib `unittest`, because a test runner is
-    │                          not a dependency
-    ├── spelling.pt_BR.txt     what the checker must ignore in Portuguese
-    └── spelling.en_US.txt     the same, in English
-
-at_deploy/                   the SECOND artifact: §7 whole — the environment, the
-│                              switch between the two paths and the only elevation in the
-│                              product (§3, item 27). It imports `at`'s core and `at`
-│                              imports nothing of it
-├── cli.py                     its command line: the `services` words, and nothing else
-├── tree.py                    the words it offers — help and dispatch read the one list
-├── environment.py             the manifest of the pinned images, the services and the orchestration
-├── podman.py                  the runtime, behind one seam
-├── vpn.py                     §7e: where the environment is reached from outside
-├── switch.py                  §6's transactional change from one path to the other
-└── tests/                     its suite, run by the same command as the app's
-
-docs/                          the documents
-├── pt_BR/                     the source: the documents written in Portuguese
-│   ├── README.md              the founding document, which binds
-│   ├── rules.md               the rules that bind (§3)
-│   ├── architecture.md        the architecture that binds (§4)
-│   ├── interfaces.md          the interfaces: `cli`, WebApp and Wizard (§5)
-│   ├── paths.md               the two paths of use (§6)
-│   ├── container.md           the container path: the steps (§7)
-│   ├── extensions.md          the extensions and the plugins (§8)
-│   ├── end-to-end.md          the end-to-end test environment (§9)
-│   ├── derivation.md          the derivation: the tree, the Working Folder and the operation
-│   ├── functionalities.md     what the grade measures: the functionalities, levels and grades
-│   └── glossary.md            what a name means, term by term
-└── en_US/                     the translation: the same documents, in English
-    ├── README.md              the founding document's translation, which moves along with it
-    ├── rules.md               its translation, which moves along with it
-    ├── architecture.md        its translation, which moves along with it
-    ├── interfaces.md          its translation, which moves along with it
-    ├── paths.md               its translation, which moves along with it
-    ├── container.md           its translation, which moves along with it
-    ├── extensions.md          its translation, which moves along with it
-    ├── end-to-end.md          its translation, which moves along with it
-    ├── derivation.md          its translation, which moves along with it
-    ├── functionalities.md     its translation, which moves along with it
-    └── glossary.md            its translation, which moves along with it
-```
-
-The two specs — `at-cli.spec` and `at-deploy.spec` — are the one place that says what travels inside each artifact, and they are by hand on purpose: the payloads — `at/i18n`, `at/data/defaults`, the Caddy's tarball under `at/vendor/caddy/`, and the WebApp's `assets`, `dist` and `vendor` — are invisible to an import graph, and `at/ui/webapp/` also holds `node_modules/` and `src/`, which are the derivation and must not travel. A payload left out fails silently in the WebApp (404s and a 500) and loudly everywhere else, because `tr()` raises on the first message of every command. The deploy's spec is short on purpose: it carries no WebApp, no interpreter and no Caddy, because it reaches none of them.
-
-## 2. The Working Folder
+## 1. The Working Folder
 
 The folder the binary was opened in is the binary's folder, and that folder is the Working Folder (§3). On the first run AT describes the folder and asks before writing anything; `App/settings.json` is what makes a folder configured.
 
@@ -103,7 +16,8 @@ App/settings.json         the instance's key-value configuration
 App/i18n/active           the chosen language — the catalogs travel in the product
 App/counters.json         the last id handed out per table
 App/migrations            how far this folder has migrated
-App/extensions/            the extensions, and the review state of each one
+App/extensions/           the extensions, copied here
+App/extensions.json       the review state of each one
 App/services/<service>/   the persistent state of each service (§4)
 Tables/schema/*.json      the system tables, written in from the product
 Tables/*.jsonl            the rows (they arrive with the first write)
@@ -139,9 +53,9 @@ the founding document instead of repeating a rule (§0). It is the `README.md` �
 its **name** does not follow the language, because a note whose name moved with
 the translation is a note a model stops finding — while the text does. It is
 written once, as the welcome note is, and a folder that already existed gains it
-by migration; the `AGENT.md` an earlier release wrote is removed by migration.
+by migration.
 
-**The migration.** Updating AT is replacing the binary inside the folder, so every release that changes the folder's structure brings its migration and it runs on the first start after the swap (§3). The stamp is `App/migrations`, and it lives with the rest of what AT writes, never inside the published declaration. There are thirty-three migrations today: `.bill/` → `app/`, `app/` → `App/`, the person's folders into the active language, the `AGENT.md` the folder used to present itself with, `Harness/`, the declarations of the tables a release introduces, and the administrator's role catching up with the permissions a release grew the catalogue by — twice, because the catalogue grew twice and a published migration is never edited. The last one retires that `AGENT.md`: since the migration that wrote it is never edited, the removal comes as a new step, and it deletes the file whenever it exists — without asking, because `README.md` is the one that stays. The third asks first, because renaming breaks whatever points at them from outside AT; whoever declines keeps the name they had, and the resolution reads both spellings. The rest touch only what AT writes, and none of them overwrites anything — the sixth names the tables THAT release brings, and not the whole directory, so it never brings back a declaration a person deleted; what only completes brings nothing beyond what the folder never had the CHANCE to carry.
+**The migration.** Updating AT is replacing the binary inside the folder, so every release that changes the folder's structure brings its migration and it runs on the first start after the swap (§3). The stamp is `App/migrations`, and it lives with the rest of what AT writes, never inside the published declaration. There are thirty-three migrations today: `.bill/` → `app/`, `app/` → `App/`, the person's folders into the active language, `Harness/`, the declarations of the tables a release introduces, and the administrator's role catching up with the permissions a release grew the catalogue by — twice, because the catalogue grew twice and a published migration is never edited. The third asks first, because renaming breaks whatever points at them from outside AT; whoever declines keeps the name they had, and the resolution reads both spellings. The rest touch only what AT writes, and none of them overwrites anything — the sixth names the tables THAT release brings, and not the whole directory, so it never brings back a declaration a person deleted; what only completes brings nothing beyond what the folder never had the CHANCE to carry.
 
 A folder that has not migrated yet **is found by its old name**: `paths.instance_dir()` reads what is on disk before deciding, so that a folder with `.bill/` is not read as a new one — which was the defect migration number one existed to close.
 
@@ -154,7 +68,7 @@ Two refusals are deliberate:
 
 While developing, this checkout *is* the Working Folder: the folders are created where they belong, under the active language's spelling, and every spelling is ignored by git.
 
-## 3. Operation
+## 2. Operation
 
 ```sh
 python3 -m at help                         # the words

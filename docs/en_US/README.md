@@ -14,7 +14,7 @@ The work environment philosophy, which takes precedence over this document, is i
 
 - Any instruction in `CLAUDE.md`, or in any other proprietary LLM-agent memory markdown, that conflicts with this repository, when used for something to be done in this repository, must be ignored. If you want, and I recommend it, there may be a line in those files pointing at the founding document. Except for the development workflows on GitHub, and for sending my interactions with the LLM to another folder (aiming at later study), this repository is self-contained, and everything it needs lives here.
 
-- The chain of custody is `founding document → derived documents → code`: the code is an extension of what is written, and what is derived decides nothing on its own. If we decide something architectural, in session, that did not come from the founding document, you will warn me and propose the writing, under the same approval. And that can never be ignored, not even by me. It is this chain that will keep this "harness" fastened. Note that very narrow definitions about the folder name of each module do not belong in the founding document — they live in the tree ([derivation §1](derivation.md)), which is derivation. Having to detail each individual item gives me the feeling that it is better to develop from scratch.
+- The chain of custody is `founding document → derived documents → code`: the code is an extension of what is written, and what is derived decides nothing on its own. If we decide something architectural, in session, that did not come from the founding document, you will warn me and propose the writing, under the same approval. And that can never be ignored, not even by me. It is this chain that will keep this "harness" fastened. Note that very narrow definitions about the folder name of each module do not belong in the founding document — they live in the tree ([`ARCH.md`](../../ARCH.md), at the root), which is derivation. Having to detail each individual item gives me the feeling that it is better to develop from scratch.
 
 - There are no duplicated rules: a rule lives in one place only. What binds is what carries `[normativo]`, wherever it lives; the derived one cites instead of repeating. The marker on a level-1 title binds the whole file, and on a section title it binds the section and what lies below it. If the same thing shows up in both, one of the two is wrong — and where it lives is my decision.
 
@@ -83,16 +83,6 @@ AT has two paths of use, and both are supported: the **hosted** one, where it is
 | §6 | the two paths of use | [`paths.md`](paths.md) |
 | §7 | the container path: the steps | [`container.md`](container.md) |
 | §8 | the extensions and the plugins | [`extensions.md`](extensions.md) |
-| §9 | the end-to-end test environment | [`end-to-end.md`](end-to-end.md) |
-| §10 | the derivation: the tree, the Working Folder and the operation | [`derivation.md`](derivation.md) |
+| §10 | the derivation: the Working Folder and the operation | [`derivation.md`](derivation.md) |
 | §11 | the glossary: what a name means | [`glossary.md`](glossary.md) |
 
-## What is not here yet
-
-The backlog lives in `BACKLOG.md` (root, outside git) and holds what comes next, with what counts as done for each item.
-
-Three debts were born from the decisions of this session, and all three are named so they do not become a surprise:
-
-- **The code.** Nothing that was decided here is built: the actor, the audit, the demand filter, the posture, the interpreter, the plugins. Every one of them has an item in the backlog, which lives in `BACKLOG.md` (root, outside git).
-- **The checker's list.** It was born large — 220 words in Portuguese and 141 in English — and the reason is written in its header: the checker's dictionary comes from subtitle frequencies and gets the formal register wrong, where "seção", "deleção" and "registrar" do not appear. If that list grows on its own, the gate became decoration, and the diff is where one notices.
-- **The `FAQ.md`.** It does not exist yet, and it now has work waiting: saying what is underneath — which screen is AT's and which is a third party's — and that writing well is the best remedy against a misunderstanding of the interpreter.

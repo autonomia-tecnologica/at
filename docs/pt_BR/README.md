@@ -14,7 +14,7 @@ A filosofia do ambiente de trabalho, que vale sobre este documento, está em `~/
 
 - Qualquer instrução no `CLAUDE.md`, ou em qualquer outro markdown de memória de agentes LLM proprietário, se conflitando com esse repositório, quando usado para algo a ser feito nesse repositório, deve ser ignorado. Se quiser, e recomendo, pode haver uma linha nesses arquivos apontando para o documento fundador. Com exceção dos workflows de desenvolvimento no GitHub, e com o envio das minhas interações com a LLM para outra pasta (visando estudo posterior) esse repositório é autocontido, e tudo necessário para ele vive aqui.
 
-- A cadeia de custódia é `documento fundador → documentos derivados → código`: o código é uma extensão do que está escrito, e o que é derivado não decide nada sozinho. Se decidirmos algo arquitetural, em sessão, que não veio do documento fundador, você vai me avisar e propor a escrita, pelo mesmo aval. E isso nunca pode ser ignorado, nem por mim. É essa cadeia que vai manter esse "arreio" preso. Veja que definições muito estreitas sobre nome de pastas de cada módulo não cabem para o documento fundador — elas moram na árvore ([derivation §1](derivation.md)), que é derivação. Ter que detalhar cada item individual me dá a sensação que é melhor eu desenvolver do zero.
+- A cadeia de custódia é `documento fundador → documentos derivados → código`: o código é uma extensão do que está escrito, e o que é derivado não decide nada sozinho. Se decidirmos algo arquitetural, em sessão, que não veio do documento fundador, você vai me avisar e propor a escrita, pelo mesmo aval. E isso nunca pode ser ignorado, nem por mim. É essa cadeia que vai manter esse "arreio" preso. Veja que definições muito estreitas sobre nome de pastas de cada módulo não cabem para o documento fundador — elas moram na árvore ([`ARCH.md`](../../ARCH.md), na raiz), que é derivação. Ter que detalhar cada item individual me dá a sensação que é melhor eu desenvolver do zero.
 
 - Não existem regras duplicadas: uma regra mora em um lugar só. O que vincula é o que carrega `[normativo]`, onde ele estiver; o derivado cita em vez de repetir. O marcador em um título de nível 1 vincula o arquivo inteiro, e em um título de seção vincula a seção e o que está abaixo dela. Se a mesma coisa aparecer nos dois, um dos dois está errado — e onde ela fica é decisão minha.
 
@@ -83,16 +83,6 @@ O `§N` é o id estável do artigo, e ele não muda de dígito quando o artigo m
 | §6 | os dois caminhos de uso | [`paths.md`](paths.md) |
 | §7 | o caminho container: os passos | [`container.md`](container.md) |
 | §8 | as extensões e os plugins | [`extensions.md`](extensions.md) |
-| §9 | o ambiente de teste end-to-end | [`end-to-end.md`](end-to-end.md) |
-| §10 | a derivação: a árvore, a Pasta de Trabalho e a operação | [`derivation.md`](derivation.md) |
+| §10 | a derivação: a Pasta de Trabalho e a operação | [`derivation.md`](derivation.md) |
 | §11 | o glossário: o que um nome significa | [`glossary.md`](glossary.md) |
 
-## O que ainda não está aqui
-
-O backlog vive em `BACKLOG.md` (na raiz, fora do git) e guarda o que vem a seguir, com o que conta como pronto para cada item.
-
-Três dívidas nasceram das decisões desta sessão, e as três estão nomeadas para não virarem surpresa:
-
-- **O código.** Nada do que ficou decidido aqui está construído: o ator, a auditoria, o filtro de demandas, a postura, o interpretador, os plugins. Tudo tem item no backlog, que vive em `BACKLOG.md` (na raiz, fora do git).
-- **A lista do corretor.** Ela nasceu grande — 220 palavras em português e 141 em inglês —, e o motivo está escrito no cabeçalho dela: o dicionário do corretor vem de frequência de legendas e erra o registro formal, onde "seção", "deleção" e "registrar" não aparecem. Se essa lista crescer sozinha, o gate virou enfeite, e o diff é o lugar de perceber.
-- **O `FAQ.md`.** Ele ainda não existe, e agora tem trabalho esperando: dizer o que está por baixo — qual tela é do AT e qual é de terceiros —, e que escrever bem é o melhor remédio contra um mal-entendido do interpretador.
